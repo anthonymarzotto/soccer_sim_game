@@ -1,0 +1,5 @@
+{
+  "name": "Text-Based Soccer Simulator",
+  "description": "An online text-based soccer simulator game with league standings, team details, player profiles, and weekly schedules.",
+  "requestFramePermissions": []
+}

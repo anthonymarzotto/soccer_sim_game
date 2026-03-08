@@ -1,0 +1,168 @@
+import { Injectable } from '@angular/core';
+import { Player, Team, Match, Position, Role } from '../models/types';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class GeneratorService {
+  private firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George', 'Edward', 'Ronald', 'Timothy', 'Jason', 'Jeffrey', 'Ryan', 'Jacob', 'Gary', 'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon', 'Benjamin', 'Samuel', 'Gregory', 'Frank', 'Alexander', 'Raymond', 'Patrick', 'Jack', 'Dennis', 'Jerry', 'Tyler', 'Aaron', 'Jose', 'Adam', 'Henry', 'Nathan', 'Douglas', 'Zachary', 'Peter', 'Kyle', 'Walter', 'Ethan', 'Jeremy', 'Harold', 'Keith', 'Christian', 'Roger', 'Noah', 'Gerald', 'Carl', 'Terry', 'Sean', 'Austin', 'Arthur', 'Lawrence', 'Jesse', 'Dylan', 'Bryan', 'Joe', 'Jordan', 'Billy', 'Bruce', 'Albert', 'Willie', 'Gabriel', 'Logan', 'Alan', 'Juan', 'Wayne', 'Ralph', 'Roy', 'Eugene', 'Randy', 'Vincent', 'Russell', 'Louis', 'Philip', 'Bobby', 'Johnny', 'Bradley'];
+  private lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts', 'Gomez', 'Phillips', 'Evans', 'Turner', 'Diaz', 'Parker', 'Cruz', 'Edwards', 'Collins', 'Reyes', 'Stewart', 'Morris', 'Morales', 'Murphy', 'Cook', 'Rogers', 'Gutierrez', 'Ortiz', 'Morgan', 'Cooper', 'Peterson', 'Bailey', 'Reed', 'Kelly', 'Howard', 'Ramos', 'Kim', 'Cox', 'Ward', 'Richardson', 'Watson', 'Brooks', 'Chavez', 'Wood', 'James', 'Bennett', 'Gray', 'Mendoza', 'Ruiz', 'Hughes', 'Price', 'Alvarez', 'Castillo', 'Sanders', 'Patel', 'Myers', 'Long', 'Ross', 'Foster', 'Jimenez'];
+  private cities = ['London', 'Manchester', 'Liverpool', 'Birmingham', 'Leeds', 'Sheffield', 'Newcastle', 'Bristol', 'Nottingham', 'Leicester', 'Madrid', 'Barcelona', 'Valencia', 'Seville', 'Zaragoza', 'Malaga', 'Murcia', 'Palma', 'Las Palmas', 'Bilbao', 'Rome', 'Milan', 'Naples', 'Turin', 'Palermo', 'Genoa', 'Bologna', 'Florence', 'Bari', 'Catania', 'Berlin', 'Hamburg', 'Munich', 'Cologne', 'Frankfurt', 'Stuttgart', 'Dusseldorf', 'Dortmund', 'Essen', 'Leipzig', 'Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille'];
+  private nationalities = ['English', 'Spanish', 'Italian', 'German', 'French', 'Brazilian', 'Argentine', 'Portuguese', 'Dutch', 'Belgian'];
+
+  private teamNames = [
+    'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
+    'Burnley', 'Chelsea', 'Crystal Palace', 'Everton', 'Fulham',
+    'Liverpool', 'Luton Town', 'Manchester City', 'Manchester United', 'Newcastle United',
+    'Nottingham Forest', 'Sheffield United', 'Tottenham Hotspur', 'West Ham United', 'Wolverhampton'
+  ];
+
+  generateLeague(): { teams: Team[], schedule: Match[] } {
+    const teams: Team[] = this.teamNames.map((name, index) => this.generateTeam(index.toString(), name));
+    const schedule = this.generateSchedule(teams);
+    return { teams, schedule };
+  }
+
+  private generateTeam(id: string, name: string): Team {
+    const players: Player[] = [];
+    
+    // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
+    players.push(this.generatePlayer(id, 'GK', 'Goalkeeper'));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, 'DEF', 'Defense'));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, 'MID', 'Midfield'));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, 'FWD', 'Attack'));
+
+    // 10 Bench: 1 GK, 3 DEF, 4 MID, 2 FWD
+    players.push(this.generatePlayer(id, 'GK', 'Bench'));
+    for (let i = 0; i < 3; i++) players.push(this.generatePlayer(id, 'DEF', 'Bench'));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, 'MID', 'Bench'));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, 'FWD', 'Bench'));
+
+    // 5 Not Dressed: Random positions
+    const positions: Position[] = ['GK', 'DEF', 'MID', 'FWD'];
+    for (let i = 0; i < 5; i++) {
+      const pos = positions[Math.floor(Math.random() * positions.length)];
+      players.push(this.generatePlayer(id, pos, 'Not Dressed'));
+    }
+
+    return {
+      id,
+      name,
+      players,
+      stats: {
+        played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+      }
+    };
+  }
+
+  private generatePlayer(teamId: string, position: Position, role: Role): Player {
+    const id = Math.random().toString(36).substring(2, 9);
+    const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
+    const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
+    const name = `${firstName} ${lastName}`;
+
+    const age = Math.floor(Math.random() * 20) + 16; // 16 to 35
+    const height = Math.floor(Math.random() * 30) + 165; // 165cm to 195cm
+    const weight = Math.floor(Math.random() * 25) + 65; // 65kg to 90kg
+    const nationality = this.nationalities[Math.floor(Math.random() * this.nationalities.length)];
+
+    const physical = {
+      speed: this.randomStat(),
+      strength: this.randomStat()
+    };
+
+    const mental = {
+      flair: this.randomStat(),
+      vision: this.randomStat(),
+      determination: this.randomStat()
+    };
+
+    const skills = {
+      tackling: this.randomStat(),
+      shooting: this.randomStat(),
+      heading: this.randomStat(),
+      longPassing: this.randomStat(),
+      shortPassing: this.randomStat(),
+      goalkeeping: position === 'GK' ? this.randomStat(60, 99) : this.randomStat(1, 40)
+    };
+
+    // Boost stats based on position
+    if (position === 'DEF') {
+      skills.tackling = this.randomStat(60, 99);
+      skills.heading = this.randomStat(50, 90);
+    } else if (position === 'MID') {
+      skills.shortPassing = this.randomStat(60, 99);
+      skills.longPassing = this.randomStat(60, 99);
+      mental.vision = this.randomStat(60, 99);
+    } else if (position === 'FWD') {
+      skills.shooting = this.randomStat(60, 99);
+      physical.speed = this.randomStat(60, 99);
+      mental.flair = this.randomStat(60, 99);
+    }
+
+    const overall = Math.floor((
+      physical.speed + physical.strength + mental.flair + mental.vision + mental.determination +
+      skills.tackling + skills.shooting + skills.heading + skills.longPassing + skills.shortPassing + (position === 'GK' ? skills.goalkeeping * 5 : 0)
+    ) / (position === 'GK' ? 15 : 10));
+
+    return {
+      id,
+      name,
+      teamId,
+      position,
+      role,
+      personal: { height, weight, age, nationality },
+      physical,
+      mental,
+      skills,
+      overall
+    };
+  }
+
+  private randomStat(min = 20, max = 90): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  private generateSchedule(teams: Team[]): Match[] {
+    const schedule: Match[] = [];
+    const numTeams = teams.length;
+    const numWeeks = (numTeams - 1) * 2; // Home and away
+    let matchId = 1;
+
+    // Round Robin scheduling algorithm
+    const teamIds = teams.map(t => t.id);
+    
+    for (let week = 1; week <= numWeeks / 2; week++) {
+      for (let i = 0; i < numTeams / 2; i++) {
+        const home = teamIds[i];
+        const away = teamIds[numTeams - 1 - i];
+        
+        schedule.push({
+          id: (matchId++).toString(),
+          homeTeamId: home,
+          awayTeamId: away,
+          homeScore: null,
+          awayScore: null,
+          week,
+          played: false
+        });
+
+        // Add reverse fixture for second half of season
+        schedule.push({
+          id: (matchId++).toString(),
+          homeTeamId: away,
+          awayTeamId: home,
+          homeScore: null,
+          awayScore: null,
+          week: week + (numWeeks / 2),
+          played: false
+        });
+      }
+      
+      // Rotate teams (keep first team fixed)
+      teamIds.splice(1, 0, teamIds.pop()!);
+    }
+
+    return schedule.sort((a, b) => a.week - b.week);
+  }
+}
