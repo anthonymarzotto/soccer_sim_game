@@ -86,6 +86,10 @@ export class GeneratorService {
       goalkeeping: position === 'GK' ? this.randomStat(60, 99) : this.randomStat(1, 40)
     };
 
+    const hidden = {
+      luck: this.randomStat(1, 100)
+    };
+
     // Boost stats based on position
     if (position === 'DEF') {
       skills.tackling = this.randomStat(60, 99);
@@ -115,6 +119,7 @@ export class GeneratorService {
       physical,
       mental,
       skills,
+      hidden,
       overall
     };
   }

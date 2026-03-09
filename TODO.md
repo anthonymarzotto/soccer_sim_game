@@ -9,7 +9,8 @@
 - **Flair Events**: Remarkable events in a match. Failed flair event helps opponent?
 
 ## Player Stats and Details
-- **Luck**: Add a "Luck" stat that can boost/hinder individual interactions/
+- **Clutch**: Add a "Clutch" stat - performance under pressure
+- **Consistency**: Add a "Consistency" stat - performance variance reduction
 - **Endurance**: How much energy a player has in match. Starts at 100 at the start of a match and decreases in proporition to this stat.
 - **Injury rate**: How like the player is to be injured.
 - **Fitness**: Combination of Endurance, Fatigue, and Injury Rate. Viewable by player.

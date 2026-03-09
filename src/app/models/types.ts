@@ -20,6 +20,10 @@ export interface PlayerMental {
   determination: number;
 }
 
+export interface PlayerHidden {
+  luck: number;
+}
+
 export interface PlayerSkills {
   tackling: number;
   shooting: number;
@@ -39,6 +43,7 @@ export interface Player {
   physical: PlayerPhysical;
   mental: PlayerMental;
   skills: PlayerSkills;
+  hidden: PlayerHidden;
   overall: number;
 }
 

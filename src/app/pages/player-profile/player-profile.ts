@@ -95,29 +95,46 @@ import { GameService } from '../../services/game.service';
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
                   Mental
                 </h2>
-                <div class="space-y-4">
-                  <div class="flex items-center gap-4">
-                    <span class="text-zinc-500 w-24">Flair</span>
-                    <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                      <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.flair"></div>
-                    </div>
-                    <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.flair }}</span>
+              <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                  <span class="text-zinc-500 w-24">Flair</span>
+                  <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.flair"></div>
                   </div>
-                  <div class="flex items-center gap-4">
-                    <span class="text-zinc-500 w-24">Vision</span>
-                    <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                      <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.vision"></div>
-                    </div>
-                    <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.vision }}</span>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="text-zinc-500 w-24">Determination</span>
-                    <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                      <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.determination"></div>
-                    </div>
-                    <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.determination }}</span>
-                  </div>
+                  <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.flair }}</span>
                 </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-zinc-500 w-24">Vision</span>
+                  <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.vision"></div>
+                  </div>
+                  <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.vision }}</span>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-zinc-500 w-24">Determination</span>
+                  <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.determination"></div>
+                  </div>
+                  <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.determination }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hidden Stats -->
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+              <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
+                Hidden Stats
+              </h2>
+              <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                  <span class="text-zinc-500 w-24">Luck</span>
+                  <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-orange-500 rounded-full" [style.width.%]="player()?.hidden?.luck"></div>
+                  </div>
+                  <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.luck }}</span>
+                </div>
+              </div>
               </div>
             </div>
 
