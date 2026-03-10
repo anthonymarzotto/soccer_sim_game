@@ -117,7 +117,7 @@ import { GameService } from '../../services/game.service';
                                 (change)="changeRole(player.id, $event)"
                                 class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
                                 @for (role of availableRoles; track role) {
-                                  <option [value]="role">{{ role }}</option>
+                                  <option [value]="role" [selected]="player.role === role">{{ role }}</option>
                                 }
                               </select>
                             } @else {
@@ -174,7 +174,7 @@ import { GameService } from '../../services/game.service';
                                 (change)="changeRole(player.id, $event)"
                                 class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
                                 @for (role of availableRoles; track role) {
-                                  <option [value]="role">{{ role }}</option>
+                                  <option [value]="role" [selected]="player.role === role">{{ role }}</option>
                                 }
                               </select>
                             } @else {
@@ -231,7 +231,7 @@ import { GameService } from '../../services/game.service';
                                 (change)="changeRole(player.id, $event)"
                                 class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
                                 @for (role of availableRoles; track role) {
-                                  <option [value]="role">{{ role }}</option>
+                                  <option [value]="role" [selected]="player.role === role">{{ role }}</option>
                                 }
                               </select>
                             } @else {
