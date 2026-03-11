@@ -1,6 +1,11 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { League, Match, Team, Player } from '../models/types';
 import { GeneratorService } from './generator.service';
+import { MatchSimulationService } from './match.simulation.service';
+import { CommentaryService } from './commentary.service';
+import { StatisticsService } from './statistics.service';
+import { PostMatchAnalysisService } from './post.match.analysis.service';
+import { SimulationConfig } from '../models/simulation.types';
 
 @Injectable({
   providedIn: 'root'
@@ -63,88 +68,33 @@ export class GameService {
     const l = this.leagueState();
     if (!l) return;
 
-    // Deep clone teams and schedule to avoid mutating state directly
-    const clonedTeams = l.teams.map(t => ({
-      ...t,
-      players: t.players.map(p => ({ ...p })),
-      stats: { ...t.stats, last5: [...t.stats.last5] }
-    }));
-    const clonedSchedule = l.schedule.map(m => ({ ...m }));
-
-    const updatedTeams = this.dressBestPlayers(clonedTeams);
-
-    const matches = clonedSchedule.filter(m => m.week === l.currentWeek);
+    const matches = l.schedule.filter(m => m.week === l.currentWeek);
 
     matches.forEach(match => {
       if (match.played) return;
 
-      const homeTeam = updatedTeams.find(t => t.id === match.homeTeamId);
-      const awayTeam = updatedTeams.find(t => t.id === match.awayTeamId);
+      const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
+      const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
 
       if (!homeTeam || !awayTeam) return;
 
-      // Simple simulation logic based on overall ratings
-      const homeOverall = this.calculateTeamOverall(homeTeam);
-      const awayOverall = this.calculateTeamOverall(awayTeam);
+      // Use enhanced simulation with full features enabled
+      const result = this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: 'DETAILED'
+      });
 
-      // Home advantage
-      const homeAdvantage = 5;
-      
-      const homeChance = homeOverall + homeAdvantage;
-      const awayChance = awayOverall;
-      
-      const totalChance = homeChance + awayChance;
-      
-      // Generate goals
-      let homeGoals = 0;
-      let awayGoals = 0;
-
-      for(let i=0; i<5; i++) {
-        const rand = Math.random() * totalChance;
-        if (rand < homeChance * 0.4) homeGoals++;
-        else if (rand > totalChance - (awayChance * 0.4)) awayGoals++;
-      }
-
-      match.homeScore = homeGoals;
-      match.awayScore = awayGoals;
-      match.played = true;
-
-      // Update stats
-      homeTeam.stats.played++;
-      awayTeam.stats.played++;
-      homeTeam.stats.goalsFor += homeGoals;
-      homeTeam.stats.goalsAgainst += awayGoals;
-      awayTeam.stats.goalsFor += awayGoals;
-      awayTeam.stats.goalsAgainst += homeGoals;
-
-      if (homeGoals > awayGoals) {
-        homeTeam.stats.won++;
-        homeTeam.stats.points += 3;
-        awayTeam.stats.lost++;
-        this.updateLast5(homeTeam, 'W');
-        this.updateLast5(awayTeam, 'L');
-      } else if (homeGoals < awayGoals) {
-        awayTeam.stats.won++;
-        awayTeam.stats.points += 3;
-        homeTeam.stats.lost++;
-        this.updateLast5(homeTeam, 'L');
-        this.updateLast5(awayTeam, 'W');
-      } else {
-        homeTeam.stats.drawn++;
-        homeTeam.stats.points += 1;
-        awayTeam.stats.drawn++;
-        awayTeam.stats.points += 1;
-        this.updateLast5(homeTeam, 'D');
-        this.updateLast5(awayTeam, 'D');
-      }
+      // The match result is already updated in the league state by simulateMatchWithDetails
+      console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
+      console.log('Key Events:', result.matchState.events.length);
+      console.log('Commentary Sample:', result.commentary.slice(0, 3));
     });
 
-    this.leagueState.set({
-      ...l,
-      teams: updatedTeams,
-      schedule: clonedSchedule,
-      currentWeek: l.currentWeek + 1
-    });
+    // Advance to next week
+    this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
   }
 
   private updateLast5(team: Team, result: 'W' | 'D' | 'L') {
@@ -210,5 +160,188 @@ export class GameService {
     if (starters.length === 0) return 50;
     const sum = starters.reduce((acc, p) => acc + p.overall, 0);
     return Math.round(sum / starters.length);
+  }
+
+  // Enhanced simulation methods
+  private matchSimulationService = inject(MatchSimulationService);
+  private commentaryService = inject(CommentaryService);
+  private statisticsService = inject(StatisticsService);
+  private postMatchAnalysisService = inject(PostMatchAnalysisService);
+
+  simulateMatchWithDetails(match: Match, homeTeam: Team, awayTeam: Team, config?: SimulationConfig) {
+    // Use the enhanced simulation service
+    const matchState = this.matchSimulationService.simulateMatch(match, homeTeam, awayTeam, config);
+    
+    // Generate statistics
+    const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
+    
+    // Generate post-match analysis
+    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, homeTeam, awayTeam);
+    
+    // Update league state with results
+    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam);
+    
+    return {
+      matchState,
+      matchStats,
+      matchReport,
+      commentary: this.generateMatchCommentary(matchState, homeTeam, awayTeam, config?.commentaryStyle === 'STATS_ONLY' ? 'DETAILED' : config?.commentaryStyle || 'DETAILED')
+    };
+  }
+
+  private updateLeagueWithMatchResult(match: Match, matchState: any, homeTeam: Team, awayTeam: Team) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    // Update match in schedule
+    const updatedSchedule = l.schedule.map(m => 
+      m.id === match.id 
+        ? { ...m, homeScore: matchState.homeScore, awayScore: matchState.awayScore, played: true }
+        : m
+    );
+
+    // Update team stats
+    const updatedTeams = l.teams.map(team => {
+      if (team.id === homeTeam.id) {
+        return {
+          ...team,
+          stats: {
+            ...team.stats,
+            played: team.stats.played + 1,
+            goalsFor: team.stats.goalsFor + matchState.homeScore,
+            goalsAgainst: team.stats.goalsAgainst + matchState.awayScore,
+            won: team.stats.won + (matchState.homeScore > matchState.awayScore ? 1 : 0),
+            drawn: team.stats.drawn + (matchState.homeScore === matchState.awayScore ? 1 : 0),
+            lost: team.stats.lost + (matchState.homeScore < matchState.awayScore ? 1 : 0),
+            points: team.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, true),
+            last5: this.updateLast5Array(team.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, true))
+          }
+        };
+      } else if (team.id === awayTeam.id) {
+        return {
+          ...team,
+          stats: {
+            ...team.stats,
+            played: team.stats.played + 1,
+            goalsFor: team.stats.goalsFor + matchState.awayScore,
+            goalsAgainst: team.stats.goalsAgainst + matchState.homeScore,
+            won: team.stats.won + (matchState.awayScore > matchState.homeScore ? 1 : 0),
+            drawn: team.stats.drawn + (matchState.awayScore === matchState.homeScore ? 1 : 0),
+            lost: team.stats.lost + (matchState.awayScore < matchState.homeScore ? 1 : 0),
+            points: team.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, false),
+            last5: this.updateLast5Array(team.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, false))
+          }
+        };
+      }
+      return team;
+    });
+
+    this.leagueState.set({
+      ...l,
+      teams: updatedTeams,
+      schedule: updatedSchedule
+    });
+  }
+
+  private getPoints(homeScore: number, awayScore: number, isHome: boolean): number {
+    if (isHome) {
+      if (homeScore > awayScore) return 3;
+      if (homeScore === awayScore) return 1;
+    } else {
+      if (awayScore > homeScore) return 3;
+      if (awayScore === homeScore) return 1;
+    }
+    return 0;
+  }
+
+  private getResult(homeScore: number, awayScore: number, isHome: boolean): 'W' | 'D' | 'L' {
+    if (isHome) {
+      if (homeScore > awayScore) return 'W';
+      if (homeScore === awayScore) return 'D';
+      return 'L';
+    } else {
+      if (awayScore > homeScore) return 'W';
+      if (awayScore === homeScore) return 'D';
+      return 'L';
+    }
+  }
+
+  private updateLast5Array(last5: ('W' | 'D' | 'L')[], result: 'W' | 'D' | 'L'): ('W' | 'D' | 'L')[] {
+    const newLast5 = [result, ...last5];
+    if (newLast5.length > 5) {
+      newLast5.pop();
+    }
+    return newLast5;
+  }
+
+  private generateMatchCommentary(matchState: any, homeTeam: Team, awayTeam: Team, style: 'DETAILED' | 'BRIEF'): string[] {
+    const commentary: string[] = [];
+    
+    // Starting XI
+    commentary.push(...this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam));
+    
+    // Key events
+    matchState.events.forEach((event: any) => {
+      const eventCommentary = this.commentaryService.generateEventCommentary(event, homeTeam, awayTeam, style);
+      commentary.push(`${event.time}': ${eventCommentary}`);
+    });
+    
+    // Half-time
+    commentary.push(this.commentaryService.generateHalfTimeCommentary(matchState.homeScore, matchState.awayScore, matchState.events));
+    
+    // Full-time
+    commentary.push(this.commentaryService.generateFullTimeCommentary(matchState.homeScore, matchState.awayScore, matchState.events));
+    
+    return commentary;
+  }
+
+  getTeamForm(teamId: string): ('W' | 'D' | 'L')[] {
+    const l = this.leagueState();
+    if (!l) return [];
+    
+    const team = l.teams.find(t => t.id === teamId);
+    return team?.stats.last5 || [];
+  }
+
+  getTeamStatistics(teamId: string) {
+    const l = this.leagueState();
+    if (!l) return null;
+    
+    const team = l.teams.find(t => t.id === teamId);
+    if (!team) return null;
+    
+    // Get all matches involving this team
+    const teamMatches = l.schedule.filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId);
+    
+    // Calculate advanced statistics
+    const totalMatches = teamMatches.length;
+    const wins = teamMatches.filter(m => 
+      (m.homeTeamId === teamId && m.homeScore! > m.awayScore!) ||
+      (m.awayTeamId === teamId && m.awayScore! > m.homeScore!)
+    ).length;
+    
+    const draws = teamMatches.filter(m => m.homeScore === m.awayScore).length;
+    const losses = totalMatches - wins - draws;
+    
+    const goalsFor = teamMatches.reduce((sum, m) => 
+      sum + (m.homeTeamId === teamId ? m.homeScore! : m.awayScore!), 0
+    );
+    
+    const goalsAgainst = teamMatches.reduce((sum, m) => 
+      sum + (m.homeTeamId === teamId ? m.awayScore! : m.homeScore!), 0
+    );
+    
+    return {
+      team,
+      matchesPlayed: totalMatches,
+      wins,
+      draws,
+      losses,
+      goalsFor,
+      goalsAgainst,
+      goalDifference: goalsFor - goalsAgainst,
+      points: wins * 3 + draws,
+      winRate: totalMatches > 0 ? (wins / totalMatches) * 100 : 0
+    };
   }
 }
