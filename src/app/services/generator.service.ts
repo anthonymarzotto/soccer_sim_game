@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Player, Team, Match, Position, Role } from '../models/types';
+import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -27,22 +28,22 @@ export class GeneratorService {
     const players: Player[] = [];
     
     // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, 'GK', 'Goalkeeper'));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, 'DEF', 'Defense'));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, 'MID', 'Midfield'));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, 'FWD', 'Attack'));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.GOALKEEPER));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.DEFENSE));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.MIDFIELD));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.ATTACK));
 
     // 10 Bench: 1 GK, 3 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, 'GK', 'Bench'));
-    for (let i = 0; i < 3; i++) players.push(this.generatePlayer(id, 'DEF', 'Bench'));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, 'MID', 'Bench'));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, 'FWD', 'Bench'));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH));
+    for (let i = 0; i < 3; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH));
 
     // 5 Not Dressed: Random positions
-    const positions: Position[] = ['GK', 'DEF', 'MID', 'FWD'];
+    const positions: Position[] = [PositionEnum.GOALKEEPER, PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
     for (let i = 0; i < 5; i++) {
       const pos = positions[Math.floor(Math.random() * positions.length)];
-      players.push(this.generatePlayer(id, pos, 'Not Dressed'));
+      players.push(this.generatePlayer(id, pos, RoleEnum.NOT_DRESSED));
     }
 
     return {
@@ -83,7 +84,7 @@ export class GeneratorService {
       heading: this.randomStat(),
       longPassing: this.randomStat(),
       shortPassing: this.randomStat(),
-      goalkeeping: position === 'GK' ? this.randomStat(60, 99) : this.randomStat(1, 40)
+      goalkeeping: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99) : this.randomStat(1, 40)
     };
 
     const hidden = {
@@ -91,14 +92,14 @@ export class GeneratorService {
     };
 
     // Boost stats based on position
-    if (position === 'DEF') {
+    if (position === PositionEnum.DEFENDER) {
       skills.tackling = this.randomStat(60, 99);
       skills.heading = this.randomStat(50, 90);
-    } else if (position === 'MID') {
+    } else if (position === PositionEnum.MIDFIELDER) {
       skills.shortPassing = this.randomStat(60, 99);
       skills.longPassing = this.randomStat(60, 99);
       mental.vision = this.randomStat(60, 99);
-    } else if (position === 'FWD') {
+    } else if (position === PositionEnum.FORWARD) {
       skills.shooting = this.randomStat(60, 99);
       physical.speed = this.randomStat(60, 99);
       mental.flair = this.randomStat(60, 99);
@@ -106,8 +107,8 @@ export class GeneratorService {
 
     const overall = Math.floor((
       physical.speed + physical.strength + mental.flair + mental.vision + mental.determination +
-      skills.tackling + skills.shooting + skills.heading + skills.longPassing + skills.shortPassing + (position === 'GK' ? skills.goalkeeping * 5 : 0)
-    ) / (position === 'GK' ? 15 : 10));
+      skills.tackling + skills.shooting + skills.heading + skills.longPassing + skills.shortPassing + (position === PositionEnum.GOALKEEPER ? skills.goalkeeping * 5 : 0)
+    ) / (position === PositionEnum.GOALKEEPER ? 15 : 10));
 
     return {
       id,

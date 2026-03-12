@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { PlayByPlayEvent, FieldZone } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
+import { CommentaryStyle, EventType, Role } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -67,10 +68,19 @@ export class CommentaryService {
       goal: ["GOAL!", "Score!", "Net!", "Bulleye!"],
       miss: ["Wide!", "Over!", "Saved!", "Post!"],
       foul: ["Foul!", "Free kick", "Card!", "Dangerous!"]
+    },
+    STATS_ONLY: {
+      pass: ["Pass", "Pass", "Pass", "Pass"],
+      tackle: ["Tackle", "Tackle", "Tackle", "Tackle"],
+      shot: ["Shot", "Shot", "Shot", "Shot"],
+      save: ["Save", "Save", "Save", "Save"],
+      goal: ["Goal", "Goal", "Goal", "Goal"],
+      miss: ["Miss", "Miss", "Miss", "Miss"],
+      foul: ["Foul", "Foul", "Foul", "Foul"]
     }
   };
 
-  generateEventCommentary(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team, style: 'DETAILED' | 'BRIEF' = 'DETAILED'): string {
+  generateEventCommentary(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team, style: CommentaryStyle = CommentaryStyle.DETAILED): string {
     const commentaryStyle = this.COMMENTARY_STYLES[style];
     let template = '';
     let playerName = '';
@@ -87,32 +97,32 @@ export class CommentaryService {
     }
 
     switch (event.type) {
-      case 'PASS':
+      case EventType.PASS:
         template = this.getRandomCommentary(commentaryStyle.pass);
         return this.formatCommentary(template, playerName, targetName);
       
-      case 'TACKLE':
-      case 'INTERCEPTION':
+      case EventType.TACKLE:
+      case EventType.INTERCEPTION:
         template = this.getRandomCommentary(commentaryStyle.tackle);
         return this.formatCommentary(template, playerName, targetName);
       
-      case 'SHOT':
+      case EventType.SHOT:
         template = this.getRandomCommentary(commentaryStyle.shot);
         return this.formatCommentary(template, playerName, targetName);
       
-      case 'SAVE':
+      case EventType.SAVE:
         template = this.getRandomCommentary(commentaryStyle.save);
         return this.formatCommentary(template, playerName, targetName);
       
-      case 'GOAL':
+      case EventType.GOAL:
         template = this.getRandomCommentary(commentaryStyle.goal);
         return this.formatCommentary(template, playerName, targetName);
       
-      case 'YELLOW_CARD':
-      case 'RED_CARD':
-        return `${playerName} receives a ${event.type === 'YELLOW_CARD' ? 'yellow' : 'red'} card!`;
+      case EventType.YELLOW_CARD:
+      case EventType.RED_CARD:
+        return `${playerName} receives a ${event.type === EventType.YELLOW_CARD ? 'yellow' : 'red'} card!`;
       
-      case 'SUBSTITUTION':
+      case EventType.SUBSTITUTION:
         const subIn = this.findPlayerById(event.playerIds[1], homeTeam, awayTeam);
         const subOut = this.findPlayerById(event.playerIds[0], homeTeam, awayTeam);
         return `${subOut?.name || 'Player'} off, ${subIn?.name || 'Player'} on.`;
@@ -124,11 +134,11 @@ export class CommentaryService {
 
   generateZoneCommentary(zone: FieldZone, teamName: string): string {
     switch (zone) {
-      case 'DEFENSE':
+      case FieldZone.DEFENSE:
         return `${teamName} defending deep, looking to build from the back.`;
-      case 'MIDFIELD':
+      case FieldZone.MIDFIELD:
         return `${teamName} controlling the tempo in midfield.`;
-      case 'ATTACK':
+      case FieldZone.ATTACK:
         return `${teamName} pushing forward, looking for an opening!`;
       default:
         return `${teamName} in possession.`;
@@ -137,10 +147,10 @@ export class CommentaryService {
 
   generateMatchSummary(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team): string[] {
     const summary: string[] = [];
-    const goals = events.filter(e => e.type === 'GOAL');
-    const shots = events.filter(e => e.type === 'SHOT');
-    const saves = events.filter(e => e.type === 'SAVE');
-    const fouls = events.filter(e => e.type === 'FOUL' || e.type === 'YELLOW_CARD' || e.type === 'RED_CARD');
+    const goals = events.filter(e => e.type === EventType.GOAL);
+    const shots = events.filter(e => e.type === EventType.SHOT);
+    const saves = events.filter(e => e.type === EventType.SAVE);
+    const fouls = events.filter(e => e.type === EventType.FOUL || e.type === EventType.YELLOW_CARD || e.type === EventType.RED_CARD);
 
     if (goals.length > 0) {
       summary.push(`Match ended with ${goals.length} goal(s) scored.`);
@@ -159,10 +169,10 @@ export class CommentaryService {
 
   generatePlayerHighlight(player: Player, events: PlayByPlayEvent[]): string {
     const playerEvents = events.filter(e => e.playerIds.includes(player.id));
-    const goals = playerEvents.filter(e => e.type === 'GOAL').length;
-    const assists = playerEvents.filter(e => e.type === 'PASS' && e.success).length;
-    const tackles = playerEvents.filter(e => e.type === 'TACKLE').length;
-    const shots = playerEvents.filter(e => e.type === 'SHOT').length;
+    const goals = playerEvents.filter(e => e.type === EventType.GOAL).length;
+    const assists = playerEvents.filter(e => e.type === EventType.PASS && e.success).length;
+    const tackles = playerEvents.filter(e => e.type === EventType.TACKLE).length;
+    const shots = playerEvents.filter(e => e.type === EventType.SHOT).length;
 
     if (goals > 0 || assists > 0) {
       return `${player.name} was the star! ${goals} goals, ${assists} assists.`;
@@ -205,22 +215,22 @@ export class CommentaryService {
       `We're ready for kick-off!`,
       `${homeTeam.name} vs ${awayTeam.name}`,
       `The teams are lining up:`,
-      `Home team: ${homeTeam.players.filter(p => p.role !== 'Bench' && p.role !== 'Not Dressed').map(p => p.name).join(', ')}`,
-      `Away team: ${awayTeam.players.filter(p => p.role !== 'Bench' && p.role !== 'Not Dressed').map(p => p.name).join(', ')}`,
+      `Home team: ${homeTeam.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED).map(p => p.name).join(', ')}`,
+      `Away team: ${awayTeam.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED).map(p => p.name).join(', ')}`,
       `Let's play some football!`
     ];
     return commentary;
   }
 
   generateHalfTimeCommentary(homeScore: number, awayScore: number, events: PlayByPlayEvent[]): string {
-    const goals = events.filter(e => e.type === 'GOAL').length;
-    const shots = events.filter(e => e.type === 'SHOT').length;
+    const goals = events.filter(e => e.type === EventType.GOAL).length;
+    const shots = events.filter(e => e.type === EventType.SHOT).length;
     
     return `Half-time: ${homeScore}-${awayScore}. ${goals} goals, ${shots} shots. Plenty to play for in the second half!`;
   }
 
   generateFullTimeCommentary(homeScore: number, awayScore: number, events: PlayByPlayEvent[]): string {
-    const goals = events.filter(e => e.type === 'GOAL').length;
+    const goals = events.filter(e => e.type === EventType.GOAL).length;
     
     if (homeScore > awayScore) {
       return `Full-time! ${homeScore}-${awayScore} to the home side! A well-deserved victory!`;

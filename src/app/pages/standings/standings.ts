@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { MatchResult } from '../../models/enums';
 
 @Component({
   selector: 'app-standings',
@@ -74,12 +75,12 @@ import { GameService } from '../../services/game.service';
                         @for (result of team.stats.last5; track $index) {
                           <span 
                             class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold"
-                            [class.bg-emerald-500]="result === 'W'"
-                            [class.text-emerald-950]="result === 'W'"
-                            [class.bg-zinc-600]="result === 'D'"
-                            [class.text-zinc-200]="result === 'D'"
-                            [class.bg-red-500]="result === 'L'"
-                            [class.text-red-950]="result === 'L'">
+                            [class.bg-emerald-500]="result === MatchResult.WIN"
+                            [class.text-emerald-950]="result === MatchResult.WIN"
+                            [class.bg-zinc-600]="result === MatchResult.DRAW"
+                            [class.text-zinc-200]="result === MatchResult.DRAW"
+                            [class.bg-red-500]="result === MatchResult.LOSS"
+                            [class.text-red-950]="result === MatchResult.LOSS">
                             {{ result }}
                           </span>
                         }
@@ -100,4 +101,7 @@ import { GameService } from '../../services/game.service';
 })
 export class StandingsComponent {
   gameService = inject(GameService);
+  
+  // Expose enums for template
+  MatchResult = MatchResult;
 }

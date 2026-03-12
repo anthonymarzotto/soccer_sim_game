@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { MatchState, MatchStatistics, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, Player } from '../models/types';
+import { Team, Player, Position } from '../models/types';
+import { EventType } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -68,19 +69,19 @@ export class StatisticsService {
         playerName: player.name,
         position: player.position,
         minutesPlayed: matchState.currentMinute,
-        passes: playerEvents.filter(e => e.type === 'PASS').length,
-        passesSuccessful: playerEvents.filter(e => e.type === 'PASS' && e.success).length,
-        shots: playerEvents.filter(e => e.type === 'SHOT').length,
-        shotsOnTarget: playerEvents.filter(e => e.type === 'SHOT' && e.success).length,
-        goals: playerEvents.filter(e => e.type === 'GOAL').length,
+        passes: playerEvents.filter(e => e.type === EventType.PASS).length,
+        passesSuccessful: playerEvents.filter(e => e.type === EventType.PASS && e.success).length,
+        shots: playerEvents.filter(e => e.type === EventType.SHOT).length,
+        shotsOnTarget: playerEvents.filter(e => e.type === EventType.SHOT && e.success).length,
+        goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
         assists: this.calculateAssists(playerEvents, matchState.events),
-        tackles: playerEvents.filter(e => e.type === 'TACKLE').length,
-        tacklesSuccessful: playerEvents.filter(e => e.type === 'TACKLE' && e.success).length,
-        interceptions: playerEvents.filter(e => e.type === 'INTERCEPTION').length,
-        fouls: playerEvents.filter(e => e.type === 'FOUL' || e.type === 'YELLOW_CARD' || e.type === 'RED_CARD').length,
-        yellowCards: playerEvents.filter(e => e.type === 'YELLOW_CARD').length,
-        redCards: playerEvents.filter(e => e.type === 'RED_CARD').length,
-        saves: playerEvents.filter(e => e.type === 'SAVE').length,
+        tackles: playerEvents.filter(e => e.type === EventType.TACKLE).length,
+        tacklesSuccessful: playerEvents.filter(e => e.type === EventType.TACKLE && e.success).length,
+        interceptions: playerEvents.filter(e => e.type === EventType.INTERCEPTION).length,
+        fouls: playerEvents.filter(e => e.type === EventType.FOUL || e.type === EventType.YELLOW_CARD || e.type === EventType.RED_CARD).length,
+        yellowCards: playerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
+        redCards: playerEvents.filter(e => e.type === EventType.RED_CARD).length,
+        saves: playerEvents.filter(e => e.type === EventType.SAVE).length,
         rating: this.calculatePlayerRating(player, playerEvents)
       };
 
@@ -143,7 +144,7 @@ export class StatisticsService {
   }
 
   generatePassingNetwork(matchState: MatchState, teamId: string): PassingNetwork {
-    const teamPasses = matchState.events.filter(e => e.type === 'PASS' && e.success);
+    const teamPasses = matchState.events.filter(e => e.type === EventType.PASS && e.success);
     
     const nodes: NetworkNode[] = [];
     const links: NetworkLink[] = [];
@@ -190,26 +191,26 @@ export class StatisticsService {
   }
 
   private calculatePasses(events: PlayByPlayEvent[]): number {
-    return events.filter(e => e.type === 'PASS').length;
+    return events.filter(e => e.type === EventType.PASS).length;
   }
 
   private calculateTackles(events: PlayByPlayEvent[]): number {
-    return events.filter(e => e.type === 'TACKLE').length;
+    return events.filter(e => e.type === EventType.TACKLE).length;
   }
 
   private calculateSaves(events: PlayByPlayEvent[]): number {
-    return events.filter(e => e.type === 'SAVE').length;
+    return events.filter(e => e.type === EventType.SAVE).length;
   }
 
   private calculateAssists(playerEvents: PlayByPlayEvent[], allEvents: PlayByPlayEvent[]): number {
     let assists = 0;
     
     playerEvents.forEach(event => {
-      if (event.type === 'PASS' && event.success) {
+      if (event.type === EventType.PASS && event.success) {
         // Check if next goal was assisted by this pass
         const goalEvent = allEvents.find(e => 
           e.time > event.time && 
-          e.type === 'GOAL' && 
+          e.type === EventType.GOAL && 
           e.playerIds[0] !== event.playerIds[0]
         );
         
@@ -224,15 +225,15 @@ export class StatisticsService {
     let rating = player.overall;
 
     // Positive contributions
-    const goals = events.filter(e => e.type === 'GOAL').length;
+    const goals = events.filter(e => e.type === EventType.GOAL).length;
     const assists = this.calculateAssists(events, events);
-    const successfulPasses = events.filter(e => e.type === 'PASS' && e.success).length;
-    const tackles = events.filter(e => e.type === 'TACKLE' && e.success).length;
+    const successfulPasses = events.filter(e => e.type === EventType.PASS && e.success).length;
+    const tackles = events.filter(e => e.type === EventType.TACKLE && e.success).length;
 
     // Negative contributions
-    const fouls = events.filter(e => e.type === 'FOUL').length;
-    const yellowCards = events.filter(e => e.type === 'YELLOW_CARD').length;
-    const redCards = events.filter(e => e.type === 'RED_CARD').length;
+    const fouls = events.filter(e => e.type === EventType.FOUL).length;
+    const yellowCards = events.filter(e => e.type === EventType.YELLOW_CARD).length;
+    const redCards = events.filter(e => e.type === EventType.RED_CARD).length;
 
     // Rating calculation
     rating += (goals * 10) + (assists * 5) + (successfulPasses * 0.1) + (tackles * 2);

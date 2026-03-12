@@ -3,7 +3,10 @@ export interface Coordinates {
   y: number; // 0-100 (length)
 }
 
-export type FieldZone = 'DEFENSE' | 'MIDFIELD' | 'ATTACK';
+import { FieldZone, EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase } from './enums';
+
+// Re-export the enums for backward compatibility
+export { FieldZone, EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase };
 
 export interface PlayerPosition {
   playerId: string;
@@ -21,14 +24,14 @@ export interface Possession {
   teamId: string;
   playerWithBall: string;
   location: Coordinates;
-  phase: 'BUILD_UP' | 'ATTACKING' | 'DEFENDING' | 'COUNTER_ATTACK';
+  phase: MatchPhase;
   passes: number;
   timeElapsed: number;
 }
 
 export interface PlayByPlayEvent {
   id: string;
-  type: 'PASS' | 'SHOT' | 'TACKLE' | 'INTERCEPTION' | 'SAVE' | 'MISS' | 'GOAL' | 'CORNER' | 'FREE_KICK' | 'PENALTY' | 'SUBSTITUTION' | 'INJURY' | 'YELLOW_CARD' | 'RED_CARD' | 'FOUL';
+  type: EventType;
   description: string;
   playerIds: string[];
   location: Coordinates;
@@ -64,14 +67,14 @@ export interface SimulationConfig {
   enableSpatialTracking: boolean;
   enableTactics: boolean;
   enableFatigue: boolean;
-  commentaryStyle: 'DETAILED' | 'BRIEF' | 'STATS_ONLY';
+  commentaryStyle: CommentaryStyle;
 }
 
 export interface TacticalSetup {
   teamId: string;
   formation: TeamFormation;
-  playingStyle: 'POSSESSION' | 'COUNTER_ATTACK' | 'PRESSING' | 'DEFENSIVE';
-  mentality: 'ATTACKING' | 'BALANCED' | 'DEFENSIVE';
+  playingStyle: PlayingStyle;
+  mentality: Mentality;
   pressingIntensity: number; // 1-100
   defensiveLine: number; // 1-100 (how high the defensive line is)
   tempo: number; // 1-100

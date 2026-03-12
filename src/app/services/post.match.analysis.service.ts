@@ -3,6 +3,7 @@ import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
+import { EventType, PlayingStyle } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -57,7 +58,7 @@ export class PostMatchAnalysisService {
     const keyMoments: KeyMoment[] = [];
 
     events.forEach(event => {
-      if (event.type === 'GOAL') {
+      if (event.type === EventType.GOAL) {
         keyMoments.push({
           time: event.time,
           type: 'GOAL',
@@ -65,7 +66,7 @@ export class PostMatchAnalysisService {
           playerIds: event.playerIds,
           location: event.location
         });
-      } else if (event.type === 'RED_CARD') {
+      } else if (event.type === EventType.RED_CARD) {
         keyMoments.push({
           time: event.time,
           type: 'RED_CARD',
@@ -73,7 +74,7 @@ export class PostMatchAnalysisService {
           playerIds: event.playerIds,
           location: event.location
         });
-      } else if (event.type === 'PENALTY') {
+      } else if (event.type === EventType.PENALTY) {
         keyMoments.push({
           time: event.time,
           type: 'PENALTY',
@@ -81,7 +82,7 @@ export class PostMatchAnalysisService {
           playerIds: event.playerIds,
           location: event.location
         });
-      } else if (event.type === 'CORNER' && event.success) {
+      } else if (event.type === EventType.CORNER && event.success) {
         keyMoments.push({
           time: event.time,
           type: 'CORNER',
@@ -167,7 +168,7 @@ export class PostMatchAnalysisService {
       `Fouls: Home ${matchState.homeFouls} - ${matchState.awayFouls} Away`
     ];
 
-    const goals = matchState.events.filter(e => e.type === 'GOAL');
+    const goals = matchState.events.filter(e => e.type === EventType.GOAL);
     if (goals.length > 0) {
       summary.push('Goals:');
       goals.forEach(goal => {
@@ -175,7 +176,7 @@ export class PostMatchAnalysisService {
       });
     }
 
-    const cards = matchState.events.filter(e => e.type === 'YELLOW_CARD' || e.type === 'RED_CARD');
+    const cards = matchState.events.filter(e => e.type === EventType.YELLOW_CARD || e.type === EventType.RED_CARD);
     if (cards.length > 0) {
       summary.push('Cards:');
       cards.forEach(card => {
@@ -319,12 +320,12 @@ export class PostMatchAnalysisService {
     return recommendations;
   }
 
-  private determinePlayingStyle(possession: number, shots: number, corners: number, fouls: number): string {
-    if (possession > 60 && shots > 15) return 'Attacking Possession';
-    if (possession < 40 && shots > 12) return 'Counter-Attacking';
-    if (corners > 8) return 'Wing Play';
-    if (fouls > 15) return 'Physical/Aggressive';
-    return 'Balanced';
+  private determinePlayingStyle(possession: number, shots: number, corners: number, fouls: number): PlayingStyle {
+    if (possession > 60 && shots > 15) return PlayingStyle.POSSESSION;
+    if (possession < 40 && shots > 12) return PlayingStyle.COUNTER_ATTACK;
+    if (corners > 8) return PlayingStyle.POSSESSION; // Wing play is part of possession
+    if (fouls > 15) return PlayingStyle.PRESSING; // Physical play relates to pressing
+    return PlayingStyle.DEFENSIVE; // Use DEFENSIVE as fallback instead of BALANCED
   }
 
   private calculateTacticalEffectiveness(possession: number, shots: number, corners: number, goals: number): number {

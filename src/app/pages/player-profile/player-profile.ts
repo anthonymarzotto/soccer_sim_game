@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { Position } from '../../models/enums';
 
 @Component({
   selector: 'app-player-profile',
@@ -18,14 +19,14 @@ import { GameService } from '../../services/game.service';
             <div class="flex items-center gap-3">
               <h1 class="text-3xl font-bold tracking-tight text-white">{{ player()?.name }}</h1>
               <span class="px-2 py-1 rounded text-xs font-bold font-mono"
-                    [class.bg-yellow-500/20]="player()?.position === 'GK'"
-                    [class.text-yellow-400]="player()?.position === 'GK'"
-                    [class.bg-blue-500/20]="player()?.position === 'DEF'"
-                    [class.text-blue-400]="player()?.position === 'DEF'"
-                    [class.bg-emerald-500/20]="player()?.position === 'MID'"
-                    [class.text-emerald-400]="player()?.position === 'MID'"
-                    [class.bg-red-500/20]="player()?.position === 'FWD'"
-                    [class.text-red-400]="player()?.position === 'FWD'">
+                    [class.bg-yellow-500/20]="player()?.position === Position.GOALKEEPER"
+                    [class.text-yellow-400]="player()?.position === Position.GOALKEEPER"
+                    [class.bg-blue-500/20]="player()?.position === Position.DEFENDER"
+                    [class.text-blue-400]="player()?.position === Position.DEFENDER"
+                    [class.bg-emerald-500/20]="player()?.position === Position.MIDFIELDER"
+                    [class.text-emerald-400]="player()?.position === Position.MIDFIELDER"
+                    [class.bg-red-500/20]="player()?.position === Position.FORWARD"
+                    [class.text-red-400]="player()?.position === Position.FORWARD">
                 {{ player()?.position }}
               </span>
             </div>
@@ -203,6 +204,9 @@ import { GameService } from '../../services/game.service';
 export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
+
+  // Expose enums for template
+  Position = Position;
 
   private playerId = computed(() => this.route.snapshot.paramMap.get('id'));
 

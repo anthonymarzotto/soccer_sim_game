@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Match, Team, Player } from '../models/types';
+import { Match, Team, Player, Position } from '../models/types';
 import { 
   MatchState, 
   PlayByPlayEvent, 
@@ -12,6 +12,7 @@ import {
 } from '../models/simulation.types';
 import { FieldService } from './field.service';
 import { CommentaryService } from './commentary.service';
+import { EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase, Role } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -30,7 +31,7 @@ export class MatchSimulationService {
     enableSpatialTracking: true,
     enableTactics: true,
     enableFatigue: true,
-    commentaryStyle: 'DETAILED'
+    commentaryStyle: CommentaryStyle.DETAILED
   };
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig = this.DEFAULT_CONFIG): MatchState {
@@ -56,7 +57,7 @@ export class MatchSimulationService {
       teamId: homeTeam.id,
       playerWithBall: this.getRandomPlayerId(homeTeam),
       location: { x: 50, y: 50 },
-      phase: 'BUILD_UP',
+      phase: MatchPhase.BUILD_UP,
       passes: 0,
       timeElapsed: 0
     };
@@ -129,22 +130,22 @@ export class MatchSimulationService {
     const action = this.determineAction(state, tactics, fatigue, homeTeam, awayTeam, minute);
     
     switch (action.type) {
-      case 'PASS':
+      case EventType.PASS:
         this.handlePass(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
         break;
-      case 'SHOT':
+      case EventType.SHOT:
         this.handleShot(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
         break;
-      case 'TACKLE':
+      case EventType.TACKLE:
         this.handleTackle(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
         break;
-      case 'GOAL':
+      case EventType.GOAL:
         this.handleGoal(newState, action, homeTeam, awayTeam, minute, config);
         break;
-      case 'CORNER':
+      case EventType.CORNER:
         this.handleCorner(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
         break;
-      case 'FOUL':
+      case EventType.FOUL:
         this.handleFoul(newState, action, homeTeam, awayTeam, minute, config);
         break;
     }
@@ -184,19 +185,19 @@ export class MatchSimulationService {
     let tackleChance = baseTackleChance;
     let foulChance = baseFoulChance;
 
-    if (zone === 'ATTACK') {
+    if (zone === FieldZone.ATTACK) {
       shotChance *= 2;
       passChance *= 0.8;
-    } else if (zone === 'DEFENSE') {
+    } else if (zone === FieldZone.DEFENSE) {
       passChance *= 1.2;
       shotChance *= 0.1;
     }
 
     // Adjust based on tactics
-    if (teamTactics.playingStyle === 'POSSESSION') {
+    if (teamTactics.playingStyle === PlayingStyle.POSSESSION) {
       passChance *= 1.3;
       shotChance *= 0.7;
-    } else if (teamTactics.playingStyle === 'COUNTER_ATTACK') {
+    } else if (teamTactics.playingStyle === PlayingStyle.COUNTER_ATTACK) {
       shotChance *= 1.5;
       passChance *= 0.8;
     }
@@ -210,11 +211,11 @@ export class MatchSimulationService {
 
     const random = Math.random();
 
-    if (random < foulChance) return { type: 'FOUL', player: player };
-    if (random < foulChance + tackleChance) return { type: 'TACKLE', player: player };
-    if (random < foulChance + tackleChance + shotChance) return { type: 'SHOT', player: player };
+    if (random < foulChance) return { type: EventType.FOUL, player: player };
+    if (random < foulChance + tackleChance) return { type: EventType.TACKLE, player: player };
+    if (random < foulChance + tackleChance + shotChance) return { type: EventType.SHOT, player: player };
     
-    return { type: 'PASS', player: player };
+    return { type: EventType.PASS, player: player };
   }
 
   private handlePass(
@@ -238,7 +239,7 @@ export class MatchSimulationService {
     
     if (!targetPlayer) {
       // Turnover
-      this.createEvent(state, 'TACKLE', [passer.id], state.ballPossession.location, minute, false, config);
+      this.createEvent(state, EventType.TACKLE, [passer.id], state.ballPossession.location, minute, false, config);
       state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
       state.ballPossession.playerWithBall = this.getRandomPlayerId(state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam);
       return;
@@ -255,10 +256,10 @@ export class MatchSimulationService {
       const targetPos = this.fieldService.getStartingPositionForPlayer(targetPlayer, teamTactics.formation);
       state.ballPossession.location = this.calculateNewBallPosition(state.ballPossession.location, targetPos);
       
-      this.createEvent(state, 'PASS', [passer.id, targetPlayer.id], state.ballPossession.location, minute, true, config);
+      this.createEvent(state, EventType.PASS, [passer.id, targetPlayer.id], state.ballPossession.location, minute, true, config);
     } else {
       // Interception
-      this.createEvent(state, 'INTERCEPTION', [passer.id], state.ballPossession.location, minute, false, config);
+      this.createEvent(state, EventType.INTERCEPTION, [passer.id], state.ballPossession.location, minute, false, config);
       state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
       state.ballPossession.playerWithBall = this.getRandomPlayerId(state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam);
     }
@@ -281,7 +282,7 @@ export class MatchSimulationService {
     const teamFatigue = fatigue[currentTeam];
 
     // Find goalkeeper
-    const goalkeeper = opponentTeam.players.find(p => p.role === 'Goalkeeper');
+    const goalkeeper = opponentTeam.players.find(p => p.role === Role.GOALKEEPER);
     
     // Calculate shot success
     const shotSuccess = this.calculateShotSuccess(shooter, goalkeeper, teamTactics, teamFatigue, state.ballPossession.location);
@@ -291,14 +292,14 @@ export class MatchSimulationService {
     } else {
       // Shot on/off target
       const onTarget = shotSuccess.onTarget;
-      const eventType = onTarget ? 'SAVE' : 'MISS';
+      const eventType = onTarget ? EventType.SAVE : EventType.MISS;
       
       this.createEvent(state, eventType, [shooter.id, goalkeeper?.id].filter(Boolean), state.ballPossession.location, minute, onTarget, config);
       
       if (!onTarget) {
         // Corner or goal kick
         if (this.isCorner(state.ballPossession.location, currentTeam)) {
-          this.createEvent(state, 'CORNER', [shooter.id], state.ballPossession.location, minute, false, config);
+        this.createEvent(state, EventType.CORNER, [shooter.id], state.ballPossession.location, minute, false, config);
         }
       }
     }
@@ -321,7 +322,7 @@ export class MatchSimulationService {
       state.awayScore++;
     }
 
-    this.createEvent(state, 'GOAL', [shooter.id], state.ballPossession.location, minute, true, config);
+    this.createEvent(state, EventType.GOAL, [shooter.id], state.ballPossession.location, minute, true, config);
     
     // Reset possession for kickoff
     state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
@@ -352,7 +353,7 @@ export class MatchSimulationService {
     
     if (tackleSuccess) {
       // Successful tackle
-      this.createEvent(state, 'TACKLE', [tackler.id, state.ballPossession.playerWithBall], state.ballPossession.location, minute, true, config);
+      this.createEvent(state, EventType.TACKLE, [tackler.id, state.ballPossession.playerWithBall], state.ballPossession.location, minute, true, config);
       state.ballPossession.teamId = opponentTeam.id;
       state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentTeam);
     } else {
@@ -390,7 +391,7 @@ export class MatchSimulationService {
       if (headerSuccess) {
         this.handleGoal(state, { player: headerPlayer }, homeTeam, awayTeam, minute, config);
       } else {
-        this.createEvent(state, 'MISS', [headerPlayer.id], { x: 50, y: 95 }, minute, false, config);
+        this.createEvent(state, EventType.MISS, [headerPlayer.id], { x: 50, y: 95 }, minute, false, config);
       }
     }
     
@@ -424,10 +425,10 @@ export class MatchSimulationService {
     const cardChance = Math.random();
     if (cardChance > 0.9) {
       // Red card
-      const cardType = Math.random() > 0.5 ? 'RED_CARD' : 'YELLOW_CARD';
+      const cardType = Math.random() > 0.5 ? EventType.RED_CARD : EventType.YELLOW_CARD;
       this.createEvent(state, cardType, [fouler.id], state.ballPossession.location, minute, false, config);
       
-      if (cardType === 'RED_CARD') {
+      if (cardType === EventType.RED_CARD) {
         if (currentTeam === 'home') {
           state.homeRedCards++;
         } else {
@@ -452,7 +453,7 @@ export class MatchSimulationService {
   }
 
   private findHeaderPlayer(team: Team): Player {
-    const headers = team.players.filter(p => p.position === 'DEF' || p.position === 'MID');
+    const headers = team.players.filter(p => p.position === Position.DEFENDER || p.position === Position.MIDFIELDER);
     return headers.length > 0 ? headers[0] : team.players[0];
   }
 
@@ -489,7 +490,7 @@ export class MatchSimulationService {
     if (targetFatigue) baseChance *= targetFatigue.performanceModifier;
     
     // Adjust for tactics
-    if (tactics.playingStyle === 'POSSESSION') baseChance += 10;
+    if (tactics.playingStyle === PlayingStyle.POSSESSION) baseChance += 10;
     
     return Math.random() * 100 < baseChance;
   }
@@ -546,12 +547,12 @@ export class MatchSimulationService {
   private findPassTarget(passer: Player, team: Team, tactics: TacticalSetup, currentLocation: Coordinates): Player | null {
     // Find players in similar or attacking zone
     const zone = this.fieldService.getZoneFromY(currentLocation.y);
-    const targetZone = zone === 'DEFENSE' ? 'MIDFIELD' : zone === 'MIDFIELD' ? 'ATTACK' : 'ATTACK';
+    const targetZone = zone === FieldZone.DEFENSE ? FieldZone.MIDFIELD : zone === FieldZone.MIDFIELD ? FieldZone.ATTACK : FieldZone.ATTACK;
     
     const potentialTargets = team.players.filter(p => 
       p.id !== passer.id && 
-      p.role !== 'Not Dressed' &&
-      p.role !== 'Bench'
+      p.role !== Role.NOT_DRESSED &&
+      p.role !== Role.BENCH
     );
 
     if (potentialTargets.length === 0) return null;
@@ -579,7 +580,7 @@ export class MatchSimulationService {
   }
 
   private getRandomPlayerId(team: Team): string {
-    const players = team.players.filter(p => p.role !== 'Not Dressed' && p.role !== 'Bench');
+    const players = team.players.filter(p => p.role !== Role.NOT_DRESSED && p.role !== Role.BENCH);
     return players[Math.floor(Math.random() * players.length)].id;
   }
 

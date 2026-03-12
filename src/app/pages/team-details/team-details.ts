@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { Role, Position } from '../../models/types';
+import { MatchResult, Position as PositionEnum } from '../../models/enums';
 
 @Component({
   selector: 'app-team-details',
@@ -96,10 +98,10 @@ import { GameService } from '../../services/game.service';
                       @for (player of starters(); track player.id) {
                         <tr class="hover:bg-zinc-800/50 transition-colors">
                           <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold"
-                              [class.text-yellow-400]="player.position === 'GK'"
-                              [class.text-blue-400]="player.position === 'DEF'"
-                              [class.text-emerald-400]="player.position === 'MID'"
-                              [class.text-red-400]="player.position === 'FWD'">
+                              [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                              [class.text-blue-400]="player.position === Position.DEFENDER"
+                              [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                              [class.text-red-400]="player.position === Position.FORWARD">
                             {{ player.position }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
@@ -153,10 +155,10 @@ import { GameService } from '../../services/game.service';
                       @for (player of bench(); track player.id) {
                         <tr class="hover:bg-zinc-800/50 transition-colors">
                           <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                              [class.text-yellow-400]="player.position === 'GK'"
-                              [class.text-blue-400]="player.position === 'DEF'"
-                              [class.text-emerald-400]="player.position === 'MID'"
-                              [class.text-red-400]="player.position === 'FWD'">
+                              [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                              [class.text-blue-400]="player.position === Position.DEFENDER"
+                              [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                              [class.text-red-400]="player.position === Position.FORWARD">
                             {{ player.position }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
@@ -210,10 +212,10 @@ import { GameService } from '../../services/game.service';
                       @for (player of reserves(); track player.id) {
                         <tr class="hover:bg-zinc-800/50 transition-colors opacity-75">
                           <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                              [class.text-yellow-400]="player.position === 'GK'"
-                              [class.text-blue-400]="player.position === 'DEF'"
-                              [class.text-emerald-400]="player.position === 'MID'"
-                              [class.text-red-400]="player.position === 'FWD'">
+                              [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                              [class.text-blue-400]="player.position === Position.DEFENDER"
+                              [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                              [class.text-red-400]="player.position === Position.FORWARD">
                             {{ player.position }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
@@ -260,7 +262,11 @@ export class TeamDetailsComponent {
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
 
-  availableRoles = ['Goalkeeper', 'Defense', 'Midfield', 'Attack', 'Bench', 'Not Dressed'];
+  // Expose enums for template
+  Position = PositionEnum;
+  MatchResult = MatchResult;
+
+  availableRoles = [Role.GOALKEEPER, Role.DEFENSE, Role.MIDFIELD, Role.ATTACK, Role.BENCH, Role.NOT_DRESSED];
 
   private teamId = computed(() => this.route.snapshot.paramMap.get('id'));
 
@@ -284,30 +290,30 @@ export class TeamDetailsComponent {
   starters = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role !== 'Bench' && p.role !== 'Not Dressed')
+    return t.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
   bench = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role === 'Bench')
+    return t.players.filter(p => p.role === Role.BENCH)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
   reserves = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role === 'Not Dressed')
+    return t.players.filter(p => p.role === Role.NOT_DRESSED)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
   private positionWeight(pos: string): number {
     switch(pos) {
-      case 'GK': return 1;
-      case 'DEF': return 2;
-      case 'MID': return 3;
-      case 'FWD': return 4;
+      case Position.GOALKEEPER: return 1;
+      case Position.DEFENDER: return 2;
+      case Position.MIDFIELDER: return 3;
+      case Position.FORWARD: return 4;
       default: return 5;
     }
   }

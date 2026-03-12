@@ -1,11 +1,12 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { League, Match, Team, Player } from '../models/types';
+import { League, Match, Team, Player, Role } from '../models/types';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationService } from './match.simulation.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { SimulationConfig } from '../models/simulation.types';
+import { MatchResult, CommentaryStyle, Position } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -84,7 +85,7 @@ export class GameService {
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
-        commentaryStyle: 'DETAILED'
+        commentaryStyle: CommentaryStyle.DETAILED
       });
 
       // The match result is already updated in the league state by simulateMatchWithDetails
@@ -97,7 +98,7 @@ export class GameService {
     this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
   }
 
-  private updateLast5(team: Team, result: 'W' | 'D' | 'L') {
+  private updateLast5(team: Team, result: MatchResult) {
     team.stats.last5.unshift(result);
     if (team.stats.last5.length > 5) {
       team.stats.last5.pop();
@@ -134,29 +135,29 @@ export class GameService {
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
 
-      const players = team.players.map(p => ({ ...p, role: 'Not Dressed' as import('../models/types').Role }));
+      const players = team.players.map(p => ({ ...p, role: Role.NOT_DRESSED }));
 
-      const gks = players.filter(p => p.position === 'GK').sort((a, b) => b.overall - a.overall);
-      const defs = players.filter(p => p.position === 'DEF').sort((a, b) => b.overall - a.overall);
-      const mids = players.filter(p => p.position === 'MID').sort((a, b) => b.overall - a.overall);
-      const fwds = players.filter(p => p.position === 'FWD').sort((a, b) => b.overall - a.overall);
+      const gks = players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => b.overall - a.overall);
+      const defs = players.filter(p => p.position === Position.DEFENDER).sort((a, b) => b.overall - a.overall);
+      const mids = players.filter(p => p.position === Position.MIDFIELDER).sort((a, b) => b.overall - a.overall);
+      const fwds = players.filter(p => p.position === Position.FORWARD).sort((a, b) => b.overall - a.overall);
 
-      if (gks.length > 0) gks[0].role = 'Goalkeeper';
-      for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = 'Defense';
-      for (let i = 0; i < Math.min(4, mids.length); i++) mids[i].role = 'Midfield';
-      for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = 'Attack';
+      if (gks.length > 0) gks[0].role = Role.GOALKEEPER;
+      for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = Role.DEFENSE;
+      for (let i = 0; i < Math.min(4, mids.length); i++) mids[i].role = Role.MIDFIELD;
+      for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = Role.ATTACK;
 
-      if (gks.length > 1) gks[1].role = 'Bench';
-      for (let i = 4; i < Math.min(7, defs.length); i++) defs[i].role = 'Bench';
-      for (let i = 4; i < Math.min(8, mids.length); i++) mids[i].role = 'Bench';
-      for (let i = 2; i < Math.min(4, fwds.length); i++) fwds[i].role = 'Bench';
+      if (gks.length > 1) gks[1].role = Role.BENCH;
+      for (let i = 4; i < Math.min(7, defs.length); i++) defs[i].role = Role.BENCH;
+      for (let i = 4; i < Math.min(8, mids.length); i++) mids[i].role = Role.BENCH;
+      for (let i = 2; i < Math.min(4, fwds.length); i++) fwds[i].role = Role.BENCH;
 
       return { ...team, players };
     });
   }
 
   public calculateTeamOverall(team: Team): number {
-    const starters = team.players.filter(p => p.role !== 'Bench' && p.role !== 'Not Dressed');
+    const starters = team.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED);
     if (starters.length === 0) return 50;
     const sum = starters.reduce((acc, p) => acc + p.overall, 0);
     return Math.round(sum / starters.length);
@@ -185,7 +186,7 @@ export class GameService {
       matchState,
       matchStats,
       matchReport,
-      commentary: this.generateMatchCommentary(matchState, homeTeam, awayTeam, config?.commentaryStyle === 'STATS_ONLY' ? 'DETAILED' : config?.commentaryStyle || 'DETAILED')
+      commentary: this.generateMatchCommentary(matchState, homeTeam, awayTeam, config?.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : (config?.commentaryStyle || CommentaryStyle.DETAILED))
     };
   }
 
@@ -254,19 +255,19 @@ export class GameService {
     return 0;
   }
 
-  private getResult(homeScore: number, awayScore: number, isHome: boolean): 'W' | 'D' | 'L' {
+  private getResult(homeScore: number, awayScore: number, isHome: boolean): MatchResult {
     if (isHome) {
-      if (homeScore > awayScore) return 'W';
-      if (homeScore === awayScore) return 'D';
-      return 'L';
+      if (homeScore > awayScore) return MatchResult.WIN;
+      if (homeScore === awayScore) return MatchResult.DRAW;
+      return MatchResult.LOSS;
     } else {
-      if (awayScore > homeScore) return 'W';
-      if (awayScore === homeScore) return 'D';
-      return 'L';
+      if (awayScore > homeScore) return MatchResult.WIN;
+      if (awayScore === homeScore) return MatchResult.DRAW;
+      return MatchResult.LOSS;
     }
   }
 
-  private updateLast5Array(last5: ('W' | 'D' | 'L')[], result: 'W' | 'D' | 'L'): ('W' | 'D' | 'L')[] {
+  private updateLast5Array(last5: MatchResult[], result: MatchResult): MatchResult[] {
     const newLast5 = [result, ...last5];
     if (newLast5.length > 5) {
       newLast5.pop();
@@ -274,7 +275,7 @@ export class GameService {
     return newLast5;
   }
 
-  private generateMatchCommentary(matchState: any, homeTeam: Team, awayTeam: Team, style: 'DETAILED' | 'BRIEF'): string[] {
+  private generateMatchCommentary(matchState: any, homeTeam: Team, awayTeam: Team, style: CommentaryStyle | undefined): string[] {
     const commentary: string[] = [];
     
     // Starting XI
@@ -282,7 +283,7 @@ export class GameService {
     
     // Key events
     matchState.events.forEach((event: any) => {
-      const eventCommentary = this.commentaryService.generateEventCommentary(event, homeTeam, awayTeam, style);
+      const eventCommentary = this.commentaryService.generateEventCommentary(event, homeTeam, awayTeam, style || CommentaryStyle.DETAILED);
       commentary.push(`${event.time}': ${eventCommentary}`);
     });
     
@@ -295,7 +296,7 @@ export class GameService {
     return commentary;
   }
 
-  getTeamForm(teamId: string): ('W' | 'D' | 'L')[] {
+  getTeamForm(teamId: string): MatchResult[] {
     const l = this.leagueState();
     if (!l) return [];
     

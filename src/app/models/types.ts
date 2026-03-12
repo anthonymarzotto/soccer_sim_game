@@ -1,6 +1,7 @@
-export type Position = 'GK' | 'DEF' | 'MID' | 'FWD';
-export type Role = 'Goalkeeper' | 'Defense' | 'Midfield' | 'Attack' | 'Bench' | 'Not Dressed';
-export type MatchResult = 'W' | 'D' | 'L';
+import { Position, Role, MatchResult } from './enums';
+
+// Re-export the enums for backward compatibility
+export { Position, Role, MatchResult };
 
 export interface PlayerPersonal {
   height: number; // cm
