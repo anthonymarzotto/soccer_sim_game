@@ -61,7 +61,7 @@ export class PostMatchAnalysisService {
       if (event.type === EventType.GOAL) {
         keyMoments.push({
           time: event.time,
-          type: 'GOAL',
+          type: EventType.GOAL,
           description: `Goal scored at ${event.time}'`,
           playerIds: event.playerIds,
           location: event.location
@@ -69,7 +69,7 @@ export class PostMatchAnalysisService {
       } else if (event.type === EventType.RED_CARD) {
         keyMoments.push({
           time: event.time,
-          type: 'RED_CARD',
+          type: EventType.RED_CARD,
           description: `Red card at ${event.time}'`,
           playerIds: event.playerIds,
           location: event.location
@@ -77,7 +77,7 @@ export class PostMatchAnalysisService {
       } else if (event.type === EventType.PENALTY) {
         keyMoments.push({
           time: event.time,
-          type: 'PENALTY',
+          type: EventType.PENALTY,
           description: `Penalty awarded at ${event.time}'`,
           playerIds: event.playerIds,
           location: event.location
@@ -85,7 +85,7 @@ export class PostMatchAnalysisService {
       } else if (event.type === EventType.CORNER && event.success) {
         keyMoments.push({
           time: event.time,
-          type: 'CORNER',
+          type: EventType.CORNER,
           description: `Dangerous corner at ${event.time}'`,
           playerIds: event.playerIds,
           location: event.location
@@ -403,7 +403,7 @@ export interface SeasonReport {
 
 export interface KeyMoment {
   time: number;
-  type: 'GOAL' | 'RED_CARD' | 'PENALTY' | 'CORNER';
+  type: EventType.GOAL | EventType.RED_CARD | EventType.PENALTY | EventType.CORNER;
   description: string;
   playerIds: string[];
   location: any;

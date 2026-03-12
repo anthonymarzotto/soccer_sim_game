@@ -76,3 +76,10 @@ export enum MatchResult {
   DRAW = 'D',
   LOSS = 'L'
 }
+
+// Key Event Importance Types
+export enum EventImportance {
+  HIGH = 'high',
+  MEDIUM = 'medium',
+  LOW = 'low'
+}

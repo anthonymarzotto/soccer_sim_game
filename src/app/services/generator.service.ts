@@ -147,8 +147,8 @@ export class GeneratorService {
           id: (matchId++).toString(),
           homeTeamId: home,
           awayTeamId: away,
-          homeScore: null,
-          awayScore: null,
+          homeScore: undefined,
+          awayScore: undefined,
           week,
           played: false
         });
@@ -158,8 +158,8 @@ export class GeneratorService {
           id: (matchId++).toString(),
           homeTeamId: away,
           awayTeamId: home,
-          homeScore: null,
-          awayScore: null,
+          homeScore: undefined,
+          awayScore: undefined,
           week: week + (numWeeks / 2),
           played: false
         });

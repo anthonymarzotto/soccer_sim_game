@@ -6,7 +6,7 @@ import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { SimulationConfig } from '../models/simulation.types';
-import { MatchResult, CommentaryStyle, Position } from '../models/enums';
+import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -179,25 +179,37 @@ export class GameService {
     // Generate post-match analysis
     const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, homeTeam, awayTeam);
     
+    // Extract key events from match state
+    const keyEvents = this.extractKeyEvents(matchState.events);
+    
     // Update league state with results
-    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam);
+    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport);
     
     return {
       matchState,
       matchStats,
       matchReport,
+      keyEvents,
       commentary: this.generateMatchCommentary(matchState, homeTeam, awayTeam, config?.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : (config?.commentaryStyle || CommentaryStyle.DETAILED))
     };
   }
 
-  private updateLeagueWithMatchResult(match: Match, matchState: any, homeTeam: Team, awayTeam: Team) {
+  private updateLeagueWithMatchResult(match: Match, matchState: any, homeTeam: Team, awayTeam: Team, keyEvents: any[], matchStats: any, matchReport: any) {
     const l = this.leagueState();
     if (!l) return;
 
     // Update match in schedule
     const updatedSchedule = l.schedule.map(m => 
       m.id === match.id 
-        ? { ...m, homeScore: matchState.homeScore, awayScore: matchState.awayScore, played: true }
+        ? { 
+            ...m, 
+            homeScore: matchState.homeScore, 
+            awayScore: matchState.awayScore, 
+            played: true,
+            keyEvents,
+            matchStats,
+            matchReport
+          }
         : m
     );
 
@@ -242,6 +254,65 @@ export class GameService {
       teams: updatedTeams,
       schedule: updatedSchedule
     });
+  }
+
+  private extractKeyEvents(events: any[]): any[] {
+    const keyEvents: any[] = [];
+
+    events.forEach(event => {
+      let importance: EventImportance = EventImportance.LOW;
+      let icon = '';
+      let description = event.description;
+
+      switch (event.type) {
+        case EventType.GOAL:
+          importance = EventImportance.HIGH;
+          icon = '⚽';
+          description = `Goal by ${event.playerIds.join(', ')} at ${event.time}'`;
+          break;
+        case EventType.RED_CARD:
+          importance = EventImportance.HIGH;
+          icon = '🟥';
+          description = `Red card for ${event.playerIds.join(', ')} at ${event.time}'`;
+          break;
+        case EventType.YELLOW_CARD:
+          importance = EventImportance.MEDIUM;
+          icon = '🟨';
+          description = `Yellow card for ${event.playerIds.join(', ')} at ${event.time}'`;
+          break;
+        case EventType.PENALTY:
+          importance = EventImportance.HIGH;
+          icon = '🎯';
+          description = `Penalty awarded at ${event.time}'`;
+          break;
+        case EventType.CORNER:
+          if (event.success) {
+            importance = EventImportance.MEDIUM;
+            icon = '📐';
+            description = `Dangerous corner at ${event.time}'`;
+          }
+          break;
+        case EventType.SUBSTITUTION:
+          importance = EventImportance.MEDIUM;
+          icon = '🔄';
+          description = `Substitution at ${event.time}'`;
+          break;
+      }
+
+      if (importance !== EventImportance.LOW || event.type === EventType.GOAL || event.type === EventType.RED_CARD) {
+        keyEvents.push({
+          id: event.id,
+          type: event.type,
+          description,
+          playerIds: event.playerIds,
+          time: event.time,
+          icon,
+          importance
+        });
+      }
+    });
+
+    return keyEvents.sort((a, b) => a.time - b.time);
   }
 
   private getPoints(homeScore: number, awayScore: number, isHome: boolean): number {
