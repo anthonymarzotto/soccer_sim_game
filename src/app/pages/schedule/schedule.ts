@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { Match, KeyEvent as MatchKeyEvent } from '../../models/types';
+import { KeyEvent as MatchKeyEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
 
 @Component({
@@ -84,18 +84,4 @@ export class ScheduleComponent {
     return { home: adjustedHome, draw: finalDraw, away: adjustedAway };
   }
 
-  // State management for expanded match details
-  expandedMatches = signal<string[]>([]);
-
-  toggleMatchDetails(matchId: string) {
-    this.expandedMatches.update(ids => 
-      ids.includes(matchId) 
-        ? ids.filter(id => id !== matchId)
-        : [...ids, matchId]
-    );
-  }
-
-  getEventCount(keyEvents: MatchKeyEvent[], eventType: string): number {
-    return keyEvents.filter(event => event.type === eventType).length;
-  }
 }

@@ -78,61 +78,26 @@
             
             @if (match.played && match.keyEvents && match.keyEvents.length > 0) {
               <div class="mt-4 pt-4 border-t border-zinc-800">
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="text-sm font-semibold text-zinc-300">Key Events</h4>
-                  <button 
-                    (click)="toggleMatchDetails(match.id)"
-                    class="text-xs text-zinc-400 hover:text-white transition-colors">
-                    {{ expandedMatches().includes(match.id) ? 'Hide' : 'Show' }} Details
-                  </button>
-                </div>
+                <h4 class="text-sm font-semibold text-zinc-300 mb-3">Key Events</h4>
                 
-                <!-- Key Events Summary -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                  <div class="text-center p-2 bg-zinc-900 rounded-lg">
-                    <div class="text-2xl">⚽</div>
-                    <div class="text-xs text-zinc-400 mt-1">Goals</div>
-                    <div class="text-sm font-bold text-white">{{ getEventCount(match.keyEvents, 'GOAL') }}</div>
-                  </div>
-                  <div class="text-center p-2 bg-zinc-900 rounded-lg">
-                    <div class="text-2xl">🟨</div>
-                    <div class="text-xs text-zinc-400 mt-1">Yellow Cards</div>
-                    <div class="text-sm font-bold text-white">{{ getEventCount(match.keyEvents, 'YELLOW_CARD') }}</div>
-                  </div>
-                  <div class="text-center p-2 bg-zinc-900 rounded-lg">
-                    <div class="text-2xl">🟥</div>
-                    <div class="text-xs text-zinc-400 mt-1">Red Cards</div>
-                    <div class="text-sm font-bold text-white">{{ getEventCount(match.keyEvents, 'RED_CARD') }}</div>
-                  </div>
-                  <div class="text-center p-2 bg-zinc-900 rounded-lg">
-                    <div class="text-2xl">🎯</div>
-                    <div class="text-xs text-zinc-400 mt-1">Penalties</div>
-                    <div class="text-sm font-bold text-white">{{ getEventCount(match.keyEvents, 'PENALTY') }}</div>
-                  </div>
-                </div>
-                
-                <!-- Detailed Events -->
-                @if (expandedMatches().includes(match.id)) {
-                  <div class="space-y-2">
-                    @for (event of match.keyEvents; track event.id) {
-                      <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
-                        <span class="text-lg">{{ event.icon }}</span>
-                        <div class="flex-1">
-                          <div class="text-sm font-medium text-white">{{ event.description }}</div>
-                          <div class="text-xs text-zinc-400">{{ event.time }}'</div>
-                        </div>
-                        @if (event.importance === EventImportance.HIGH) {
-                          <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">Important</span>
-                        } @else if (event.importance === EventImportance.MEDIUM) {
-                          <span class="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">Key</span>
-                        }
+                <div class="space-y-2">
+                  @for (event of match.keyEvents; track event.id) {
+                    <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
+                      <span class="text-lg">{{ event.icon }}</span>
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-white">{{ event.description }}</div>
+                        <div class="text-xs text-zinc-400">{{ event.time }}'</div>
                       </div>
-                    }
-                  </div>
-                }
+                      @if (event.importance === EventImportance.HIGH) {
+                        <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">Important</span>
+                      } @else if (event.importance === EventImportance.MEDIUM) {
+                        <span class="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">Key</span>
+                      }
+                    </div>
+                  }
+                </div>
                 
-                <!-- Match Statistics -->
-                @if (expandedMatches().includes(match.id) && match.matchStats) {
+                @if (match.matchStats) {
                   <div class="mt-4 p-3 bg-zinc-900 rounded-lg">
                     <h5 class="text-sm font-semibold text-zinc-300 mb-2">Match Statistics</h5>
                     <div class="grid grid-cols-2 gap-4 text-sm">
