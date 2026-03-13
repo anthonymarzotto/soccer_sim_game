@@ -84,4 +84,35 @@ export class ScheduleComponent {
     return { home: adjustedHome, draw: finalDraw, away: adjustedAway };
   }
 
+  getPlayerNames(playerIds: string[]): string[] {
+    return playerIds.map(id => {
+      const player = this.gameService.getPlayer(id);
+      return player ? player.name : 'Unknown Player';
+    });
+  }
+
+  getPlayerLinks(playerIds: string[]): { name: string; playerId: string }[] {
+    return playerIds.map(id => {
+      const player = this.gameService.getPlayer(id);
+      return {
+        name: player ? player.name : 'Unknown Player',
+        playerId: id
+      };
+    });
+  }
+
+  formatEventDescription(description: string, playerIds: string[]): string {
+    // Replace player IDs in the description with player names
+    let formattedDescription = description;
+    
+    playerIds.forEach(playerId => {
+      const player = this.gameService.getPlayer(playerId);
+      const playerName = player ? player.name : 'Unknown Player';
+      // Replace the player ID with the player name
+      formattedDescription = formattedDescription.replace(playerId, playerName);
+    });
+    
+    return formattedDescription;
+  }
+
 }
