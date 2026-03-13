@@ -112,7 +112,7 @@ export class GameService {
     }
   }
 
-  updatePlayerRole(playerId: string, newRole: import('../models/types').Role) {
+  updatePlayerRole(playerId: string, newRole: Role) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -249,11 +249,93 @@ export class GameService {
       return team;
     });
 
+    // Update player career stats
+    this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
+
     this.leagueState.set({
       ...l,
       teams: updatedTeams,
       schedule: updatedSchedule
     });
+  }
+
+  private updatePlayerCareerStats(events: any[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    // Create a map of all players for quick lookup
+    const allPlayers = new Map<string, Player>();
+    [...homeTeam.players, ...awayTeam.players].forEach(player => {
+      allPlayers.set(player.id, player);
+    });
+
+    // Update player stats based on events
+    events.forEach(event => {
+      event.playerIds.forEach((playerId: string) => {
+        const player = allPlayers.get(playerId);
+        if (!player) return;
+
+        // Update career stats based on event type
+        switch (event.type) {
+          case 'GOAL':
+            player.careerStats.goals++;
+            break;
+          case 'ASSIST':
+            player.careerStats.assists++;
+            break;
+          case 'SHOT':
+            player.careerStats.shots++;
+            if (event.success) {
+              player.careerStats.shotsOnTarget++;
+            }
+            break;
+          case 'TACKLE':
+            player.careerStats.tackles++;
+            break;
+          case 'INTERCEPTION':
+            player.careerStats.interceptions++;
+            break;
+          case 'PASS':
+            player.careerStats.passes++;
+            break;
+          case 'SAVE':
+            player.careerStats.saves++;
+            break;
+          case 'YELLOW_CARD':
+            player.careerStats.yellowCards++;
+            break;
+          case 'RED_CARD':
+            player.careerStats.redCards++;
+            break;
+        }
+      });
+    });
+
+    // Update minutes played for all players who participated
+    const allTeamPlayers = [...homeTeam.players, ...awayTeam.players];
+    allTeamPlayers.forEach(player => {
+      if (player.role !== Role.NOT_DRESSED) {
+        player.careerStats.minutesPlayed += 90; // Full match
+      }
+    });
+
+    // Update matches played for all players who participated
+    allTeamPlayers.forEach(player => {
+      if (player.role !== Role.NOT_DRESSED) {
+        player.careerStats.matchesPlayed++;
+      }
+    });
+
+    // Update clean sheets for goalkeepers
+    const homeGoalkeeper = homeTeam.players.find(p => p.position === Position.GOALKEEPER && p.role === Role.GOALKEEPER);
+    const awayGoalkeeper = awayTeam.players.find(p => p.position === Position.GOALKEEPER && p.role === Role.GOALKEEPER);
+
+    if (homeGoalkeeper && homeScore === 0) {
+      homeGoalkeeper.careerStats.cleanSheets++;
+    }
+    if (awayGoalkeeper && awayScore === 0) {
+      awayGoalkeeper.careerStats.cleanSheets++;
+    }
   }
 
   private extractKeyEvents(events: any[]): any[] {

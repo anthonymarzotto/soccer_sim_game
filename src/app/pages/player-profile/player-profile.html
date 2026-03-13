@@ -126,7 +126,92 @@
               <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.luck }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Career Statistics -->
+        <div class="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+            Career Statistics
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="space-y-4">
+              <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Games & Minutes</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Matches Played</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.matchesPlayed || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Minutes Played</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.minutesPlayed || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Clean Sheets</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.cleanSheets || 0 }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Offensive Stats</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Goals</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.goals || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Assists</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.assists || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Shots</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.shots || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Shots on Target</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.shotsOnTarget || 0 }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Defensive Stats</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Tackles</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.tackles || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Interceptions</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.interceptions || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Passes</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.passes || 0 }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-zinc-500">Saves</span>
+                  <span class="font-mono font-medium text-white">{{ player()?.careerStats?.saves || 0 }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-3 space-y-4">
+              <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Disciplinary Record</h3>
+              <div class="flex gap-6">
+                <div class="flex items-center gap-3">
+                  <span class="text-zinc-500">Yellow Cards</span>
+                  <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.yellowCards || 0 }}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-zinc-500">Red Cards</span>
+                  <span class="px-2 py-1 bg-red-500/20 text-red-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.redCards || 0 }}</span>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
         </div>
 
         <!-- Skills -->

@@ -46,6 +46,23 @@ export interface Player {
   skills: PlayerSkills;
   hidden: PlayerHidden;
   overall: number;
+  careerStats: PlayerCareerStats;
+}
+
+export interface PlayerCareerStats {
+  matchesPlayed: number;
+  goals: number;
+  assists: number;
+  yellowCards: number;
+  redCards: number;
+  shots: number;
+  shotsOnTarget: number;
+  tackles: number;
+  interceptions: number;
+  passes: number;
+  saves: number;
+  cleanSheets: number;
+  minutesPlayed: number;
 }
 
 export interface TeamStats {
