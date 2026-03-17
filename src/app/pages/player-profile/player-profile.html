@@ -58,109 +58,342 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Mental -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
-            Mental
-          </h2>
-          <div class="space-y-4">
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Flair</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.flair"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.flair }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Vision</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.vision"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.vision }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Determination</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.determination"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.determination }}</span>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
+              Mental
+            </h2>
+            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+              <button (click)="toggleMentalView()" 
+                      [class]="mentalView() === 'list' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                List
+              </button>
+              <button (click)="toggleMentalView()" 
+                      [class]="mentalView() === 'chart' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Chart
+              </button>
             </div>
           </div>
+          @if (mentalView() === 'list') {
+            <div class="space-y-4">
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-24">Flair</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.flair"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.flair }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-24">Vision</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.vision"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.vision }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-24">Determination</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.determination"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.determination }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="flex flex-col items-center justify-center space-y-4">
+              <div class="relative">
+                <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
+                  <!-- Background grid lines -->
+                  <g class="text-zinc-700">
+                    <!-- 3-axis grid for Mental (Flair, Vision, Determination) -->
+                    @for (i of [0, 1, 2]; track i) {
+                      <line [attr.x1]="120" [attr.y1]="120" 
+                            [attr.x2]="getAxisLabelPosition(i, mentalChartData(), 240).x" 
+                            [attr.y2]="getAxisLabelPosition(i, mentalChartData(), 240).y"
+                            stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
+                    }
+                    <!-- Inner circles -->
+                    @for (r of [20, 40, 60, 80]; track r) {
+                      <circle cx="120" cy="120" [attr.r]="r" stroke="rgba(161, 161, 170, 0.2)" stroke-width="1" fill="none" />
+                    }
+                  </g>
+                  
+                  <!-- Axis labels -->
+                  @for (item of mentalChartData(); track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, mentalChartData(), 240).x" 
+                          [attr.y]="getAxisLabelPosition(i, mentalChartData(), 240).y + 4"
+                          text-anchor="middle" 
+                          class="text-xs fill-zinc-400 font-medium"
+                          dominant-baseline="middle">
+                      {{ item.label }}
+                    </text>
+                  }
+                  
+                  <!-- Data polygon -->
+                  <polygon [attr.points]="createChartPoints(mentalChartData(), 240)"
+                           fill="rgba(59, 130, 246, 0.3)" 
+                           stroke="rgb(59, 130, 246)" 
+                           stroke-width="3" 
+                           class="transition-all duration-500 ease-in-out"
+                           style="filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))" />
+                  
+                  <!-- Axis lines from center -->
+                  @for (i of [0, 1, 2]; track i) {
+                    <line [attr.x1]="120" [attr.y1]="120" 
+                          [attr.x2]="getAxisLabelPosition(i, mentalChartData(), 240).x" 
+                          [attr.y2]="getAxisLabelPosition(i, mentalChartData(), 240).y"
+                          stroke="rgba(59, 130, 246, 0.5)" stroke-width="1" />
+                  }
+                </svg>
+              </div>
+              
+              <!-- Legend -->
+              <div class="flex gap-4 text-sm text-zinc-400">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span>Mental Skills</span>
+                </div>
+              </div>
+            </div>
+          }
         </div>
 
         <!-- Physical -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-            Physical
-          </h2>
-          <div class="space-y-4">
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Speed</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.speed"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.speed }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Strength</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.strength"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.strength }}</span>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+              Physical
+            </h2>
+            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+              <button (click)="togglePhysicalView()" 
+                      [class]="physicalView() === 'list' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                List
+              </button>
+              <button (click)="togglePhysicalView()" 
+                      [class]="physicalView() === 'chart' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Chart
+              </button>
             </div>
           </div>
+          @if (physicalView() === 'list') {
+            <div class="space-y-4">
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-24">Speed</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.speed"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.speed }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-24">Strength</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.strength"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.strength }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-24">Endurance</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.endurance"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.endurance }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="flex flex-col items-center justify-center space-y-4">
+              <div class="relative">
+                <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
+                  <!-- Background grid lines -->
+                  <g class="text-zinc-700">
+                    <!-- 3-axis grid for Physical (Speed, Strength, Endurance) -->
+                    @for (i of [0, 1, 2]; track i) {
+                      <line [attr.x1]="120" [attr.y1]="120" 
+                            [attr.x2]="getAxisLabelPosition(i, physicalChartData(), 240).x" 
+                            [attr.y2]="getAxisLabelPosition(i, physicalChartData(), 240).y"
+                            stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
+                    }
+                    <!-- Inner circles -->
+                    @for (r of [20, 40, 60, 80]; track r) {
+                      <circle cx="120" cy="120" [attr.r]="r" stroke="rgba(161, 161, 170, 0.2)" stroke-width="1" fill="none" />
+                    }
+                  </g>
+                  
+                  <!-- Axis labels -->
+                  @for (item of physicalChartData(); track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, physicalChartData(), 240).x" 
+                          [attr.y]="getAxisLabelPosition(i, physicalChartData(), 240).y + 4"
+                          text-anchor="middle" 
+                          class="text-xs fill-zinc-400 font-medium"
+                          dominant-baseline="middle">
+                      {{ item.label }}
+                    </text>
+                  }
+                  
+                  <!-- Data polygon -->
+                  <polygon [attr.points]="createChartPoints(physicalChartData(), 240)"
+                           fill="rgba(16, 185, 129, 0.3)" 
+                           stroke="rgb(16, 185, 129)" 
+                           stroke-width="3" 
+                           class="transition-all duration-500 ease-in-out"
+                           style="filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.3))" />
+                  
+                  <!-- Axis lines from center -->
+                  @for (i of [0, 1, 2]; track i) {
+                    <line [attr.x1]="120" [attr.y1]="120" 
+                          [attr.x2]="getAxisLabelPosition(i, physicalChartData(), 240).x" 
+                          [attr.y2]="getAxisLabelPosition(i, physicalChartData(), 240).y"
+                          stroke="rgba(16, 185, 129, 0.5)" stroke-width="1" />
+                  }
+                </svg>
+              </div>
+              
+              <!-- Legend -->
+              <div class="flex gap-4 text-sm text-zinc-400">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span>Physical Attributes</span>
+                </div>
+              </div>
+            </div>
+          }
         </div>
 
         <!-- Technical -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            Technical
-          </h2>
-          <div class="space-y-4">
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Tackling</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.tackling"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.tackling }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Shooting</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.shooting"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.shooting }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Heading</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.heading"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.heading }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Long Passing</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.longPassing"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.longPassing }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Short Passing</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.shortPassing"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.shortPassing }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Goalkeeping</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-yellow-500 rounded-full" [style.width.%]="player()?.skills?.goalkeeping"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.goalkeeping }}</span>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Technical
+            </h2>
+            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+              <button (click)="toggleTechnicalView()" 
+                      [class]="technicalView() === 'list' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                List
+              </button>
+              <button (click)="toggleTechnicalView()" 
+                      [class]="technicalView() === 'chart' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Chart
+              </button>
             </div>
           </div>
+          @if (technicalView() === 'list') {
+            <div class="space-y-4">
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-28">Tackling</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.tackling"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.tackling }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-28">Shooting</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.shooting"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.shooting }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-28">Heading</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.heading"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.heading }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-28">Long Passing</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.longPassing"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.longPassing }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-28">Short Passing</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.shortPassing"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.shortPassing }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-zinc-500 w-28">Goalkeeping</span>
+                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-yellow-500 rounded-full" [style.width.%]="player()?.skills?.goalkeeping"></div>
+                </div>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.goalkeeping }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="flex flex-col items-center justify-center space-y-4">
+              <div class="relative">
+                <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
+                  <!-- Background grid lines -->
+                  <g class="text-zinc-700">
+                    <!-- 6-axis grid for Technical (Tackling, Shooting, Heading, Long Passing, Short Passing, Goalkeeping) -->
+                    @for (i of [0, 1, 2, 3, 4, 5]; track i) {
+                      <line [attr.x1]="120" [attr.y1]="120" 
+                            [attr.x2]="getAxisLabelPosition(i, technicalChartData(), 240).x" 
+                            [attr.y2]="getAxisLabelPosition(i, technicalChartData(), 240).y"
+                            stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
+                    }
+                    <!-- Inner circles -->
+                    @for (r of [20, 40, 60, 80]; track r) {
+                      <circle cx="120" cy="120" [attr.r]="r" stroke="rgba(161, 161, 170, 0.2)" stroke-width="1" fill="none" />
+                    }
+                  </g>
+                  
+                  <!-- Axis labels -->
+                  @for (item of technicalChartData(); track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, technicalChartData(), 240).x" 
+                          [attr.y]="getAxisLabelPosition(i, technicalChartData(), 240).y + 4"
+                          text-anchor="middle" 
+                          class="text-xs fill-zinc-400 font-medium"
+                          dominant-baseline="middle">
+                      {{ item.label }}
+                    </text>
+                  }
+                  
+                  <!-- Data polygon -->
+                  <polygon [attr.points]="createChartPoints(technicalChartData(), 240)"
+                           fill="rgba(168, 85, 247, 0.3)" 
+                           stroke="rgb(168, 85, 247)" 
+                           stroke-width="3" 
+                           class="transition-all duration-500 ease-in-out"
+                           style="filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.3))" />
+                  
+                  <!-- Axis lines from center -->
+                  @for (i of [0, 1, 2, 3, 4, 5]; track i) {
+                    <line [attr.x1]="120" [attr.y1]="120" 
+                          [attr.x2]="getAxisLabelPosition(i, technicalChartData(), 240).x" 
+                          [attr.y2]="getAxisLabelPosition(i, technicalChartData(), 240).y"
+                          stroke="rgba(168, 85, 247, 0.5)" stroke-width="1" />
+                  }
+                </svg>
+              </div>
+              
+              <!-- Legend -->
+              <div class="flex gap-4 text-sm text-zinc-400">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <span>Technical Skills</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span>Goalkeeping</span>
+                </div>
+              </div>
+            </div>
+          }
         </div>
       </div>
 

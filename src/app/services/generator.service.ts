@@ -69,7 +69,8 @@ export class GeneratorService {
 
     const physical = {
       speed: this.randomStat(),
-      strength: this.randomStat()
+      strength: this.randomStat(),
+      endurance: this.randomStat()
     };
 
     const mental = {

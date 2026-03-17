@@ -13,6 +13,7 @@ export interface PlayerPersonal {
 export interface PlayerPhysical {
   speed: number;
   strength: number;
+  endurance: number;
 }
 
 export interface PlayerMental {
