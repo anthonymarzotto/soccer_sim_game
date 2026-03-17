@@ -1,0 +1,190 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <button 
+        (click)="goBackToSchedule()"
+        class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+      </button>
+      
+      <div class="text-center flex-1">
+        <h1 class="text-2xl font-bold text-white">Play by Play</h1>
+        <p class="text-zinc-400 text-sm mt-1">Match Simulation</p>
+      </div>
+      
+      <div class="w-10"></div>
+    </div>
+
+    <!-- Match Info -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-center">
+          <h2 class="text-xl font-semibold text-white">{{ homeTeamName }}</h2>
+          <p class="text-zinc-400 text-sm">Home Team</p>
+        </div>
+        
+        <div class="text-center">
+          <div class="text-4xl font-bold font-mono text-white tracking-widest">
+            {{ getFinalScore() }}
+          </div>
+          <div class="text-zinc-500 text-sm mt-1">Final Score</div>
+        </div>
+        
+        <div class="text-center">
+          <h2 class="text-xl font-semibold text-white">{{ awayTeamName }}</h2>
+          <p class="text-zinc-400 text-sm">Away Team</p>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-zinc-800 rounded-full h-2 mb-4">
+        <div 
+          class="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+          [style.width.%]="progressPercentage">
+        </div>
+      </div>
+      
+      <div class="flex justify-between text-sm text-zinc-400">
+        <span>Match Progress</span>
+        <span>{{ currentEventIndex + 1 }} / {{ events.length }} Events</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center justify-center gap-4">
+        <button 
+          *ngIf="!isPlaying && !isSimulating"
+          (click)="startPlayByPlay()"
+          [disabled]="isSimulating"
+          class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ isSimulating ? 'Simulating...' : 'Start Play by Play' }}
+        </button>
+        
+        <button 
+          *ngIf="isPlaying"
+          (click)="skipToEnd()"
+          class="px-6 py-3 bg-red-500 hover:bg-red-600 text-zinc-950 rounded-lg font-semibold transition-colors shadow-lg shadow-red-500/20">
+          Skip to End
+        </button>
+        
+        <button 
+          *ngIf="!isPlaying && events.length > 0"
+          (click)="resetPlayByPlay()"
+          class="px-6 py-3 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg font-semibold transition-colors">
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isSimulating" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center shadow-xl">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+      <p class="mt-4 text-zinc-400">Simulating match...</p>
+    </div>
+
+    <!-- Events Timeline -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+      <h3 class="text-lg font-semibold text-white mb-4">Match Events</h3>
+      
+      <div class="space-y-4">
+        <!-- Displayed Events -->
+        <div *ngFor="let event of getDisplayedEvents(); trackBy: trackEvent" 
+             class="event-container animate-in slide-in-from-left duration-500"
+             [class]="getEventClass(event)">
+          
+          <div class="flex items-center gap-4">
+            <div class="flex-shrink-0 w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-2xl">
+              {{ event.icon || '⚽' }}
+            </div>
+            
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-sm font-mono text-zinc-400">{{ event.time }}'</span>
+                <span class="px-2 py-1 bg-zinc-800 text-xs rounded-full" 
+                      [class]="getImportanceClass(event.importance)">
+                  {{ getImportanceLabel(event.importance) }}
+                </span>
+              </div>
+              
+              <div class="text-white font-medium">
+                {{ formatEventDescription(event.description, event.playerIds) }}
+              </div>
+              
+              <div class="text-sm text-zinc-400 mt-1">
+                @for (player of getPlayerLinks(event.playerIds); track player.playerId) {
+                  <a [routerLink]="['/player', player.playerId]" 
+                     class="text-emerald-400 hover:text-emerald-300 hover:underline">
+                    {{ player.name }}
+                  </a>
+                  @if (!$last) {, }
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Remaining Events (Hidden) -->
+        <div *ngIf="getRemainingEvents().length > 0" class="border-t border-zinc-800 pt-4">
+          <p class="text-zinc-500 text-sm mb-2">Upcoming Events:</p>
+          <div class="space-y-2">
+            @for (event of getRemainingEvents(); track event) {
+              <div class="flex items-center gap-3 p-2 bg-zinc-800 rounded-lg opacity-50">
+                <span class="text-lg">{{ event.icon || '⚽' }}</span>
+                <div>
+                  <div class="text-sm text-zinc-400">{{ event.time }}' - {{ event.description }}</div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Match Complete -->
+        <div *ngIf="!isPlaying && !isSimulating && events.length > 0" 
+             class="text-center py-4 text-zinc-400 border-t border-zinc-800">
+          Match complete! {{ events.length }} events displayed.
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Statistics (if available) -->
+    <div *ngIf="getMatchStats()" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+      <h3 class="text-lg font-semibold text-white mb-4">Match Statistics</h3>
+      
+      <div class="grid grid-cols-2 gap-6 text-sm">
+        <div>
+          <div class="flex justify-between mb-2">
+            <span class="text-zinc-400">Possession</span>
+            <span class="font-medium">{{ getMatchStats()?.possession?.home }}% - {{ getMatchStats()?.possession?.away }}%</span>
+          </div>
+          <div class="flex justify-between mb-2">
+            <span class="text-zinc-400">Shots</span>
+            <span class="font-medium">{{ getMatchStats()?.shots?.home }} - {{ getMatchStats()?.shots?.away }}</span>
+          </div>
+          <div class="flex justify-between mb-2">
+            <span class="text-zinc-400">Shots on Target</span>
+            <span class="font-medium">{{ getMatchStats()?.shotsOnTarget?.home }} - {{ getMatchStats()?.shotsOnTarget?.away }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-2">
+            <span class="text-zinc-400">Corners</span>
+            <span class="font-medium">{{ getMatchStats()?.corners?.home }} - {{ getMatchStats()?.corners?.away }}</span>
+          </div>
+          <div class="flex justify-between mb-2">
+            <span class="text-zinc-400">Fouls</span>
+            <span class="font-medium">{{ getMatchStats()?.fouls?.home }} - {{ getMatchStats()?.fouls?.away }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">Cards</span>
+            <span class="font-medium">{{ getStatValue('cards.home.yellow') + getStatValue('cards.home.red') }} - {{ getStatValue('cards.away.yellow') + getStatValue('cards.away.red') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
