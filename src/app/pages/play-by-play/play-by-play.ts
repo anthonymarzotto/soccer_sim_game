@@ -114,7 +114,8 @@ export class PlayByPlayComponent implements OnInit, OnDestroy {
     this.match!.matchStats = result.matchStats;
     this.match!.matchReport = result.matchReport;
 
-    this.events = result.keyEvents || [];
+    // Convert PlayByPlayEvent to KeyEvent format and add importance
+    this.events = this.convertEventsToKeyEvents(result.matchState.events || []);
     this.isSimulating = false;
     
     // Start play-by-play
@@ -265,5 +266,102 @@ export class PlayByPlayComponent implements OnInit, OnDestroy {
 
   trackEvent(index: number, event: KeyEvent): string {
     return event.id;
+  }
+
+  private convertEventsToKeyEvents(playByPlayEvents: any[]): KeyEvent[] {
+    return playByPlayEvents.map(event => {
+      // Determine importance based on event type
+      let importance: EventImportance = EventImportance.LOW;
+      let icon = '';
+      let description = event.description || this.generateEventDescription(event);
+
+      switch (event.type) {
+        case 'GOAL':
+          importance = EventImportance.HIGH;
+          icon = '⚽';
+          description = `Goal at ${event.time}'`;
+          break;
+        case 'RED_CARD':
+          importance = EventImportance.HIGH;
+          icon = '🟥';
+          description = `Red card at ${event.time}'`;
+          break;
+        case 'YELLOW_CARD':
+          importance = EventImportance.MEDIUM;
+          icon = '🟨';
+          description = `Yellow card at ${event.time}'`;
+          break;
+        case 'PENALTY':
+          importance = EventImportance.HIGH;
+          icon = '🎯';
+          description = `Penalty awarded at ${event.time}'`;
+          break;
+        case 'CORNER':
+          importance = EventImportance.MEDIUM;
+          icon = '📐';
+          description = `Corner kick at ${event.time}'`;
+          break;
+        case 'SUBSTITUTION':
+          importance = EventImportance.MEDIUM;
+          icon = '🔄';
+          description = `Substitution at ${event.time}'`;
+          break;
+        case 'SHOT':
+          importance = event.success ? EventImportance.MEDIUM : EventImportance.LOW;
+          icon = '🎯';
+          description = `Shot ${event.success ? 'on target' : 'off target'} at ${event.time}'`;
+          break;
+        case 'SAVE':
+          importance = EventImportance.MEDIUM;
+          icon = '🧤';
+          description = `Save at ${event.time}'`;
+          break;
+        case 'PASS':
+          importance = EventImportance.LOW;
+          icon = '🔗';
+          description = `Pass at ${event.time}'`;
+          break;
+        case 'TACKLE':
+          importance = event.success ? EventImportance.MEDIUM : EventImportance.LOW;
+          icon = '⚔️';
+          description = `Tackle ${event.success ? 'successful' : 'unsuccessful'} at ${event.time}'`;
+          break;
+        case 'INTERCEPTION':
+          importance = EventImportance.MEDIUM;
+          icon = '✋';
+          description = `Interception at ${event.time}'`;
+          break;
+        case 'FOUL':
+          importance = EventImportance.MEDIUM;
+          icon = '⚠️';
+          description = `Foul at ${event.time}'`;
+          break;
+        default:
+          importance = EventImportance.LOW;
+          icon = '⚽';
+          description = `${event.type} at ${event.time}'`;
+      }
+
+      return {
+        id: event.id,
+        type: event.type,
+        description,
+        playerIds: event.playerIds || [],
+        time: event.time,
+        icon,
+        importance
+      };
+    });
+  }
+
+  private generateEventDescription(event: any): string {
+    // Generate a basic description if none exists
+    const time = event.time || '0';
+    const type = event.type || 'Event';
+    const players = event.playerIds && event.playerIds.length > 0 
+      ? ` by ${event.playerIds.join(', ')}` 
+      : '';
+    
+    return `${type}${players} at ${time}'`;
   }
 }
