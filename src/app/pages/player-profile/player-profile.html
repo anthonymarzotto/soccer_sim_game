@@ -411,6 +411,15 @@
             </div>
             <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.luck }}</span>
           </div>
+          <div class="flex items-center gap-4">
+            <span class="text-zinc-500 w-24">Injury Rate</span>
+            <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full rounded-full" 
+                   [class]="(player()?.hidden?.injuryRate ?? 50) <= 30 ? 'bg-green-500' : (player()?.hidden?.injuryRate ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
+                   [style.width.%]="player()?.hidden?.injuryRate ?? 50"></div>
+            </div>
+            <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.injuryRate ?? 'N/A' }}</span>
+          </div>
         </div>
       </div>
 
