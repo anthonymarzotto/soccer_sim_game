@@ -76,17 +76,6 @@
               </div>
             }
             
-            @if (!match.played) {
-              <div class="mt-4 pt-4 border-t border-zinc-800">
-                <div class="flex justify-center">
-                  <a [routerLink]="['/play-by-play', match.id]" 
-                     class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg font-semibold transition-colors shadow-lg shadow-emerald-500/20">
-                    Play Match
-                  </a>
-                </div>
-              </div>
-            }
-
             @if (match.played && match.keyEvents && match.keyEvents.length > 0) {
               <div class="mt-4 pt-4 border-t border-zinc-800">
                 <h4 class="text-sm font-semibold text-zinc-300 mb-3">Key Events</h4>
