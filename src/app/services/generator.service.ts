@@ -89,7 +89,8 @@ export class GeneratorService {
     };
 
     const hidden = {
-      luck: this.randomStat(1, 100)
+      luck: this.randomStat(1, 100),
+      injuryRate: this.randomStat(1, 100)
     };
 
     // Boost stats based on position

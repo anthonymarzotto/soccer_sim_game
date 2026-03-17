@@ -24,6 +24,7 @@ export interface PlayerMental {
 
 export interface PlayerHidden {
   luck: number;
+  injuryRate: number;
 }
 
 export interface PlayerSkills {

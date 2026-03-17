@@ -12,7 +12,6 @@
 - **Clutch**: Add a "Clutch" stat - performance under pressure
 - **Consistency**: Add a "Consistency" stat - performance variance reduction
 - **Endurance**: How much energy a player has in match. Starts at 100 at the start of a match and decreases in proporition to this stat.
-- **Injury rate**: How like the player is to be injured.
 - **Fitness**: Combination of Endurance, Fatigue, and Injury Rate. Viewable by player.
 - **Morale**: In match stat. Goes up and down during a match. Influences performance.
 - **Determination**: Possibly has affects on all in match events.
