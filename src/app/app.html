@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-zinc-950">
   <app-navigation />
-  <main class="ml-64 min-h-screen">
+  <main class="min-h-screen" [ngClass]="{ 'md:ml-64': hasLeague() }">
     <router-outlet />
   </main>
 </div>
