@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { MatchState, MatchStatistics, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, Player, Position } from '../models/types';
+import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
+import { MatchStatistics, Team, Player, Position } from '../models/types';
 import { EventType } from '../models/enums';
 
 @Injectable({

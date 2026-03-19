@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { KeyEvent as MatchKeyEvent } from '../../models/types';
+import { MatchEvent as MatchKeyEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
 
 @Component({

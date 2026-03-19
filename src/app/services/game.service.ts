@@ -388,6 +388,7 @@ export class GameService {
           description,
           playerIds: event.playerIds,
           time: event.time,
+          location: event.location,
           icon,
           importance
         });

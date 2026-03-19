@@ -93,17 +93,18 @@ export interface Match {
   homeScore?: number;
   awayScore?: number;
   played: boolean;
-  keyEvents?: KeyEvent[];
+  keyEvents?: MatchEvent[];
   matchStats?: MatchStatistics;
   matchReport?: MatchReport;
 }
 
-export interface KeyEvent {
+export interface MatchEvent {
   id: string;
-  type: string;
+  time: number;
+  type: EventType;
   description: string;
   playerIds: string[];
-  time: number;
+  location?: any;
   icon?: string;
   importance: EventImportance;
 }
@@ -126,26 +127,10 @@ export interface MatchStatistics {
 export interface MatchReport {
   matchId: string;
   finalScore: string;
-  keyMoments: KeyMoment[];
+  keyMoments: MatchEvent[];
   tacticalAnalysis: TacticalAnalysis;
   playerPerformances: PlayerAnalysis;
   matchSummary: string;
-}
-
-export type KeyEventType =
-  | EventType.GOAL
-  | EventType.RED_CARD
-  | EventType.PENALTY
-  | EventType.CORNER
-  | EventType.YELLOW_CARD
-  | EventType.SUBSTITUTION;
-
-export interface KeyMoment {
-  time: number;
-  type: KeyEventType;
-  description: string;
-  playerIds: string[];
-  location?: any;
 }
 
 export interface TacticalAnalysis {
