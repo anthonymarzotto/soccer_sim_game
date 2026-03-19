@@ -43,9 +43,6 @@ export class MatchSimulationService {
     // Simulate 90 minutes + stoppage time
     for (let minute = 1; minute <= 95; minute++) {
       currentState = this.simulateMinute(currentState, tactics, fatigue, homeTeam, awayTeam, minute, config);
-      
-      // Check if game should end early (e.g., too many goals difference)
-      if (this.shouldEndEarly(currentState)) break;
     }
 
     return currentState;
@@ -280,6 +277,13 @@ export class MatchSimulationService {
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
 
+    // Increment shot counter for the current team
+    if (currentTeam === 'home') {
+      state.homeShots++;
+    } else {
+      state.awayShots++;
+    }
+
     // Find goalkeeper
     const goalkeeper = opponentTeam.players.find(p => p.role === Role.GOALKEEPER);
     
@@ -287,10 +291,26 @@ export class MatchSimulationService {
     const shotSuccess = this.calculateShotSuccess(shooter, goalkeeper, teamTactics, teamFatigue, state.ballPossession.location);
     
     if (shotSuccess.goal) {
+      // Increment shots on target since it resulted in a goal
+      if (currentTeam === 'home') {
+        state.homeShotsOnTarget++;
+      } else {
+        state.awayShotsOnTarget++;
+      }
       this.handleGoal(state, { player: shooter, goalkeeper: goalkeeper }, homeTeam, awayTeam, minute, config);
     } else {
       // Shot on/off target
       const onTarget = shotSuccess.onTarget;
+      
+      // Increment shots on target if the shot was on target
+      if (onTarget) {
+        if (currentTeam === 'home') {
+          state.homeShotsOnTarget++;
+        } else {
+          state.awayShotsOnTarget++;
+        }
+      }
+      
       const eventType = onTarget ? EventType.SAVE : EventType.MISS;
       
       this.createEvent(state, eventType, [shooter.id, goalkeeper?.id].filter(Boolean), state.ballPossession.location, minute, onTarget, config);
@@ -298,7 +318,7 @@ export class MatchSimulationService {
       if (!onTarget) {
         // Corner or goal kick
         if (this.isCorner(state.ballPossession.location, currentTeam)) {
-        this.createEvent(state, EventType.CORNER, [shooter.id], state.ballPossession.location, minute, false, config);
+          this.createEvent(state, EventType.CORNER, [shooter.id], state.ballPossession.location, minute, false, config);
         }
       }
     }
@@ -529,18 +549,27 @@ export class MatchSimulationService {
   }
 
   private updatePossessionStats(state: MatchState, homeTeam: Team, awayTeam: Team) {
-    // Simple possession calculation based on passes
-    const totalPasses = state.homeShots + state.awayShots + state.homeCorners + state.awayCorners;
-    if (totalPasses > 0) {
-      state.homePossession = Math.round((state.homeShots / totalPasses) * 100);
+    // Calculate possession based on time spent in possession
+    // This is a simplified calculation - in a real simulation, you'd track actual possession time
+    const totalEvents = state.events.length;
+    if (totalEvents > 0) {
+      const homeEvents = state.events.filter(e => 
+        e.playerIds.some(playerId => {
+          // Check if player belongs to home team
+          const player = this.findPlayerById(playerId, homeTeam);
+          return player !== null;
+        })
+      );
+      
+      const homeEventRatio = homeEvents.length / totalEvents;
+      state.homePossession = Math.round(homeEventRatio * 100);
       state.awayPossession = 100 - state.homePossession;
     }
   }
 
-  private shouldEndEarly(state: MatchState): boolean {
-    // End early if score difference is too large (optional)
-    const scoreDiff = Math.abs(state.homeScore - state.awayScore);
-    return scoreDiff >= 5 && state.currentMinute > 80;
+  private findPlayerById(playerId: string, team: Team): Player | null {
+    const player = team.players.find(p => p.id === playerId);
+    return player || null;
   }
 
   private findPassTarget(passer: Player, team: Team, tactics: TacticalSetup, currentLocation: Coordinates): Player | null {
