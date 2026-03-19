@@ -3,7 +3,7 @@ import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
-import { EventType, PlayingStyle } from '../models/enums';
+import { EventType, PlayingStyle, EventImportance } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -54,41 +54,53 @@ export class PostMatchAnalysisService {
     };
   }
 
-  private extractKeyMoments(events: PlayByPlayEvent[]): KeyMoment[] {
-    const keyMoments: KeyMoment[] = [];
+  private extractKeyMoments(events: PlayByPlayEvent[]): any[] {
+    const keyMoments: any[] = [];
 
     events.forEach(event => {
       if (event.type === EventType.GOAL) {
         keyMoments.push({
+          id: event.id,
           time: event.time,
           type: EventType.GOAL,
           description: `Goal scored at ${event.time}'`,
           playerIds: event.playerIds,
-          location: event.location
+          location: event.location,
+          icon: '⚽',
+          importance: EventImportance.HIGH
         });
       } else if (event.type === EventType.RED_CARD) {
         keyMoments.push({
+          id: event.id,
           time: event.time,
           type: EventType.RED_CARD,
           description: `Red card at ${event.time}'`,
           playerIds: event.playerIds,
-          location: event.location
+          location: event.location,
+          icon: '🟥',
+          importance: EventImportance.HIGH
         });
       } else if (event.type === EventType.PENALTY) {
         keyMoments.push({
+          id: event.id,
           time: event.time,
           type: EventType.PENALTY,
           description: `Penalty awarded at ${event.time}'`,
           playerIds: event.playerIds,
-          location: event.location
+          location: event.location,
+          icon: '🎯',
+          importance: EventImportance.HIGH
         });
       } else if (event.type === EventType.CORNER && event.success) {
         keyMoments.push({
+          id: event.id,
           time: event.time,
           type: EventType.CORNER,
           description: `Dangerous corner at ${event.time}'`,
           playerIds: event.playerIds,
-          location: event.location
+          location: event.location,
+          icon: '📐',
+          importance: EventImportance.MEDIUM
         });
       }
     });

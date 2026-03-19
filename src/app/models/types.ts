@@ -93,11 +93,23 @@ export interface Match {
   homeScore?: number;
   awayScore?: number;
   played: boolean;
-  keyEvents?: KeyEvent[];
+  keyEvents?: MatchEvent[];
   matchStats?: MatchStatistics;
   matchReport?: MatchReport;
 }
 
+export interface MatchEvent {
+  id: string;
+  time: number;
+  type: KeyEventType;
+  description: string;
+  playerIds: string[];
+  location?: any;
+  icon?: string;
+  importance: EventImportance;
+}
+
+// Legacy type for backward compatibility - will be deprecated
 export interface KeyEvent {
   id: string;
   type: string;
@@ -126,7 +138,7 @@ export interface MatchStatistics {
 export interface MatchReport {
   matchId: string;
   finalScore: string;
-  keyMoments: KeyMoment[];
+  keyMoments: MatchEvent[];
   tacticalAnalysis: TacticalAnalysis;
   playerPerformances: PlayerAnalysis;
   matchSummary: string;
