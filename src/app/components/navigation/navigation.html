@@ -1,0 +1,50 @@
+@if (hasLeague()) {
+  <nav class="fixed top-0 left-0 h-full w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+    <!-- Logo/Title -->
+    <div class="p-6 border-b border-zinc-800">
+      <h1 class="text-xl font-bold text-white">Soccer Sim</h1>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="flex-1 p-4 space-y-2">
+      <a
+        routerLink="/"
+        routerLinkActive="bg-zinc-800 text-white"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+      >
+        <span class="material-icons text-xl">home</span>
+        <span>Home</span>
+      </a>
+
+      <a
+        routerLink="/standings"
+        routerLinkActive="bg-zinc-800 text-white"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+      >
+        <span class="material-icons text-xl">leaderboard</span>
+        <span>Standings</span>
+      </a>
+
+      <a
+        routerLink="/schedule"
+        routerLinkActive="bg-zinc-800 text-white"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+      >
+        <span class="material-icons text-xl">calendar_today</span>
+        <span>Schedule</span>
+      </a>
+
+      @if (userTeamId()) {
+        <a
+          [routerLink]="['/team', userTeamId()]"
+          routerLinkActive="bg-zinc-800 text-white"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+        >
+          <span class="material-icons text-xl">sports_soccer</span>
+          <span>My Team</span>
+        </a>
+      }
+    </div>
+  </nav>
+}
