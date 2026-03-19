@@ -101,21 +101,10 @@ export interface Match {
 export interface MatchEvent {
   id: string;
   time: number;
-  type: KeyEventType;
+  type: EventType;
   description: string;
   playerIds: string[];
   location?: any;
-  icon?: string;
-  importance: EventImportance;
-}
-
-// Legacy type for backward compatibility - will be deprecated
-export interface KeyEvent {
-  id: string;
-  type: string;
-  description: string;
-  playerIds: string[];
-  time: number;
   icon?: string;
   importance: EventImportance;
 }
@@ -142,22 +131,6 @@ export interface MatchReport {
   tacticalAnalysis: TacticalAnalysis;
   playerPerformances: PlayerAnalysis;
   matchSummary: string;
-}
-
-export type KeyEventType =
-  | EventType.GOAL
-  | EventType.RED_CARD
-  | EventType.PENALTY
-  | EventType.CORNER
-  | EventType.YELLOW_CARD
-  | EventType.SUBSTITUTION;
-
-export interface KeyMoment {
-  time: number;
-  type: KeyEventType;
-  description: string;
-  playerIds: string[];
-  location?: any;
 }
 
 export interface TacticalAnalysis {

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, Player } from '../models/types';
+import { Team, Player, MatchEvent } from '../models/types';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, PlayingStyle, EventImportance } from '../models/enums';
@@ -394,7 +394,7 @@ export interface MatchReport {
   matchId: string;
   finalScore: string;
   matchStats: any;
-  keyMoments: KeyMoment[];
+  keyMoments: MatchEvent[];
   tacticalAnalysis: TacticalAnalysis;
   playerPerformances: PlayerAnalysis;
   matchSummary: string;
@@ -411,14 +411,6 @@ export interface SeasonReport {
   weaknesses: string[];
   improvementAreas: string[];
   recommendations: string[];
-}
-
-export interface KeyMoment {
-  time: number;
-  type: EventType.GOAL | EventType.RED_CARD | EventType.PENALTY | EventType.CORNER;
-  description: string;
-  playerIds: string[];
-  location: any;
 }
 
 export interface TacticalAnalysis {
