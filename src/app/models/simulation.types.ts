@@ -86,18 +86,3 @@ export interface PlayerFatigue {
   fatigueLevel: number; // 0-100
   performanceModifier: number; // 0.5-1.0
 }
-
-export interface MatchStatistics {
-  possession: { home: number; away: number };
-  shots: { home: number; away: number };
-  shotsOnTarget: { home: number; away: number };
-  corners: { home: number; away: number };
-  fouls: { home: number; away: number };
-  cards: { 
-    home: { yellow: number; red: number }; 
-    away: { yellow: number; red: number } 
-  };
-  passes: { home: number; away: number };
-  tackles: { home: number; away: number };
-  saves: { home: number; away: number };
-}

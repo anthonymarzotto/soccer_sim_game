@@ -7,7 +7,6 @@ import {
   FieldZone, 
   TacticalSetup, 
   PlayerFatigue, 
-  MatchStatistics,
   SimulationConfig 
 } from '../models/simulation.types';
 import { FieldService } from './field.service';

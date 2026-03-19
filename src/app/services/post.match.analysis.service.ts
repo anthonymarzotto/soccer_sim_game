@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, Player, MatchEvent } from '../models/types';
+import { Team, Player, MatchEvent, MatchStatistics } from '../models/types';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, PlayingStyle, EventImportance } from '../models/enums';
@@ -54,8 +54,8 @@ export class PostMatchAnalysisService {
     };
   }
 
-  private extractKeyMoments(events: PlayByPlayEvent[]): any[] {
-    const keyMoments: any[] = [];
+  private extractKeyMoments(events: PlayByPlayEvent[]): MatchEvent[] {
+    const keyMoments: MatchEvent[] = [];
 
     events.forEach(event => {
       if (event.type === EventType.GOAL) {
@@ -393,7 +393,7 @@ export class PostMatchAnalysisService {
 export interface MatchReport {
   matchId: string;
   finalScore: string;
-  matchStats: any;
+  matchStats: MatchStatistics;
   keyMoments: MatchEvent[];
   tacticalAnalysis: TacticalAnalysis;
   playerPerformances: PlayerAnalysis;
