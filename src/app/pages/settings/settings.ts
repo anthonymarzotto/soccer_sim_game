@@ -31,7 +31,7 @@ export class SettingsComponent {
     return this.gameService.getTeam(teamId)?.name || 'Team';
   });
 
-  setBadgeStyle(style: BadgeStyle): void {
-    this.settingsService.setBadgeStyle(style);
+  setBadgeStyle(style: string): void {
+    this.settingsService.setBadgeStyle(style as BadgeStyle);
   }
 }

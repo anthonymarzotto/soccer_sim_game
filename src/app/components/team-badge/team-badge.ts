@@ -113,11 +113,7 @@ export class TeamBadgeComponent {
     const name = this.teamName();
     if (!name) return 'text-zinc-400';
     
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      hash = hash & hash;
-    }
+    const hash = this.getNameHash(name);
     
     const textColors = [
       'text-red-400',
@@ -150,11 +146,7 @@ export class TeamBadgeComponent {
     const name = this.teamName();
     if (!name) return 'border-zinc-500';
     
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      hash = hash & hash;
-    }
+    const hash = this.getNameHash(name);
     
     const borderColors = [
       'border-red-500',
@@ -193,11 +185,7 @@ export class TeamBadgeComponent {
     const name = this.teamName();
     if (!name) return {};
     
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      hash = hash & hash;
-    }
+    const hash = this.getNameHash(name);
     
     const gradients = [
       { from: '#dc2626', to: '#991b1b' }, // red
