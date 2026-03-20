@@ -5,6 +5,7 @@ import { StandingsComponent } from './pages/standings/standings';
 import { TeamDetailsComponent } from './pages/team-details/team-details';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
 import { ScheduleComponent } from './pages/schedule/schedule';
+import { SettingsComponent } from './pages/settings/settings';
 import { GameService } from './services/game.service';
 
 const redirectToUserTeam = () => {
@@ -25,5 +26,6 @@ export const routes: Routes = [
   { path: 'team/:id', component: TeamDetailsComponent },
   { path: 'player/:id', component: PlayerProfileComponent },
   { path: 'schedule', component: ScheduleComponent },
+  { path: 'settings', component: SettingsComponent },
   { path: '**', redirectTo: '' }
 ];

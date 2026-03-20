@@ -6,45 +6,59 @@
     </div>
 
     <!-- Navigation Links -->
-    <div class="flex-1 p-4 space-y-2">
-      <a
-        routerLink="/"
-        routerLinkActive="bg-zinc-800 text-white"
-        [routerLinkActiveOptions]="{ exact: true }"
-        class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-      >
-        <span class="material-icons text-xl">home</span>
-        <span>Home</span>
-      </a>
-
-      <a
-        routerLink="/standings"
-        routerLinkActive="bg-zinc-800 text-white"
-        class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-      >
-        <span class="material-icons text-xl">leaderboard</span>
-        <span>Standings</span>
-      </a>
-
-      <a
-        routerLink="/schedule"
-        routerLinkActive="bg-zinc-800 text-white"
-        class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-      >
-        <span class="material-icons text-xl">calendar_today</span>
-        <span>Schedule</span>
-      </a>
-
-      @if (userTeamId()) {
+    <div class="flex-1 flex flex-col p-4">
+      <div class="flex-1 space-y-2">
         <a
-          [routerLink]="['/team', userTeamId()]"
+          routerLink="/"
+          routerLinkActive="bg-zinc-800 text-white"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+        >
+          <span class="material-icons text-xl">home</span>
+          <span>Home</span>
+        </a>
+
+        <a
+          routerLink="/standings"
           routerLinkActive="bg-zinc-800 text-white"
           class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
         >
-          <span class="material-icons text-xl">sports_soccer</span>
-          <span>My Team</span>
+          <span class="material-icons text-xl">leaderboard</span>
+          <span>Standings</span>
         </a>
-      }
+
+        <a
+          routerLink="/schedule"
+          routerLinkActive="bg-zinc-800 text-white"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+        >
+          <span class="material-icons text-xl">calendar_today</span>
+          <span>Schedule</span>
+        </a>
+
+        @if (userTeamId()) {
+          <a
+            [routerLink]="['/team', userTeamId()]"
+            routerLinkActive="bg-zinc-800 text-white"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+          >
+            <span class="material-icons text-xl">sports_soccer</span>
+            <span>My Team</span>
+          </a>
+        }
+      </div>
+
+      <!-- Settings Section -->
+      <div class="border-t border-zinc-800 pt-4 mt-4">
+        <a
+          routerLink="/settings"
+          routerLinkActive="bg-zinc-800 text-white"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+        >
+          <span class="material-icons text-xl">settings</span>
+          <span>Settings</span>
+        </a>
+      </div>
     </div>
   </nav>
 }
