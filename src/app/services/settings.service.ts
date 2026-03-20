@@ -52,7 +52,15 @@ export class SettingsService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        return { ...this.defaultSettings, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        const merged: Settings = { ...this.defaultSettings, ...parsed };
+
+        // Validate badgeStyle against the allowed BADGE_STYLES; fall back to default if invalid
+        if (!BADGE_STYLES.includes(merged.badgeStyle as BadgeStyle)) {
+          merged.badgeStyle = this.defaultSettings.badgeStyle;
+        }
+
+        return merged;
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
