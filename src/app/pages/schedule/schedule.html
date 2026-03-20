@@ -107,42 +107,44 @@
                     </div>
                   }
                 </div>
-                
-                @if (match.matchStats) {
-                  <div class="mt-4 p-3 bg-zinc-900 rounded-lg">
-                    <h5 class="text-sm font-semibold text-zinc-300 mb-2">Match Statistics</h5>
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div class="flex justify-between">
-                          <span class="text-zinc-400">Possession</span>
-                          <span class="font-medium">{{ match.matchStats.possession.home }}% - {{ match.matchStats.possession.away }}%</span>
-                        </div>
-                        <div class="flex justify-between mt-1">
-                          <span class="text-zinc-400">Shots</span>
-                          <span class="font-medium">{{ match.matchStats.shots.home }} - {{ match.matchStats.shots.away }}</span>
-                        </div>
-                        <div class="flex justify-between mt-1">
-                          <span class="text-zinc-400">Shots on Target</span>
-                          <span class="font-medium">{{ match.matchStats.shotsOnTarget.home }} - {{ match.matchStats.shotsOnTarget.away }}</span>
-                        </div>
+              </div>
+            }
+            
+            @if (match.played && match.matchStats) {
+              <div class="mt-4 pt-4 border-t border-zinc-800">
+                <div class="p-3 bg-zinc-900 rounded-lg">
+                  <h5 class="text-sm font-semibold text-zinc-300 mb-2">Match Statistics</h5>
+                  <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div class="flex justify-between">
+                        <span class="text-zinc-400">Possession</span>
+                        <span class="font-medium">{{ match.matchStats.possession.home }}% - {{ match.matchStats.possession.away }}%</span>
                       </div>
-                      <div>
-                        <div class="flex justify-between">
-                          <span class="text-zinc-400">Corners</span>
-                          <span class="font-medium">{{ match.matchStats.corners.home }} - {{ match.matchStats.corners.away }}</span>
-                        </div>
-                        <div class="flex justify-between mt-1">
-                          <span class="text-zinc-400">Fouls</span>
-                          <span class="font-medium">{{ match.matchStats.fouls.home }} - {{ match.matchStats.fouls.away }}</span>
-                        </div>
-                        <div class="flex justify-between mt-1">
-                          <span class="text-zinc-400">Cards</span>
-                          <span class="font-medium">{{ match.matchStats.cards.home.yellow + match.matchStats.cards.home.red }} - {{ match.matchStats.cards.away.yellow + match.matchStats.cards.away.red }}</span>
-                        </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-zinc-400">Shots</span>
+                        <span class="font-medium">{{ match.matchStats.shots.home }} - {{ match.matchStats.shots.away }}</span>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-zinc-400">Shots on Target</span>
+                        <span class="font-medium">{{ match.matchStats.shotsOnTarget.home }} - {{ match.matchStats.shotsOnTarget.away }}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="flex justify-between">
+                        <span class="text-zinc-400">Corners</span>
+                        <span class="font-medium">{{ match.matchStats.corners.home }} - {{ match.matchStats.corners.away }}</span>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-zinc-400">Fouls</span>
+                        <span class="font-medium">{{ match.matchStats.fouls.home }} - {{ match.matchStats.fouls.away }}</span>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-zinc-400">Cards</span>
+                        <span class="font-medium">{{ match.matchStats.cards.home.yellow + match.matchStats.cards.home.red }} - {{ match.matchStats.cards.away.yellow + match.matchStats.cards.away.red }}</span>
                       </div>
                     </div>
                   </div>
-                }
+                </div>
               </div>
             }
           </div>
