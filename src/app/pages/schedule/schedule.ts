@@ -1,17 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
 import { MatchEvent as MatchKeyEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
+import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
+
+const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
 
 @Component({
   selector: 'app-schedule',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, TeamBadgeComponent],
   templateUrl: './schedule.html',
 })
 export class ScheduleComponent {
   gameService = inject(GameService);
+  settingsService = inject(SettingsService);
 
   // Expose enum values for template access
   EventImportance = EventImportance;
@@ -113,6 +118,15 @@ export class ScheduleComponent {
     });
     
     return formattedDescription;
+  }
+
+  getPlayerTeamId(playerId: string): string {
+    const player = this.gameService.getPlayer(playerId);
+    return player?.teamId || '';
+  }
+
+  isIconBadgeStyle(): boolean {
+    return ICON_BADGE_STYLE_SET.has(this.settingsService.badgeStyle());
   }
 
 }

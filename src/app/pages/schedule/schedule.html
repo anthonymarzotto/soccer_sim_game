@@ -44,7 +44,10 @@
           <div class="flex flex-col p-4 rounded-xl bg-zinc-950 border border-zinc-800/50">
             <div class="flex items-center justify-between">
               <div class="flex-1 text-right">
-                <a [routerLink]="['/team', match.homeTeamId]" class="font-medium hover:text-emerald-400 transition-colors">
+                <a [routerLink]="['/team', match.homeTeamId]" class="font-medium hover:text-emerald-400 transition-colors inline-flex items-center gap-2">
+                  @if (isIconBadgeStyle()) {
+                    <app-team-badge [teamId]="match.homeTeamId" size="sm"></app-team-badge>
+                  }
                   {{ getTeamName(match.homeTeamId) }} <span class="text-zinc-500 text-xs ml-1">({{ getTeamOverall(match.homeTeamId) }})</span>
                 </a>
               </div>
@@ -62,8 +65,11 @@
               </div>
 
               <div class="flex-1 text-left">
-                <a [routerLink]="['/team', match.awayTeamId]" class="font-medium hover:text-emerald-400 transition-colors">
+                <a [routerLink]="['/team', match.awayTeamId]" class="font-medium hover:text-emerald-400 transition-colors inline-flex items-center gap-2">
                   <span class="text-zinc-500 text-xs mr-1">({{ getTeamOverall(match.awayTeamId) }})</span> {{ getTeamName(match.awayTeamId) }}
+                  @if (isIconBadgeStyle()) {
+                    <app-team-badge [teamId]="match.awayTeamId" size="sm"></app-team-badge>
+                  }
                 </a>
               </div>
             </div>
@@ -82,22 +88,25 @@
                 
                 <div class="space-y-2">
                   @for (event of match.keyEvents; track event.id) {
-                    <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
+                  <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
+                      <div class="text-xs text-zinc-400 font-mono w-8 text-right">{{ event.time }}'</div>
                       <span class="text-lg">{{ event.icon }}</span>
                       <div class="flex-1">
                         <div class="text-sm font-medium text-white">
                           @if (event.playerIds && event.playerIds.length > 0) {
                             @for (player of getPlayerLinks(event.playerIds); track player.playerId) {
-                              <a [routerLink]="['/player', player.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
-                                {{ player.name }}
-                              </a>
+                              <span class="inline-flex items-center gap-1">
+                                <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm"></app-team-badge>
+                                <a [routerLink]="['/player', player.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
+                                  {{ player.name }}
+                                </a>
+                              </span>
                               @if (!$last) {, }
                             }
                           } @else {
                             {{ event.description }}
                           }
                         </div>
-                        <div class="text-xs text-zinc-400">{{ event.time }}'</div>
                       </div>
                       @if (event.importance === EventImportance.HIGH) {
                         <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">Important</span>
