@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { SettingsService, ICON_BADGE_STYLES } from '../../services/settings.service';
+import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
 import { MatchEvent as MatchKeyEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
+
+const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
 
 @Component({
   selector: 'app-schedule',
@@ -124,8 +126,7 @@ export class ScheduleComponent {
   }
 
   isIconBadgeStyle(): boolean {
-    const style = this.settingsService.badgeStyle();
-    return (ICON_BADGE_STYLES as readonly string[]).includes(style);
+    return ICON_BADGE_STYLE_SET.has(this.settingsService.badgeStyle());
   }
 
 }
