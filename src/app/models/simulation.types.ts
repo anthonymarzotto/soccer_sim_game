@@ -37,7 +37,7 @@ export interface PlayByPlayEvent {
   location: Coordinates;
   time: number; // minutes
   success: boolean;
-  additionalData?: any;
+  additionalData?: Record<string, unknown>;
 }
 
 export interface MatchState {

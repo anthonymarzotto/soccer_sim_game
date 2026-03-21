@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Match, Team, Player, Position } from '../models/types';
 import { 
   MatchState, 
@@ -13,17 +13,18 @@ import { FieldService } from './field.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase, Role } from '../models/enums';
 
+interface MatchAction {
+  type: EventType;
+  player: Player;
+  goalkeeper?: Player;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class MatchSimulationService {
-  private fieldService: FieldService;
-  private commentaryService: CommentaryService;
-
-  constructor() {
-    this.fieldService = new FieldService();
-    this.commentaryService = new CommentaryService();
-  }
+  private fieldService = inject(FieldService);
+  private commentaryService = inject(CommentaryService);
 
   private readonly DEFAULT_CONFIG: SimulationConfig = {
     enablePlayByPlay: true,
@@ -159,7 +160,7 @@ export class MatchSimulationService {
     homeTeam: Team,
     awayTeam: Team,
     minute: number
-  ): any {
+  ): MatchAction {
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
@@ -216,7 +217,7 @@ export class MatchSimulationService {
 
   private handlePass(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -263,7 +264,7 @@ export class MatchSimulationService {
 
   private handleShot(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -297,7 +298,7 @@ export class MatchSimulationService {
       } else {
         state.awayShotsOnTarget++;
       }
-      this.handleGoal(state, { player: shooter, goalkeeper: goalkeeper }, homeTeam, awayTeam, minute, config);
+      this.handleGoal(state, { type: EventType.GOAL, player: shooter, goalkeeper: goalkeeper }, homeTeam, awayTeam, minute, config);
     } else {
       // Shot on/off target
       const onTarget = shotSuccess.onTarget;
@@ -313,7 +314,7 @@ export class MatchSimulationService {
       
       const eventType = onTarget ? EventType.SAVE : EventType.MISS;
       
-      this.createEvent(state, eventType, [shooter.id, goalkeeper?.id].filter(Boolean), state.ballPossession.location, minute, onTarget, config);
+      this.createEvent(state, eventType, [shooter.id, ...(goalkeeper?.id ? [goalkeeper.id] : [])], state.ballPossession.location, minute, onTarget, config);
       
       if (!onTarget) {
         // Corner or goal kick
@@ -326,7 +327,7 @@ export class MatchSimulationService {
 
   private handleGoal(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 
@@ -352,7 +353,7 @@ export class MatchSimulationService {
 
   private handleTackle(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -379,14 +380,14 @@ export class MatchSimulationService {
       // Failed tackle - possible foul
       const foulChance = 0.3;
       if (Math.random() < foulChance) {
-        this.handleFoul(state, { player: tackler }, homeTeam, awayTeam, minute, config);
+        this.handleFoul(state, { type: EventType.FOUL, player: tackler }, homeTeam, awayTeam, minute, config);
       }
     }
   }
 
   private handleCorner(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -408,7 +409,7 @@ export class MatchSimulationService {
       const headerSuccess = Math.random() * 100 < headerPlayer.skills.heading;
       
       if (headerSuccess) {
-        this.handleGoal(state, { player: headerPlayer }, homeTeam, awayTeam, minute, config);
+        this.handleGoal(state, { type: EventType.GOAL, player: headerPlayer }, homeTeam, awayTeam, minute, config);
       } else {
         this.createEvent(state, EventType.MISS, [headerPlayer.id], { x: 50, y: 95 }, minute, false, config);
       }
@@ -424,7 +425,7 @@ export class MatchSimulationService {
 
   private handleFoul(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 

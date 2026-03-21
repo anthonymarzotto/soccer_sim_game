@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
-import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, Player, MatchEvent, MatchStatistics } from '../models/types';
+import { Injectable, inject } from '@angular/core';
+import { MatchState, PlayByPlayEvent, Coordinates } from '../models/simulation.types';
+import { Team, Player, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis } from '../models/types';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, PlayingStyle, EventImportance } from '../models/enums';
@@ -9,8 +9,8 @@ import { EventType, PlayingStyle, EventImportance } from '../models/enums';
   providedIn: 'root'
 })
 export class PostMatchAnalysisService {
-  private statisticsService = new StatisticsService();
-  private commentaryService = new CommentaryService();
+  private statisticsService = inject(StatisticsService);
+  private commentaryService = inject(CommentaryService);
 
   generateMatchReport(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchReport {
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
@@ -411,41 +411,6 @@ export interface SeasonReport {
   weaknesses: string[];
   improvementAreas: string[];
   recommendations: string[];
-}
-
-export interface TacticalAnalysis {
-  homeTeam: {
-    possession: number;
-    shots: number;
-    corners: number;
-    fouls: number;
-    style: string;
-    effectiveness: number;
-  };
-  awayTeam: {
-    possession: number;
-    shots: number;
-    corners: number;
-    fouls: number;
-    style: string;
-    effectiveness: number;
-  };
-  tacticalBattle: string;
-}
-
-export interface PlayerAnalysis {
-  homeTeam: {
-    mvp: PlayerStatistics;
-    topPerformers: PlayerStatistics[];
-    strugglers: PlayerStatistics[];
-    averageRating: number;
-  };
-  awayTeam: {
-    mvp: PlayerStatistics;
-    topPerformers: PlayerStatistics[];
-    strugglers: PlayerStatistics[];
-    averageRating: number;
-  };
 }
 
 export interface RecentForm {

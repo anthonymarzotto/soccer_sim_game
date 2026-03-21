@@ -1,11 +1,11 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { League, Match, Team, Player, Role } from '../models/types';
+import { League, Match, Team, Player, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationService } from './match.simulation.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
-import { SimulationConfig } from '../models/simulation.types';
+import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
 @Injectable({
@@ -98,13 +98,6 @@ export class GameService {
     this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
   }
 
-  private updateLast5(team: Team, result: MatchResult) {
-    team.stats.last5.unshift(result);
-    if (team.stats.last5.length > 5) {
-      team.stats.last5.pop();
-    }
-  }
-
   setUserTeam(teamId: string) {
     const l = this.leagueState();
     if (l) {
@@ -194,7 +187,7 @@ export class GameService {
     };
   }
 
-  private updateLeagueWithMatchResult(match: Match, matchState: any, homeTeam: Team, awayTeam: Team, keyEvents: any[], matchStats: any, matchReport: any) {
+  private updateLeagueWithMatchResult(match: Match, matchState: MatchState, homeTeam: Team, awayTeam: Team, keyEvents: MatchEvent[], matchStats: MatchStatistics, matchReport: MatchReport) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -259,7 +252,7 @@ export class GameService {
     });
   }
 
-  private updatePlayerCareerStats(events: any[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {
+  private updatePlayerCareerStats(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -277,34 +270,31 @@ export class GameService {
 
         // Update career stats based on event type
         switch (event.type) {
-          case 'GOAL':
+          case EventType.GOAL:
             player.careerStats.goals++;
             break;
-          case 'ASSIST':
-            player.careerStats.assists++;
-            break;
-          case 'SHOT':
+          case EventType.SHOT:
             player.careerStats.shots++;
             if (event.success) {
               player.careerStats.shotsOnTarget++;
             }
             break;
-          case 'TACKLE':
+          case EventType.TACKLE:
             player.careerStats.tackles++;
             break;
-          case 'INTERCEPTION':
+          case EventType.INTERCEPTION:
             player.careerStats.interceptions++;
             break;
-          case 'PASS':
+          case EventType.PASS:
             player.careerStats.passes++;
             break;
-          case 'SAVE':
+          case EventType.SAVE:
             player.careerStats.saves++;
             break;
-          case 'YELLOW_CARD':
+          case EventType.YELLOW_CARD:
             player.careerStats.yellowCards++;
             break;
-          case 'RED_CARD':
+          case EventType.RED_CARD:
             player.careerStats.redCards++;
             break;
         }
@@ -338,8 +328,8 @@ export class GameService {
     }
   }
 
-  private extractKeyEvents(events: any[]): any[] {
-    const keyEvents: any[] = [];
+  private extractKeyEvents(events: PlayByPlayEvent[]): MatchEvent[] {
+    const keyEvents: MatchEvent[] = [];
 
     events.forEach(event => {
       let importance: EventImportance = EventImportance.LOW;
@@ -429,14 +419,14 @@ export class GameService {
     return newLast5;
   }
 
-  private generateMatchCommentary(matchState: any, homeTeam: Team, awayTeam: Team, style: CommentaryStyle | undefined): string[] {
+  private generateMatchCommentary(matchState: MatchState, homeTeam: Team, awayTeam: Team, style: CommentaryStyle | undefined): string[] {
     const commentary: string[] = [];
     
     // Starting XI
     commentary.push(...this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam));
     
     // Key events
-    matchState.events.forEach((event: any) => {
+    matchState.events.forEach((event: PlayByPlayEvent) => {
       const eventCommentary = this.commentaryService.generateEventCommentary(event, homeTeam, awayTeam, style || CommentaryStyle.DETAILED);
       commentary.push(`${event.time}': ${eventCommentary}`);
     });
