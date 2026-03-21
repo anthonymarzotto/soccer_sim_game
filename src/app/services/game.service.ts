@@ -129,6 +129,30 @@ export class GameService {
     this.leagueState.set({ ...l, teams: updatedTeams });
   }
 
+  swapPlayerRoles(playerId1: string, playerId2: string) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    const updatedTeams = l.teams.map(team => {
+      const player1Index = team.players.findIndex(p => p.id === playerId1);
+      const player2Index = team.players.findIndex(p => p.id === playerId2);
+      
+      if (player1Index !== -1 && player2Index !== -1) {
+        const updatedPlayers = [...team.players];
+        const player1Role = updatedPlayers[player1Index].role;
+        const player2Role = updatedPlayers[player2Index].role;
+        
+        updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: player2Role };
+        updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: player1Role };
+        
+        return { ...team, players: updatedPlayers };
+      }
+      return team;
+    });
+
+    this.leagueState.set({ ...l, teams: updatedTeams });
+  }
+
   private dressBestPlayers(teams: Team[]): Team[] {
     const userTeamId = this.leagueState()?.userTeamId;
     

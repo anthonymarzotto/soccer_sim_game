@@ -82,7 +82,20 @@
               <tbody class="divide-y divide-zinc-800">
                 <!-- Starting XI -->
                 @for (player of starters(); track player.id; let i = $index; let last = $last) {
-                  <tr class="hover:bg-zinc-800/50 transition-colors" [class.border-t-[2px]]="i === 0" [class.border-t-emerald-500]="i === 0">
+                  <tr 
+                    class="hover:bg-zinc-800/50 transition-colors" 
+                    [class.border-t-[2px]]="i === 0" 
+                    [class.border-t-emerald-500]="i === 0"
+                    [class.dragging]="isDragging(player.id)"
+                    [class.drag-over]="isDragOver(player.id)"
+                    [class.cursor-grab]="isUserTeam()"
+                    [class.cursor-grabbing]="isDragging(player.id)"
+                    [attr.draggable]="isUserTeam()"
+                    (dragstart)="onDragStart($event, player.id)"
+                    (dragover)="onDragOver($event, player.id)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, player.id)"
+                    (dragend)="onDragEnd()">
                     @if (i === 0) {
                       <td [attr.rowspan]="starters().length" class="px-2 py-4 border-l-[5px] border-emerald-500 align-middle relative">
                         <div class="flex flex-col items-center justify-center h-full">
@@ -124,7 +137,20 @@
                 }
                 <!-- Bench -->
                 @for (player of bench(); track player.id; let i = $index) {
-                  <tr class="hover:bg-zinc-800/50 transition-colors" [class.border-t-[2px]]="i === 0" [class.border-t-yellow-500]="i === 0">
+                  <tr 
+                    class="hover:bg-zinc-800/50 transition-colors" 
+                    [class.border-t-[2px]]="i === 0" 
+                    [class.border-t-yellow-500]="i === 0"
+                    [class.dragging]="isDragging(player.id)"
+                    [class.drag-over]="isDragOver(player.id)"
+                    [class.cursor-grab]="isUserTeam()"
+                    [class.cursor-grabbing]="isDragging(player.id)"
+                    [attr.draggable]="isUserTeam()"
+                    (dragstart)="onDragStart($event, player.id)"
+                    (dragover)="onDragOver($event, player.id)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, player.id)"
+                    (dragend)="onDragEnd()">
                     @if (i === 0) {
                       <td [attr.rowspan]="bench().length" class="px-2 py-4 border-l-[5px] border-yellow-500 align-middle relative">
                         <div class="flex flex-col items-center justify-center h-full">
@@ -166,7 +192,20 @@
                 }
                 <!-- Reserves -->
                 @for (player of reserves(); track player.id; let i = $index) {
-                  <tr class="hover:bg-zinc-800/50 transition-colors opacity-75" [class.border-t-[2px]]="i === 0" [class.border-t-zinc-600]="i === 0">
+                  <tr 
+                    class="hover:bg-zinc-800/50 transition-colors opacity-75" 
+                    [class.border-t-[2px]]="i === 0" 
+                    [class.border-t-zinc-600]="i === 0"
+                    [class.dragging]="isDragging(player.id)"
+                    [class.drag-over]="isDragOver(player.id)"
+                    [class.cursor-grab]="isUserTeam()"
+                    [class.cursor-grabbing]="isDragging(player.id)"
+                    [attr.draggable]="isUserTeam()"
+                    (dragstart)="onDragStart($event, player.id)"
+                    (dragover)="onDragOver($event, player.id)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, player.id)"
+                    (dragend)="onDragEnd()">
                     @if (i === 0) {
                       <td [attr.rowspan]="reserves().length" class="px-2 py-4 border-l-[5px] border-zinc-600 align-middle relative">
                         <div class="flex flex-col items-center justify-center h-full">

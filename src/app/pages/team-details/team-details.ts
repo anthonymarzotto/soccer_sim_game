@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { Role, Position } from '../../models/types';
@@ -19,6 +19,10 @@ export class TeamDetailsComponent {
   MatchResult = MatchResult;
 
   availableRoles = [Role.GOALKEEPER, Role.DEFENSE, Role.MIDFIELD, Role.ATTACK, Role.BENCH, Role.NOT_DRESSED];
+
+  // Drag and drop state
+  draggedPlayerId = signal<string | null>(null);
+  dragOverPlayerId = signal<string | null>(null);
 
   private teamId = computed(() => this.route.snapshot.paramMap.get('id'));
 
@@ -73,5 +77,50 @@ export class TeamDetailsComponent {
   changeRole(playerId: string, event: Event) {
     const select = event.target as HTMLSelectElement;
     this.gameService.updatePlayerRole(playerId, select.value as import('../../models/types').Role);
+  }
+
+  onDragStart(event: DragEvent, playerId: string) {
+    this.draggedPlayerId.set(playerId);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', playerId);
+    }
+  }
+
+  onDragOver(event: DragEvent, playerId: string) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this.dragOverPlayerId.set(playerId);
+  }
+
+  onDragLeave(event: DragEvent) {
+    this.dragOverPlayerId.set(null);
+  }
+
+  onDrop(event: DragEvent, targetPlayerId: string) {
+    event.preventDefault();
+    const draggedId = this.draggedPlayerId();
+    
+    if (draggedId && draggedId !== targetPlayerId) {
+      this.gameService.swapPlayerRoles(draggedId, targetPlayerId);
+    }
+    
+    this.draggedPlayerId.set(null);
+    this.dragOverPlayerId.set(null);
+  }
+
+  onDragEnd() {
+    this.draggedPlayerId.set(null);
+    this.dragOverPlayerId.set(null);
+  }
+
+  isDragging(playerId: string): boolean {
+    return this.draggedPlayerId() === playerId;
+  }
+
+  isDragOver(playerId: string): boolean {
+    return this.dragOverPlayerId() === playerId;
   }
 }
