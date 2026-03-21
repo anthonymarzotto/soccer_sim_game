@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Coordinates, FieldZone, PlayerPosition, TeamFormation, TacticalSetup } from '../models/simulation.types';
-import { Team, Player, Position } from '../models/types';
+import { Coordinates, FieldZone, TeamFormation, TacticalSetup } from '../models/simulation.types';
+import { Team, Player } from '../models/types';
 import { PlayingStyle, Mentality, Role } from '../models/enums';
 
 @Injectable({
@@ -161,7 +161,7 @@ export class FieldService {
     // Assign players to positions based on role and overall rating
     const assignedFormation: TeamFormation = {
       name: formation.name,
-      positions: formation.positions.map((pos, index) => {
+      positions: formation.positions.map((pos) => {
         let assignedPlayer: Player | undefined;
         
         // Find the best available player for this role
@@ -226,7 +226,6 @@ export class FieldService {
   }
 
   getOptimalFormation(team: Team): string {
-    const overallAvg = team.players.reduce((sum, p) => sum + p.overall, 0) / team.players.length;
     const attackingPlayers = team.players.filter(p => p.role === Role.ATTACK).length;
     const midfielders = team.players.filter(p => p.role === Role.MIDFIELD).length;
     const defenders = team.players.filter(p => p.role === Role.DEFENSE).length;

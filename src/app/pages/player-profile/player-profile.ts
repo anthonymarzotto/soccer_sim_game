@@ -90,7 +90,7 @@ export class PlayerProfileComponent {
   });
 
   // Chart calculation helpers
-  createChartPoints(data: Array<{label: string, value: number}>, size: number = 120): string {
+  createChartPoints(data: {label: string, value: number}[], size = 120): string {
     if (data.length === 0) return '';
     
     const centerX = size / 2;
@@ -108,7 +108,7 @@ export class PlayerProfileComponent {
     return points.join(' ');
   }
 
-  createAxisPoints(data: Array<{label: string, value: number}>, size: number = 120): string {
+  createAxisPoints(data: {label: string, value: number}[], size = 120): string {
     if (data.length === 0) return '';
     
     const centerX = size / 2;
@@ -126,7 +126,7 @@ export class PlayerProfileComponent {
     return points.join(' ');
   }
 
-  getAxisLabelPosition(index: number, data: Array<{label: string, value: number}>, size: number = 120): { x: number, y: number } {
+  getAxisLabelPosition(index: number, data: {label: string, value: number}[], size = 120): { x: number, y: number } {
     const centerX = size / 2;
     const centerY = size / 2;
     const radius = size / 2 + 15; // Position labels outside the chart

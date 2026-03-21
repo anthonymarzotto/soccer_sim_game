@@ -20,8 +20,9 @@
 
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-zinc-300 mb-2">Badge Style</label>
+          <label for="badgeStyleSelect" class="block text-sm font-medium text-zinc-300 mb-2">Badge Style</label>
           <select 
+            id="badgeStyleSelect"
             #badgeStyleSelect
             [value]="selectedStyle()"
             (change)="setBadgeStyle(badgeStyleSelect.value)"

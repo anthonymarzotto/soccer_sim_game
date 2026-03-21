@@ -114,18 +114,20 @@ export class CommentaryService {
         template = this.getRandomCommentary(commentaryStyle.save);
         return this.formatCommentary(template, playerName, targetName);
       
-      case EventType.GOAL:
+      case EventType.GOAL: {
         template = this.getRandomCommentary(commentaryStyle.goal);
         return this.formatCommentary(template, playerName, targetName);
+      }
       
       case EventType.YELLOW_CARD:
       case EventType.RED_CARD:
         return `${playerName} receives a ${event.type === EventType.YELLOW_CARD ? 'yellow' : 'red'} card!`;
       
-      case EventType.SUBSTITUTION:
+      case EventType.SUBSTITUTION: {
         const subIn = this.findPlayerById(event.playerIds[1], homeTeam, awayTeam);
         const subOut = this.findPlayerById(event.playerIds[0], homeTeam, awayTeam);
         return `${subOut?.name || 'Player'} off, ${subIn?.name || 'Player'} on.`;
+      }
       
       default:
         return event.description;
@@ -233,11 +235,11 @@ export class CommentaryService {
     const goals = events.filter(e => e.type === EventType.GOAL).length;
     
     if (homeScore > awayScore) {
-      return `Full-time! ${homeScore}-${awayScore} to the home side! A well-deserved victory!`;
+      return `Full-time! ${homeScore}-${awayScore} to the home side! ${goals} goals scored. A well-deserved victory!`;
     } else if (awayScore > homeScore) {
-      return `Full-time! ${awayScore}-${homeScore} to the visitors! An away win!`;
+      return `Full-time! ${awayScore}-${homeScore} to the visitors! ${goals} goals scored. An away win!`;
     } else {
-      return `Full-time! ${homeScore}-${awayScore}. A share of the points!`;
+      return `Full-time! ${homeScore}-${awayScore}. ${goals} goals scored. A share of the points!`;
     }
   }
 }

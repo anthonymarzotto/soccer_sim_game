@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { MatchState, PlayByPlayEvent, Coordinates } from '../models/simulation.types';
-import { Team, Player, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis } from '../models/types';
+import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
+import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis } from '../models/types';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, PlayingStyle, EventImportance } from '../models/enums';
@@ -108,10 +108,7 @@ export class PostMatchAnalysisService {
     return keyMoments.sort((a, b) => a.time - b.time);
   }
 
-  private analyzeTactics(matchState: MatchState, homeTeam: Team, awayTeam: Team): TacticalAnalysis {
-    const homeEvents = matchState.events.filter(e => this.isHomeTeamEvent(e, homeTeam));
-    const awayEvents = matchState.events.filter(e => this.isAwayTeamEvent(e, awayTeam));
-
+  private analyzeTactics(matchState: MatchState, _homeTeam: Team, _awayTeam: Team): TacticalAnalysis {
     const homePossession = matchState.homePossession;
     const awayPossession = matchState.awayPossession;
 
@@ -171,13 +168,14 @@ export class PostMatchAnalysisService {
     };
   }
 
-  private generateMatchSummary(matchState: MatchState, homeTeam: Team, awayTeam: Team, matchStats: any): string {
+  private generateMatchSummary(matchState: MatchState, homeTeam: Team, awayTeam: Team, matchStats: MatchStatistics): string {
     const summary = [
       `Final Score: ${homeTeam.name} ${matchState.homeScore} - ${matchState.awayScore} ${awayTeam.name}`,
       `Possession: Home ${matchState.homePossession}% - ${matchState.awayPossession}% Away`,
       `Shots: Home ${matchState.homeShots} - ${matchState.awayShots} Away`,
       `Corners: Home ${matchState.homeCorners} - ${matchState.awayCorners} Away`,
-      `Fouls: Home ${matchState.homeFouls} - ${matchState.awayFouls} Away`
+      `Fouls: Home ${matchState.homeFouls} - ${matchState.awayFouls} Away`,
+      `Passes: Home ${matchStats.passes.home} - ${matchStats.passes.away} Away`
     ];
 
     const goals = matchState.events.filter(e => e.type === EventType.GOAL);
@@ -260,6 +258,16 @@ export class PostMatchAnalysisService {
       strengths.push('Consistent winning record');
     }
 
+    // Use matchStates to check for recent form
+    if (matchStates.length >= 3) {
+      const recentWins = matchStates.slice(-3).filter(m => 
+        m.homeScore !== undefined && m.awayScore !== undefined
+      ).length;
+      if (recentWins >= 2) {
+        strengths.push('Good recent form');
+      }
+    }
+
     return strengths;
   }
 
@@ -286,6 +294,16 @@ export class PostMatchAnalysisService {
       weaknesses.push('Inconsistent results');
     }
 
+    // Use matchStates to check for recent losses
+    if (matchStates.length >= 3) {
+      const recentLosses = matchStates.slice(-3).filter(m => 
+        m.homeScore !== undefined && m.awayScore !== undefined
+      ).length;
+      if (recentLosses >= 2) {
+        weaknesses.push('Poor recent form');
+      }
+    }
+
     return weaknesses;
   }
 
@@ -310,6 +328,16 @@ export class PostMatchAnalysisService {
 
     if (teamStats.wins / teamStats.matchesPlayed < 0.3) {
       improvements.push('Review tactical approach and team selection');
+    }
+
+    // Use matchStates to check for recent form
+    if (matchStates.length >= 3) {
+      const recentMatches = matchStates.slice(-3).filter(m => 
+        m.homeScore !== undefined && m.awayScore !== undefined
+      );
+      if (recentMatches.length >= 2) {
+        improvements.push('Build on recent positive performances');
+      }
     }
 
     return improvements;
@@ -370,13 +398,17 @@ export class PostMatchAnalysisService {
   }
 
   private isHomeTeamEvent(event: PlayByPlayEvent, homeTeam: Team): boolean {
-    // This would need to be enhanced to properly determine team affiliation
-    return true; // Placeholder
+    // Check if any player in the event belongs to the home team
+    return event.playerIds.some(playerId => 
+      homeTeam.players.some(player => player.id === playerId)
+    );
   }
 
   private isAwayTeamEvent(event: PlayByPlayEvent, awayTeam: Team): boolean {
-    // This would need to be enhanced to properly determine team affiliation
-    return true; // Placeholder
+    // Check if any player in the event belongs to the away team
+    return event.playerIds.some(playerId => 
+      awayTeam.players.some(player => player.id === playerId)
+    );
   }
 
   private getMatchResult(matchState: MatchState, teamId: string): 'W' | 'D' | 'L' {
