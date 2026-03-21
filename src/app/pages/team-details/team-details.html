@@ -76,7 +76,6 @@
                   <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
                   <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
                   <th scope="col" class="px-4 py-4 font-medium text-center w-24">Nat</th>
-                  <th scope="col" class="px-4 py-4 font-medium text-right w-32">Role</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-zinc-800">
@@ -97,7 +96,7 @@
                     (drop)="onDrop($event, player.id)"
                     (dragend)="onDragEnd()">
                     @if (i === 0) {
-                      <td [attr.rowspan]="starters().length" class="px-2 py-4 border-l-[5px] border-emerald-500 align-middle relative">
+                      <td [attr.rowspan]="starters().length" class="px-2 py-4 border-l-[5px] border-emerald-500 align-middle relative row-label">
                         <div class="flex flex-col items-center justify-center h-full">
                           <span class="w-2 h-2 rounded-full bg-emerald-500 mb-2"></span>
                           <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Starting XI</span>
@@ -119,20 +118,6 @@
                     <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-right text-zinc-500 text-xs uppercase tracking-wider w-32">
-                      @if (isUserTeam()) {
-                        <select 
-                          [value]="player.role" 
-                          (change)="changeRole(player.id, $event)"
-                          class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
-                          @for (role of availableRoles; track role) {
-                            <option [value]="role" [selected]="player.role === role">{{ role }}</option>
-                          }
-                        </select>
-                      } @else {
-                        {{ player.role }}
-                      }
-                    </td>
                   </tr>
                 }
                 <!-- Bench -->
@@ -152,7 +137,7 @@
                     (drop)="onDrop($event, player.id)"
                     (dragend)="onDragEnd()">
                     @if (i === 0) {
-                      <td [attr.rowspan]="bench().length" class="px-2 py-4 border-l-[5px] border-yellow-500 align-middle relative">
+                      <td [attr.rowspan]="bench().length" class="px-2 py-4 border-l-[5px] border-yellow-500 align-middle relative row-label">
                         <div class="flex flex-col items-center justify-center h-full">
                           <span class="w-2 h-2 rounded-full bg-yellow-500 mb-2"></span>
                           <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Bench</span>
@@ -174,20 +159,6 @@
                     <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-right text-zinc-500 text-xs uppercase tracking-wider w-32">
-                      @if (isUserTeam()) {
-                        <select 
-                          [value]="player.role" 
-                          (change)="changeRole(player.id, $event)"
-                          class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
-                          @for (role of availableRoles; track role) {
-                            <option [value]="role" [selected]="player.role === role">{{ role }}</option>
-                          }
-                        </select>
-                      } @else {
-                        {{ player.role }}
-                      }
-                    </td>
                   </tr>
                 }
                 <!-- Reserves -->
@@ -207,7 +178,7 @@
                     (drop)="onDrop($event, player.id)"
                     (dragend)="onDragEnd()">
                     @if (i === 0) {
-                      <td [attr.rowspan]="reserves().length" class="px-2 py-4 border-l-[5px] border-zinc-600 align-middle relative">
+                      <td [attr.rowspan]="reserves().length" class="px-2 py-4 border-l-[5px] border-zinc-600 align-middle relative row-label">
                         <div class="flex flex-col items-center justify-center h-full">
                           <span class="w-2 h-2 rounded-full bg-zinc-600 mb-2"></span>
                           <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Reserves</span>
@@ -229,20 +200,6 @@
                     <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-right text-zinc-500 text-xs uppercase tracking-wider w-32">
-                      @if (isUserTeam()) {
-                        <select 
-                          [value]="player.role" 
-                          (change)="changeRole(player.id, $event)"
-                          class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
-                          @for (role of availableRoles; track role) {
-                            <option [value]="role" [selected]="player.role === role">{{ role }}</option>
-                          }
-                        </select>
-                      } @else {
-                        {{ player.role }}
-                      }
-                    </td>
                   </tr>
                 }
               </tbody>
