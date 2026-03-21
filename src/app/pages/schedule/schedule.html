@@ -96,7 +96,7 @@
                           @if (event.playerIds && event.playerIds.length > 0) {
                             @for (player of getPlayerLinks(event.playerIds); track player.playerId) {
                               <span class="inline-flex items-center gap-1">
-                                <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm"></app-team-badge>
+                                <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm" [link]="true"></app-team-badge>
                                 <a [routerLink]="['/player', player.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
                                   {{ player.name }}
                                 </a>

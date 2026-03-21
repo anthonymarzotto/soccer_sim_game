@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { NgClass, NgStyle } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 
 @Component({
   selector: 'app-team-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, NgStyle],
+  imports: [NgClass, NgStyle, RouterLink],
   templateUrl: './team-badge.html',
   styles: [`
     :host {
@@ -20,6 +21,7 @@ export class TeamBadgeComponent {
 
   teamId = input.required<string>();
   size = input<'sm' | 'md'>('sm');
+  link = input<boolean>(false);
 
   style = this.settingsService.badgeStyle;
 
@@ -188,33 +190,33 @@ export class TeamBadgeComponent {
     const hash = this.getNameHash(name);
     
     const gradients = [
-      { from: '#dc2626', to: '#991b1b' }, // red
-      { from: '#2563eb', to: '#1e40af' }, // blue
-      { from: '#059669', to: '#047857' }, // emerald
-      { from: '#d97706', to: '#b45309' }, // amber
-      { from: '#9333ea', to: '#7c3aed' }, // purple
-      { from: '#ec4899', to: '#db2777' }, // pink
-      { from: '#0891b2', to: '#0e7490' }, // cyan
-      { from: '#ea580c', to: '#c2410c' }, // orange
-      { from: '#14b8a6', to: '#0d9488' }, // teal
-      { from: '#4f46e5', to: '#4338ca' }, // indigo
-      { from: '#f43f5e', to: '#e11d48' }, // rose
-      { from: '#84cc16', to: '#65a30d' }, // lime
-      { from: '#0ea5e9', to: '#0284c7' }, // sky
-      { from: '#7c3aed', to: '#6d28d9' }, // violet
-      { from: '#d946ef', to: '#c026d3' }, // fuchsia
-      { from: '#22c55e', to: '#16a34a' }, // green
-      { from: '#eab308', to: '#ca8a04' }, // yellow
-      { from: '#64748b', to: '#475569' }, // slate
-      { from: '#71717a', to: '#52525b' }, // zinc
-      { from: '#78716c', to: '#57534e' }  // stone
+      { from: '#ef4444', to: '#7f1d1d' }, // red - more pronounced
+      { from: '#3b82f6', to: '#1e3a8a' }, // blue - more pronounced
+      { from: '#10b981', to: '#064e3b' }, // emerald - more pronounced
+      { from: '#f59e0b', to: '#78350f' }, // amber - more pronounced
+      { from: '#a855f7', to: '#581c87' }, // purple - more pronounced
+      { from: '#f472b6', to: '#831843' }, // pink - more pronounced
+      { from: '#06b6d4', to: '#164e63' }, // cyan - more pronounced
+      { from: '#f97316', to: '#7c2d12' }, // orange - more pronounced
+      { from: '#2dd4bf', to: '#134e4a' }, // teal - more pronounced
+      { from: '#6366f1', to: '#312e81' }, // indigo - more pronounced
+      { from: '#fb7185', to: '#881337' }, // rose - more pronounced
+      { from: '#a3e635', to: '#365314' }, // lime - more pronounced
+      { from: '#38bdf8', to: '#0c4a6e' }, // sky - more pronounced
+      { from: '#8b5cf6', to: '#4c1d95' }, // violet - more pronounced
+      { from: '#e879f9', to: '#701a75' }, // fuchsia - more pronounced
+      { from: '#4ade80', to: '#14532d' }, // green - more pronounced
+      { from: '#facc15', to: '#713f12' }, // yellow - more pronounced
+      { from: '#94a3b8', to: '#1e293b' }, // slate - more pronounced
+      { from: '#a1a1aa', to: '#18181b' }, // zinc - more pronounced
+      { from: '#a8a29e', to: '#292524' }  // stone - more pronounced
     ];
     
     const index = Math.abs(hash) % gradients.length;
     const { from, to } = gradients[index];
     
     return {
-      'background': `linear-gradient(to right, ${from}, ${to})`
+      'background': `linear-gradient(135deg, ${from}, ${to})`
     };
   });
 }
