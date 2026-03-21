@@ -1,20 +1,24 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { SettingsService } from '../../services/settings.service';
 import { Position } from '../../models/enums';
+import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, TeamBadgeComponent],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
+  private settingsService = inject(SettingsService);
 
   // Expose enums for template
   Position = Position;
+  badgeStyle = this.settingsService.badgeStyle;
 
   private playerId = computed(() => this.route.snapshot.paramMap.get('id'));
 

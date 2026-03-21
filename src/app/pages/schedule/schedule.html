@@ -46,7 +46,7 @@
               <div class="flex-1 text-right">
                 <a [routerLink]="['/team', match.homeTeamId]" class="font-medium hover:text-emerald-400 transition-colors inline-flex items-center gap-2">
                   @if (isIconBadgeStyle()) {
-                    <app-team-badge [teamId]="match.homeTeamId" size="sm"></app-team-badge>
+                    <app-team-badge [teamId]="match.homeTeamId" size="sm" [link]="true"></app-team-badge>
                   }
                   {{ getTeamName(match.homeTeamId) }} <span class="text-zinc-500 text-xs ml-1">({{ getTeamOverall(match.homeTeamId) }})</span>
                 </a>
@@ -68,7 +68,7 @@
                 <a [routerLink]="['/team', match.awayTeamId]" class="font-medium hover:text-emerald-400 transition-colors inline-flex items-center gap-2">
                   <span class="text-zinc-500 text-xs mr-1">({{ getTeamOverall(match.awayTeamId) }})</span> {{ getTeamName(match.awayTeamId) }}
                   @if (isIconBadgeStyle()) {
-                    <app-team-badge [teamId]="match.awayTeamId" size="sm"></app-team-badge>
+                    <app-team-badge [teamId]="match.awayTeamId" size="sm" [link]="true"></app-team-badge>
                   }
                 </a>
               </div>
@@ -96,7 +96,7 @@
                           @if (event.playerIds && event.playerIds.length > 0) {
                             @for (player of getPlayerLinks(event.playerIds); track player.playerId) {
                               <span class="inline-flex items-center gap-1">
-                                <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm"></app-team-badge>
+                                <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm" [link]="true"></app-team-badge>
                                 <a [routerLink]="['/player', player.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
                                   {{ player.name }}
                                 </a>
