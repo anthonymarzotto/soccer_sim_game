@@ -65,175 +65,145 @@
 
         <div class="lg:col-span-3 space-y-8">
           
-          <!-- Starters -->
-          <div class="space-y-4">
-            <h2 class="text-xl font-semibold text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Starting XI
-            </h2>
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-              <table class="w-full text-sm text-left">
-                <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
-                  <tr>
-                    <th scope="col" class="px-6 py-4 font-medium">Pos</th>
-                    <th scope="col" class="px-6 py-4 font-medium">Player</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center">OVR</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center">Age</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center">Nat</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-right">Role</th>
+          <!-- Unified Roster Table -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+                <tr>
+                  <th scope="col" class="px-2 py-4 font-medium w-12"></th>
+                  <th scope="col" class="px-6 py-4 font-medium w-16">Pos</th>
+                  <th scope="col" class="px-6 py-4 font-medium">Player</th>
+                  <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
+                  <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
+                  <th scope="col" class="px-4 py-4 font-medium text-center w-24">Nat</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-800">
+                <!-- Starting XI -->
+                @for (player of starters(); track player.id; let i = $index) {
+                  <tr 
+                    class="hover:bg-zinc-800/50 transition-colors" 
+                    [class.border-t-[2px]]="i === 0" 
+                    [class.border-t-emerald-500]="i === 0"
+                    [class.dragging]="isDragging(player.id)"
+                    [class.drag-over]="isDragOver(player.id)"
+                    [class.cursor-grab]="isUserTeam()"
+                    [class.cursor-grabbing]="isDragging(player.id)"
+                    [attr.draggable]="isUserTeam()"
+                    (dragstart)="onDragStart($event, player.id)"
+                    (dragover)="onDragOver($event, player.id)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, player.id)"
+                    (dragend)="onDragEnd()">
+                    @if (i === 0) {
+                      <td [attr.rowspan]="starters().length" class="px-2 py-4 border-l-[5px] border-emerald-500 align-middle relative row-label">
+                        <div class="flex flex-col items-center justify-center h-full">
+                          <span class="w-2 h-2 rounded-full bg-emerald-500 mb-2"></span>
+                          <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Starting XI</span>
+                        </div>
+                      </td>
+                    }
+                    <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                        [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                        [class.text-blue-400]="player.position === Position.DEFENDER"
+                        [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                        [class.text-red-400]="player.position === Position.FORWARD">
+                      {{ player.position }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                      <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
+                        {{ player.name }}
+                      </a>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                   </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-800">
-                  @for (player of starters(); track player.id) {
-                    <tr class="hover:bg-zinc-800/50 transition-colors">
-                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold"
-                          [class.text-yellow-400]="player.position === Position.GOALKEEPER"
-                          [class.text-blue-400]="player.position === Position.DEFENDER"
-                          [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                          [class.text-red-400]="player.position === Position.FORWARD">
-                        {{ player.position }}
+                }
+                <!-- Bench -->
+                @for (player of bench(); track player.id; let i = $index) {
+                  <tr 
+                    class="hover:bg-zinc-800/50 transition-colors" 
+                    [class.border-t-[2px]]="i === 0" 
+                    [class.border-t-yellow-500]="i === 0"
+                    [class.dragging]="isDragging(player.id)"
+                    [class.drag-over]="isDragOver(player.id)"
+                    [class.cursor-grab]="isUserTeam()"
+                    [class.cursor-grabbing]="isDragging(player.id)"
+                    [attr.draggable]="isUserTeam()"
+                    (dragstart)="onDragStart($event, player.id)"
+                    (dragover)="onDragOver($event, player.id)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, player.id)"
+                    (dragend)="onDragEnd()">
+                    @if (i === 0) {
+                      <td [attr.rowspan]="bench().length" class="px-2 py-4 border-l-[5px] border-yellow-500 align-middle relative row-label">
+                        <div class="flex flex-col items-center justify-center h-full">
+                          <span class="w-2 h-2 rounded-full bg-yellow-500 mb-2"></span>
+                          <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Bench</span>
+                        </div>
                       </td>
-                      <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                        <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
-                          {{ player.name }}
-                        </a>
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ player.overall }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ player.personal.age }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ player.personal.nationality }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-right text-zinc-500 text-xs uppercase tracking-wider">
-                        @if (isUserTeam()) {
-                          <select 
-                            [value]="player.role" 
-                            (change)="changeRole(player.id, $event)"
-                            class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
-                            @for (role of availableRoles; track role) {
-                              <option [value]="role" [selected]="player.role === role">{{ role }}</option>
-                            }
-                          </select>
-                        } @else {
-                          {{ player.role }}
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Bench -->
-          <div class="space-y-4">
-            <h2 class="text-xl font-semibold text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-              Bench
-            </h2>
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-              <table class="w-full text-sm text-left">
-                <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
-                  <tr>
-                    <th scope="col" class="px-6 py-4 font-medium w-16">Pos</th>
-                    <th scope="col" class="px-6 py-4 font-medium">Player</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-24">Nat</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-right w-32">Role</th>
+                    }
+                    <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                        [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                        [class.text-blue-400]="player.position === Position.DEFENDER"
+                        [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                        [class.text-red-400]="player.position === Position.FORWARD">
+                      {{ player.position }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                      <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
+                        {{ player.name }}
+                      </a>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                   </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-800">
-                  @for (player of bench(); track player.id) {
-                    <tr class="hover:bg-zinc-800/50 transition-colors">
-                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                          [class.text-yellow-400]="player.position === Position.GOALKEEPER"
-                          [class.text-blue-400]="player.position === Position.DEFENDER"
-                          [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                          [class.text-red-400]="player.position === Position.FORWARD">
-                        {{ player.position }}
+                }
+                <!-- Reserves -->
+                @for (player of reserves(); track player.id; let i = $index) {
+                  <tr 
+                    class="hover:bg-zinc-800/50 transition-colors opacity-75" 
+                    [class.border-t-[2px]]="i === 0" 
+                    [class.border-t-zinc-600]="i === 0"
+                    [class.dragging]="isDragging(player.id)"
+                    [class.drag-over]="isDragOver(player.id)"
+                    [class.cursor-grab]="isUserTeam()"
+                    [class.cursor-grabbing]="isDragging(player.id)"
+                    [attr.draggable]="isUserTeam()"
+                    (dragstart)="onDragStart($event, player.id)"
+                    (dragover)="onDragOver($event, player.id)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, player.id)"
+                    (dragend)="onDragEnd()">
+                    @if (i === 0) {
+                      <td [attr.rowspan]="reserves().length" class="px-2 py-4 border-l-[5px] border-zinc-600 align-middle relative row-label">
+                        <div class="flex flex-col items-center justify-center h-full">
+                          <span class="w-2 h-2 rounded-full bg-zinc-600 mb-2"></span>
+                          <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Reserves</span>
+                        </div>
                       </td>
-                      <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                        <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
-                          {{ player.name }}
-                        </a>
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-right text-zinc-500 text-xs uppercase tracking-wider w-32">
-                        @if (isUserTeam()) {
-                          <select 
-                            [value]="player.role" 
-                            (change)="changeRole(player.id, $event)"
-                            class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
-                            @for (role of availableRoles; track role) {
-                              <option [value]="role" [selected]="player.role === role">{{ role }}</option>
-                            }
-                          </select>
-                        } @else {
-                          {{ player.role }}
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Reserves -->
-          <div class="space-y-4">
-            <h2 class="text-xl font-semibold text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-zinc-600"></span>
-              Reserves
-            </h2>
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-              <table class="w-full text-sm text-left">
-                <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
-                  <tr>
-                    <th scope="col" class="px-6 py-4 font-medium w-16">Pos</th>
-                    <th scope="col" class="px-6 py-4 font-medium">Player</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-24">Nat</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-right w-32">Role</th>
+                    }
+                    <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                        [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                        [class.text-blue-400]="player.position === Position.DEFENDER"
+                        [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                        [class.text-red-400]="player.position === Position.FORWARD">
+                      {{ player.position }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                      <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
+                        {{ player.name }}
+                      </a>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                   </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-800">
-                  @for (player of reserves(); track player.id) {
-                    <tr class="hover:bg-zinc-800/50 transition-colors opacity-75">
-                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                          [class.text-yellow-400]="player.position === Position.GOALKEEPER"
-                          [class.text-blue-400]="player.position === Position.DEFENDER"
-                          [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                          [class.text-red-400]="player.position === Position.FORWARD">
-                        {{ player.position }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                        <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
-                          {{ player.name }}
-                        </a>
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-right text-zinc-500 text-xs uppercase tracking-wider w-32">
-                        @if (isUserTeam()) {
-                          <select 
-                            [value]="player.role" 
-                            (change)="changeRole(player.id, $event)"
-                            class="bg-zinc-800 text-white border border-zinc-700 rounded px-2 py-1 text-xs focus:ring-emerald-500 focus:border-emerald-500">
-                            @for (role of availableRoles; track role) {
-                              <option [value]="role" [selected]="player.role === role">{{ role }}</option>
-                            }
-                          </select>
-                        } @else {
-                          {{ player.role }}
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
+                }
+              </tbody>
+            </table>
           </div>
 
         </div>

@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { Role, Position } from '../../models/types';
+import { Role } from '../../models/types';
 import { MatchResult, Position as PositionEnum } from '../../models/enums';
 
 @Component({
@@ -18,7 +18,9 @@ export class TeamDetailsComponent {
   Position = PositionEnum;
   MatchResult = MatchResult;
 
-  availableRoles = [Role.GOALKEEPER, Role.DEFENSE, Role.MIDFIELD, Role.ATTACK, Role.BENCH, Role.NOT_DRESSED];
+  // Drag and drop state
+  draggedPlayerId = signal<string | null>(null);
+  dragOverPlayerId = signal<string | null>(null);
 
   private teamId = computed(() => this.route.snapshot.paramMap.get('id'));
 
@@ -62,16 +64,56 @@ export class TeamDetailsComponent {
 
   private positionWeight(pos: string): number {
     switch(pos) {
-      case Position.GOALKEEPER: return 1;
-      case Position.DEFENDER: return 2;
-      case Position.MIDFIELDER: return 3;
-      case Position.FORWARD: return 4;
+      case this.Position.GOALKEEPER: return 1;
+      case this.Position.DEFENDER: return 2;
+      case this.Position.MIDFIELDER: return 3;
+      case this.Position.FORWARD: return 4;
       default: return 5;
     }
   }
 
-  changeRole(playerId: string, event: Event) {
-    const select = event.target as HTMLSelectElement;
-    this.gameService.updatePlayerRole(playerId, select.value as import('../../models/types').Role);
+  onDragStart(event: DragEvent, playerId: string) {
+    this.draggedPlayerId.set(playerId);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', playerId);
+    }
+  }
+
+  onDragOver(event: DragEvent, playerId: string) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this.dragOverPlayerId.set(playerId);
+  }
+
+  onDragLeave(_event: DragEvent) {
+    this.dragOverPlayerId.set(null);
+  }
+
+  onDrop(event: DragEvent, targetPlayerId: string) {
+    event.preventDefault();
+    const draggedId = this.draggedPlayerId();
+    
+    if (draggedId && draggedId !== targetPlayerId) {
+      this.gameService.swapPlayerRoles(draggedId, targetPlayerId);
+    }
+    
+    this.draggedPlayerId.set(null);
+    this.dragOverPlayerId.set(null);
+  }
+
+  onDragEnd() {
+    this.draggedPlayerId.set(null);
+    this.dragOverPlayerId.set(null);
+  }
+
+  isDragging(playerId: string): boolean {
+    return this.draggedPlayerId() === playerId;
+  }
+
+  isDragOver(playerId: string): boolean {
+    return this.dragOverPlayerId() === playerId;
   }
 }

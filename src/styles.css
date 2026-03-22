@@ -1,3 +1,28 @@
 /* You can add global styles to this file, and also import other style files */
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 @import "tailwindcss";
+
+/* Drag and drop styles */
+.dragging {
+  opacity: 0.5;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.drag-over td:not(.row-label) {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border: 2px solid #3b82f6 !important;
+}
+
+.drag-over .row-label {
+  background-color: transparent !important;
+  border-left-width: 5px !important;
+  border-left-style: solid !important;
+}
+
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing;
+}
