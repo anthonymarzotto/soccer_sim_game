@@ -80,7 +80,7 @@
               </thead>
               <tbody class="divide-y divide-zinc-800">
                 <!-- Starting XI -->
-                @for (player of starters(); track player.id; let i = $index; let last = $last) {
+                @for (player of starters(); track player.id; let i = $index) {
                   <tr 
                     class="hover:bg-zinc-800/50 transition-colors" 
                     [class.border-t-[2px]]="i === 0" 
