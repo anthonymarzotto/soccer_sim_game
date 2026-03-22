@@ -88,7 +88,7 @@ export class TeamDetailsComponent {
     this.dragOverPlayerId.set(playerId);
   }
 
-  onDragLeave(event: DragEvent) {
+  onDragLeave(_event: DragEvent) {
     this.dragOverPlayerId.set(null);
   }
 
