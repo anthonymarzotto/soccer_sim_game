@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Match, Team, Player, Position } from '../models/types';
 import { 
   MatchState, 
@@ -11,19 +11,20 @@ import {
 } from '../models/simulation.types';
 import { FieldService } from './field.service';
 import { CommentaryService } from './commentary.service';
-import { EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase, Role } from '../models/enums';
+import { EventType, CommentaryStyle, PlayingStyle, MatchPhase, Role } from '../models/enums';
+
+interface MatchAction {
+  type: EventType;
+  player: Player;
+  goalkeeper?: Player;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class MatchSimulationService {
-  private fieldService: FieldService;
-  private commentaryService: CommentaryService;
-
-  constructor() {
-    this.fieldService = new FieldService();
-    this.commentaryService = new CommentaryService();
-  }
+  private fieldService = inject(FieldService);
+  private commentaryService = inject(CommentaryService);
 
   private readonly DEFAULT_CONFIG: SimulationConfig = {
     enablePlayByPlay: true,
@@ -34,7 +35,7 @@ export class MatchSimulationService {
   };
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig = this.DEFAULT_CONFIG): MatchState {
-    const initialState = this.initializeMatchState(match, homeTeam, awayTeam);
+    const initialState = this.initializeMatchState(match, homeTeam);
     const tactics = this.calculateTeamTactics(homeTeam, awayTeam);
     const fatigue = this.initializeFatigue(homeTeam, awayTeam);
 
@@ -48,7 +49,7 @@ export class MatchSimulationService {
     return currentState;
   }
 
-  private initializeMatchState(match: Match, homeTeam: Team, awayTeam: Team): MatchState {
+  private initializeMatchState(_match: Match, homeTeam: Team): MatchState {
     const initialPossession: MatchState['ballPossession'] = {
       teamId: homeTeam.id,
       playerWithBall: this.getRandomPlayerId(homeTeam),
@@ -91,7 +92,7 @@ export class MatchSimulationService {
     };
   }
 
-  private initializeFatigue(homeTeam: Team, awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
+  private initializeFatigue(homeTeam: Team, _awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
     const createFatigue = (team: Team): PlayerFatigue[] => {
       return team.players.map(player => ({
         playerId: player.id,
@@ -103,7 +104,7 @@ export class MatchSimulationService {
 
     return {
       home: createFatigue(homeTeam),
-      away: createFatigue(awayTeam)
+      away: createFatigue(_awayTeam)
     };
   }
 
@@ -123,7 +124,7 @@ export class MatchSimulationService {
     this.updateFatigue(fatigue, minute);
 
     // Determine action based on current possession and tactics
-    const action = this.determineAction(state, tactics, fatigue, homeTeam, awayTeam, minute);
+    const action = this.determineAction(state, tactics, fatigue, homeTeam, awayTeam);
     
     switch (action.type) {
       case EventType.PASS:
@@ -157,9 +158,8 @@ export class MatchSimulationService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     homeTeam: Team,
-    awayTeam: Team,
-    minute: number
-  ): any {
+    awayTeam: Team
+  ): MatchAction {
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
@@ -170,37 +170,28 @@ export class MatchSimulationService {
 
     // Calculate action probabilities based on position, tactics, and fatigue
     const zone = this.fieldService.getZoneFromY(state.ballPossession.location.y);
-    const basePassChance = 0.6;
     const baseShotChance = 0.1;
     const baseTackleChance = 0.2;
     const baseFoulChance = 0.05;
 
     // Adjust based on zone
-    let passChance = basePassChance;
     let shotChance = baseShotChance;
     let tackleChance = baseTackleChance;
-    let foulChance = baseFoulChance;
+    const foulChance = baseFoulChance;
 
     if (zone === FieldZone.ATTACK) {
       shotChance *= 2;
-      passChance *= 0.8;
     } else if (zone === FieldZone.DEFENSE) {
-      passChance *= 1.2;
       shotChance *= 0.1;
     }
 
     // Adjust based on tactics
-    if (teamTactics.playingStyle === PlayingStyle.POSSESSION) {
-      passChance *= 1.3;
-      shotChance *= 0.7;
-    } else if (teamTactics.playingStyle === PlayingStyle.COUNTER_ATTACK) {
+    if (teamTactics.playingStyle === PlayingStyle.COUNTER_ATTACK) {
       shotChance *= 1.5;
-      passChance *= 0.8;
     }
 
     // Adjust based on fatigue
     if (playerFatigue && playerFatigue.fatigueLevel > 70) {
-      passChance *= 0.8;
       shotChance *= 0.6;
       tackleChance *= 1.2;
     }
@@ -216,7 +207,7 @@ export class MatchSimulationService {
 
   private handlePass(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -263,7 +254,7 @@ export class MatchSimulationService {
 
   private handleShot(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -297,7 +288,7 @@ export class MatchSimulationService {
       } else {
         state.awayShotsOnTarget++;
       }
-      this.handleGoal(state, { player: shooter, goalkeeper: goalkeeper }, homeTeam, awayTeam, minute, config);
+      this.handleGoal(state, { type: EventType.GOAL, player: shooter, goalkeeper: goalkeeper }, homeTeam, awayTeam, minute, config);
     } else {
       // Shot on/off target
       const onTarget = shotSuccess.onTarget;
@@ -313,7 +304,7 @@ export class MatchSimulationService {
       
       const eventType = onTarget ? EventType.SAVE : EventType.MISS;
       
-      this.createEvent(state, eventType, [shooter.id, goalkeeper?.id].filter(Boolean), state.ballPossession.location, minute, onTarget, config);
+      this.createEvent(state, eventType, [shooter.id, ...(goalkeeper?.id ? [goalkeeper.id] : [])], state.ballPossession.location, minute, onTarget, config);
       
       if (!onTarget) {
         // Corner or goal kick
@@ -326,7 +317,7 @@ export class MatchSimulationService {
 
   private handleGoal(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 
@@ -352,7 +343,7 @@ export class MatchSimulationService {
 
   private handleTackle(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
@@ -366,7 +357,6 @@ export class MatchSimulationService {
     
     // Simple tackle success calculation
     const tacklerStats = this.getPlayerStats(tackler, opponentTeam);
-    const ballCarrierStats = this.getPlayerStats(this.getPlayerById(state.ballPossession.playerWithBall, currentTeam === 'home' ? homeTeam : awayTeam), currentTeam === 'home' ? homeTeam : awayTeam);
     
     const tackleSuccess = Math.random() * 100 < (tacklerStats.skills.tackling + tacklerStats.physical.strength) / 2;
     
@@ -379,22 +369,22 @@ export class MatchSimulationService {
       // Failed tackle - possible foul
       const foulChance = 0.3;
       if (Math.random() < foulChance) {
-        this.handleFoul(state, { player: tackler }, homeTeam, awayTeam, minute, config);
+        this.handleFoul(state, { type: EventType.FOUL, player: tackler }, homeTeam, awayTeam, minute, config);
       }
     }
   }
 
   private handleCorner(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     tactics: { home: TacticalSetup; away: TacticalSetup },
-    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    _fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number, 
     config: SimulationConfig
   ) {
-    const shooter = action.player;
+    const _shooter = action.player;
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     
     // Corner kick logic
@@ -403,12 +393,11 @@ export class MatchSimulationService {
     if (cornerSuccess) {
       // Header attempt
       const headerPlayer = this.findHeaderPlayer(currentTeam === 'home' ? homeTeam : awayTeam);
-      const goalkeeper = currentTeam === 'home' ? awayTeam : homeTeam;
       
       const headerSuccess = Math.random() * 100 < headerPlayer.skills.heading;
       
       if (headerSuccess) {
-        this.handleGoal(state, { player: headerPlayer }, homeTeam, awayTeam, minute, config);
+        this.handleGoal(state, { type: EventType.GOAL, player: headerPlayer }, homeTeam, awayTeam, minute, config);
       } else {
         this.createEvent(state, EventType.MISS, [headerPlayer.id], { x: 50, y: 95 }, minute, false, config);
       }
@@ -424,7 +413,7 @@ export class MatchSimulationService {
 
   private handleFoul(
     state: MatchState, 
-    action: any, 
+    action: MatchAction, 
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 
@@ -483,7 +472,7 @@ export class MatchSimulationService {
     location: Coordinates, 
     time: number, 
     success: boolean, 
-    config: SimulationConfig
+    _config: SimulationConfig
   ) {
     const event: PlayByPlayEvent = {
       id: Math.random().toString(36).substring(2, 9),
@@ -538,7 +527,7 @@ export class MatchSimulationService {
     return { goal, onTarget: true };
   }
 
-  private updateFatigue(fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }, minute: number) {
+  private updateFatigue(fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }, _minute: number) {
     Object.values(fatigue).forEach(teamFatigue => {
       teamFatigue.forEach(f => {
         f.fatigueLevel = Math.min(100, f.fatigueLevel + 0.5);
@@ -548,7 +537,7 @@ export class MatchSimulationService {
     });
   }
 
-  private updatePossessionStats(state: MatchState, homeTeam: Team, awayTeam: Team) {
+  private updatePossessionStats(state: MatchState, homeTeam: Team, _awayTeam: Team) {
     // Calculate possession based on time spent in possession
     // This is a simplified calculation - in a real simulation, you'd track actual possession time
     const totalEvents = state.events.length;
@@ -575,7 +564,7 @@ export class MatchSimulationService {
   private findPassTarget(passer: Player, team: Team, tactics: TacticalSetup, currentLocation: Coordinates): Player | null {
     // Find players in similar or attacking zone
     const zone = this.fieldService.getZoneFromY(currentLocation.y);
-    const targetZone = zone === FieldZone.DEFENSE ? FieldZone.MIDFIELD : zone === FieldZone.MIDFIELD ? FieldZone.ATTACK : FieldZone.ATTACK;
+    const _targetZone = zone === FieldZone.DEFENSE ? FieldZone.MIDFIELD : zone === FieldZone.MIDFIELD ? FieldZone.ATTACK : FieldZone.ATTACK;
     
     const potentialTargets = team.players.filter(p => 
       p.id !== passer.id && 
@@ -602,7 +591,7 @@ export class MatchSimulationService {
     };
   }
 
-  private isCorner(location: Coordinates, team: 'home' | 'away'): boolean {
+  private isCorner(location: Coordinates, _team: 'home' | 'away', _minute?: number): boolean {
     // Simple corner detection - ball goes out near goal
     return location.y > 90 && (location.x < 10 || location.x > 90);
   }

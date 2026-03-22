@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
-import { MatchEvent as MatchKeyEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 

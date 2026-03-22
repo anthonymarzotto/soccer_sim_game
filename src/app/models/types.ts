@@ -1,4 +1,5 @@
 import { Position, Role, MatchResult, EventImportance, EventType } from './enums';
+import { Coordinates } from './simulation.types';
 
 // Re-export the enums for backward compatibility
 export { Position, Role, MatchResult, EventImportance };
@@ -104,7 +105,7 @@ export interface MatchEvent {
   type: EventType;
   description: string;
   playerIds: string[];
-  location?: any;
+  location?: Coordinates;
   icon?: string;
   importance: EventImportance;
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { MatchStatistics, Team, Player, Position } from '../models/types';
+import { MatchStatistics, Team, Player } from '../models/types';
 import { EventType } from '../models/enums';
 
 @Injectable({
@@ -119,7 +119,7 @@ export class StatisticsService {
 
   generateHeatMapData(matchState: MatchState, teamId: string): HeatMapData {
     const teamEvents = matchState.events.filter(e => 
-      e.playerIds.some(pid => {
+      e.playerIds.some(_pid => {
         // This would need to be enhanced to check which team the player belongs to
         return true; // Placeholder
       })
@@ -180,12 +180,12 @@ export class StatisticsService {
     };
   }
 
-  private isHomeTeamEvent(event: PlayByPlayEvent, homeTeam: Team): boolean {
+  private isHomeTeamEvent(_event: PlayByPlayEvent, _homeTeam: Team): boolean {
     // This would need to be enhanced to properly determine team affiliation
     return true; // Placeholder
   }
 
-  private isAwayTeamEvent(event: PlayByPlayEvent, awayTeam: Team): boolean {
+  private isAwayTeamEvent(_event: PlayByPlayEvent, _awayTeam: Team): boolean {
     // This would need to be enhanced to properly determine team affiliation
     return true; // Placeholder
   }
