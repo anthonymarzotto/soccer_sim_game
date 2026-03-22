@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
+import { ScheduleStateService } from '../../services/schedule-state.service';
 import { EventImportance } from '../../models/enums';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
@@ -16,11 +17,23 @@ const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
 export class ScheduleComponent {
   gameService = inject(GameService);
   settingsService = inject(SettingsService);
+  scheduleStateService = inject(ScheduleStateService);
 
   // Expose enum values for template access
   EventImportance = EventImportance;
 
   selectedWeek = signal<number>(this.gameService.league()?.currentWeek || 1);
+
+  constructor() {
+    // Initialize service with current week
+    this.scheduleStateService.selectedWeek.set(this.selectedWeek());
+    
+    // Sync selectedWeek with scheduleStateService whenever it changes
+    effect(() => {
+      const week = this.selectedWeek();
+      this.scheduleStateService.selectedWeek.set(week);
+    });
+  }
 
   maxWeeks = computed(() => {
     const l = this.gameService.league();
