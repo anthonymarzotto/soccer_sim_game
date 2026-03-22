@@ -15,9 +15,9 @@
     </div>
 
     <!-- Match Summary -->
-    @if (match()) {
+    @if (displayMatch()) {
       <app-match-summary 
-        [match]="match()!"
+        [match]="displayMatch()!"
         [showProbabilities]="!isSimulating() && !isFinished()"
         [showStats]="showStats()"
         [showEvents]="isFinished()"
@@ -66,7 +66,7 @@
 
     <!-- Live Indicator -->
     @if (isSimulating()) {
-      <div class="flex justify-center">
+      <div class="flex justify-center mt-8">
         <div class="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full">
           <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
           <span class="text-red-400 text-sm font-medium">LIVE - {{ currentMinute() }}'</span>
@@ -76,7 +76,7 @@
 
     <!-- Commentary Feed -->
     @if (commentary().length > 0) {
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl mt-4">
         <div class="p-4 border-b border-zinc-800">
           <h2 class="text-lg font-semibold text-white flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -111,19 +111,5 @@
         </div>
       </div>
     }
-
-    <!-- Match Complete Message -->
-    @if (isFinished()) {
-      <div class="flex justify-center">
-        <div class="flex items-center gap-3 px-6 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          <span class="text-emerald-400 font-semibold">Match Complete!</span>
-        </div>
-      </div>
-    }
-
   </div>
 </div>
