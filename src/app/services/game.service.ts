@@ -65,6 +65,10 @@ export class GameService {
     return this.leagueState()?.schedule.filter(m => m.week === week) || [];
   }
 
+  advanceWeek() {
+    this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
+  }
+
   simulateCurrentWeek() {
     const l = this.leagueState();
     if (!l) return;
@@ -95,7 +99,7 @@ export class GameService {
     });
 
     // Advance to next week
-    this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
+    this.advanceWeek();
   }
 
   setUserTeam(teamId: string) {
@@ -269,6 +273,8 @@ export class GameService {
     // Update player career stats
     this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
 
+    // Persist updated league state. Week progression is managed externally
+    // (e.g., by the schedule component) to avoid double-incrementing.
     this.leagueState.set({
       ...l,
       teams: updatedTeams,

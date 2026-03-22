@@ -124,6 +124,30 @@ export class ScheduleComponent {
     return player?.teamId || '';
   }
 
+  simulateMatch(matchId: string) {
+    const l = this.gameService.league();
+    if (!l) return;
+
+    const match = l.schedule.find(m => m.id === matchId);
+    if (!match || match.played) return;
+
+    const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
+    const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+
+    if (!homeTeam || !awayTeam) return;
+
+    this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam);
+    
+    // Check if all matches for the current week are played, and advance week if so
+    const currentWeekMatches = this.gameService.getMatchesForWeek(l.currentWeek);
+    const allCurrentWeekPlayed = currentWeekMatches.every(m => m.played);
+    if (allCurrentWeekPlayed && l.currentWeek < this.maxWeeks()) {
+      this.gameService.advanceWeek();
+    }
+    
+    this.selectedWeek.set(this.gameService.league()?.currentWeek || 1);
+  }
+
   isIconBadgeStyle(): boolean {
     return ICON_BADGE_STYLE_SET.has(this.settingsService.badgeStyle());
   }
