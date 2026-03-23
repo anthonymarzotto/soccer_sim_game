@@ -13,8 +13,8 @@ export class FieldService {
   readonly FIELD_LENGTH_METERS = 105; // y-axis: 0–100 grid units = 105m
 
   // Scale factors: multiply grid-unit deltas by these to get meters
-  private readonly X_SCALE = 0.68;  // metres per x-unit  (68 / 100)
-  private readonly Y_SCALE = 1.05;  // metres per y-unit  (105 / 100)
+  private readonly X_SCALE = this.FIELD_WIDTH_METERS / 100;  // metres per x-unit
+  private readonly Y_SCALE = this.FIELD_LENGTH_METERS / 100; // metres per y-unit
 
   // Goal posts (x-axis). Goal is 7.32m wide, centred at x=50.
   // 7.32 / 68 * 100 = 10.76 units → half = 5.38 units each side of centre.
