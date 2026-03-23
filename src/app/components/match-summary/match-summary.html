@@ -16,11 +16,6 @@
              [class.animate-pulse]="isLive()">
           {{ displayHomeScore() }} - {{ displayAwayScore() }}
         </div>
-        @if (isLive()) {
-          <div class="absolute -top-2 -right-2 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full animate-pulse">
-            {{ currentMinute() }}'
-          </div>
-        }
       } @else {
         <div class="px-4 py-1.5 bg-zinc-800/50 text-zinc-500 rounded-lg font-medium text-sm">
           VS
