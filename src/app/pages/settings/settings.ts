@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { SettingsService, BadgeStyle } from '../../services/settings.service';
 import { GameService } from '../../services/game.service';
@@ -7,7 +8,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent],
+  imports: [RouterLink, TeamBadgeComponent, TitleCasePipe],
   templateUrl: './settings.html',
 })
 export class SettingsComponent {

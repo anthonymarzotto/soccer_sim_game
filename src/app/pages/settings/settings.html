@@ -28,8 +28,8 @@
             (change)="setBadgeStyle(badgeStyleSelect.value)"
             class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
             @for (style of badgeStyles; track style) {
-              <option [value]="style" class="capitalize">
-                {{ style }}
+              <option [value]="style" [selected]="style === selectedStyle()">
+                {{ style | titlecase }}
               </option>
             }
           </select>
@@ -40,7 +40,7 @@
           <div class="flex items-center gap-4">
             <app-team-badge [teamId]="previewTeamId()" size="md"></app-team-badge>
             <div>
-              <div class="text-sm text-zinc-400">Selected style: <span class="text-white font-medium capitalize">{{ selectedStyle() }}</span></div>
+              <div class="text-sm text-zinc-400">Selected style: <span class="text-white font-medium">{{ selectedStyle() | titlecase }}</span></div>
               <div class="text-xs text-zinc-500">Preview team: {{ previewTeamName() }}</div>
             </div>
           </div>
