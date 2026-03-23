@@ -8,14 +8,36 @@ import { PlayingStyle, Mentality, Role } from '../models/enums';
 })
 export class FieldService {
   
-  // Field dimensions (0-100 scale)
-  private readonly FIELD_WIDTH = 100;
-  private readonly FIELD_LENGTH = 100;
-  
-  // Zone boundaries
-  private readonly DEFENSE_ZONE = { start: 0, end: 33 };
-  private readonly MIDFIELD_ZONE = { start: 34, end: 66 };
-  private readonly ATTACK_ZONE = { start: 67, end: 100 };
+  // Real FIFA pitch dimensions
+  readonly FIELD_WIDTH_METERS = 68;   // x-axis: 0–100 grid units = 68m
+  readonly FIELD_LENGTH_METERS = 105; // y-axis: 0–100 grid units = 105m
+
+  // Scale factors: multiply grid-unit deltas by these to get meters
+  private readonly X_SCALE = 0.68;  // metres per x-unit  (68 / 100)
+  private readonly Y_SCALE = 1.05;  // metres per y-unit  (105 / 100)
+
+  // Goal posts (x-axis). Goal is 7.32m wide, centred at x=50.
+  // 7.32 / 68 * 100 = 10.76 units → half = 5.38 units each side of centre.
+  readonly GOAL_LEFT_X  = 44.6;
+  readonly GOAL_RIGHT_X = 55.4;
+
+  // Opponent penalty area (attacking end, y=100 side).
+  // Width: 40.32m  → 40.32/68*100 = 59.3 units centred → xMin=20.4, xMax=79.6
+  // Depth: 16.5m   → 16.5/105*100 = 15.7 units from goal line → yMin=84.3
+  readonly PENALTY_AREA = { xMin: 20.4, xMax: 79.6, yMin: 84.3 };
+
+  // Six-yard box (goal area), attacking end.
+  // Width: 18.32m  → 18.32/68*100 = 26.9 units centred → xMin=36.5, xMax=63.5
+  // Depth: 5.5m    → 5.5/105*100  = 5.2 units from goal line → yMin=94.8
+  readonly SIX_YARD_BOX = { xMin: 36.5, xMax: 63.5, yMin: 94.8 };
+
+  // Penalty spot (attacking end). 11m from goal line → 11/105*100 = 10.5 units.
+  readonly PENALTY_SPOT: Coordinates = { x: 50, y: 89.5 };
+
+  // Zone boundaries (y-axis thirds: defence 0–33, midfield 34–66, attack 67–100)
+  private readonly DEFENSE_ZONE  = { start: 0,  end: 33  };
+  private readonly MIDFIELD_ZONE = { start: 34, end: 66  };
+  private readonly ATTACK_ZONE   = { start: 67, end: 100 };
 
   // Default formations
   private readonly FORMATIONS = {
@@ -107,10 +129,28 @@ export class FieldService {
     return FieldZone.ATTACK;
   }
 
+  /**
+   * Returns the true Euclidean distance in metres between two grid-coordinate
+   * points, accounting for the non-square real-world aspect ratio (68m × 105m).
+   */
   getDistance(coord1: Coordinates, coord2: Coordinates): number {
-    const dx = coord1.x - coord2.x;
-    const dy = coord1.y - coord2.y;
+    const dx = (coord1.x - coord2.x) * this.X_SCALE;
+    const dy = (coord1.y - coord2.y) * this.Y_SCALE;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /** Returns true when the given coordinates are inside the opponent penalty area (y=100 end). */
+  isInPenaltyArea(coords: Coordinates): boolean {
+    return coords.x >= this.PENALTY_AREA.xMin &&
+           coords.x <= this.PENALTY_AREA.xMax &&
+           coords.y >= this.PENALTY_AREA.yMin;
+  }
+
+  /** Returns true when the given coordinates are inside the opponent six-yard box (y=100 end). */
+  isInSixYardBox(coords: Coordinates): boolean {
+    return coords.x >= this.SIX_YARD_BOX.xMin &&
+           coords.x <= this.SIX_YARD_BOX.xMax &&
+           coords.y >= this.SIX_YARD_BOX.yMin;
   }
 
   isInZone(coordinates: Coordinates, zone: FieldZone): boolean {
