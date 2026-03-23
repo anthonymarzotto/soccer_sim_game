@@ -149,7 +149,7 @@ export class ScheduleComponent {
 
     if (!homeTeam || !awayTeam) return;
 
-    this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam);
+    this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam, { skipCommentary: true });
     
     // Check if all matches for the current week are played, and advance week if so
     const currentWeekMatches = this.gameService.getMatchesForWeek(l.currentWeek);

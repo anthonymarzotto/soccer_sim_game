@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, inject, OnInit, DestroyRef} from '@angular/core';
+import {ChangeDetectionStrategy, Component, inject, OnInit, DestroyRef, effect} from '@angular/core';
 import {RouterOutlet, Router, NavigationEnd} from '@angular/router';
 import {Title} from '@angular/platform-browser';
 import {NavigationComponent} from './components/navigation/navigation';
@@ -20,6 +20,17 @@ export class App implements OnInit {
   private gameService = inject(GameService);
   private scheduleStateService = inject(ScheduleStateService);
   private destroyRef = inject(DestroyRef);
+
+  constructor() {
+    // Update the title whenever selectedWeek changes while on the schedule route,
+    // so prev/next week navigation is reflected without a full page navigation.
+    effect(() => {
+      const week = this.scheduleStateService.selectedWeek();
+      if (this.router.url.startsWith('/schedule')) {
+        this.titleService.setTitle(`${APP_TITLE} - Schedule - Week ${week}`);
+      }
+    });
+  }
 
   ngOnInit() {
     this.router.events
