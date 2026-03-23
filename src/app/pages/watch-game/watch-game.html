@@ -20,7 +20,7 @@
         [match]="displayMatch()!"
         [showProbabilities]="!isSimulating() && !isFinished()"
         [showStats]="showStats()"
-        [showEvents]="isFinished()"
+        [showEvents]="isSimulating() || isFinished()"
         [isLive]="isSimulating()"
         [currentMinute]="currentMinute()"
         [liveHomeScore]="homeScore()"

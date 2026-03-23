@@ -3,7 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
-import { Match, MatchEvent, MatchStatistics } from '../../models/types';
+import { Match, MatchEvent, MatchStatistics, Team } from '../../models/types';
 import { EventType, EventImportance, CommentaryStyle } from '../../models/enums';
 import { PlayByPlayEvent, MatchState } from '../../models/simulation.types';
 
@@ -23,6 +23,10 @@ interface CommentaryItem {
   templateUrl: './watch-game.html',
 })
 export class WatchGameComponent implements OnInit, OnDestroy {
+  private static readonly FIRST_HALF_END_MINUTE = 45;
+  private static readonly FEED_INTERVAL_MS = 1000;
+  private static readonly NEW_COMMENTARY_ANIMATION_MS = 500;
+
   private route = inject(ActivatedRoute);
   gameService = inject(GameService);
   commentaryService = inject(CommentaryService);
@@ -30,9 +34,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   // Match data
   matchId = signal<string>('');
   match = signal<Match | null>(null);
-  displayMatch = signal<Match | null>(null); // Match object for display (without keyEvents/matchStats until finished)
-  homeTeam = signal<any>(null);
-  awayTeam = signal<any>(null);
+  displayMatch = signal<Match | null>(null);
+  homeTeam = signal<Team | null>(null);
+  awayTeam = signal<Team | null>(null);
 
   // Simulation state
   isSimulating = signal<boolean>(false);
@@ -56,6 +60,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private allCommentary: CommentaryItem[] = [];
   private commentaryIndex = 0;
   private halfTimeIndex = -1;
+  private finalKeyEvents: MatchEvent[] = [];
+  private finalMatchStats: MatchStatistics | null = null;
 
   constructor() {
     // Effect to load match data when matchId changes
@@ -86,8 +92,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     if (!match) return;
 
     this.match.set(match);
-    this.homeTeam.set(this.gameService.getTeam(match.homeTeamId));
-    this.awayTeam.set(this.gameService.getTeam(match.awayTeamId));
+    this.homeTeam.set(this.gameService.getTeam(match.homeTeamId) ?? null);
+    this.awayTeam.set(this.gameService.getTeam(match.awayTeamId) ?? null);
 
     // If match already played, show results immediately unless a live replay is in progress.
     if (match.played) {
@@ -126,8 +132,24 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.isHalfTime.set(false);
     this.showStats.set(false);
     this.currentMinute.set(0);
+    this.homeScore.set(0);
+    this.awayScore.set(0);
     this.halfTimeIndex = -1;
+    this.finalKeyEvents = [];
+    this.finalMatchStats = null;
+    this.keyEvents.set([]);
+    this.matchStats.set(null);
     this.commentary.set([]);
+
+    // Keep summary visible while replay state streams in.
+    this.displayMatch.set({
+      ...match,
+      played: false,
+      homeScore: 0,
+      awayScore: 0,
+      keyEvents: [],
+      matchStats: undefined
+    });
 
     // Simulate the entire match instantly
     const result = this.gameService.simulateMatchWithDetails(match, home, away, {
@@ -140,6 +162,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     // Store the match state (stats will be set after commentary completes)
     this.matchState.set(result.matchState);
+    this.finalKeyEvents = result.keyEvents;
+    this.finalMatchStats = result.matchStats;
     this.keyEvents.set(result.keyEvents);
 
     // Generate commentary items from the match
@@ -149,7 +173,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.startCommentaryFeed();
   }
 
-  private generateCommentaryFromMatch(matchState: MatchState, homeTeam: any, awayTeam: any) {
+  private generateCommentaryFromMatch(matchState: MatchState, homeTeam: Team, awayTeam: Team) {
     this.allCommentary = [];
 
     // Add starting commentary
@@ -166,8 +190,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     });
 
     // Separate first-half and second-half events
-    const firstHalfEvents = matchState.events.filter(e => e.time <= 45);
-    const secondHalfEvents = matchState.events.filter(e => e.time > 45);
+    const firstHalfEvents = matchState.events.filter(e => e.time <= WatchGameComponent.FIRST_HALF_END_MINUTE);
+    const secondHalfEvents = matchState.events.filter(e => e.time > WatchGameComponent.FIRST_HALF_END_MINUTE);
 
     // Helper function to add event commentary
     const addEventCommentary = (event: typeof matchState.events[0]) => {
@@ -195,14 +219,27 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     // Add first-half event commentary
     firstHalfEvents.forEach(addEventCommentary);
 
+    let halfTimeHomeScore = 0;
+    let halfTimeAwayScore = 0;
+    firstHalfEvents
+      .filter((event) => event.type === EventType.GOAL)
+      .forEach((event) => {
+        const scoringTeam = this.getScoringTeam(event, homeTeam, awayTeam);
+        if (scoringTeam === 'home') {
+          halfTimeHomeScore++;
+        } else if (scoringTeam === 'away') {
+          halfTimeAwayScore++;
+        }
+      });
+
     // Add half-time commentary at the correct chronological position
     const halfTimeGoals = firstHalfEvents.filter(e => e.type === EventType.GOAL).length;
     if (halfTimeGoals > 0 || matchState.events.length > 0) {
       this.halfTimeIndex = this.allCommentary.length;
       this.allCommentary.push({
         id: 'halftime',
-        minute: 45,
-        text: this.commentaryService.generateHalfTimeCommentary(matchState.homeScore, matchState.awayScore, firstHalfEvents),
+        minute: WatchGameComponent.FIRST_HALF_END_MINUTE,
+        text: this.commentaryService.generateHalfTimeCommentary(halfTimeHomeScore, halfTimeAwayScore, firstHalfEvents),
         type: EventType.PASS,
         importance: EventImportance.MEDIUM,
         isNew: false
@@ -224,6 +261,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   private startCommentaryFeed(resetIndex: boolean = true) {
+    if (this.commentaryInterval) {
+      return;
+    }
+
     if (resetIndex) {
       this.commentaryIndex = 0;
       // Add first comment immediately
@@ -233,7 +274,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     // Then add one every second
     this.commentaryInterval = setInterval(() => {
       this.addNextCommentary();
-    }, 1000);
+    }, WatchGameComponent.FEED_INTERVAL_MS);
   }
 
   private addNextCommentary() {
@@ -253,7 +294,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         this.commentary.update(items => 
           items.map(i => i.id === item.id ? { ...i, isNew: false } : i)
         );
-      }, 500);
+      }, WatchGameComponent.NEW_COMMENTARY_ANIMATION_MS);
       
       this.commentaryIndex++;
       this.stopCommentaryFeed();
@@ -266,37 +307,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     // Update current minute and score based on the commentary
     this.currentMinute.set(item.minute);
-    
-    // Update score if this is a goal event
-    if (item.type === EventType.GOAL) {
-      const matchState = this.matchState();
-      if (matchState) {
-        // Count goals up to this point
-        const goalsUpToNow = this.allCommentary
-          .slice(0, this.commentaryIndex + 1)
-          .filter(c => c.type === EventType.GOAL);
-        
-        // Determine which team scored based on match state events
-        let homeGoals = 0;
-        let awayGoals = 0;
-        
-        matchState.events
-          .filter(e => e.type === EventType.GOAL && e.time <= item.minute)
-          .forEach(event => {
-            // Check if player is from home or away team
-            const playerId = event.playerIds[0];
-            const homeTeam = this.homeTeam();
-            if (homeTeam && homeTeam.players.some((p: any) => p.id === playerId)) {
-              homeGoals++;
-            } else {
-              awayGoals++;
-            }
-          });
 
-        this.homeScore.set(homeGoals);
-        this.awayScore.set(awayGoals);
-      }
-    }
+    this.updateDisplayMatchAtMinute(item.minute);
 
     // Add to commentary list (newest at top)
     this.commentary.update(items => [item, ...items]);
@@ -306,7 +318,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       this.commentary.update(items => 
         items.map(i => i.id === item.id ? { ...i, isNew: false } : i)
       );
-    }, 500);
+    }, WatchGameComponent.NEW_COMMENTARY_ANIMATION_MS);
 
     this.commentaryIndex++;
   }
@@ -330,37 +342,77 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.isFinished.set(true);
     this.showStats.set(true);
 
-    // Update final scores and stats from match state
+    const match = this.match();
     const matchState = this.matchState();
-    if (matchState) {
+    if (match && matchState) {
       this.homeScore.set(matchState.homeScore);
       this.awayScore.set(matchState.awayScore);
-    }
+      this.matchStats.set(this.finalMatchStats);
+      this.keyEvents.set(this.finalKeyEvents);
 
-    // Get the match stats from the simulation result
-    const match = this.match();
-    const home = this.homeTeam();
-    const away = this.awayTeam();
-    if (match && home && away) {
-      const result = this.gameService.simulateMatchWithDetails(match, home, away, {
-        enablePlayByPlay: false,
-        enableSpatialTracking: false,
-        enableTactics: false,
-        enableFatigue: false,
-        commentaryStyle: CommentaryStyle.BRIEF
-      });
-      this.matchStats.set(result.matchStats);
-      
-      // Update displayMatch with keyEvents and matchStats now that commentary is complete
       this.displayMatch.set({
         ...match,
-        homeScore: matchState?.homeScore ?? match.homeScore,
-        awayScore: matchState?.awayScore ?? match.awayScore,
+        homeScore: matchState.homeScore,
+        awayScore: matchState.awayScore,
         played: true,
-        keyEvents: result.keyEvents,
-        matchStats: result.matchStats
+        keyEvents: this.finalKeyEvents,
+        matchStats: this.finalMatchStats ?? undefined
       });
     }
+  }
+
+  private updateDisplayMatchAtMinute(minute: number) {
+    const match = this.match();
+    const matchState = this.matchState();
+    const homeTeam = this.homeTeam();
+    const awayTeam = this.awayTeam();
+
+    if (!match || !matchState || !homeTeam || !awayTeam) {
+      return;
+    }
+
+    let homeGoals = 0;
+    let awayGoals = 0;
+
+    matchState.events
+      .filter((event) => event.type === EventType.GOAL && event.time <= minute)
+      .forEach((event) => {
+        const scoringTeam = this.getScoringTeam(event, homeTeam, awayTeam);
+        if (scoringTeam === 'home') {
+          homeGoals++;
+        } else if (scoringTeam === 'away') {
+          awayGoals++;
+        }
+      });
+
+    this.homeScore.set(homeGoals);
+    this.awayScore.set(awayGoals);
+
+    this.displayMatch.set({
+      ...match,
+      played: false,
+      homeScore: homeGoals,
+      awayScore: awayGoals,
+      keyEvents: this.finalKeyEvents.filter((event) => event.time <= minute),
+      matchStats: undefined
+    });
+  }
+
+  private getScoringTeam(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team): 'home' | 'away' | null {
+    const scorerId = event.playerIds[0];
+    if (!scorerId) {
+      return null;
+    }
+
+    if (homeTeam.players.some((player) => player.id === scorerId)) {
+      return 'home';
+    }
+
+    if (awayTeam.players.some((player) => player.id === scorerId)) {
+      return 'away';
+    }
+
+    return null;
   }
 
   getEventIcon(type: EventType): string {
