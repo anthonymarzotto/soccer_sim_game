@@ -1,0 +1,114 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
+  <div class="max-w-4xl mx-auto space-y-8">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <a routerLink="/schedule" class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-white">Watch Game</h1>
+          <p class="text-zinc-400 mt-1">Live Match Simulation</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Summary -->
+    @if (displayMatch()) {
+      <app-match-summary 
+        [match]="displayMatch()!"
+        [showProbabilities]="!isSimulating() && !isFinished()"
+        [showStats]="showStats()"
+        [showEvents]="isSimulating() || isFinished()"
+        [isLive]="isSimulating()"
+        [currentMinute]="currentMinute()"
+        [liveHomeScore]="homeScore()"
+        [liveAwayScore]="awayScore()">
+      </app-match-summary>
+    }
+
+    <!-- Start Simulation Button -->
+    @if (!isSimulating() && !isFinished()) {
+      <div class="flex justify-center pt-6">
+        <button 
+          (click)="startSimulation()"
+          [disabled]="!match() || match()?.played"
+          class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-xl text-lg font-bold transition-colors shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          Start Simulation
+        </button>
+      </div>
+    }
+
+    <!-- Half-Time Break -->
+    @if (isHalfTime()) {
+      <div class="flex flex-col items-center gap-4 pt-6">
+        <div class="flex items-center gap-3 px-6 py-3 bg-yellow-500/20 border border-yellow-500/30 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span class="text-yellow-400 font-semibold">Half-Time</span>
+        </div>
+        <button 
+          (click)="continueAfterHalfTime()"
+          class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg font-semibold transition-colors flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          Continue to Second Half
+        </button>
+      </div>
+    }
+
+    <!-- Live Indicator -->
+    @if (isSimulating()) {
+      <div class="flex justify-center mt-8">
+        <div class="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full">
+          <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+          <span class="text-red-400 text-sm font-medium">LIVE - {{ currentMinute() }}'</span>
+        </div>
+      </div>
+    }
+
+    <!-- Commentary Feed -->
+    @if (commentary().length > 0) {
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl mt-4">
+        <div class="p-4 border-b border-zinc-800">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Match Commentary
+          </h2>
+        </div>
+        
+        <div class="max-h-96 overflow-y-auto p-4 space-y-3">
+          @for (item of commentary(); track item.id) {
+            <div 
+              class="p-3 rounded-lg transition-all duration-300"
+              [class.bg-red-500/20]="item.importance === 'high'"
+              [class.border-red-500/30]="item.importance === 'high'"
+              [class.bg-yellow-500/10]="item.importance === 'medium'"
+              [class.border-yellow-500/20]="item.importance === 'medium'"
+              [class.border]="item.importance === 'high' || item.importance === 'medium'"
+              [class.bg-zinc-800]="item.importance === 'low'"
+              [class.animate-pulse]="item.isNew"
+              [class.scale-105]="item.isNew"
+              [class.opacity-70]="!item.isNew">
+              <div class="flex items-start gap-3">
+                @if (getEventIcon(item.type)) {
+                  <span class="text-xl flex-shrink-0">{{ getEventIcon(item.type) }}</span>
+                }
+                <p class="text-sm text-zinc-200 leading-relaxed">{{ item.text }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

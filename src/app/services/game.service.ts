@@ -65,6 +65,10 @@ export class GameService {
     return this.leagueState()?.schedule.filter(m => m.week === week) || [];
   }
 
+  advanceWeek() {
+    this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
+  }
+
   simulateCurrentWeek() {
     const l = this.leagueState();
     if (!l) return;
@@ -95,7 +99,7 @@ export class GameService {
     });
 
     // Advance to next week
-    this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
+    this.advanceWeek();
   }
 
   setUserTeam(teamId: string) {
@@ -186,9 +190,19 @@ export class GameService {
   private statisticsService = inject(StatisticsService);
   private postMatchAnalysisService = inject(PostMatchAnalysisService);
 
-  simulateMatchWithDetails(match: Match, homeTeam: Team, awayTeam: Team, config?: SimulationConfig) {
+  simulateMatchWithDetails(match: Match, homeTeam: Team, awayTeam: Team, config?: Partial<SimulationConfig>) {
+    // Merge caller-supplied overrides on top of the simulation defaults.
+    const simConfig: SimulationConfig = {
+      enablePlayByPlay: true,
+      enableSpatialTracking: true,
+      enableTactics: true,
+      enableFatigue: true,
+      commentaryStyle: CommentaryStyle.DETAILED,
+      ...config
+    };
+
     // Use the enhanced simulation service
-    const matchState = this.matchSimulationService.simulateMatch(match, homeTeam, awayTeam, config);
+    const matchState = this.matchSimulationService.simulateMatch(match, homeTeam, awayTeam, simConfig);
     
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
@@ -207,7 +221,7 @@ export class GameService {
       matchStats,
       matchReport,
       keyEvents,
-      commentary: this.generateMatchCommentary(matchState, homeTeam, awayTeam, config?.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : (config?.commentaryStyle || CommentaryStyle.DETAILED))
+      commentary: simConfig.skipCommentary ? [] : this.generateMatchCommentary(matchState, homeTeam, awayTeam, simConfig.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : simConfig.commentaryStyle)
     };
   }
 
@@ -269,6 +283,8 @@ export class GameService {
     // Update player career stats
     this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
 
+    // Persist updated league state. Week progression is managed externally
+    // (e.g., by the schedule component) to avoid double-incrementing.
     this.leagueState.set({
       ...l,
       teams: updatedTeams,

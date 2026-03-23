@@ -68,6 +68,7 @@ export interface SimulationConfig {
   enableTactics: boolean;
   enableFatigue: boolean;
   commentaryStyle: CommentaryStyle;
+  skipCommentary?: boolean;
 }
 
 export interface TacticalSetup {

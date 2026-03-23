@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
+import { ScheduleStateService } from '../../services/schedule-state.service';
 import { EventImportance } from '../../models/enums';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
@@ -16,11 +17,23 @@ const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
 export class ScheduleComponent {
   gameService = inject(GameService);
   settingsService = inject(SettingsService);
+  scheduleStateService = inject(ScheduleStateService);
 
   // Expose enum values for template access
   EventImportance = EventImportance;
 
   selectedWeek = signal<number>(this.gameService.league()?.currentWeek || 1);
+
+  constructor() {
+    // Initialize service with current week
+    this.scheduleStateService.selectedWeek.set(this.selectedWeek());
+    
+    // Sync selectedWeek with scheduleStateService whenever it changes
+    effect(() => {
+      const week = this.selectedWeek();
+      this.scheduleStateService.selectedWeek.set(week);
+    });
+  }
 
   maxWeeks = computed(() => {
     const l = this.gameService.league();
@@ -122,6 +135,30 @@ export class ScheduleComponent {
   getPlayerTeamId(playerId: string): string {
     const player = this.gameService.getPlayer(playerId);
     return player?.teamId || '';
+  }
+
+  simulateMatch(matchId: string) {
+    const l = this.gameService.league();
+    if (!l) return;
+
+    const match = l.schedule.find(m => m.id === matchId);
+    if (!match || match.played) return;
+
+    const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
+    const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+
+    if (!homeTeam || !awayTeam) return;
+
+    this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam, { skipCommentary: true });
+    
+    // Check if all matches for the current week are played, and advance week if so
+    const currentWeekMatches = this.gameService.getMatchesForWeek(l.currentWeek);
+    const allCurrentWeekPlayed = currentWeekMatches.every(m => m.played);
+    if (allCurrentWeekPlayed && l.currentWeek < this.maxWeeks()) {
+      this.gameService.advanceWeek();
+    }
+    
+    this.selectedWeek.set(this.gameService.league()?.currentWeek || 1);
   }
 
   isIconBadgeStyle(): boolean {

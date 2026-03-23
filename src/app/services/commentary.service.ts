@@ -226,7 +226,9 @@ export class CommentaryService {
 
   generateHalfTimeCommentary(homeScore: number, awayScore: number, events: PlayByPlayEvent[]): string {
     const goals = events.filter(e => e.type === EventType.GOAL).length;
-    const shots = events.filter(e => e.type === EventType.SHOT).length;
+    const shots = events.filter(
+      (e) => e.type === EventType.SHOT || e.type === EventType.MISS || e.type === EventType.SAVE || e.type === EventType.GOAL
+    ).length;
     
     return `Half-time: ${homeScore}-${awayScore}. ${goals} goals, ${shots} shots. Plenty to play for in the second half!`;
   }

@@ -6,6 +6,7 @@ import { TeamDetailsComponent } from './pages/team-details/team-details';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
 import { ScheduleComponent } from './pages/schedule/schedule';
 import { SettingsComponent } from './pages/settings/settings';
+import { WatchGameComponent } from './pages/watch-game/watch-game';
 import { GameService } from './services/game.service';
 
 const redirectToUserTeam = () => {
@@ -26,6 +27,7 @@ export const routes: Routes = [
   { path: 'team/:id', component: TeamDetailsComponent },
   { path: 'player/:id', component: PlayerProfileComponent },
   { path: 'schedule', component: ScheduleComponent },
+  { path: 'watch/:id', component: WatchGameComponent },
   { path: 'settings', component: SettingsComponent },
   { path: '**', redirectTo: '' }
 ];

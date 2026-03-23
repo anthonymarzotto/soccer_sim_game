@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { APP_TITLE } from '../../constants';
 
 @Component({
   selector: 'app-navigation',
@@ -16,6 +17,7 @@ import { GameService } from '../../services/game.service';
 export class NavigationComponent {
   private gameService = inject(GameService);
 
+  appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
 
   userTeamId = computed(() => {
