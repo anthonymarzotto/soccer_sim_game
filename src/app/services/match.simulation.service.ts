@@ -598,7 +598,7 @@ export class MatchSimulationService {
   }
 
   private isCorner(location: Coordinates, _team: 'home' | 'away', _minute?: number): boolean {
-    // Ball must be within ~8.4m of the goal line (y > 92) and within ~5.4m of a touchline (x < 8 | x > 92).
+    // Ball must be within ~8.4m of the goal line (y > 92) and within ~5.4m of a touchline (x < 8 || x > 92).
     // Old y > 90 threshold was 10.5m from goal — too deep into the pitch.
     return location.y > 92 && (location.x < 8 || location.x > 92);
   }
