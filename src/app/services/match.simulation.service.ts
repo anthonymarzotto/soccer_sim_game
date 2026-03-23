@@ -508,11 +508,17 @@ export class MatchSimulationService {
     let shotPower = shooter.skills.shooting;
     
     if (shooterFatigue) shotPower *= shooterFatigue.performanceModifier;
-    
-    // Adjust for distance from goal
+
+    // Adjust for distance from goal (getDistance now returns metres).
+    // 0.5 coefficient: penalty spot (~11m) → -5.5; centre circle (~52m) → -26.
     const distance = this.fieldService.getDistance(location, { x: 50, y: 100 });
     shotPower -= (distance * 0.5);
-    
+
+    // Bonus for shooting from inside the penalty area.
+    if (this.fieldService.isInPenaltyArea(location)) {
+      shotPower += 15;
+    }
+
     const onTarget = Math.random() * 100 < shotPower;
     
     if (!onTarget) return { goal: false, onTarget: false };
@@ -592,8 +598,9 @@ export class MatchSimulationService {
   }
 
   private isCorner(location: Coordinates, _team: 'home' | 'away', _minute?: number): boolean {
-    // Simple corner detection - ball goes out near goal
-    return location.y > 90 && (location.x < 10 || location.x > 90);
+    // Ball must be within ~8.4m of the goal line (y > 92) and within ~5.4m of a touchline (x < 8 || x > 92).
+    // Old y > 90 threshold was 10.5m from goal — too deep into the pitch.
+    return location.y > 92 && (location.x < 8 || location.x > 92);
   }
 
   private getRandomPlayerId(team: Team): string {
