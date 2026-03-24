@@ -83,3 +83,9 @@ export enum EventImportance {
   MEDIUM = 'medium',
   LOW = 'low'
 }
+
+// View Mode Types
+export enum TeamDetailsViewMode {
+  BIO = 'bio',
+  STATS = 'stats'
+}

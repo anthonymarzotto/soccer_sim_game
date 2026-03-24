@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { Role } from '../../models/types';
-import { MatchResult, Position as PositionEnum } from '../../models/enums';
+import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 
 @Component({
   selector: 'app-team-details',
@@ -17,6 +17,10 @@ export class TeamDetailsComponent {
   // Expose enums for template
   Position = PositionEnum;
   MatchResult = MatchResult;
+  ViewMode = TeamDetailsViewMode;
+
+  // View mode state
+  viewMode = signal<TeamDetailsViewMode>(TeamDetailsViewMode.BIO);
 
   // Drag and drop state
   draggedPlayerId = signal<string | null>(null);
@@ -115,5 +119,9 @@ export class TeamDetailsComponent {
 
   isDragOver(playerId: string): boolean {
     return this.dragOverPlayerId() === playerId;
+  }
+
+  toggleView() {
+    this.viewMode.set(this.viewMode() === TeamDetailsViewMode.BIO ? TeamDetailsViewMode.STATS : TeamDetailsViewMode.BIO);
   }
 }
