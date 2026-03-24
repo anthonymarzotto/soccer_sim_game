@@ -1,8 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { Role } from '../../models/types';
+import { FieldService } from '../../services/field.service';
+import { Player, Role } from '../../models/types';
+import { FormationSlot } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
+
+interface StarterRow {
+  slot: FormationSlot;
+  player: Player | null;
+}
 
 @Component({
   selector: 'app-team-details',
@@ -13,6 +20,7 @@ import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../.
 export class TeamDetailsComponent {
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
+  private fieldService = inject(FieldService);
 
   // Expose enums for template
   Position = PositionEnum;
@@ -24,7 +32,7 @@ export class TeamDetailsComponent {
 
   // Drag and drop state
   draggedPlayerId = signal<string | null>(null);
-  dragOverPlayerId = signal<string | null>(null);
+  dragOverTargetId = signal<string | null>(null);
 
   private teamId = computed(() => this.route.snapshot.paramMap.get('id'));
 
@@ -45,12 +53,25 @@ export class TeamDetailsComponent {
     return this.gameService.calculateTeamOverall(t);
   });
 
-  starters = computed(() => {
+  formationSlots = computed(() => this.fieldService.getFixedFormationSlots());
+
+  formationValidationErrors = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED)
-      .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
+    return this.gameService.getFormationValidationErrors(t);
   });
+
+  starterRows = computed<StarterRow[]>(() => {
+    const t = this.team();
+    if (!t) return [];
+
+    return this.formationSlots().map(slot => ({
+      slot,
+      player: t.players.find(player => player.id === t.formationAssignments[slot.slotId]) ?? null
+    }));
+  });
+
+  starters = computed(() => this.starterRows().map(row => row.player).filter((player): player is Player => player !== null));
 
   bench = computed(() => {
     const t = this.team();
@@ -62,7 +83,7 @@ export class TeamDetailsComponent {
   reserves = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role === Role.NOT_DRESSED)
+    return t.players.filter(p => p.role === Role.RESERVE)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
@@ -84,19 +105,19 @@ export class TeamDetailsComponent {
     }
   }
 
-  onDragOver(event: DragEvent, playerId: string) {
+  onDragOver(event: DragEvent, targetId: string) {
     event.preventDefault();
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move';
     }
-    this.dragOverPlayerId.set(playerId);
+    this.dragOverTargetId.set(targetId);
   }
 
   onDragLeave(_event: DragEvent) {
-    this.dragOverPlayerId.set(null);
+    this.dragOverTargetId.set(null);
   }
 
-  onDrop(event: DragEvent, targetPlayerId: string) {
+  onDropOnPlayer(event: DragEvent, targetPlayerId: string) {
     event.preventDefault();
     const draggedId = this.draggedPlayerId();
     
@@ -105,12 +126,33 @@ export class TeamDetailsComponent {
     }
     
     this.draggedPlayerId.set(null);
-    this.dragOverPlayerId.set(null);
+    this.dragOverTargetId.set(null);
+  }
+
+  onDropOnStarterSlot(event: DragEvent, slotId: string, targetPlayerId?: string) {
+    event.preventDefault();
+    const draggedId = this.draggedPlayerId();
+    const team = this.team();
+
+    if (!draggedId || !team) {
+      this.draggedPlayerId.set(null);
+      this.dragOverTargetId.set(null);
+      return;
+    }
+
+    if (targetPlayerId && draggedId !== targetPlayerId) {
+      this.gameService.swapPlayerRoles(draggedId, targetPlayerId);
+    } else if (!targetPlayerId) {
+      this.gameService.updateFormationAssignment(team.id, slotId, draggedId);
+    }
+
+    this.draggedPlayerId.set(null);
+    this.dragOverTargetId.set(null);
   }
 
   onDragEnd() {
     this.draggedPlayerId.set(null);
-    this.dragOverPlayerId.set(null);
+    this.dragOverTargetId.set(null);
   }
 
   isDragging(playerId: string): boolean {
@@ -118,7 +160,26 @@ export class TeamDetailsComponent {
   }
 
   isDragOver(playerId: string): boolean {
-    return this.dragOverPlayerId() === playerId;
+    return this.dragOverTargetId() === playerId;
+  }
+
+  starterRowTargetId(slotId: string): string {
+    return `slot:${slotId}`;
+  }
+
+  slotBadgeClass(slot: FormationSlot): string {
+    switch (slot.position) {
+      case this.Position.GOALKEEPER:
+        return 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30';
+      case this.Position.DEFENDER:
+        return 'bg-blue-500/15 text-blue-300 border-blue-500/30';
+      case this.Position.MIDFIELDER:
+        return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+      case this.Position.FORWARD:
+        return 'bg-red-500/15 text-red-300 border-red-500/30';
+      default:
+        return 'bg-zinc-800 text-zinc-300 border-zinc-700';
+    }
   }
 
   toggleView() {

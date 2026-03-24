@@ -28,10 +28,10 @@ export class GeneratorService {
     const players: Player[] = [];
     
     // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.GOALKEEPER));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.DEFENSE));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.MIDFIELD));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.ATTACK));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER));
 
     // 10 Bench: 1 GK, 3 DEF, 4 MID, 2 FWD
     players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH));
@@ -43,13 +43,35 @@ export class GeneratorService {
     const positions: Position[] = [PositionEnum.GOALKEEPER, PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
     for (let i = 0; i < 5; i++) {
       const pos = positions[Math.floor(Math.random() * positions.length)];
-      players.push(this.generatePlayer(id, pos, RoleEnum.NOT_DRESSED));
+      players.push(this.generatePlayer(id, pos, RoleEnum.RESERVE));
     }
+
+    const startersByPosition = {
+      [PositionEnum.GOALKEEPER]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.GOALKEEPER),
+      [PositionEnum.DEFENDER]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.DEFENDER),
+      [PositionEnum.MIDFIELDER]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.MIDFIELDER),
+      [PositionEnum.FORWARD]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.FORWARD)
+    };
+
+    const formationAssignments: Record<string, string> = {
+      gk_1: startersByPosition[PositionEnum.GOALKEEPER][0]?.id ?? '',
+      def_l: startersByPosition[PositionEnum.DEFENDER][0]?.id ?? '',
+      def_lc: startersByPosition[PositionEnum.DEFENDER][1]?.id ?? '',
+      def_rc: startersByPosition[PositionEnum.DEFENDER][2]?.id ?? '',
+      def_r: startersByPosition[PositionEnum.DEFENDER][3]?.id ?? '',
+      mid_l: startersByPosition[PositionEnum.MIDFIELDER][0]?.id ?? '',
+      mid_lc: startersByPosition[PositionEnum.MIDFIELDER][1]?.id ?? '',
+      mid_rc: startersByPosition[PositionEnum.MIDFIELDER][2]?.id ?? '',
+      mid_r: startersByPosition[PositionEnum.MIDFIELDER][3]?.id ?? '',
+      att_l: startersByPosition[PositionEnum.FORWARD][0]?.id ?? '',
+      att_r: startersByPosition[PositionEnum.FORWARD][1]?.id ?? ''
+    };
 
     return {
       id,
       name,
       players,
+      formationAssignments,
       stats: {
         played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
       }

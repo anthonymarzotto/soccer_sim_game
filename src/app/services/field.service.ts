@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Coordinates, FieldZone, TeamFormation, TacticalSetup } from '../models/simulation.types';
+import { Coordinates, FieldZone, TeamFormation, TacticalSetup, FormationSlot } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
-import { PlayingStyle, Mentality, Role } from '../models/enums';
+import { PlayingStyle, Mentality, Role, Position } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -39,89 +39,21 @@ export class FieldService {
   private readonly MIDFIELD_ZONE = { start: 34, end: 66  };
   private readonly ATTACK_ZONE   = { start: 67, end: 100 };
 
-  // Default formations
-  private readonly FORMATIONS = {
-    '4-4-2': {
-      name: '4-4-2',
-      positions: [
-        // Goalkeeper
-        { role: Role.GOALKEEPER, x: 50, y: 10, zone: FieldZone.DEFENSE },
-        // Defenders
-        { role: Role.DEFENSE, x: 25, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 45, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 55, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 75, y: 25, zone: FieldZone.DEFENSE },
-        // Midfielders
-        { role: Role.MIDFIELD, x: 35, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 45, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 55, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 65, y: 45, zone: FieldZone.MIDFIELD },
-        // Forwards
-        { role: Role.ATTACK, x: 45, y: 75, zone: FieldZone.ATTACK },
-        { role: Role.ATTACK, x: 55, y: 75, zone: FieldZone.ATTACK }
-      ]
-    },
-    '4-3-3': {
-      name: '4-3-3',
-      positions: [
-        // Goalkeeper
-        { role: Role.GOALKEEPER, x: 50, y: 10, zone: FieldZone.DEFENSE },
-        // Defenders
-        { role: Role.DEFENSE, x: 25, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 45, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 55, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 75, y: 25, zone: FieldZone.DEFENSE },
-        // Midfielders
-        { role: Role.MIDFIELD, x: 40, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 50, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 60, y: 45, zone: FieldZone.MIDFIELD },
-        // Forwards
-        { role: Role.ATTACK, x: 30, y: 75, zone: FieldZone.ATTACK },
-        { role: Role.ATTACK, x: 50, y: 75, zone: FieldZone.ATTACK },
-        { role: Role.ATTACK, x: 70, y: 75, zone: FieldZone.ATTACK }
-      ]
-    },
-    '3-5-2': {
-      name: '3-5-2',
-      positions: [
-        // Goalkeeper
-        { role: Role.GOALKEEPER, x: 50, y: 10, zone: FieldZone.DEFENSE },
-        // Defenders
-        { role: Role.DEFENSE, x: 35, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 50, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 65, y: 25, zone: FieldZone.DEFENSE },
-        // Midfielders
-        { role: Role.MIDFIELD, x: 25, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 40, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 50, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 60, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 75, y: 45, zone: FieldZone.MIDFIELD },
-        // Forwards
-        { role: Role.ATTACK, x: 45, y: 75, zone: FieldZone.ATTACK },
-        { role: Role.ATTACK, x: 55, y: 75, zone: FieldZone.ATTACK }
-      ]
-    },
-    '5-3-2': {
-      name: '5-3-2',
-      positions: [
-        // Goalkeeper
-        { role: Role.GOALKEEPER, x: 50, y: 10, zone: FieldZone.DEFENSE },
-        // Defenders
-        { role: Role.DEFENSE, x: 20, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 35, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 50, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 65, y: 25, zone: FieldZone.DEFENSE },
-        { role: Role.DEFENSE, x: 80, y: 25, zone: FieldZone.DEFENSE },
-        // Midfielders
-        { role: Role.MIDFIELD, x: 40, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 50, y: 45, zone: FieldZone.MIDFIELD },
-        { role: Role.MIDFIELD, x: 60, y: 45, zone: FieldZone.MIDFIELD },
-        // Forwards
-        { role: Role.ATTACK, x: 45, y: 75, zone: FieldZone.ATTACK },
-        { role: Role.ATTACK, x: 55, y: 75, zone: FieldZone.ATTACK }
-      ]
-    }
-  };
+  readonly FIXED_FORMATION_NAME = '4-4-2';
+
+  private readonly FIXED_FORMATION_SLOTS: FormationSlot[] = [
+    { slotId: 'gk_1', label: 'GK', position: Position.GOALKEEPER, coordinates: { x: 50, y: 10 }, zone: FieldZone.DEFENSE },
+    { slotId: 'def_l', label: 'LB', position: Position.DEFENDER, coordinates: { x: 25, y: 25 }, zone: FieldZone.DEFENSE },
+    { slotId: 'def_lc', label: 'LCB', position: Position.DEFENDER, coordinates: { x: 45, y: 25 }, zone: FieldZone.DEFENSE },
+    { slotId: 'def_rc', label: 'RCB', position: Position.DEFENDER, coordinates: { x: 55, y: 25 }, zone: FieldZone.DEFENSE },
+    { slotId: 'def_r', label: 'RB', position: Position.DEFENDER, coordinates: { x: 75, y: 25 }, zone: FieldZone.DEFENSE },
+    { slotId: 'mid_l', label: 'LM', position: Position.MIDFIELDER, coordinates: { x: 35, y: 45 }, zone: FieldZone.MIDFIELD },
+    { slotId: 'mid_lc', label: 'LCM', position: Position.MIDFIELDER, coordinates: { x: 45, y: 45 }, zone: FieldZone.MIDFIELD },
+    { slotId: 'mid_rc', label: 'RCM', position: Position.MIDFIELDER, coordinates: { x: 55, y: 45 }, zone: FieldZone.MIDFIELD },
+    { slotId: 'mid_r', label: 'RM', position: Position.MIDFIELDER, coordinates: { x: 65, y: 45 }, zone: FieldZone.MIDFIELD },
+    { slotId: 'att_l', label: 'LS', position: Position.FORWARD, coordinates: { x: 45, y: 75 }, zone: FieldZone.ATTACK },
+    { slotId: 'att_r', label: 'RS', position: Position.FORWARD, coordinates: { x: 55, y: 75 }, zone: FieldZone.ATTACK }
+  ];
 
   getZoneFromY(y: number): FieldZone {
     if (y <= this.DEFENSE_ZONE.end) return FieldZone.DEFENSE;
@@ -167,67 +99,87 @@ export class FieldService {
     }
   }
 
+  getFixedFormationSlots(): FormationSlot[] {
+    return this.FIXED_FORMATION_SLOTS.map(slot => ({ ...slot, coordinates: { ...slot.coordinates } }));
+  }
+
   getFormation(name: string): TeamFormation | null {
-    const baseFormation = this.FORMATIONS[name as keyof typeof this.FORMATIONS];
-    if (!baseFormation) return null;
+    if (name !== this.FIXED_FORMATION_NAME) return null;
 
     return {
-      name: baseFormation.name,
-      positions: baseFormation.positions.map(pos => ({
+      name: this.FIXED_FORMATION_NAME,
+      positions: this.getFixedFormationSlots().map(slot => ({
+        slotId: slot.slotId,
         playerId: '',
-        coordinates: { x: pos.x, y: pos.y },
-        zone: pos.zone as FieldZone,
-        role: pos.role
+        coordinates: slot.coordinates,
+        zone: slot.zone,
+        role: slot.label
       }))
     };
   }
 
   assignPlayersToFormation(team: Team, formationName: string): TeamFormation | null {
-    const formation = this.getFormation(formationName);
-    if (!formation) return null;
+    if (formationName !== this.FIXED_FORMATION_NAME) return null;
 
-    const playersByRole = {
-      [Role.GOALKEEPER]: team.players.filter(p => p.role === Role.GOALKEEPER),
-      [Role.DEFENSE]: team.players.filter(p => p.role === Role.DEFENSE),
-      [Role.MIDFIELD]: team.players.filter(p => p.role === Role.MIDFIELD),
-      [Role.ATTACK]: team.players.filter(p => p.role === Role.ATTACK)
+    return {
+      name: this.FIXED_FORMATION_NAME,
+      positions: this.getFixedFormationSlots().map(slot => ({
+        slotId: slot.slotId,
+        playerId: team.formationAssignments[slot.slotId] ?? '',
+        coordinates: slot.coordinates,
+        zone: slot.zone,
+        role: slot.label
+      }))
     };
+  }
 
-    // Sort players by overall rating within each role
-    Object.keys(playersByRole).forEach(role => {
-      playersByRole[role as keyof typeof playersByRole].sort((a, b) => b.overall - a.overall);
-    });
+  validateFormationAssignments(team: Team): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    const assignments = team.formationAssignments;
+    const slots = this.getFixedFormationSlots();
+    const assignedPlayerIds: string[] = [];
 
-    // Assign players to positions based on role and overall rating
-    const assignedFormation: TeamFormation = {
-      name: formation.name,
-      positions: formation.positions.map((pos) => {
-        let assignedPlayer: Player | undefined;
-        
-        // Find the best available player for this role
-        const availablePlayers = playersByRole[pos.role as keyof typeof playersByRole];
-        if (availablePlayers && availablePlayers.length > 0) {
-          assignedPlayer = availablePlayers.shift();
-        }
+    for (const slot of slots) {
+      const playerId = assignments[slot.slotId];
+      if (!playerId) {
+        errors.push(`Missing assignment for ${slot.label}`);
+        continue;
+      }
 
-        return {
-          playerId: assignedPlayer?.id || '',
-          coordinates: pos.coordinates,
-          zone: pos.zone,
-          role: pos.role
-        };
-      })
+      const player = team.players.find(p => p.id === playerId);
+      if (!player) {
+        errors.push(`Assigned player for ${slot.label} was not found`);
+        continue;
+      }
+
+      if (player.role !== Role.STARTER) {
+        errors.push(`${player.name} must be a Starter to occupy ${slot.label}`);
+      }
+
+      if (slot.position === Position.GOALKEEPER && player.position !== Position.GOALKEEPER) {
+        errors.push(`${slot.label} must be filled by a goalkeeper`);
+      }
+
+      assignedPlayerIds.push(playerId);
+    }
+
+    const uniquePlayerIds = new Set(assignedPlayerIds);
+    if (uniquePlayerIds.size !== assignedPlayerIds.length) {
+      errors.push('A player is assigned to multiple formation slots');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
     };
-
-    return assignedFormation;
   }
 
   getAvailableFormations(): string[] {
-    return Object.keys(this.FORMATIONS);
+    return [this.FIXED_FORMATION_NAME];
   }
 
-  calculateTeamTactics(team: Team, formationName: string): TacticalSetup {
-    const formation = this.assignPlayersToFormation(team, formationName);
+  calculateTeamTactics(team: Team, _formationName?: string): TacticalSetup {
+    const formation = this.assignPlayersToFormation(team, this.FIXED_FORMATION_NAME);
     
     // Calculate team averages for different attributes
     const overallAvg = team.players.reduce((sum, p) => sum + p.overall, 0) / team.players.length;
@@ -265,21 +217,8 @@ export class FieldService {
     };
   }
 
-  getOptimalFormation(team: Team): string {
-    const attackingPlayers = team.players.filter(p => p.role === Role.ATTACK).length;
-    const midfielders = team.players.filter(p => p.role === Role.MIDFIELD).length;
-    const defenders = team.players.filter(p => p.role === Role.DEFENSE).length;
-
-    // Simple heuristic for optimal formation
-    if (attackingPlayers >= 2 && midfielders >= 4 && defenders >= 4) {
-      return '4-4-2';
-    } else if (attackingPlayers >= 3 && midfielders >= 3 && defenders >= 4) {
-      return '4-3-3';
-    } else if (attackingPlayers >= 2 && midfielders >= 5 && defenders >= 3) {
-      return '3-5-2';
-    } else {
-      return '4-4-2'; // Default
-    }
+  getOptimalFormation(_team: Team): string {
+    return this.FIXED_FORMATION_NAME;
   }
 
   getStartingPositionForPlayer(player: Player, formation: TeamFormation): Coordinates {
