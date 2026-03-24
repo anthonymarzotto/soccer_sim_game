@@ -27,12 +27,9 @@ export enum Position {
 
 // Role Types
 export enum Role {
-  GOALKEEPER = 'Goalkeeper',
-  DEFENSE = 'Defense',
-  MIDFIELD = 'Midfield',
-  ATTACK = 'Attack',
+  STARTER = 'Starter',
   BENCH = 'Bench',
-  NOT_DRESSED = 'Not Dressed'
+  RESERVE = 'Reserve'
 }
 
 // Tactical Types

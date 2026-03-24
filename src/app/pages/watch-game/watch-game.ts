@@ -54,6 +54,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   // Display state - only show stats after commentary completes
   showStats = signal<boolean>(false);
+  validationError = signal<string | null>(null);
   
   // Animation interval
   private commentaryInterval: ReturnType<typeof setInterval> | null = null;
@@ -124,6 +125,18 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const away = this.awayTeam();
 
     if (!match || !home || !away || match.played) return;
+
+    const userTeamId = this.gameService.league()?.userTeamId;
+    const userTeam = home.id === userTeamId ? home : away.id === userTeamId ? away : null;
+    if (userTeam) {
+      const errors = this.gameService.getFormationValidationErrors(userTeam);
+      if (errors.length > 0) {
+        this.validationError.set(errors[0]);
+        return;
+      }
+    }
+
+    this.validationError.set(null);
 
     // Reset UI state to guarantee stats remain hidden until finishMatch().
     this.stopCommentaryFeed();

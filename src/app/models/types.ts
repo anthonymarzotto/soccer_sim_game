@@ -84,6 +84,7 @@ export interface Team {
   name: string;
   players: Player[];
   stats: TeamStats;
+  formationAssignments: Record<string, string>;
 }
 
 export interface Match {

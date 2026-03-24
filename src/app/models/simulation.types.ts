@@ -3,16 +3,24 @@ export interface Coordinates {
   y: number; // 0-100 (length)
 }
 
-import { FieldZone, EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase } from './enums';
-
+import { FieldZone, EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase, Position } from './enums';
 // Re-export the enums for backward compatibility
 export { FieldZone, EventType, CommentaryStyle, PlayingStyle, Mentality, MatchPhase };
 
 export interface PlayerPosition {
+  slotId: string;
   playerId: string;
   coordinates: Coordinates;
   zone: FieldZone;
   role: string;
+}
+
+export interface FormationSlot {
+  slotId: string;
+  label: string;
+  position: Position;
+  coordinates: Coordinates;
+  zone: FieldZone;
 }
 
 export interface TeamFormation {

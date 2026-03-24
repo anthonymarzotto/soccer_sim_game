@@ -83,12 +83,9 @@ export class MatchSimulationService {
   }
 
   private calculateTeamTactics(homeTeam: Team, awayTeam: Team): { home: TacticalSetup; away: TacticalSetup } {
-    const optimalHomeFormation = this.fieldService.getOptimalFormation(homeTeam);
-    const optimalAwayFormation = this.fieldService.getOptimalFormation(awayTeam);
-
     return {
-      home: this.fieldService.calculateTeamTactics(homeTeam, optimalHomeFormation),
-      away: this.fieldService.calculateTeamTactics(awayTeam, optimalAwayFormation)
+      home: this.fieldService.calculateTeamTactics(homeTeam),
+      away: this.fieldService.calculateTeamTactics(awayTeam)
     };
   }
 
@@ -276,7 +273,7 @@ export class MatchSimulationService {
     }
 
     // Find goalkeeper
-    const goalkeeper = opponentTeam.players.find(p => p.role === Role.GOALKEEPER);
+    const goalkeeper = opponentTeam.players.find(p => p.id === opponentTeam.formationAssignments['gk_1']);
     
     // Calculate shot success
     const shotSuccess = this.calculateShotSuccess(shooter, goalkeeper, teamTactics, teamFatigue, state.ballPossession.location);
@@ -574,8 +571,7 @@ export class MatchSimulationService {
     
     const potentialTargets = team.players.filter(p => 
       p.id !== passer.id && 
-      p.role !== Role.NOT_DRESSED &&
-      p.role !== Role.BENCH
+      p.role === Role.STARTER
     );
 
     if (potentialTargets.length === 0) return null;
@@ -604,7 +600,7 @@ export class MatchSimulationService {
   }
 
   private getRandomPlayerId(team: Team): string {
-    const players = team.players.filter(p => p.role !== Role.NOT_DRESSED && p.role !== Role.BENCH);
+    const players = team.players.filter(p => p.role === Role.STARTER);
     return players[Math.floor(Math.random() * players.length)].id;
   }
 

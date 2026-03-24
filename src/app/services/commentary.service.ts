@@ -217,8 +217,8 @@ export class CommentaryService {
       `We're ready for kick-off!`,
       `${homeTeam.name} vs ${awayTeam.name}`,
       `The teams are lining up:`,
-      `Home team: ${homeTeam.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED).map(p => p.name).join(', ')}`,
-      `Away team: ${awayTeam.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED).map(p => p.name).join(', ')}`,
+      `Home team: ${homeTeam.players.filter(p => p.role === Role.STARTER).map(p => p.name).join(', ')}`,
+      `Away team: ${awayTeam.players.filter(p => p.role === Role.STARTER).map(p => p.name).join(', ')}`,
       `Let's play some football!`
     ];
     return commentary;

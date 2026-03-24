@@ -5,6 +5,7 @@ import { MatchSimulationService } from './match.simulation.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
+import { FieldService } from './field.service';
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
@@ -126,6 +127,60 @@ export class GameService {
     this.leagueState.set({ ...l, teams: updatedTeams });
   }
 
+  updateFormationAssignment(teamId: string, slotId: string, playerId: string) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    const updatedTeams = l.teams.map(team => {
+      if (team.id !== teamId) return team;
+
+      const player = team.players.find(p => p.id === playerId);
+      if (!player) return team;
+
+      const updatedPlayers = team.players.map(p =>
+        p.id === playerId ? { ...p, role: Role.STARTER } : p
+      );
+
+      const nextAssignments = { ...team.formationAssignments };
+      Object.keys(nextAssignments).forEach(key => {
+        if (nextAssignments[key] === playerId) {
+          nextAssignments[key] = '';
+        }
+      });
+      nextAssignments[slotId] = playerId;
+
+      return {
+        ...team,
+        players: updatedPlayers,
+        formationAssignments: nextAssignments
+      };
+    });
+
+    this.leagueState.set({ ...l, teams: updatedTeams });
+  }
+
+  clearFormationAssignment(teamId: string, slotId: string) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    const updatedTeams = l.teams.map(team => {
+      if (team.id !== teamId) return team;
+      return {
+        ...team,
+        formationAssignments: {
+          ...team.formationAssignments,
+          [slotId]: ''
+        }
+      };
+    });
+
+    this.leagueState.set({ ...l, teams: updatedTeams });
+  }
+
+  getFormationValidationErrors(team: Team): string[] {
+    return this.fieldService.validateFormationAssignments(team).errors;
+  }
+
   swapPlayerRoles(playerId1: string, playerId2: string) {
     const l = this.leagueState();
     if (!l) return;
@@ -138,16 +193,38 @@ export class GameService {
         const updatedPlayers = [...team.players];
         const player1Role = updatedPlayers[player1Index].role;
         const player2Role = updatedPlayers[player2Index].role;
+        const updatedAssignments = { ...team.formationAssignments };
+        const player1SlotId = this.findAssignedSlotId(updatedAssignments, playerId1);
+        const player2SlotId = this.findAssignedSlotId(updatedAssignments, playerId2);
         
         updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: player2Role };
         updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: player1Role };
+
+        if (player1SlotId && player2SlotId) {
+          updatedAssignments[player1SlotId] = playerId2;
+          updatedAssignments[player2SlotId] = playerId1;
+        } else if (player1SlotId) {
+          updatedAssignments[player1SlotId] = playerId2;
+        } else if (player2SlotId) {
+          updatedAssignments[player2SlotId] = playerId1;
+        }
         
-        return { ...team, players: updatedPlayers };
+        return { ...team, players: updatedPlayers, formationAssignments: updatedAssignments };
       }
       return team;
     });
 
     this.leagueState.set({ ...l, teams: updatedTeams });
+  }
+
+  private findAssignedSlotId(assignments: Record<string, string>, playerId: string): string | null {
+    for (const [slotId, assignedPlayerId] of Object.entries(assignments)) {
+      if (assignedPlayerId === playerId) {
+        return slotId;
+      }
+    }
+
+    return null;
   }
 
   private dressBestPlayers(teams: Team[]): Team[] {
@@ -156,29 +233,50 @@ export class GameService {
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
 
-      const players = team.players.map(p => ({ ...p, role: Role.NOT_DRESSED }));
+      const players = team.players.map(p => ({ ...p, role: Role.RESERVE }));
 
       const gks = players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => b.overall - a.overall);
       const defs = players.filter(p => p.position === Position.DEFENDER).sort((a, b) => b.overall - a.overall);
       const mids = players.filter(p => p.position === Position.MIDFIELDER).sort((a, b) => b.overall - a.overall);
       const fwds = players.filter(p => p.position === Position.FORWARD).sort((a, b) => b.overall - a.overall);
 
-      if (gks.length > 0) gks[0].role = Role.GOALKEEPER;
-      for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = Role.DEFENSE;
-      for (let i = 0; i < Math.min(4, mids.length); i++) mids[i].role = Role.MIDFIELD;
-      for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = Role.ATTACK;
+      if (gks.length > 0) gks[0].role = Role.STARTER;
+      for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = Role.STARTER;
+      for (let i = 0; i < Math.min(4, mids.length); i++) mids[i].role = Role.STARTER;
+      for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = Role.STARTER;
 
       if (gks.length > 1) gks[1].role = Role.BENCH;
       for (let i = 4; i < Math.min(7, defs.length); i++) defs[i].role = Role.BENCH;
       for (let i = 4; i < Math.min(8, mids.length); i++) mids[i].role = Role.BENCH;
       for (let i = 2; i < Math.min(4, fwds.length); i++) fwds[i].role = Role.BENCH;
 
-      return { ...team, players };
+      const startersByPosition = {
+        [Position.GOALKEEPER]: players.filter(p => p.role === Role.STARTER && p.position === Position.GOALKEEPER),
+        [Position.DEFENDER]: players.filter(p => p.role === Role.STARTER && p.position === Position.DEFENDER),
+        [Position.MIDFIELDER]: players.filter(p => p.role === Role.STARTER && p.position === Position.MIDFIELDER),
+        [Position.FORWARD]: players.filter(p => p.role === Role.STARTER && p.position === Position.FORWARD)
+      };
+
+      const formationAssignments: Record<string, string> = {
+        gk_1: startersByPosition[Position.GOALKEEPER][0]?.id ?? '',
+        def_l: startersByPosition[Position.DEFENDER][0]?.id ?? '',
+        def_lc: startersByPosition[Position.DEFENDER][1]?.id ?? '',
+        def_rc: startersByPosition[Position.DEFENDER][2]?.id ?? '',
+        def_r: startersByPosition[Position.DEFENDER][3]?.id ?? '',
+        mid_l: startersByPosition[Position.MIDFIELDER][0]?.id ?? '',
+        mid_lc: startersByPosition[Position.MIDFIELDER][1]?.id ?? '',
+        mid_rc: startersByPosition[Position.MIDFIELDER][2]?.id ?? '',
+        mid_r: startersByPosition[Position.MIDFIELDER][3]?.id ?? '',
+        att_l: startersByPosition[Position.FORWARD][0]?.id ?? '',
+        att_r: startersByPosition[Position.FORWARD][1]?.id ?? ''
+      };
+
+      return { ...team, players, formationAssignments };
     });
   }
 
   public calculateTeamOverall(team: Team): number {
-    const starters = team.players.filter(p => p.role !== Role.BENCH && p.role !== Role.NOT_DRESSED);
+    const starters = team.players.filter(p => p.role === Role.STARTER);
     if (starters.length === 0) return 50;
     const sum = starters.reduce((acc, p) => acc + p.overall, 0);
     return Math.round(sum / starters.length);
@@ -189,6 +287,7 @@ export class GameService {
   private commentaryService = inject(CommentaryService);
   private statisticsService = inject(StatisticsService);
   private postMatchAnalysisService = inject(PostMatchAnalysisService);
+  private fieldService = inject(FieldService);
 
   simulateMatchWithDetails(match: Match, homeTeam: Team, awayTeam: Team, config?: Partial<SimulationConfig>) {
     // Merge caller-supplied overrides on top of the simulation defaults.
@@ -344,21 +443,21 @@ export class GameService {
     // Update minutes played for all players who participated
     const allTeamPlayers = [...homeTeam.players, ...awayTeam.players];
     allTeamPlayers.forEach(player => {
-      if (player.role !== Role.NOT_DRESSED) {
+      if (player.role !== Role.RESERVE) {
         player.careerStats.minutesPlayed += 90; // Full match
       }
     });
 
     // Update matches played for all players who participated
     allTeamPlayers.forEach(player => {
-      if (player.role !== Role.NOT_DRESSED) {
+      if (player.role !== Role.RESERVE) {
         player.careerStats.matchesPlayed++;
       }
     });
 
     // Update clean sheets for goalkeepers
-    const homeGoalkeeper = homeTeam.players.find(p => p.position === Position.GOALKEEPER && p.role === Role.GOALKEEPER);
-    const awayGoalkeeper = awayTeam.players.find(p => p.position === Position.GOALKEEPER && p.role === Role.GOALKEEPER);
+    const homeGoalkeeper = homeTeam.players.find(p => p.id === homeTeam.formationAssignments['gk_1']);
+    const awayGoalkeeper = awayTeam.players.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
     if (homeGoalkeeper && homeScore === 0) {
       homeGoalkeeper.careerStats.cleanSheets++;
