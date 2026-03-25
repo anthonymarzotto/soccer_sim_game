@@ -65,9 +65,31 @@ export class FormationLibraryService {
    */
   registerUserFormation(schema: FormationSchema): FormationValidation {
     const validation = this.validateFormationSchema(schema);
-    if (validation.isValid) {
-      this.userDefinedFormations.set(schema.id, schema);
+
+    // If basic schema validation fails, return as-is.
+    if (!validation.isValid) {
+      return validation;
     }
+
+    // Prevent collisions with both predefined and existing user-defined formations.
+    const idAlreadyUsed =
+      this.predefinedFormations.has(schema.id) || this.userDefinedFormations.has(schema.id);
+
+    if (idAlreadyUsed) {
+      const v: any = validation;
+      v.isValid = false;
+      const duplicateMessage = `Formation ID '${schema.id}' is already in use.`;
+
+      if (Array.isArray(v.errors)) {
+        v.errors.push(duplicateMessage);
+      } else {
+        v.errors = [duplicateMessage];
+      }
+
+      return validation;
+    }
+
+    this.userDefinedFormations.set(schema.id, schema);
     return validation;
   }
 
