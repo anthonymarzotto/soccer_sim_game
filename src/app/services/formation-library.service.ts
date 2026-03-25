@@ -87,9 +87,31 @@ export class FormationLibraryService {
    */
   registerUserFormation(schema: FormationSchema): FormationValidation {
     const validation = this.validateFormationSchema(schema);
-    if (validation.isValid) {
-      this.userDefinedFormations.set(schema.id, this.cloneFormation(schema));
+
+    // If basic schema validation fails, return as-is.
+    if (!validation.isValid) {
+      return validation;
     }
+
+    // Prevent collisions with both predefined and existing user-defined formations.
+    const idAlreadyUsed =
+      this.predefinedFormations.has(schema.id) || this.userDefinedFormations.has(schema.id);
+
+    if (idAlreadyUsed) {
+      const v: FormationValidation = validation;
+      v.isValid = false;
+      const duplicateMessage = `Formation ID '${schema.id}' is already in use.`;
+
+      if (Array.isArray(v.errors)) {
+        v.errors.push(duplicateMessage);
+      } else {
+        v.errors = [duplicateMessage];
+      }
+
+      return validation;
+    }
+
+    this.userDefinedFormations.set(schema.id, this.cloneFormation(schema));
     return validation;
   }
 
@@ -117,27 +139,28 @@ export class FormationLibraryService {
    */
   validateFormationSchema(schema: FormationSchema): FormationValidation {
     const errors: string[] = [];
+    const slots = schema.slots ?? [];
 
     // Check slot count
-    if (!schema.slots || schema.slots.length !== 11) {
-      errors.push(`Formation must have exactly 11 slots, got ${schema.slots?.length ?? 0}`);
+    if (slots.length !== 11) {
+      errors.push(`Formation must have exactly 11 slots, got ${slots.length}`);
     }
 
     // Check for exactly one goalkeeper
-    const gkSlots = schema.slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
+    const gkSlots = slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
     if (gkSlots.length !== 1) {
       errors.push(`Formation must have exactly 1 goalkeeper slot, got ${gkSlots.length}`);
     }
 
     // Check for unique slot IDs
-    const slotIds = schema.slots.map(s => s.slotId);
+    const slotIds = slots.map(s => s.slotId);
     const uniqueSlotIds = new Set(slotIds);
     if (slotIds.length !== uniqueSlotIds.size) {
       errors.push('Slot IDs must be unique within the formation');
     }
 
     // Check for unique labels
-    const labels = schema.slots.map(s => s.label);
+    const labels = slots.map(s => s.label);
     const uniqueLabels = new Set(labels);
     if (labels.length !== uniqueLabels.size) {
       errors.push('Slot labels must be unique within the formation');
