@@ -188,9 +188,9 @@ describe('FormationLibraryService', () => {
       const predefined = service.listPredefinedFormations();
       const userDefined = service.listUserDefinedFormations();
 
-      expect(predefined.length).toBe(1); // Still just 4-4-2
+      expect(predefined.length).toBe(ALL_PREDEFINED_FORMATIONS.length);
       expect(userDefined.length).toBe(1); // Our custom one
-      expect(predefined[0].id).toBe('formation_4_4_2');
+      expect(predefined.map(f => f.id)).toContain('formation_4_4_2');
       expect(userDefined[0].id).toBe('user_custom_test');
     });
   });
