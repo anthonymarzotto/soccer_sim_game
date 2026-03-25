@@ -6,6 +6,8 @@ import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
+import { FormationLibraryService } from './formation-library.service';
+import { normalizeTeamFormation } from '../models/team-migration';
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
@@ -179,6 +181,21 @@ export class GameService {
 
   getFormationValidationErrors(team: Team): string[] {
     return this.fieldService.validateFormationAssignments(team).errors;
+  }
+
+  private formationLibrary = inject(FormationLibraryService);
+
+  changeTeamFormation(teamId: string, formationId: string) {
+    const l = this.leagueState();
+    const schema = this.formationLibrary.getFormationSlots(formationId);
+    if (!l || !schema) return;
+
+    const updatedTeams = l.teams.map(team => {
+      if (team.id !== teamId) return team;
+      return normalizeTeamFormation({ ...team, selectedFormationId: formationId }, formationId, schema);
+    });
+
+    this.leagueState.set({ ...l, teams: updatedTeams });
   }
 
   swapPlayerRoles(playerId1: string, playerId2: string) {

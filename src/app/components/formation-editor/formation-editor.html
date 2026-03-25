@@ -1,0 +1,210 @@
+<div class="formation-editor p-6 bg-gray-900 rounded-lg border border-gray-700">
+  <h2 class="text-2xl font-bold mb-4 text-white">Custom Formation Editor</h2>
+
+  <!-- Success Message -->
+  @if (registrationSuccess()) {
+    <div class="mb-4 p-4 bg-green-900/30 border border-green-500/50 rounded text-green-300">
+      ✓ Formation registered successfully!
+    </div>
+  }
+
+  <!-- Error Message -->
+  @if (registrationError()) {
+    <div class="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded text-red-300">
+      {{ registrationError() }}
+    </div>
+  }
+
+  <!-- Form Section -->
+  <div class="space-y-4 mb-6">
+    <!-- Formation Metadata -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label for="formationName" class="block text-sm font-medium text-gray-300 mb-2">Formation Name</label>
+        <input
+          id="formationName"
+          type="text"
+          [value]="formationName()"
+          (change)="formationName.set($any($event.target).value)"
+          class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
+          placeholder="e.g., Classic 4-4-2"
+        />
+      </div>
+      <div>
+        <label for="formationShortCode" class="block text-sm font-medium text-gray-300 mb-2">Short Code</label>
+        <input
+          id="formationShortCode"
+          type="text"
+          [value]="formationShortCode()"
+          (change)="formationShortCode.set($any($event.target).value)"
+          class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
+          placeholder="e.g., 4-4-2"
+          maxlength="10"
+        />
+      </div>
+      <div>
+        <p class="block text-sm font-medium text-gray-300 mb-2">Goalkeeper Slots: {{ goalkeeperCount() }}/1</p>
+        <div class="text-sm text-gray-400 mt-2">
+          Total Slots: {{ slots().length }}/11
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div>
+      <label for="formationDescription" class="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+      <textarea
+        id="formationDescription"
+        [value]="formationDescription()"
+        (change)="formationDescription.set($any($event.target).value)"
+        class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
+        placeholder="Describe the formation's playing style..."
+        rows="2"
+      ></textarea>
+    </div>
+  </div>
+
+  <!-- Validation Errors -->
+  @if (hasValidationErrors()) {
+    <div class="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded">
+      <h3 class="text-sm font-semibold text-red-300 mb-2">Validation Errors:</h3>
+      <ul class="list-disc list-inside text-sm text-red-200 space-y-1">
+        @for (error of validationErrors(); track $index) {
+          <li>{{ error }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <!-- Slots Editor -->
+  <div class="mb-6">
+    <h3 class="text-lg font-semibold text-white mb-3">Formation Slots</h3>
+    <div class="space-y-2 max-h-96 overflow-y-auto">
+      @for (slot of slots(); track slot.slotId; let i = $index) {
+        <div class="grid grid-cols-6 gap-2 p-3 bg-gray-800 rounded border border-gray-700">
+          <!-- Slot ID (read-only display, editable via separate logic if needed) -->
+          <div class="col-span-1">
+            <label [for]="'slotId-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Slot ID</label>
+            <input
+              [id]="'slotId-' + $index"
+              type="text"
+              [value]="slot.slotId"
+              disabled
+              class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-300 text-xs"
+            />
+          </div>
+
+          <!-- Label -->
+          <div class="col-span-1">
+            <label [for]="'slotLabel-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Label</label>
+            <input
+              [id]="'slotLabel-' + $index"
+              type="text"
+              [value]="slot.label"
+              (change)="onSlotUpdate(i, 'label', $any($event.target).value)"
+              class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
+            />
+          </div>
+
+          <!-- Position -->
+          <div class="col-span-1">
+            <label [for]="'slotPosition-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Position</label>
+            <select
+              [id]="'slotPosition-' + $index"
+              [value]="slot.preferredPosition"
+              (change)="onSlotUpdate(i, 'preferredPosition', $any($event.target).value)"
+              class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
+            >
+              @for (pos of availablePositions(); track pos) {
+                <option [value]="pos">{{ pos }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- X Coordinate -->
+          <div class="col-span-1">
+            <label [for]="'slotX-' + $index" class="block text-xs font-medium text-gray-400 mb-1">X (0-100)</label>
+            <input
+              [id]="'slotX-' + $index"
+              type="number"
+              [value]="slot.coordinates.x"
+              (change)="onSlotCoordinateUpdate(i, 'x', $any($event.target).value)"
+              min="0"
+              max="100"
+              class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
+            />
+          </div>
+
+          <!-- Y Coordinate -->
+          <div class="col-span-1">
+            <label [for]="'slotY-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Y (0-100)</label>
+            <input
+              [id]="'slotY-' + $index"
+              type="number"
+              [value]="slot.coordinates.y"
+              (change)="onSlotCoordinateUpdate(i, 'y', $any($event.target).value)"
+              min="0"
+              max="100"
+              class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
+            />
+          </div>
+
+          <!-- Zone -->
+          <div class="col-span-1">
+            <label [for]="'slotZone-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Zone</label>
+            <select
+              [id]="'slotZone-' + $index"
+              [value]="slot.zone"
+              (change)="onSlotUpdate(i, 'zone', $any($event.target).value)"
+              class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
+            >
+              @for (z of availableZones(); track z) {
+                <option [value]="z">{{ z }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="flex gap-2">
+    <button
+      (click)="validateFormation()"
+      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+    >
+      Validate
+    </button>
+    <button
+      (click)="registerFormation()"
+      [disabled]="!isFormValid()"
+      [class.opacity-50]="!isFormValid()"
+      [class.cursor-not-allowed]="!isFormValid()"
+      class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium disabled:hover:bg-green-600"
+    >
+      Register Formation
+    </button>
+    <button
+      (click)="resetForm()"
+      class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
+    >
+      Reset
+    </button>
+  </div>
+
+  <!-- Preload Predefined -->
+  <div class="mt-6 pt-6 border-t border-gray-700">
+    <h4 class="text-sm font-semibold text-gray-300 mb-2">Or load and modify a predefined formation:</h4>
+    <div class="flex gap-2 flex-wrap">
+      @for (formation of formationLibrary.listPredefinedFormations(); track formation.id) {
+        <button
+          (click)="loadPredefinedFormation(formation.id)"
+          class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded"
+        >
+          {{ formation.shortCode }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { FieldService } from '../../services/field.service';
+import { FormationLibraryService } from '../../services/formation-library.service';
 import { Player, Role } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
@@ -21,6 +22,7 @@ export class TeamDetailsComponent {
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
   private fieldService = inject(FieldService);
+  private formationLibrary = inject(FormationLibraryService);
 
   // Expose enums for template
   Position = PositionEnum;
@@ -53,7 +55,11 @@ export class TeamDetailsComponent {
     return this.gameService.calculateTeamOverall(t);
   });
 
-  formationSlots = computed(() => this.fieldService.getFixedFormationSlots());
+  formationSlots = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    return this.fieldService.getFormationSlots(t);
+  });
 
   formationValidationErrors = computed(() => {
     const t = this.team();
@@ -180,6 +186,18 @@ export class TeamDetailsComponent {
       default:
         return 'bg-zinc-800 text-zinc-300 border-zinc-700';
     }
+  }
+
+  availableFormations = computed(() =>
+    this.fieldService.getAvailableFormations()
+      .map(id => this.formationLibrary.getFormationById(id))
+      .filter((f): f is NonNullable<typeof f> => f !== undefined)
+  );
+
+  onFormationChange(formationId: string) {
+    const team = this.team();
+    if (!team) return;
+    this.gameService.changeTeamFormation(team.id, formationId);
   }
 
   toggleView() {

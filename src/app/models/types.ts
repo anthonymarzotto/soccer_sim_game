@@ -84,7 +84,8 @@ export interface Team {
   name: string;
   players: Player[];
   stats: TeamStats;
-  formationAssignments: Record<string, string>;
+  selectedFormationId: string;  // References a formation schema ID from FormationLibraryService
+  formationAssignments: Record<string, string>;  // slotId -> playerId mapping, validated against selectedFormation
 }
 
 export interface Match {

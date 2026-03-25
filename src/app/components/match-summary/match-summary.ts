@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
 import { TeamBadgeComponent } from '../team-badge/team-badge';
-import { Match, MatchStatistics, MatchEvent } from '../../models/types';
+import { Match } from '../../models/types';
 import { EventImportance } from '../../models/enums';
 
 const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
