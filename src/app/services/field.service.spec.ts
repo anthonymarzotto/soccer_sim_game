@@ -171,6 +171,29 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       expect(tactics.defensiveLine).toBeGreaterThanOrEqual(0);
       expect(tactics.tempo).toBeGreaterThanOrEqual(0);
     });
+
+    it('should fallback to default formation when selected formation is invalid', () => {
+      const team = { ...mockTeam, selectedFormationId: 'invalid_formation_id' };
+
+      const tactics = fieldService.calculateTeamTactics(team);
+
+      expect(tactics.formation).toBeDefined();
+      expect(tactics.formation.name).toBe('Classic 4-4-2');
+      expect(tactics.formation.positions.length).toBe(11);
+    });
+
+    it('should return safe empty formation when selected and default formations are unavailable', () => {
+      const originalAssignPlayersToFormation = fieldService.assignPlayersToFormation.bind(fieldService);
+      (fieldService as FieldService & { assignPlayersToFormation: (team: Team) => null }).assignPlayersToFormation = () => null;
+
+      const tactics = fieldService.calculateTeamTactics(mockTeam);
+
+      expect(tactics.formation).toBeDefined();
+      expect(tactics.formation.name).toBe('Unavailable Formation');
+      expect(tactics.formation.positions.length).toBe(0);
+
+      (fieldService as FieldService & { assignPlayersToFormation: (team: Team) => ReturnType<FieldService['assignPlayersToFormation']> }).assignPlayersToFormation = originalAssignPlayersToFormation;
+    });
   });
 
   describe('Formation Availability', () => {

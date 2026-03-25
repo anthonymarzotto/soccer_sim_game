@@ -4,12 +4,37 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
 import { Team, Player } from '../models/types';
-import { Role, Position as PositionEnum, FieldZone, PlayingStyle, Mentality, EventType } from '../models/enums';
+import { MatchState, SimulationConfig, TacticalSetup, PlayerFatigue } from '../models/simulation.types';
+import { Role, Position as PositionEnum, FieldZone, EventType, CommentaryStyle, MatchPhase } from '../models/enums';
+
+interface MatchSimulationServicePrivateApi {
+  getGoalkeeperForTeam(team: Team): Player | undefined;
+  calculateTeamTactics(homeTeam: Team, awayTeam: Team): { home: TacticalSetup; away: TacticalSetup };
+  initializeFatigue(homeTeam: Team, awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] };
+  calculateShotSuccess: (
+    shooter: Player,
+    goalkeeper: Player | undefined,
+    tactics: TacticalSetup,
+    fatigue: PlayerFatigue[],
+    location: { x: number; y: number }
+  ) => { goal: boolean; onTarget: boolean };
+  handleShot(
+    state: MatchState,
+    action: { type: EventType; player: Player },
+    homeTeam: Team,
+    awayTeam: Team,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    minute: number,
+    config: SimulationConfig
+  ): void;
+}
 
 describe('MatchSimulationService - Schema-Driven Simulation', () => {
   let simulationService: MatchSimulationService;
   let fieldService: FieldService;
   let formationLibrary: FormationLibraryService;
+  let privateApi: MatchSimulationServicePrivateApi;
   let mockTeam442: Team;
   let mockPlayers: Player[];
 
@@ -21,6 +46,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
     simulationService = TestBed.inject(MatchSimulationService);
     fieldService = TestBed.inject(FieldService);
     formationLibrary = TestBed.inject(FormationLibraryService);
+    privateApi = simulationService as unknown as MatchSimulationServicePrivateApi;
 
     // Create mock players
     mockPlayers = [
@@ -44,8 +70,8 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
 
   describe('Goalkeeper Resolution from Formation Schema', () => {
     it('should find goalkeeper from 4-4-2 formation schema', () => {
-      // Access private method via any to test it
-      const goalkeeper = (simulationService as any).getGoalkeeperForTeam(mockTeam442);
+      // Access private method through typed test adapter
+      const goalkeeper = privateApi.getGoalkeeperForTeam(mockTeam442);
       expect(goalkeeper).toBeDefined();
       expect(goalkeeper?.id).toBe('gk1');
       expect(goalkeeper?.position).toBe(PositionEnum.GOALKEEPER);
@@ -60,7 +86,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         }
       };
 
-      const goalkeeper = (simulationService as any).getGoalkeeperForTeam(team);
+      const goalkeeper = privateApi.getGoalkeeperForTeam(team);
       expect(goalkeeper).toBeUndefined();
     });
 
@@ -70,7 +96,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         selectedFormationId: 'invalid_formation'
       };
 
-      const goalkeeper = (simulationService as any).getGoalkeeperForTeam(team);
+      const goalkeeper = privateApi.getGoalkeeperForTeam(team);
       expect(goalkeeper).toBeDefined();
       expect(goalkeeper?.position).toBe(PositionEnum.GOALKEEPER);
       expect(goalkeeper?.role).toBe(Role.STARTER);
@@ -96,7 +122,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         selectedFormationId: 'user_no_gk_slot'
       };
 
-      const goalkeeper = (simulationService as any).getGoalkeeperForTeam(team);
+      const goalkeeper = privateApi.getGoalkeeperForTeam(team);
       expect(goalkeeper).toBeDefined();
       expect(goalkeeper?.position).toBe(PositionEnum.GOALKEEPER);
     });
@@ -126,53 +152,20 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       };
 
       const shooter = homeTeam.players.find(p => p.id === 'fwd1')!;
-      const state = {
-        ballPossession: {
-          teamId: homeTeam.id,
-          playerWithBall: shooter.id,
-          location: { x: 50, y: 85 },
-          phase: 'attacking',
-          passes: 0,
-          timeElapsed: 0
-        },
-        events: [],
-        currentMinute: 1,
-        homeScore: 0,
-        awayScore: 0,
-        homeShots: 0,
-        awayShots: 0,
-        homeShotsOnTarget: 0,
-        awayShotsOnTarget: 0,
-        homePossession: 50,
-        awayPossession: 50,
-        homeCorners: 0,
-        awayCorners: 0,
-        homeFouls: 0,
-        awayFouls: 0,
-        homeYellowCards: 0,
-        awayYellowCards: 0,
-        homeRedCards: 0,
-        awayRedCards: 0
-      } as any;
+      const state = createShotTestState(homeTeam.id, shooter.id);
 
-      const tactics = (simulationService as any).calculateTeamTactics(homeTeam, awayTeam);
-      const fatigue = (simulationService as any).initializeFatigue(homeTeam, awayTeam);
-      const config = {
-        enablePlayByPlay: true,
-        enableSpatialTracking: true,
-        enableTactics: true,
-        enableFatigue: true,
-        commentaryStyle: 'detailed'
-      } as any;
+      const tactics = privateApi.calculateTeamTactics(homeTeam, awayTeam);
+      const fatigue = privateApi.initializeFatigue(homeTeam, awayTeam);
+      const config = createSimulationConfig();
 
       let capturedGoalkeeper: Player | undefined;
-      const originalCalculateShotSuccess = (simulationService as any).calculateShotSuccess;
-      (simulationService as any).calculateShotSuccess = (_shooter: Player, goalkeeper: Player | undefined) => {
+      const originalCalculateShotSuccess = privateApi.calculateShotSuccess;
+      privateApi.calculateShotSuccess = (_shooter: Player, goalkeeper: Player | undefined) => {
         capturedGoalkeeper = goalkeeper;
         return { goal: false, onTarget: true };
       };
 
-      (simulationService as any).handleShot(
+      privateApi.handleShot(
         state,
         { type: EventType.SHOT, player: shooter },
         homeTeam,
@@ -191,7 +184,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       expect(saveEvent.playerIds).toContain(shooter.id);
       expect(saveEvent.playerIds).toContain('away_gk1');
 
-      (simulationService as any).calculateShotSuccess = originalCalculateShotSuccess;
+      privateApi.calculateShotSuccess = originalCalculateShotSuccess;
     });
 
     it('should pass undefined goalkeeper to shot calculation when goalkeeper slot is unassigned', () => {
@@ -206,53 +199,20 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       };
 
       const shooter = homeTeam.players.find(p => p.id === 'fwd1')!;
-      const state = {
-        ballPossession: {
-          teamId: homeTeam.id,
-          playerWithBall: shooter.id,
-          location: { x: 50, y: 85 },
-          phase: 'attacking',
-          passes: 0,
-          timeElapsed: 0
-        },
-        events: [],
-        currentMinute: 1,
-        homeScore: 0,
-        awayScore: 0,
-        homeShots: 0,
-        awayShots: 0,
-        homeShotsOnTarget: 0,
-        awayShotsOnTarget: 0,
-        homePossession: 50,
-        awayPossession: 50,
-        homeCorners: 0,
-        awayCorners: 0,
-        homeFouls: 0,
-        awayFouls: 0,
-        homeYellowCards: 0,
-        awayYellowCards: 0,
-        homeRedCards: 0,
-        awayRedCards: 0
-      } as any;
+      const state = createShotTestState(homeTeam.id, shooter.id);
 
-      const tactics = (simulationService as any).calculateTeamTactics(homeTeam, awayTeam);
-      const fatigue = (simulationService as any).initializeFatigue(homeTeam, awayTeam);
-      const config = {
-        enablePlayByPlay: true,
-        enableSpatialTracking: true,
-        enableTactics: true,
-        enableFatigue: true,
-        commentaryStyle: 'detailed'
-      } as any;
+      const tactics = privateApi.calculateTeamTactics(homeTeam, awayTeam);
+      const fatigue = privateApi.initializeFatigue(homeTeam, awayTeam);
+      const config = createSimulationConfig();
 
       let capturedGoalkeeper: Player | undefined;
-      const originalCalculateShotSuccess = (simulationService as any).calculateShotSuccess;
-      (simulationService as any).calculateShotSuccess = (_shooter: Player, goalkeeper: Player | undefined) => {
+      const originalCalculateShotSuccess = privateApi.calculateShotSuccess;
+      privateApi.calculateShotSuccess = (_shooter: Player, goalkeeper: Player | undefined) => {
         capturedGoalkeeper = goalkeeper;
         return { goal: false, onTarget: true };
       };
 
-      (simulationService as any).handleShot(
+      privateApi.handleShot(
         state,
         { type: EventType.SHOT, player: shooter },
         homeTeam,
@@ -269,7 +229,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       expect(saveEvent.type).toBe(EventType.SAVE);
       expect(saveEvent.playerIds).toEqual([shooter.id]);
 
-      (simulationService as any).calculateShotSuccess = originalCalculateShotSuccess;
+      privateApi.calculateShotSuccess = originalCalculateShotSuccess;
     });
   });
 
@@ -304,7 +264,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       expect(validation.isValid).toBe(true);
 
       // Try to access goalkeeper
-      const gk = (simulationService as any).getGoalkeeperForTeam(mockTeam442);
+      const gk = privateApi.getGoalkeeperForTeam(mockTeam442);
       expect(gk).toBeDefined();
 
       // Get tactics
@@ -345,7 +305,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       const validation = fieldService.validateFormationAssignments(userFormationTeam);
       expect(validation.isValid).toBe(true);
 
-      const gk = (simulationService as any).getGoalkeeperForTeam(userFormationTeam);
+      const gk = privateApi.getGoalkeeperForTeam(userFormationTeam);
       expect(gk).toBeDefined();
     });
   });
@@ -353,7 +313,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
   describe('Multi-Formation Consistency', () => {
     it('should consistently resolve goalkeeper across multiple formation switches', () => {
       // Start with 4-4-2
-      const gk442 = (simulationService as any).getGoalkeeperForTeam(mockTeam442);
+      const gk442 = privateApi.getGoalkeeperForTeam(mockTeam442);
       expect(gk442?.id).toBe('gk1');
 
       // Create a custom formation with same slots
@@ -373,7 +333,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         selectedFormationId: 'user_copy_442'
       };
 
-      const gkCustom = (simulationService as any).getGoalkeeperForTeam(customTeam);
+      const gkCustom = privateApi.getGoalkeeperForTeam(customTeam);
       expect(gkCustom?.id).toBe('gk1');
 
       // Both should be the same
@@ -409,6 +369,47 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
   });
 
   /* Helper functions */
+  function createShotTestState(teamId: string, shooterId: string): MatchState {
+    return {
+      ballPossession: {
+        teamId,
+        playerWithBall: shooterId,
+        location: { x: 50, y: 85 },
+        phase: MatchPhase.ATTACKING,
+        passes: 0,
+        timeElapsed: 0
+      },
+      events: [],
+      currentMinute: 1,
+      homeScore: 0,
+      awayScore: 0,
+      homeShots: 0,
+      awayShots: 0,
+      homeShotsOnTarget: 0,
+      awayShotsOnTarget: 0,
+      homePossession: 50,
+      awayPossession: 50,
+      homeCorners: 0,
+      awayCorners: 0,
+      homeFouls: 0,
+      awayFouls: 0,
+      homeYellowCards: 0,
+      awayYellowCards: 0,
+      homeRedCards: 0,
+      awayRedCards: 0
+    };
+  }
+
+  function createSimulationConfig(): SimulationConfig {
+    return {
+      enablePlayByPlay: true,
+      enableSpatialTracking: true,
+      enableTactics: true,
+      enableFatigue: true,
+      commentaryStyle: CommentaryStyle.DETAILED
+    };
+  }
+
   function createMockPlayer(
     id: string,
     name: string,

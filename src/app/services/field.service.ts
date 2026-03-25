@@ -205,7 +205,16 @@ export class FieldService {
   }
 
   calculateTeamTactics(team: Team): TacticalSetup {
-    const formation = this.assignPlayersToFormation(team);
+    const formation =
+      this.assignPlayersToFormation(team) ??
+      this.assignPlayersToFormation({
+        ...team,
+        selectedFormationId: this.getOptimalFormation(team)
+      }) ??
+      {
+        name: 'Unavailable Formation',
+        positions: []
+      };
     
     // Calculate team averages for different attributes
     const overallAvg = team.players.reduce((sum, p) => sum + p.overall, 0) / team.players.length;
@@ -234,7 +243,7 @@ export class FieldService {
 
     return {
       teamId: team.id,
-      formation: formation!,
+      formation,
       playingStyle,
       mentality,
       pressingIntensity: Math.floor(defendingAvg),

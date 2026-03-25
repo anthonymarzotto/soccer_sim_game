@@ -273,7 +273,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     });
   }
 
-  private startCommentaryFeed(resetIndex: boolean = true) {
+  private startCommentaryFeed(resetIndex = true) {
     if (this.commentaryInterval) {
       return;
     }

@@ -23,25 +23,47 @@ export class FormationLibraryService {
     }
   }
 
+  private getStoredFormationById(formationId: string): FormationSchema | undefined {
+    return this.predefinedFormations.get(formationId) || this.userDefinedFormations.get(formationId);
+  }
+
+  private deepClone<T>(value: T): T {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value);
+    }
+    // Fallback for environments without structuredClone support.
+    return JSON.parse(JSON.stringify(value)) as T;
+  }
+
+  private cloneFormation(schema: FormationSchema): FormationSchema {
+    return this.deepClone(schema);
+  }
+
+  private cloneSlots(slots: FormationSlotDefinition[]): FormationSlotDefinition[] {
+    return this.deepClone(slots);
+  }
+
   /**
    * Retrieve a formation schema by ID from either predefined or user-defined registry.
+   * Returns a deep-cloned schema so callers cannot mutate registry state.
    */
   getFormationById(formationId: string): FormationSchema | undefined {
-    return this.predefinedFormations.get(formationId) || this.userDefinedFormations.get(formationId);
+    const formation = this.getStoredFormationById(formationId);
+    return formation ? this.cloneFormation(formation) : undefined;
   }
 
   /**
    * Get all predefined formation schemas (immutable by service contract).
    */
   listPredefinedFormations(): FormationSchema[] {
-    return Array.from(this.predefinedFormations.values());
+    return Array.from(this.predefinedFormations.values(), formation => this.cloneFormation(formation));
   }
 
   /**
    * Get all user-defined formation schemas.
    */
   listUserDefinedFormations(): FormationSchema[] {
-    return Array.from(this.userDefinedFormations.values());
+    return Array.from(this.userDefinedFormations.values(), formation => this.cloneFormation(formation));
   }
 
   /**
@@ -66,7 +88,7 @@ export class FormationLibraryService {
   registerUserFormation(schema: FormationSchema): FormationValidation {
     const validation = this.validateFormationSchema(schema);
     if (validation.isValid) {
-      this.userDefinedFormations.set(schema.id, schema);
+      this.userDefinedFormations.set(schema.id, this.cloneFormation(schema));
     }
     return validation;
   }
@@ -122,7 +144,7 @@ export class FormationLibraryService {
     }
 
     // Validate each slot
-    schema.slots.forEach((slot, idx) => {
+    schema.slots.forEach((slot) => {
       // Check coordinates bounds
       if (slot.coordinates.x < 0 || slot.coordinates.x > 100 || slot.coordinates.y < 0 || slot.coordinates.y > 100) {
         errors.push(`Slot ${slot.slotId} coordinates out of bounds: (${slot.coordinates.x}, ${slot.coordinates.y})`);
@@ -146,8 +168,8 @@ export class FormationLibraryService {
    * Returns undefined if formation ID not found.
    */
   getFormationSlots(formationId: string): FormationSlotDefinition[] | undefined {
-    const formation = this.getFormationById(formationId);
-    return formation?.slots;
+    const formation = this.getStoredFormationById(formationId);
+    return formation ? this.cloneSlots(formation.slots) : undefined;
   }
 
   /**
@@ -155,8 +177,9 @@ export class FormationLibraryService {
    * Returns the slot or undefined if formation or slot not found.
    */
   getSlotDefinition(formationId: string, slotId: string): FormationSlotDefinition | undefined {
-    const slots = this.getFormationSlots(formationId);
-    return slots?.find(s => s.slotId === slotId);
+    const formation = this.getStoredFormationById(formationId);
+    const slot = formation?.slots.find(s => s.slotId === slotId);
+    return slot ? structuredClone(slot) : undefined;
   }
 
   /**

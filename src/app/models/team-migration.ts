@@ -18,17 +18,17 @@ import { Team } from './types';
  * This function idempotently ensures a team is in a valid state for the selected formation schema.
  * 
  * @param team Team to normalize
- * @param defaultFormationId Default formation ID to apply if selectedFormationId is missing
+ * @param fallbackFormationId Fallback formation ID to apply if selectedFormationId is missing
  * @param schema FormationSlotDefinition[] from the selected formation to validate against
  * @returns Normalized team with consistent selectedFormationId and formationAssignments
  */
 export function normalizeTeamFormation(
   team: Team,
-  defaultFormationId: string,
-  schema: Array<{ slotId: string }> | undefined
+  fallbackFormationId: string,
+  schema: { slotId: string }[] | undefined
 ): Team {
   // Ensure selectedFormationId is set
-  const selectedFormationId = team.selectedFormationId || defaultFormationId;
+  const selectedFormationId = team.selectedFormationId || fallbackFormationId;
 
   // If no schema provided, just ensure selectedFormationId is set
   if (!schema) {
@@ -68,7 +68,6 @@ export function normalizeTeamFormation(
  * Check if a team is in a legacy (pre-schema) state.
  * Returns true if:
  * - selectedFormationId is missing
- * - formationAssignments has unexpected keys
  * - formationAssignments is empty or missing
  */
 export function isLegacyTeamState(team: Team): boolean {

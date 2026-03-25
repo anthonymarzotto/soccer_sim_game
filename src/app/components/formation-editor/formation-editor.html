@@ -20,8 +20,9 @@
     <!-- Formation Metadata -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-300 mb-2">Formation Name</label>
+        <label for="formationName" class="block text-sm font-medium text-gray-300 mb-2">Formation Name</label>
         <input
+          id="formationName"
           type="text"
           [value]="formationName()"
           (change)="formationName.set($any($event.target).value)"
@@ -30,8 +31,9 @@
         />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-300 mb-2">Short Code</label>
+        <label for="formationShortCode" class="block text-sm font-medium text-gray-300 mb-2">Short Code</label>
         <input
+          id="formationShortCode"
           type="text"
           [value]="formationShortCode()"
           (change)="formationShortCode.set($any($event.target).value)"
@@ -41,7 +43,7 @@
         />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-300 mb-2">Goalkeeper Slots: {{ goalkeeperCount() }}/1</label>
+        <p class="block text-sm font-medium text-gray-300 mb-2">Goalkeeper Slots: {{ goalkeeperCount() }}/1</p>
         <div class="text-sm text-gray-400 mt-2">
           Total Slots: {{ slots().length }}/11
         </div>
@@ -50,8 +52,9 @@
 
     <!-- Description -->
     <div>
-      <label class="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+      <label for="formationDescription" class="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
       <textarea
+        id="formationDescription"
         [value]="formationDescription()"
         (change)="formationDescription.set($any($event.target).value)"
         class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
@@ -81,8 +84,9 @@
         <div class="grid grid-cols-6 gap-2 p-3 bg-gray-800 rounded border border-gray-700">
           <!-- Slot ID (read-only display, editable via separate logic if needed) -->
           <div class="col-span-1">
-            <label class="block text-xs font-medium text-gray-400 mb-1">Slot ID</label>
+            <label [for]="'slotId-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Slot ID</label>
             <input
+              [id]="'slotId-' + $index"
               type="text"
               [value]="slot.slotId"
               disabled
@@ -92,8 +96,9 @@
 
           <!-- Label -->
           <div class="col-span-1">
-            <label class="block text-xs font-medium text-gray-400 mb-1">Label</label>
+            <label [for]="'slotLabel-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Label</label>
             <input
+              [id]="'slotLabel-' + $index"
               type="text"
               [value]="slot.label"
               (change)="onSlotUpdate(i, 'label', $any($event.target).value)"
@@ -103,8 +108,9 @@
 
           <!-- Position -->
           <div class="col-span-1">
-            <label class="block text-xs font-medium text-gray-400 mb-1">Position</label>
+            <label [for]="'slotPosition-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Position</label>
             <select
+              [id]="'slotPosition-' + $index"
               [value]="slot.preferredPosition"
               (change)="onSlotUpdate(i, 'preferredPosition', $any($event.target).value)"
               class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
@@ -117,11 +123,12 @@
 
           <!-- X Coordinate -->
           <div class="col-span-1">
-            <label class="block text-xs font-medium text-gray-400 mb-1">X (0-100)</label>
+            <label [for]="'slotX-' + $index" class="block text-xs font-medium text-gray-400 mb-1">X (0-100)</label>
             <input
+              [id]="'slotX-' + $index"
               type="number"
               [value]="slot.coordinates.x"
-              (change)="onSlotUpdate(i, 'coordinates', { ...slot.coordinates, x: parseNumber($any($event.target).value) })"
+              (change)="onSlotCoordinateUpdate(i, 'x', $any($event.target).value)"
               min="0"
               max="100"
               class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
@@ -130,11 +137,12 @@
 
           <!-- Y Coordinate -->
           <div class="col-span-1">
-            <label class="block text-xs font-medium text-gray-400 mb-1">Y (0-100)</label>
+            <label [for]="'slotY-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Y (0-100)</label>
             <input
+              [id]="'slotY-' + $index"
               type="number"
               [value]="slot.coordinates.y"
-              (change)="onSlotUpdate(i, 'coordinates', { ...slot.coordinates, y: parseNumber($any($event.target).value) })"
+              (change)="onSlotCoordinateUpdate(i, 'y', $any($event.target).value)"
               min="0"
               max="100"
               class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
@@ -143,8 +151,9 @@
 
           <!-- Zone -->
           <div class="col-span-1">
-            <label class="block text-xs font-medium text-gray-400 mb-1">Zone</label>
+            <label [for]="'slotZone-' + $index" class="block text-xs font-medium text-gray-400 mb-1">Zone</label>
             <select
+              [id]="'slotZone-' + $index"
               [value]="slot.zone"
               (change)="onSlotUpdate(i, 'zone', $any($event.target).value)"
               class="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"

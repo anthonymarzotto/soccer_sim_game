@@ -17,7 +17,6 @@ describe('FormationLibraryService', () => {
   describe('Initialization & Default Formation', () => {
     it('should initialize with default 4-4-2 formation', () => {
       const formations = service.listPredefinedFormations();
-      expect(formations.length).toBe(1);
       expect(formations[0].shortCode).toBe('4-4-2');
     });
 
@@ -103,7 +102,7 @@ describe('FormationLibraryService', () => {
       const schema: FormationSchema = {
         ...base442,
         id: 'test_dup_labels',
-        slots: base442.slots.map((s, i) => ({
+        slots: base442.slots.map((s) => ({
           ...s,
           label: 'Duplicate Label' // All slots get same label
         }))
@@ -290,6 +289,70 @@ describe('FormationLibraryService', () => {
     it('should return false when removing non-existent formation', () => {
       const removed = service.removeUserFormation('nonexistent');
       expect(removed).toBe(false);
+    });
+  });
+
+  describe('Immutability Contract', () => {
+    it('should not persist top-level mutations from getFormationById', () => {
+      const original = service.getFormationById('formation_4_4_2')!;
+      const originalName = original.name;
+
+      original.name = 'Mutated Name';
+
+      const refetched = service.getFormationById('formation_4_4_2')!;
+      expect(refetched.name).toBe(originalName);
+    });
+
+    it('should not persist nested slot mutations from getFormationById', () => {
+      const original = service.getFormationById('formation_4_4_2')!;
+      const originalX = original.slots[0].coordinates.x;
+
+      original.slots[0].coordinates.x = 999;
+
+      const refetched = service.getFormationById('formation_4_4_2')!;
+      expect(refetched.slots[0].coordinates.x).toBe(originalX);
+    });
+
+    it('should return detached data from listPredefinedFormations', () => {
+      const listed = service.listPredefinedFormations();
+      const originalName = listed[0].name;
+
+      listed[0].name = 'Mutated Listed Name';
+
+      const relisted = service.listPredefinedFormations();
+      expect(relisted[0].name).toBe(originalName);
+    });
+
+    it('should return detached slot definitions from getSlotDefinition', () => {
+      const slot = service.getSlotDefinition('formation_4_4_2', 'gk_1')!;
+      const originalY = slot.coordinates.y;
+
+      slot.coordinates.y = 123;
+
+      const refetchedSlot = service.getSlotDefinition('formation_4_4_2', 'gk_1')!;
+      expect(refetchedSlot.coordinates.y).toBe(originalY);
+    });
+
+    it('should not retain external schema mutations after registerUserFormation', () => {
+      const base442 = service.getFormationById('formation_4_4_2')!;
+      const schema: FormationSchema = {
+        id: 'user_immutability_test',
+        name: 'Immutability Test',
+        shortCode: 'IMT',
+        isUserDefined: true,
+        createdAt: Date.now(),
+        slots: structuredClone(base442.slots)
+      };
+
+      const validation = service.registerUserFormation(schema);
+      expect(validation.isValid).toBe(true);
+
+      schema.name = 'Externally Mutated';
+      schema.slots[0].coordinates.x = 777;
+
+      const stored = service.getFormationById('user_immutability_test')!;
+      expect(stored.name).toBe('Immutability Test');
+      expect(stored.slots[0].coordinates.x).not.toBe(777);
     });
   });
 

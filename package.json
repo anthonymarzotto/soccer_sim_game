@@ -9,9 +9,15 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "serve:ssr:app": "node dist/app/server/server.mjs"
+    "serve:ssr:app": "node dist/app/server/server.mjs",
+    "prepare": "husky install"
   },
   "private": true,
+  "lint-staged": {
+    "*.{ts,html,css,scss}": [
+      "eslint --fix"
+    ]
+  },
   "dependencies": {
     "@angular/cdk": "^21.0.0",
     "@angular/common": "^21.0.0",
@@ -38,7 +44,9 @@
     "angular-eslint": "21.1.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
+    "husky": "^9.1.7",
     "jsdom": "^27.0.0",
+    "lint-staged": "^16.4.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.12",
     "typescript": "~5.9.2",

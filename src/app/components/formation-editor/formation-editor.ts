@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Position as PositionEnum, FieldZone } from '../../models/enums';
 import { FormationLibraryService } from '../../services/formation-library.service';
-import { FormationSchema, FormationSlotDefinition } from '../../models/formation.types';
+import { FormationSchema } from '../../models/formation.types';
 
 interface SlotForm {
   slotId: string;
@@ -154,7 +154,7 @@ export class FormationEditorComponent {
     }
 
     // Check coordinates bounds
-    this.slots().forEach((slot, idx) => {
+    this.slots().forEach((slot) => {
       if (slot.coordinates.x < 0 || slot.coordinates.x > 100) {
         errors.push(`Slot ${slot.label} X coordinate must be 0-100`);
       }
@@ -235,5 +235,19 @@ export class FormationEditorComponent {
 
   parseNumber(value: unknown): number {
     return parseFloat(String(value));
+  }
+
+  onSlotCoordinateUpdate(index: number, axis: 'x' | 'y', value: unknown): void {
+    const currentSlots = this.slots();
+    const slot = currentSlots[index];
+    if (!slot) {
+      return;
+    }
+
+    const parsed = this.parseNumber(value);
+    this.onSlotUpdate(index, 'coordinates', {
+      ...slot.coordinates,
+      [axis]: parsed,
+    });
   }
 }

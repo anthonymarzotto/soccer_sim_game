@@ -49,7 +49,7 @@ export class App implements OnInit {
     const path = segments[0] || '';
     const id = segments[1];
 
-    const pageNames: { [key: string]: string } = {
+    const pageNames: Record<string, string> = {
       '': 'Home',
       'home': 'Home',
       'standings': 'Standings',
