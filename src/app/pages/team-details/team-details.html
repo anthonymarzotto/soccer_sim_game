@@ -85,7 +85,8 @@
                   <select
                     [value]="team()?.selectedFormationId"
                     (change)="onFormationChange($any($event.target).value)"
-                    class="bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors">
+                    class="bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors"
+                    aria-label="Select formation">
                     @for (f of availableFormations(); track f.id) {
                       <option [value]="f.id" [selected]="f.id === team()?.selectedFormationId">{{ f.shortCode }} — {{ f.name }}</option>
                     }
