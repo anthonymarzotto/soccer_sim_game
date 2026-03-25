@@ -1,12 +1,14 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Coordinates, FieldZone, TeamFormation, TacticalSetup, FormationSlot } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
 import { PlayingStyle, Mentality, Role, Position } from '../models/enums';
+import { FormationLibraryService } from './formation-library.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FieldService {
+  private formationLibrary = inject(FormationLibraryService);
   
   // Real FIFA pitch dimensions
   readonly FIELD_WIDTH_METERS = 68;   // x-axis: 0–100 grid units = 68m
@@ -39,21 +41,14 @@ export class FieldService {
   private readonly MIDFIELD_ZONE = { start: 34, end: 66  };
   private readonly ATTACK_ZONE   = { start: 67, end: 100 };
 
-  readonly FIXED_FORMATION_NAME = '4-4-2';
-
-  private readonly FIXED_FORMATION_SLOTS: FormationSlot[] = [
-    { slotId: 'gk_1', label: 'GK', position: Position.GOALKEEPER, coordinates: { x: 50, y: 10 }, zone: FieldZone.DEFENSE },
-    { slotId: 'def_l', label: 'LB', position: Position.DEFENDER, coordinates: { x: 25, y: 25 }, zone: FieldZone.DEFENSE },
-    { slotId: 'def_lc', label: 'LCB', position: Position.DEFENDER, coordinates: { x: 45, y: 25 }, zone: FieldZone.DEFENSE },
-    { slotId: 'def_rc', label: 'RCB', position: Position.DEFENDER, coordinates: { x: 55, y: 25 }, zone: FieldZone.DEFENSE },
-    { slotId: 'def_r', label: 'RB', position: Position.DEFENDER, coordinates: { x: 75, y: 25 }, zone: FieldZone.DEFENSE },
-    { slotId: 'mid_l', label: 'LM', position: Position.MIDFIELDER, coordinates: { x: 35, y: 45 }, zone: FieldZone.MIDFIELD },
-    { slotId: 'mid_lc', label: 'LCM', position: Position.MIDFIELDER, coordinates: { x: 45, y: 45 }, zone: FieldZone.MIDFIELD },
-    { slotId: 'mid_rc', label: 'RCM', position: Position.MIDFIELDER, coordinates: { x: 55, y: 45 }, zone: FieldZone.MIDFIELD },
-    { slotId: 'mid_r', label: 'RM', position: Position.MIDFIELDER, coordinates: { x: 65, y: 45 }, zone: FieldZone.MIDFIELD },
-    { slotId: 'att_l', label: 'LS', position: Position.FORWARD, coordinates: { x: 45, y: 75 }, zone: FieldZone.ATTACK },
-    { slotId: 'att_r', label: 'RS', position: Position.FORWARD, coordinates: { x: 55, y: 75 }, zone: FieldZone.ATTACK }
-  ];
+  getZoneBoundaries(zone: FieldZone): { start: number; end: number } {
+    switch (zone) {
+      case FieldZone.DEFENSE: return this.DEFENSE_ZONE;
+      case FieldZone.MIDFIELD: return this.MIDFIELD_ZONE;
+      case FieldZone.ATTACK: return this.ATTACK_ZONE;
+      default: return this.DEFENSE_ZONE;
+    }
+  }
 
   getZoneFromY(y: number): FieldZone {
     if (y <= this.DEFENSE_ZONE.end) return FieldZone.DEFENSE;
@@ -90,44 +85,65 @@ export class FieldService {
     return coordinates.y >= zoneBoundaries.start && coordinates.y <= zoneBoundaries.end;
   }
 
-  getZoneBoundaries(zone: FieldZone): { start: number; end: number } {
-    switch (zone) {
-      case FieldZone.DEFENSE: return this.DEFENSE_ZONE;
-      case FieldZone.MIDFIELD: return this.MIDFIELD_ZONE;
-      case FieldZone.ATTACK: return this.ATTACK_ZONE;
-      default: return this.DEFENSE_ZONE;
+  /**
+   * Get all formation slots for a team's selected formation.
+   * Returns an empty array if the team's selectedFormationId is invalid.
+   */
+  getFormationSlots(team: Team): FormationSlot[] {
+    const slots = this.formationLibrary.getFormationSlots(team.selectedFormationId);
+    if (!slots) {
+      return [];
     }
+    
+    // Convert FormationSlotDefinition to FormationSlot (ensure immutability)
+    return slots.map(slot => ({
+      slotId: slot.slotId,
+      label: slot.label,
+      position: slot.preferredPosition,
+      coordinates: { ...slot.coordinates },
+      zone: slot.zone as FieldZone
+    }));
   }
 
-  getFixedFormationSlots(): FormationSlot[] {
-    return this.FIXED_FORMATION_SLOTS.map(slot => ({ ...slot, coordinates: { ...slot.coordinates } }));
-  }
-
-  getFormation(name: string): TeamFormation | null {
-    if (name !== this.FIXED_FORMATION_NAME) return null;
+  /**
+   * Get the formation schema for a team's selected formation.
+   * Returns null if the selectedFormationId is invalid.
+   */
+  getFormation(team: Team): TeamFormation | null {
+    const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
+    if (!schema) {
+      return null;
+    }
 
     return {
-      name: this.FIXED_FORMATION_NAME,
-      positions: this.getFixedFormationSlots().map(slot => ({
+      name: schema.name,
+      positions: schema.slots.map(slot => ({
         slotId: slot.slotId,
         playerId: '',
-        coordinates: slot.coordinates,
-        zone: slot.zone,
+        coordinates: { ...slot.coordinates },
+        zone: slot.zone as FieldZone,
         role: slot.label
       }))
     };
   }
 
-  assignPlayersToFormation(team: Team, formationName: string): TeamFormation | null {
-    if (formationName !== this.FIXED_FORMATION_NAME) return null;
+  /**
+   * Build a TeamFormation with currently assigned players for a team's selected formation.
+   * Returns null if the selectedFormationId is invalid.
+   */
+  assignPlayersToFormation(team: Team): TeamFormation | null {
+    const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
+    if (!schema) {
+      return null;
+    }
 
     return {
-      name: this.FIXED_FORMATION_NAME,
-      positions: this.getFixedFormationSlots().map(slot => ({
+      name: schema.name,
+      positions: schema.slots.map(slot => ({
         slotId: slot.slotId,
         playerId: team.formationAssignments[slot.slotId] ?? '',
-        coordinates: slot.coordinates,
-        zone: slot.zone,
+        coordinates: { ...slot.coordinates },
+        zone: slot.zone as FieldZone,
         role: slot.label
       }))
     };
@@ -135,11 +151,19 @@ export class FieldService {
 
   validateFormationAssignments(team: Team): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
+    const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
+    
+    // Invalid schema
+    if (!schema) {
+      errors.push(`Formation schema '${team.selectedFormationId}' not found`);
+      return { isValid: false, errors };
+    }
+
     const assignments = team.formationAssignments;
-    const slots = this.getFixedFormationSlots();
     const assignedPlayerIds: string[] = [];
 
-    for (const slot of slots) {
+    // Validate each slot
+    for (const slot of schema.slots) {
       const playerId = assignments[slot.slotId];
       if (!playerId) {
         errors.push(`Missing assignment for ${slot.label}`);
@@ -156,13 +180,15 @@ export class FieldService {
         errors.push(`${player.name} must be a Starter to occupy ${slot.label}`);
       }
 
-      if (slot.position === Position.GOALKEEPER && player.position !== Position.GOALKEEPER) {
+      // Check position compatibility (goalkeeper must be in goalkeeper slot)
+      if (slot.preferredPosition === Position.GOALKEEPER && player.position !== Position.GOALKEEPER) {
         errors.push(`${slot.label} must be filled by a goalkeeper`);
       }
 
       assignedPlayerIds.push(playerId);
     }
 
+    // Check for duplicate assignments
     const uniquePlayerIds = new Set(assignedPlayerIds);
     if (uniquePlayerIds.size !== assignedPlayerIds.length) {
       errors.push('A player is assigned to multiple formation slots');
@@ -175,11 +201,11 @@ export class FieldService {
   }
 
   getAvailableFormations(): string[] {
-    return [this.FIXED_FORMATION_NAME];
+    return this.formationLibrary.getAllFormations().map(f => f.id);
   }
 
-  calculateTeamTactics(team: Team, _formationName?: string): TacticalSetup {
-    const formation = this.assignPlayersToFormation(team, this.FIXED_FORMATION_NAME);
+  calculateTeamTactics(team: Team): TacticalSetup {
+    const formation = this.assignPlayersToFormation(team);
     
     // Calculate team averages for different attributes
     const overallAvg = team.players.reduce((sum, p) => sum + p.overall, 0) / team.players.length;
@@ -218,7 +244,7 @@ export class FieldService {
   }
 
   getOptimalFormation(_team: Team): string {
-    return this.FIXED_FORMATION_NAME;
+    return this.formationLibrary.getDefaultFormationId();
   }
 
   getStartingPositionForPlayer(player: Player, formation: TeamFormation): Coordinates {

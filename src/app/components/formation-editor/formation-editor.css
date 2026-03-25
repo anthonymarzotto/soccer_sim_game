@@ -1,0 +1,28 @@
+/* Formation Editor Component Styles */
+
+.formation-editor {
+  font-family: inherit;
+}
+
+/* Support for better scrolling on slot list */
+.formation-editor > div:nth-child(4) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 114, 128, 0.5) rgba(31, 41, 55, 1);
+}
+
+.formation-editor > div:nth-child(4)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.formation-editor > div:nth-child(4)::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 1);
+}
+
+.formation-editor > div:nth-child(4)::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.5);
+  border-radius: 3px;
+}
+
+.formation-editor > div:nth-child(4)::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.7);
+}

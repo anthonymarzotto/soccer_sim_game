@@ -10,8 +10,9 @@ import {
   SimulationConfig 
 } from '../models/simulation.types';
 import { FieldService } from './field.service';
+import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
-import { EventType, CommentaryStyle, PlayingStyle, MatchPhase, Role } from '../models/enums';
+import { EventType, CommentaryStyle, PlayingStyle, MatchPhase, Role, Position as PositionEnum } from '../models/enums';
 
 interface MatchAction {
   type: EventType;
@@ -24,6 +25,7 @@ interface MatchAction {
 })
 export class MatchSimulationService {
   private fieldService = inject(FieldService);
+  private formationLibrary = inject(FormationLibraryService);
   private commentaryService = inject(CommentaryService);
 
   private readonly DEFAULT_CONFIG: SimulationConfig = {
@@ -272,8 +274,8 @@ export class MatchSimulationService {
       state.awayShots++;
     }
 
-    // Find goalkeeper
-    const goalkeeper = opponentTeam.players.find(p => p.id === opponentTeam.formationAssignments['gk_1']);
+    // Find goalkeeper using schema-driven method
+    const goalkeeper = this.getGoalkeeperForTeam(opponentTeam);
     
     // Calculate shot success
     const shotSuccess = this.calculateShotSuccess(shooter, goalkeeper, teamTactics, teamFatigue, state.ballPossession.location);
@@ -610,5 +612,33 @@ export class MatchSimulationService {
       throw new Error(`Player with ID ${playerId} not found in team ${team.name}`);
     }
     return player;
+  }
+
+  /**
+   * Get the goalkeeper for a team based on their selected formation schema.
+   * Returns undefined if no goalkeeper is found or formation schema is invalid.
+   */
+  private getGoalkeeperForTeam(team: Team): Player | undefined {
+    // Get the formation schema for this team
+    const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
+    if (!schema) {
+      // Formation not found; fallback to first goalkeeper
+      return team.players.find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
+    }
+
+    // Find the goalkeeper slot in the formation (preferredPosition is GOALKEEPER)
+    const goalkeeperSlot = schema.slots.find(s => s.preferredPosition === PositionEnum.GOALKEEPER);
+    if (!goalkeeperSlot) {
+      // No goalkeeper slot defined; fallback to search
+      return team.players.find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
+    }
+
+    // Get the player assigned to the goalkeeper slot
+    const goalkeeperPlayerId = team.formationAssignments[goalkeeperSlot.slotId];
+    if (!goalkeeperPlayerId) {
+      return undefined;
+    }
+
+    return team.players.find(p => p.id === goalkeeperPlayerId);
   }
 }

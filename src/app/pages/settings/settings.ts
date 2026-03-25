@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 import { SettingsService, BadgeStyle } from '../../services/settings.service';
 import { GameService } from '../../services/game.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
+import { FormationEditorComponent } from '../../components/formation-editor/formation-editor';
 
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent, TitleCasePipe],
+  imports: [RouterLink, TeamBadgeComponent, TitleCasePipe, FormationEditorComponent],
   templateUrl: './settings.html',
 })
 export class SettingsComponent {
