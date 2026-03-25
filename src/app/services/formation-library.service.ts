@@ -117,34 +117,35 @@ export class FormationLibraryService {
    */
   validateFormationSchema(schema: FormationSchema): FormationValidation {
     const errors: string[] = [];
+    const slots = schema.slots ?? [];
 
     // Check slot count
-    if (!schema.slots || schema.slots.length !== 11) {
-      errors.push(`Formation must have exactly 11 slots, got ${schema.slots?.length ?? 0}`);
+    if (slots.length !== 11) {
+      errors.push(`Formation must have exactly 11 slots, got ${slots.length}`);
     }
 
     // Check for exactly one goalkeeper
-    const gkSlots = schema.slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
+    const gkSlots = slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
     if (gkSlots.length !== 1) {
       errors.push(`Formation must have exactly 1 goalkeeper slot, got ${gkSlots.length}`);
     }
 
     // Check for unique slot IDs
-    const slotIds = schema.slots.map(s => s.slotId);
+    const slotIds = slots.map(s => s.slotId);
     const uniqueSlotIds = new Set(slotIds);
     if (slotIds.length !== uniqueSlotIds.size) {
       errors.push('Slot IDs must be unique within the formation');
     }
 
     // Check for unique labels
-    const labels = schema.slots.map(s => s.label);
+    const labels = slots.map(s => s.label);
     const uniqueLabels = new Set(labels);
     if (labels.length !== uniqueLabels.size) {
       errors.push('Slot labels must be unique within the formation');
     }
 
     // Validate each slot
-    schema.slots.forEach((slot, idx) => {
+    slots.forEach((slot, idx) => {
       // Check coordinates bounds
       if (slot.coordinates.x < 0 || slot.coordinates.x > 100 || slot.coordinates.y < 0 || slot.coordinates.y > 100) {
         errors.push(`Slot ${slot.slotId} coordinates out of bounds: (${slot.coordinates.x}, ${slot.coordinates.y})`);
