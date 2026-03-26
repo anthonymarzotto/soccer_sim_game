@@ -7,6 +7,7 @@ import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
+import { PersistenceService } from './persistence.service';
 import { normalizeTeamFormation } from '../models/team-migration';
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
@@ -16,6 +17,8 @@ import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } fr
 })
 export class GameService {
   private leagueState = signal<League | null>(null);
+  private hydrationPromise: Promise<void> | null = null;
+  private isHydrating = signal(true);
 
   public league = this.leagueState.asReadonly();
   
@@ -40,14 +43,62 @@ export class GameService {
   });
 
   private generator = inject(GeneratorService);
+  private persistenceService = inject(PersistenceService);
+
+  constructor() {
+    void this.ensureHydrated();
+  }
+
+  ensureHydrated(): Promise<void> {
+    if (this.hydrationPromise) {
+      return this.hydrationPromise;
+    }
+
+    this.hydrationPromise = this.hydrateFromPersistence();
+    return this.hydrationPromise;
+  }
+
+  private async hydrateFromPersistence(): Promise<void> {
+    try {
+      const league = await this.persistenceService.loadLeague();
+      if (league) {
+        this.leagueState.set(league);
+      }
+    } catch (error) {
+      console.error('Failed to load league:', error);
+    } finally {
+      this.isHydrating = false;
+    }
+  }
+
+  private persistLeague(league: League): void {
+    if (this.isHydrating) {
+      return;
+    }
+
+    void this.persistenceService.saveLeague(league);
+  }
 
   generateNewLeague() {
     const { teams, schedule } = this.generator.generateLeague();
-    this.leagueState.set({
+    const league: League = {
       teams,
       schedule,
       currentWeek: 1
-    });
+    };
+
+    this.leagueState.set(league);
+    this.persistLeague(league);
+  }
+
+  async clearLeague(): Promise<void> {
+    this.leagueState.set(null);
+
+    try {
+      await this.persistenceService.clearLeague();
+    } catch (error) {
+      console.error('Failed to clear persisted league:', error);
+    }
   }
 
   getTeam(id: string): Team | undefined {
@@ -69,7 +120,16 @@ export class GameService {
   }
 
   advanceWeek() {
-    this.leagueState.update(league => league ? { ...league, currentWeek: league.currentWeek + 1 } : null);
+    const league = this.leagueState();
+    if (!league) return;
+
+    const updatedLeague: League = {
+      ...league,
+      currentWeek: league.currentWeek + 1
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   simulateCurrentWeek() {
@@ -108,7 +168,9 @@ export class GameService {
   setUserTeam(teamId: string) {
     const l = this.leagueState();
     if (l) {
-      this.leagueState.set({ ...l, userTeamId: teamId });
+      const updatedLeague: League = { ...l, userTeamId: teamId };
+      this.leagueState.set(updatedLeague);
+      this.persistLeague(updatedLeague);
     }
   }
 
@@ -126,7 +188,9 @@ export class GameService {
       return team;
     });
 
-    this.leagueState.set({ ...l, teams: updatedTeams });
+    const updatedLeague: League = { ...l, teams: updatedTeams };
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   updateFormationAssignment(teamId: string, slotId: string, playerId: string) {
@@ -158,7 +222,9 @@ export class GameService {
       };
     });
 
-    this.leagueState.set({ ...l, teams: updatedTeams });
+    const updatedLeague: League = { ...l, teams: updatedTeams };
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   clearFormationAssignment(teamId: string, slotId: string) {
@@ -176,7 +242,9 @@ export class GameService {
       };
     });
 
-    this.leagueState.set({ ...l, teams: updatedTeams });
+    const updatedLeague: League = { ...l, teams: updatedTeams };
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   getFormationValidationErrors(team: Team): string[] {
@@ -195,7 +263,9 @@ export class GameService {
       return normalizeTeamFormation({ ...team, selectedFormationId: formationId }, formationId, schema);
     });
 
-    this.leagueState.set({ ...l, teams: updatedTeams });
+    const updatedLeague: League = { ...l, teams: updatedTeams };
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   swapPlayerRoles(playerId1: string, playerId2: string) {
@@ -231,7 +301,9 @@ export class GameService {
       return team;
     });
 
-    this.leagueState.set({ ...l, teams: updatedTeams });
+    const updatedLeague: League = { ...l, teams: updatedTeams };
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   private findAssignedSlotId(assignments: Record<string, string>, playerId: string): string | null {
@@ -401,11 +473,14 @@ export class GameService {
 
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.
-    this.leagueState.set({
+    const updatedLeague: League = {
       ...l,
       teams: updatedTeams,
       schedule: updatedSchedule
-    });
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
   }
 
   private updatePlayerCareerStats(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {

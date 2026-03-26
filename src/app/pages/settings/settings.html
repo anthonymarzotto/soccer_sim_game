@@ -48,7 +48,57 @@
       </div>
     </div>
 
-    <app-formation-editor></app-formation-editor>
+    <app-formation-editor class="block"></app-formation-editor>
+
+    <div class="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-10 md:p-14">
+      <h2 class="text-xl font-semibold text-white mb-3">Data Management</h2>
+      <p class="text-zinc-400 mb-6">Clear the current league and schedule progress stored in your browser.</p>
+
+      <button
+        type="button"
+        (click)="openResetConfirmation()"
+        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-3 rounded-xl transition-colors"
+      >
+        Reset League Save Data
+      </button>
+    </div>
+
+    @if (showResetConfirmation()) {
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        tabindex="0"
+        (click.self)="cancelResetConfirmation()"
+        (keydown.escape)="cancelResetConfirmation()"
+        (keydown.enter)="resetSimulationData()"
+      >
+        <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
+          <h3 class="text-lg font-semibold text-white">Confirm Reset</h3>
+          <p class="mt-3 text-zinc-300">
+            This will permanently remove your saved league progress and selected schedule week from this browser.
+          </p>
+          <p class="mt-2 text-sm text-zinc-400">This action cannot be undone.</p>
+
+          <div class="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              (click)="cancelResetConfirmation()"
+              [disabled]="isResetting()"
+              class="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              (click)="resetSimulationData()"
+              [disabled]="isResetting()"
+              class="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {{ isResetting() ? 'Resetting...' : 'Yes, Reset Data' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
   </div>
 </div>

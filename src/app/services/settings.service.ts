@@ -1,5 +1,6 @@
 
-import { Injectable, signal, effect, computed } from '@angular/core';
+import { Injectable, signal, effect, computed, inject } from '@angular/core';
+import { PersistenceService } from './persistence.service';
 
 
 const BADGE_STYLES = [
@@ -22,62 +23,88 @@ export const ICON_BADGE_STYLES = [
 
 export type BadgeStyle = typeof BADGE_STYLES[number];
 
-interface Settings {
+export interface Settings {
   badgeStyle: BadgeStyle;
 }
-
-const STORAGE_KEY = 'soccer-sim-settings';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SettingsService {
+  private readonly persistenceService = inject(PersistenceService);
   private defaultSettings: Settings = {
     badgeStyle: 'initials'
   };
+  private isHydrating = signal(true);
+  private hydrationPromise: Promise<void> | null = null;
+  private skipNextPersist = false;
 
-  private settings = signal<Settings>(this.loadSettings());
+  private settings = signal<Settings>(this.defaultSettings);
 
   badgeStyle = computed(() => this.settings().badgeStyle);
 
   constructor() {
-    // Auto-save settings to localStorage whenever they change
+    void this.ensureHydrated();
+
+    // Auto-save settings whenever they change after hydration is complete.
     effect(() => {
       const currentSettings = this.settings();
-      this.saveSettings(currentSettings);
+      if (this.isHydrating()) {
+        return;
+      }
+
+      if (this.skipNextPersist) {
+        this.skipNextPersist = false;
+        return;
+      }
+
+      void this.persistenceService.saveSettings(currentSettings);
     });
   }
 
-  private loadSettings(): Settings {
+  ensureHydrated(): Promise<void> {
+    if (this.hydrationPromise) {
+      return this.hydrationPromise;
+    }
+
+    this.hydrationPromise = this.hydrateFromPersistence();
+    return this.hydrationPromise;
+  }
+
+  private async hydrateFromPersistence(): Promise<void> {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = await this.persistenceService.loadSettings();
       if (stored) {
-        const parsed = JSON.parse(stored);
-        const merged: Settings = { ...this.defaultSettings, ...parsed };
-
-        // Validate badgeStyle against the allowed BADGE_STYLES; fall back to default if invalid
-        if (!BADGE_STYLES.includes(merged.badgeStyle as BadgeStyle)) {
-          merged.badgeStyle = this.defaultSettings.badgeStyle;
-        }
-
-        return merged;
+        this.settings.set(this.sanitizeSettings(stored));
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
+    } finally {
+      this.isHydrating.set(false);
     }
-    return this.defaultSettings;
   }
 
-  private saveSettings(settings: Settings): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch (error) {
-      console.error('Failed to save settings:', error);
+  private sanitizeSettings(raw: { badgeStyle?: string }): Settings {
+    const merged: Settings = {
+      ...this.defaultSettings,
+      ...(raw.badgeStyle ? { badgeStyle: raw.badgeStyle as BadgeStyle } : {})
+    };
+
+    if (!BADGE_STYLES.includes(merged.badgeStyle as BadgeStyle)) {
+      merged.badgeStyle = this.defaultSettings.badgeStyle;
     }
+
+    return merged;
   }
 
   setBadgeStyle(style: BadgeStyle): void {
     this.settings.update(s => ({ ...s, badgeStyle: style }));
+  }
+
+  async resetToDefaultsAndClearPersisted(): Promise<void> {
+    this.skipNextPersist = true;
+    this.settings.set(this.defaultSettings);
+    await this.persistenceService.clearSettings();
   }
 
   getBadgeStyles(): BadgeStyle[] {
