@@ -67,12 +67,12 @@ export class GameService {
     } catch (error) {
       console.error('Failed to load league:', error);
     } finally {
-      this.isHydrating = false;
+      this.isHydrating.set(false);
     }
   }
 
   private persistLeague(league: League): void {
-    if (this.isHydrating) {
+    if (this.isHydrating()) {
       return;
     }
 
