@@ -6,6 +6,7 @@ import { CommentaryService } from './commentary.service';
 import { Team, Player } from '../models/types';
 import { MatchState, SimulationConfig, TacticalSetup, PlayerFatigue } from '../models/simulation.types';
 import { Role, Position as PositionEnum, FieldZone, EventType, CommentaryStyle, MatchPhase } from '../models/enums';
+import { resolveTeamPlayers } from '../models/team-players';
 
 interface MatchSimulationServicePrivateApi {
   getGoalkeeperForTeam(team: Team): Player | undefined;
@@ -151,7 +152,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         }
       };
 
-      const shooter = homeTeam.players.find(p => p.id === 'fwd1')!;
+      const shooter = resolveTeamPlayers(homeTeam).find(p => p.id === 'fwd1')!;
       const state = createShotTestState(homeTeam.id, shooter.id);
 
       const tactics = privateApi.calculateTeamTactics(homeTeam, awayTeam);
@@ -198,7 +199,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         }
       };
 
-      const shooter = homeTeam.players.find(p => p.id === 'fwd1')!;
+      const shooter = resolveTeamPlayers(homeTeam).find(p => p.id === 'fwd1')!;
       const state = createShotTestState(homeTeam.id, shooter.id);
 
       const tactics = privateApi.calculateTeamTactics(homeTeam, awayTeam);
@@ -459,6 +460,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       id,
       name: 'Mock Team',
       players,
+      playerIds: players.map(player => player.id),
       selectedFormationId: formationId,
       formationAssignments: {
         gk_1: 'gk1',

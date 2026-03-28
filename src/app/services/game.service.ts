@@ -9,6 +9,7 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { normalizeTeamFormation } from '../models/team-migration';
+import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players';
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
@@ -42,6 +43,24 @@ export class GameService {
     return l.schedule.filter(m => m.week === l.currentWeek);
   });
 
+  private teamById = computed(() => {
+    const l = this.leagueState();
+    return new Map((l?.teams ?? []).map(team => [team.id, team]));
+  });
+
+  private playerById = computed(() => {
+    const l = this.leagueState();
+    return new Map((l?.teams ?? []).flatMap(team => resolveTeamPlayers(team).map(player => [player.id, player] as const)));
+  });
+
+  private withSyncedPlayerIds(team: Team): Team {
+    return normalizeTeamRoster(team);
+  }
+
+  private withSyncedPlayerIdsForTeams(teams: Team[]): Team[] {
+    return teams.map(team => this.withSyncedPlayerIds(team));
+  }
+
   private generator = inject(GeneratorService);
   private persistenceService = inject(PersistenceService);
 
@@ -62,7 +81,10 @@ export class GameService {
     try {
       const league = await this.persistenceService.loadLeague();
       if (league) {
-        this.leagueState.set(league);
+        this.leagueState.set({
+          ...league,
+          teams: this.withSyncedPlayerIdsForTeams(league.teams)
+        });
       }
     } catch (error) {
       console.error('Failed to load league:', error);
@@ -79,10 +101,52 @@ export class GameService {
     void this.persistenceService.saveLeague(league);
   }
 
+  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'userTeamId'>): void {
+    if (this.isHydrating()) {
+      return;
+    }
+
+    void this.persistenceService.saveLeagueMetadata(league);
+  }
+
+  private persistChangedTeamsAndPlayers(previousTeams: Team[], nextTeams: Team[]): void {
+    if (this.isHydrating()) {
+      return;
+    }
+
+    const previousById = new Map(previousTeams.map(team => [team.id, team]));
+    const changedTeams = nextTeams.filter(team => previousById.get(team.id) !== team);
+
+    changedTeams.forEach(team => {
+      void this.persistenceService.saveTeam(team);
+    });
+  }
+
+  private persistChangedTeams(previousTeams: Team[], nextTeams: Team[]): void {
+    if (this.isHydrating()) {
+      return;
+    }
+
+    const previousById = new Map(previousTeams.map(team => [team.id, team]));
+    const changedTeams = nextTeams.filter(team => previousById.get(team.id) !== team);
+
+    changedTeams.forEach(team => {
+      void this.persistenceService.saveTeamDefinition(team);
+    });
+  }
+
+  private persistMatch(match: Match): void {
+    if (this.isHydrating()) {
+      return;
+    }
+
+    void this.persistenceService.saveMatch(match);
+  }
+
   generateNewLeague() {
     const { teams, schedule } = this.generator.generateLeague();
     const league: League = {
-      teams,
+      teams: this.withSyncedPlayerIdsForTeams(teams),
       schedule,
       currentWeek: 1
     };
@@ -102,17 +166,21 @@ export class GameService {
   }
 
   getTeam(id: string): Team | undefined {
-    return this.leagueState()?.teams.find(t => t.id === id);
+    return this.teamById().get(id);
   }
 
   getPlayer(id: string): Player | undefined {
-    const l = this.leagueState();
-    if (!l) return undefined;
-    for (const team of l.teams) {
-      const player = team.players.find(p => p.id === id);
-      if (player) return player;
-    }
-    return undefined;
+    return this.playerById().get(id);
+  }
+
+  getPlayersForTeam(teamId: string): Player[] {
+    const team = this.getTeam(teamId);
+    if (!team) return [];
+    return resolveTeamPlayers(team);
+  }
+
+  getPlayerOnTeam(team: Team, playerId: string): Player | undefined {
+    return resolveTeamPlayers(team).find(player => player.id === playerId);
   }
 
   getMatchesForWeek(week: number): Match[] {
@@ -129,7 +197,7 @@ export class GameService {
     };
 
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    this.persistLeagueMetadata(updatedLeague);
   }
 
   simulateCurrentWeek() {
@@ -170,7 +238,7 @@ export class GameService {
     if (l) {
       const updatedLeague: League = { ...l, userTeamId: teamId };
       this.leagueState.set(updatedLeague);
-      this.persistLeague(updatedLeague);
+      this.persistLeagueMetadata(updatedLeague);
     }
   }
 
@@ -179,18 +247,19 @@ export class GameService {
     if (!l) return;
 
     const updatedTeams = l.teams.map(team => {
-      const playerIndex = team.players.findIndex(p => p.id === playerId);
+      const teamPlayers = resolveTeamPlayers(team);
+      const playerIndex = teamPlayers.findIndex(p => p.id === playerId);
       if (playerIndex !== -1) {
-        const updatedPlayers = [...team.players];
+        const updatedPlayers = [...teamPlayers];
         updatedPlayers[playerIndex] = { ...updatedPlayers[playerIndex], role: newRole };
-        return { ...team, players: updatedPlayers };
+        return this.withSyncedPlayerIds({ ...team, players: updatedPlayers });
       }
       return team;
     });
 
     const updatedLeague: League = { ...l, teams: updatedTeams };
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
   }
 
   updateFormationAssignment(teamId: string, slotId: string, playerId: string) {
@@ -200,10 +269,12 @@ export class GameService {
     const updatedTeams = l.teams.map(team => {
       if (team.id !== teamId) return team;
 
-      const player = team.players.find(p => p.id === playerId);
+      const teamPlayers = resolveTeamPlayers(team);
+
+      const player = teamPlayers.find(p => p.id === playerId);
       if (!player) return team;
 
-      const updatedPlayers = team.players.map(p =>
+      const updatedPlayers = teamPlayers.map(p =>
         p.id === playerId ? { ...p, role: Role.STARTER } : p
       );
 
@@ -222,9 +293,9 @@ export class GameService {
       };
     });
 
-    const updatedLeague: League = { ...l, teams: updatedTeams };
+    const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
   }
 
   clearFormationAssignment(teamId: string, slotId: string) {
@@ -244,11 +315,11 @@ export class GameService {
 
     const updatedLeague: League = { ...l, teams: updatedTeams };
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    this.persistChangedTeams(l.teams, updatedLeague.teams);
   }
 
   getFormationValidationErrors(team: Team): string[] {
-    return this.fieldService.validateFormationAssignments(team).errors;
+    return this.fieldService.validateFormationAssignments(team, resolveTeamPlayers(team)).errors;
   }
 
   private formationLibrary = inject(FormationLibraryService);
@@ -260,12 +331,14 @@ export class GameService {
 
     const updatedTeams = l.teams.map(team => {
       if (team.id !== teamId) return team;
-      return normalizeTeamFormation({ ...team, selectedFormationId: formationId }, formationId, schema);
+      return this.withSyncedPlayerIds(
+        normalizeTeamFormation({ ...team, selectedFormationId: formationId }, formationId, schema)
+      );
     });
 
     const updatedLeague: League = { ...l, teams: updatedTeams };
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    this.persistChangedTeams(l.teams, updatedLeague.teams);
   }
 
   swapPlayerRoles(playerId1: string, playerId2: string) {
@@ -273,11 +346,12 @@ export class GameService {
     if (!l) return;
 
     const updatedTeams = l.teams.map(team => {
-      const player1Index = team.players.findIndex(p => p.id === playerId1);
-      const player2Index = team.players.findIndex(p => p.id === playerId2);
+      const teamPlayers = resolveTeamPlayers(team);
+      const player1Index = teamPlayers.findIndex(p => p.id === playerId1);
+      const player2Index = teamPlayers.findIndex(p => p.id === playerId2);
       
       if (player1Index !== -1 && player2Index !== -1) {
-        const updatedPlayers = [...team.players];
+        const updatedPlayers = [...teamPlayers];
         const player1Role = updatedPlayers[player1Index].role;
         const player2Role = updatedPlayers[player2Index].role;
         const updatedAssignments = { ...team.formationAssignments };
@@ -296,14 +370,18 @@ export class GameService {
           updatedAssignments[player2SlotId] = playerId1;
         }
         
-        return { ...team, players: updatedPlayers, formationAssignments: updatedAssignments };
+        return {
+          ...team,
+          players: updatedPlayers,
+          formationAssignments: updatedAssignments
+        };
       }
       return team;
     });
 
-    const updatedLeague: League = { ...l, teams: updatedTeams };
+    const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
   }
 
   private findAssignedSlotId(assignments: Record<string, string>, playerId: string): string | null {
@@ -322,7 +400,7 @@ export class GameService {
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
 
-      const players = team.players.map(p => ({ ...p, role: Role.RESERVE }));
+      const players = resolveTeamPlayers(team).map(p => ({ ...p, role: Role.RESERVE }));
 
       const gks = players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => b.overall - a.overall);
       const defs = players.filter(p => p.position === Position.DEFENDER).sort((a, b) => b.overall - a.overall);
@@ -360,15 +438,47 @@ export class GameService {
         att_r: startersByPosition[Position.FORWARD][1]?.id ?? ''
       };
 
-      return { ...team, players, formationAssignments };
+      return this.withSyncedPlayerIds({ ...team, players, formationAssignments });
     });
   }
 
   public calculateTeamOverall(team: Team): number {
-    const starters = team.players.filter(p => p.role === Role.STARTER);
+    const starters = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
     if (starters.length === 0) return 50;
     const sum = starters.reduce((acc, p) => acc + p.overall, 0);
     return Math.round(sum / starters.length);
+  }
+
+  public getTeamOverall(teamId: string): number {
+    const team = this.getTeam(teamId);
+    if (!team) return 0;
+    return this.calculateTeamOverall(team);
+  }
+
+  public getMatchProbabilities(homeTeamId: string, awayTeamId: string): { home: number; draw: number; away: number } {
+    const homeOverall = this.getTeamOverall(homeTeamId);
+    const awayOverall = this.getTeamOverall(awayTeamId);
+
+    if (homeOverall === 0 && awayOverall === 0) {
+      return { home: 0, draw: 0, away: 0 };
+    }
+
+    const homeAdvantage = 5;
+    const homeChance = homeOverall + homeAdvantage;
+    const awayChance = awayOverall;
+    const totalChance = homeChance + awayChance;
+
+    const homeWinProb = Math.round((homeChance / totalChance) * 100);
+    const awayWinProb = Math.round((awayChance / totalChance) * 100);
+
+    const diff = Math.abs(homeChance - awayChance);
+    const drawProb = Math.max(5, 30 - diff);
+
+    const adjustedHome = Math.round((homeWinProb * (100 - drawProb)) / 100);
+    const adjustedAway = Math.round((awayWinProb * (100 - drawProb)) / 100);
+    const finalDraw = 100 - adjustedHome - adjustedAway;
+
+    return { home: adjustedHome, draw: finalDraw, away: adjustedAway };
   }
 
   // Enhanced simulation methods
@@ -480,16 +590,30 @@ export class GameService {
     };
 
     this.leagueState.set(updatedLeague);
-    this.persistLeague(updatedLeague);
+    const updatedMatch = updatedSchedule.find(scheduledMatch => scheduledMatch.id === match.id);
+    const changedTeams = updatedLeague.teams.filter(team => {
+      if (team.id !== homeTeam.id && team.id !== awayTeam.id) {
+        return false;
+      }
+
+      return l.teams.find(previousTeam => previousTeam.id === team.id) !== team;
+    });
+
+    if (updatedMatch && changedTeams.length > 0 && !this.isHydrating()) {
+      void this.persistenceService.saveMatchResult(updatedMatch, changedTeams);
+    }
   }
 
   private updatePlayerCareerStats(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {
     const l = this.leagueState();
     if (!l) return;
 
+    const homePlayers = resolveTeamPlayers(homeTeam);
+    const awayPlayers = resolveTeamPlayers(awayTeam);
+
     // Create a map of all players for quick lookup
     const allPlayers = new Map<string, Player>();
-    [...homeTeam.players, ...awayTeam.players].forEach(player => {
+    [...homePlayers, ...awayPlayers].forEach(player => {
       allPlayers.set(player.id, player);
     });
 
@@ -533,7 +657,7 @@ export class GameService {
     });
 
     // Update minutes played for all players who participated
-    const allTeamPlayers = [...homeTeam.players, ...awayTeam.players];
+    const allTeamPlayers = [...homePlayers, ...awayPlayers];
     allTeamPlayers.forEach(player => {
       if (player.role !== Role.RESERVE) {
         player.careerStats.minutesPlayed += 90; // Full match
@@ -548,8 +672,8 @@ export class GameService {
     });
 
     // Update clean sheets for goalkeepers
-    const homeGoalkeeper = homeTeam.players.find(p => p.id === homeTeam.formationAssignments['gk_1']);
-    const awayGoalkeeper = awayTeam.players.find(p => p.id === awayTeam.formationAssignments['gk_1']);
+    const homeGoalkeeper = homePlayers.find(p => p.id === homeTeam.formationAssignments['gk_1']);
+    const awayGoalkeeper = awayPlayers.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
     if (homeGoalkeeper && homeScore === 0) {
       homeGoalkeeper.careerStats.cleanSheets++;
@@ -652,13 +776,27 @@ export class GameService {
 
   private generateMatchCommentary(matchState: MatchState, homeTeam: Team, awayTeam: Team, style: CommentaryStyle | undefined): string[] {
     const commentary: string[] = [];
+    const homePlayers = resolveTeamPlayers(homeTeam);
+    const awayPlayers = resolveTeamPlayers(awayTeam);
     
     // Starting XI
-    commentary.push(...this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam));
+    commentary.push(...this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam, {
+      homePlayers,
+      awayPlayers
+    }));
     
     // Key events
     matchState.events.forEach((event: PlayByPlayEvent) => {
-      const eventCommentary = this.commentaryService.generateEventCommentary(event, homeTeam, awayTeam, style || CommentaryStyle.DETAILED);
+      const eventCommentary = this.commentaryService.generateEventCommentary(
+        event,
+        homeTeam,
+        awayTeam,
+        style || CommentaryStyle.DETAILED,
+        {
+          homePlayers,
+          awayPlayers
+        }
+      );
       commentary.push(`${event.time}': ${eventCommentary}`);
     });
     

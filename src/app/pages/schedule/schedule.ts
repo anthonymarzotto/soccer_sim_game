@@ -59,35 +59,11 @@ export class ScheduleComponent {
   }
 
   getTeamOverall(id: string): number {
-    const team = this.gameService.getTeam(id);
-    if (!team) return 0;
-    return this.gameService.calculateTeamOverall(team);
+    return this.gameService.getTeamOverall(id);
   }
 
   getProbabilities(homeId: string, awayId: string) {
-    const homeTeam = this.gameService.getTeam(homeId);
-    const awayTeam = this.gameService.getTeam(awayId);
-    if (!homeTeam || !awayTeam) return { home: 0, draw: 0, away: 0 };
-
-    const homeOverall = this.gameService.calculateTeamOverall(homeTeam);
-    const awayOverall = this.gameService.calculateTeamOverall(awayTeam);
-
-    const homeAdvantage = 5;
-    const homeChance = homeOverall + homeAdvantage;
-    const awayChance = awayOverall;
-    const totalChance = homeChance + awayChance;
-
-    const homeWinProb = Math.round((homeChance / totalChance) * 100);
-    const awayWinProb = Math.round((awayChance / totalChance) * 100);
-    
-    const diff = Math.abs(homeChance - awayChance);
-    const drawProb = Math.max(5, 30 - diff);
-    
-    const adjustedHome = Math.round(homeWinProb * (100 - drawProb) / 100);
-    const adjustedAway = Math.round(awayWinProb * (100 - drawProb) / 100);
-    const finalDraw = 100 - adjustedHome - adjustedAway;
-
-    return { home: adjustedHome, draw: finalDraw, away: adjustedAway };
+    return this.gameService.getMatchProbabilities(homeId, awayId);
   }
 
   getPlayerNames(playerIds: string[]): string[] {

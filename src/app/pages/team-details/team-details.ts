@@ -70,10 +70,11 @@ export class TeamDetailsComponent {
   starterRows = computed<StarterRow[]>(() => {
     const t = this.team();
     if (!t) return [];
+    const players = this.gameService.getPlayersForTeam(t.id);
 
     return this.formationSlots().map(slot => ({
       slot,
-      player: t.players.find(player => player.id === t.formationAssignments[slot.slotId]) ?? null
+      player: players.find(player => player.id === t.formationAssignments[slot.slotId]) ?? null
     }));
   });
 
@@ -82,14 +83,14 @@ export class TeamDetailsComponent {
   bench = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role === Role.BENCH)
+    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
   reserves = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.players.filter(p => p.role === Role.RESERVE)
+    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 

@@ -9,6 +9,7 @@ import {
   PlayerFatigue, 
   SimulationConfig 
 } from '../models/simulation.types';
+import { resolveTeamPlayers } from '../models/team-players';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
@@ -85,15 +86,18 @@ export class MatchSimulationService {
   }
 
   private calculateTeamTactics(homeTeam: Team, awayTeam: Team): { home: TacticalSetup; away: TacticalSetup } {
+    const homePlayers = resolveTeamPlayers(homeTeam);
+    const awayPlayers = resolveTeamPlayers(awayTeam);
+
     return {
-      home: this.fieldService.calculateTeamTactics(homeTeam),
-      away: this.fieldService.calculateTeamTactics(awayTeam)
+      home: this.fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: this.fieldService.calculateTeamTactics(awayTeam, awayPlayers)
     };
   }
 
   private initializeFatigue(homeTeam: Team, _awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
     const createFatigue = (team: Team): PlayerFatigue[] => {
-      return team.players.map(player => ({
+      return resolveTeamPlayers(team).map(player => ({
         playerId: player.id,
         currentStamina: 100,
         fatigueLevel: 0,
@@ -456,12 +460,13 @@ export class MatchSimulationService {
   }
 
   private getPlayerStats(player: Player, team: Team): Player {
-    return team.players.find(p => p.id === player.id) || player;
+    return resolveTeamPlayers(team).find(p => p.id === player.id) || player;
   }
 
   private findHeaderPlayer(team: Team): Player {
-    const headers = team.players.filter(p => p.position === Position.DEFENDER || p.position === Position.MIDFIELDER);
-    return headers.length > 0 ? headers[0] : team.players[0];
+    const players = resolveTeamPlayers(team);
+    const headers = players.filter(p => p.position === Position.DEFENDER || p.position === Position.MIDFIELDER);
+    return headers.length > 0 ? headers[0] : players[0];
   }
 
   private createEvent(
@@ -562,7 +567,7 @@ export class MatchSimulationService {
   }
 
   private findPlayerById(playerId: string, team: Team): Player | null {
-    const player = team.players.find(p => p.id === playerId);
+    const player = resolveTeamPlayers(team).find(p => p.id === playerId);
     return player || null;
   }
 
@@ -571,7 +576,7 @@ export class MatchSimulationService {
     const zone = this.fieldService.getZoneFromY(currentLocation.y);
     const _targetZone = zone === FieldZone.DEFENSE ? FieldZone.MIDFIELD : zone === FieldZone.MIDFIELD ? FieldZone.ATTACK : FieldZone.ATTACK;
     
-    const potentialTargets = team.players.filter(p => 
+    const potentialTargets = resolveTeamPlayers(team).filter(p => 
       p.id !== passer.id && 
       p.role === Role.STARTER
     );
@@ -602,12 +607,12 @@ export class MatchSimulationService {
   }
 
   private getRandomPlayerId(team: Team): string {
-    const players = team.players.filter(p => p.role === Role.STARTER);
+    const players = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
     return players[Math.floor(Math.random() * players.length)].id;
   }
 
   private getPlayerById(playerId: string, team: Team): Player {
-    const player = team.players.find(p => p.id === playerId);
+    const player = resolveTeamPlayers(team).find(p => p.id === playerId);
     if (!player) {
       throw new Error(`Player with ID ${playerId} not found in team ${team.name}`);
     }
@@ -623,14 +628,14 @@ export class MatchSimulationService {
     const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
     if (!schema) {
       // Formation not found; fallback to first goalkeeper
-      return team.players.find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
+      return resolveTeamPlayers(team).find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
     }
 
     // Find the goalkeeper slot in the formation (preferredPosition is GOALKEEPER)
     const goalkeeperSlot = schema.slots.find(s => s.preferredPosition === PositionEnum.GOALKEEPER);
     if (!goalkeeperSlot) {
       // No goalkeeper slot defined; fallback to search
-      return team.players.find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
+      return resolveTeamPlayers(team).find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
     }
 
     // Get the player assigned to the goalkeeper slot
@@ -639,6 +644,6 @@ export class MatchSimulationService {
       return undefined;
     }
 
-    return team.players.find(p => p.id === goalkeeperPlayerId);
+    return resolveTeamPlayers(team).find(p => p.id === goalkeeperPlayerId);
   }
 }

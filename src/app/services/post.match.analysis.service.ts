@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis } from '../models/types';
+import { resolveTeamPlayers } from '../models/team-players';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, PlayingStyle, EventImportance } from '../models/enums';
@@ -14,8 +15,10 @@ export class PostMatchAnalysisService {
 
   generateMatchReport(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchReport {
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
-    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam);
-    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam);
+    const homePlayers = resolveTeamPlayers(homeTeam);
+    const awayPlayers = resolveTeamPlayers(awayTeam);
+    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
+    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
     
     const keyMoments = this.extractKeyMoments(matchState.events);
     const tacticalAnalysis = this.analyzeTactics(matchState, homeTeam, awayTeam);
@@ -35,12 +38,12 @@ export class PostMatchAnalysisService {
     };
   }
 
-  generateSeasonReport(team: Team, matchStates: MatchState[]): SeasonReport {
+  generateSeasonReport(team: Team, matchStates: MatchState[], matchContexts?: SeasonMatchContext[]): SeasonReport {
     const teamStats = this.statisticsService.generateTeamStatistics(team, matchStates);
-    const recentForm = this.analyzeRecentForm(matchStates, team.id);
-    const strengths = this.identifyStrengths(teamStats, matchStates);
-    const weaknesses = this.identifyWeaknesses(teamStats, matchStates);
-    const improvementAreas = this.suggestImprovements(teamStats, matchStates);
+    const recentForm = this.analyzeRecentForm(matchStates, team.id, matchContexts);
+    const strengths = this.identifyStrengths(teamStats, recentForm);
+    const weaknesses = this.identifyWeaknesses(teamStats, recentForm);
+    const improvementAreas = this.suggestImprovements(teamStats, recentForm);
 
     return {
       teamId: team.id,
@@ -197,29 +200,30 @@ export class PostMatchAnalysisService {
     return summary.join('\n');
   }
 
-  private analyzeRecentForm(matchStates: MatchState[], teamId: string): RecentForm {
+  private analyzeRecentForm(matchStates: MatchState[], teamId: string, matchContexts?: SeasonMatchContext[]): RecentForm {
     const recentMatches = matchStates.slice(-5);
+    const recentContexts = matchContexts?.slice(-5) ?? [];
     const results: ('W' | 'D' | 'L')[] = [];
+    let goalsScored = 0;
+    let goalsConceded = 0;
 
-    recentMatches.forEach(match => {
-      const result = this.getMatchResult(match, teamId);
+    recentMatches.forEach((match, index) => {
+      const side = this.resolveTeamSide(teamId, recentContexts[index]);
+      if (!side) {
+        return;
+      }
+
+      const result = this.getMatchResult(match, side);
       results.push(result);
+
+      goalsScored += side === 'home' ? match.homeScore : match.awayScore;
+      goalsConceded += side === 'home' ? match.awayScore : match.homeScore;
     });
 
     const points = results.reduce((sum, result) => {
       if (result === 'W') return sum + 3;
       if (result === 'D') return sum + 1;
       return sum;
-    }, 0);
-
-    const goalsScored = recentMatches.reduce((sum, match) => {
-      const isHome = match.ballPossession.teamId === teamId;
-      return sum + (isHome ? match.homeScore : match.awayScore);
-    }, 0);
-
-    const goalsConceded = recentMatches.reduce((sum, match) => {
-      const isHome = match.ballPossession.teamId === teamId;
-      return sum + (isHome ? match.awayScore : match.homeScore);
     }, 0);
 
     return {
@@ -235,7 +239,7 @@ export class PostMatchAnalysisService {
     };
   }
 
-  private identifyStrengths(teamStats: TeamSeasonStatistics, matchStates: MatchState[]): string[] {
+  private identifyStrengths(teamStats: TeamSeasonStatistics, recentForm: RecentForm): string[] {
     const strengths: string[] = [];
 
     if (teamStats.shotsPerGame > 15) {
@@ -258,20 +262,14 @@ export class PostMatchAnalysisService {
       strengths.push('Consistent winning record');
     }
 
-    // Use matchStates to check for recent form
-    if (matchStates.length >= 3) {
-      const recentWins = matchStates.slice(-3).filter(m => 
-        m.homeScore !== undefined && m.awayScore !== undefined
-      ).length;
-      if (recentWins >= 2) {
-        strengths.push('Good recent form');
-      }
+    if (recentForm.matches >= 3 && recentForm.wins >= 2) {
+      strengths.push('Good recent form');
     }
 
     return strengths;
   }
 
-  private identifyWeaknesses(teamStats: TeamSeasonStatistics, matchStates: MatchState[]): string[] {
+  private identifyWeaknesses(teamStats: TeamSeasonStatistics, recentForm: RecentForm): string[] {
     const weaknesses: string[] = [];
 
     if (teamStats.goalsAgainst / teamStats.matchesPlayed > 1.5) {
@@ -294,20 +292,14 @@ export class PostMatchAnalysisService {
       weaknesses.push('Inconsistent results');
     }
 
-    // Use matchStates to check for recent losses
-    if (matchStates.length >= 3) {
-      const recentLosses = matchStates.slice(-3).filter(m => 
-        m.homeScore !== undefined && m.awayScore !== undefined
-      ).length;
-      if (recentLosses >= 2) {
-        weaknesses.push('Poor recent form');
-      }
+    if (recentForm.matches >= 3 && recentForm.losses >= 2) {
+      weaknesses.push('Poor recent form');
     }
 
     return weaknesses;
   }
 
-  private suggestImprovements(teamStats: TeamSeasonStatistics, matchStates: MatchState[]): string[] {
+  private suggestImprovements(teamStats: TeamSeasonStatistics, recentForm: RecentForm): string[] {
     const improvements: string[] = [];
 
     if (teamStats.goalsAgainst / teamStats.matchesPlayed > 1.5) {
@@ -330,17 +322,27 @@ export class PostMatchAnalysisService {
       improvements.push('Review tactical approach and team selection');
     }
 
-    // Use matchStates to check for recent form
-    if (matchStates.length >= 3) {
-      const recentMatches = matchStates.slice(-3).filter(m => 
-        m.homeScore !== undefined && m.awayScore !== undefined
-      );
-      if (recentMatches.length >= 2) {
-        improvements.push('Build on recent positive performances');
-      }
+    if (recentForm.matches >= 3 && recentForm.wins + recentForm.draws >= 2) {
+      improvements.push('Build on recent positive performances');
     }
 
     return improvements;
+  }
+
+  private resolveTeamSide(teamId: string, matchContext?: SeasonMatchContext): 'home' | 'away' | null {
+    if (!matchContext) {
+      return null;
+    }
+
+    if (matchContext.homeTeamId === teamId) {
+      return 'home';
+    }
+
+    if (matchContext.awayTeamId === teamId) {
+      return 'away';
+    }
+
+    return null;
   }
 
   private generateRecommendations(teamStats: TeamSeasonStatistics, strengths: string[], weaknesses: string[]): string[] {
@@ -397,24 +399,9 @@ export class PostMatchAnalysisService {
     return Math.round(totalRating / playerStats.length);
   }
 
-  private isHomeTeamEvent(event: PlayByPlayEvent, homeTeam: Team): boolean {
-    // Check if any player in the event belongs to the home team
-    return event.playerIds.some(playerId => 
-      homeTeam.players.some(player => player.id === playerId)
-    );
-  }
-
-  private isAwayTeamEvent(event: PlayByPlayEvent, awayTeam: Team): boolean {
-    // Check if any player in the event belongs to the away team
-    return event.playerIds.some(playerId => 
-      awayTeam.players.some(player => player.id === playerId)
-    );
-  }
-
-  private getMatchResult(matchState: MatchState, teamId: string): 'W' | 'D' | 'L' {
-    const isHomeTeam = matchState.ballPossession.teamId === teamId;
-    const teamScore = isHomeTeam ? matchState.homeScore : matchState.awayScore;
-    const opponentScore = isHomeTeam ? matchState.awayScore : matchState.homeScore;
+  private getMatchResult(matchState: MatchState, side: 'home' | 'away'): 'W' | 'D' | 'L' {
+    const teamScore = side === 'home' ? matchState.homeScore : matchState.awayScore;
+    const opponentScore = side === 'home' ? matchState.awayScore : matchState.homeScore;
 
     if (teamScore > opponentScore) return 'W';
     if (teamScore < opponentScore) return 'L';
@@ -455,4 +442,9 @@ export interface RecentForm {
   goalsConceded: number;
   goalDifference: number;
   form: ('W' | 'D' | 'L')[];
+}
+
+export interface SeasonMatchContext {
+  homeTeamId: string;
+  awayTeamId: string;
 }

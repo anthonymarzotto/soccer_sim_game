@@ -306,6 +306,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       id,
       name: 'Mock Team',
       players,
+      playerIds: players.map(player => player.id),
       selectedFormationId: 'formation_4_4_2',
       formationAssignments: {
         gk_1: 'p1',

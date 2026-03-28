@@ -21,6 +21,7 @@ describe('ScheduleStateService', () => {
         id: `t${i}`,
         name: `Team ${i}`,
         players: [],
+        playerIds: [],
         stats: {
           played: 0,
           won: 0,
