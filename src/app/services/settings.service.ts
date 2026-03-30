@@ -58,7 +58,9 @@ export class SettingsService {
         return;
       }
 
-      void this.persistenceService.saveSettings(currentSettings);
+      void this.persistenceService.saveSettings(currentSettings).catch(error => {
+        console.error('Failed to save settings:', error);
+      });
     });
   }
 

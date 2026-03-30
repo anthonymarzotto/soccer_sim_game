@@ -29,7 +29,10 @@ export class ScheduleStateService {
         return;
       }
 
-      void this.persistenceService.saveSelectedWeek(week);
+      void this.persistenceService.saveSelectedWeek(week).catch((error) => {
+        // Prevent unhandled promise rejections from persistence failures
+        console.error('Failed to persist selected week:', error);
+      });
     });
 
     effect(() => {
