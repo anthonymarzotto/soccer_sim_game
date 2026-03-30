@@ -113,7 +113,7 @@ describe('PostMatchAnalysisService', () => {
     ];
 
     expect(() => service.generateSeasonReport(team, matchStates, contexts)).toThrowError(
-      /is not present in provided match context/i
+      /is not present in the match context for recent match index/i
     );
   });
 
