@@ -14,7 +14,7 @@ export class ScheduleStateService {
 
   private isHydrating = signal(true);
   private hydrationPromise: Promise<void> | null = null;
-  private hasPersistedSelection = false;
+  private isSelectionInitialized = false;
   private skipNextPersist = false;
 
   constructor() {
@@ -36,7 +36,7 @@ export class ScheduleStateService {
       const league = this.gameService.league();
       if (!league || this.isHydrating()) return;
 
-      if (!this.hasPersistedSelection) {
+      if (!this.isSelectionInitialized) {
         const targetWeek = this.clampWeek(league.currentWeek, league);
         if (targetWeek !== this.selectedWeek()) {
           this.selectedWeek.set(targetWeek);
@@ -64,6 +64,7 @@ export class ScheduleStateService {
   async resetToWeek(week: number): Promise<void> {
     const safeWeek = Math.max(1, Math.floor(week));
     this.markSelectionInitialized();
+    this.skipNextPersist = true;
     this.selectedWeek.set(safeWeek);
     await this.persistenceService.saveSelectedWeek(safeWeek);
   }
@@ -89,7 +90,7 @@ export class ScheduleStateService {
       }
       const league = this.gameService.league();
       if (league) {
-        if (!this.hasPersistedSelection) {
+        if (!this.isSelectionInitialized) {
           this.selectedWeek.set(this.clampWeek(league.currentWeek, league));
           this.markSelectionInitialized();
         } else {
@@ -113,7 +114,7 @@ export class ScheduleStateService {
    * This is the single point where the selection lifecycle transitions to "initialized".
    *
    * Lifecycle:
-   * 1. Constructor: isHydrating=true, hasPersistedSelection=false
+   * 1. Constructor: isHydrating=true, isSelectionInitialized=false
    * 2. hydrateFromPersistence() runs:
    *    - If stored week exists: set selectedWeek, then call this method (persisted path)
    *    - If no stored week: wait for league, set to currentWeek, then call this method (fallback path)
@@ -125,6 +126,6 @@ export class ScheduleStateService {
    * making the state machine easier to reason about and less prone to inconsistency.
    */
   private markSelectionInitialized(): void {
-    this.hasPersistedSelection = true;
+    this.isSelectionInitialized = true;
   }
 }

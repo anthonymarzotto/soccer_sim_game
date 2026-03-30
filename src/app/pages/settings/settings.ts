@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
+import { AfterRenderRef, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { SettingsService, BadgeStyle } from '../../services/settings.service';
@@ -21,8 +21,11 @@ export class SettingsComponent {
 
   badgeStyles = this.settingsService.getBadgeStyles();
   selectedStyle = this.settingsService.badgeStyle;
+  @ViewChild('cancelResetBtn') cancelResetBtn?: ElementRef<HTMLButtonElement>;
+
   showResetConfirmation = signal(false);
   isResetting = signal(false);
+  private _focusAfterRender: AfterRenderRef | null = null;
 
   // Get user's team or default to first team
   previewTeamId = computed(() => {
@@ -44,6 +47,10 @@ export class SettingsComponent {
 
   openResetConfirmation(): void {
     this.showResetConfirmation.set(true);
+    this._focusAfterRender?.destroy();
+    this._focusAfterRender = afterNextRender(() => {
+      this.cancelResetBtn?.nativeElement.focus();
+    });
   }
 
   cancelResetConfirmation(): void {
