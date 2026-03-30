@@ -98,7 +98,9 @@ export class GameService {
       return;
     }
 
-    void this.persistenceService.saveLeague(league);
+    void this.persistenceService.saveLeague(league).catch(error => {
+      console.error('Failed to persist league:', error);
+    });
   }
 
   private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'userTeamId'>): void {
