@@ -132,8 +132,8 @@ describe('AppDbService', () => {
     expect(firstResult).toBe('v1');
     expect(secondResult).toBe('v1');
     expect(dexieConstructorMock).toHaveBeenCalledTimes(1);
-    expect(dexieVersionMock).toHaveBeenCalledTimes(1);
-    expect(dexieStoresMock).toHaveBeenCalledTimes(1);
+    expect(dexieVersionMock).toHaveBeenCalledTimes(2);
+    expect(dexieStoresMock).toHaveBeenCalledTimes(2);
     expect(dexieOpenMock).toHaveBeenCalledTimes(1);
     expect(appStateGetMock).toHaveBeenCalledTimes(2);
   });

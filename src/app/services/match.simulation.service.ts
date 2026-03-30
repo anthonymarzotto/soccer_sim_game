@@ -21,6 +21,11 @@ interface MatchAction {
   goalkeeper?: Player;
 }
 
+interface ResolvedRosters {
+  homePlayers: Player[];
+  awayPlayers: Player[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -28,6 +33,8 @@ export class MatchSimulationService {
   private fieldService = inject(FieldService);
   private formationLibrary = inject(FormationLibraryService);
   private commentaryService = inject(CommentaryService);
+  private currentSimulationRosterResolveCount = 0;
+  private lastSimulationRosterResolveCount = 0;
 
   private readonly DEFAULT_CONFIG: SimulationConfig = {
     enablePlayByPlay: true,
@@ -37,25 +44,41 @@ export class MatchSimulationService {
     commentaryStyle: CommentaryStyle.DETAILED
   };
 
+  private resolvePlayers(team: Team): Player[] {
+    this.currentSimulationRosterResolveCount++;
+    return resolveTeamPlayers(team);
+  }
+
+  private getLastSimulationRosterResolveCount(): number {
+    return this.lastSimulationRosterResolveCount;
+  }
+
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig = this.DEFAULT_CONFIG): MatchState {
-    const initialState = this.initializeMatchState(match, homeTeam);
-    const tactics = this.calculateTeamTactics(homeTeam, awayTeam);
-    const fatigue = this.initializeFatigue(homeTeam, awayTeam);
+    this.currentSimulationRosterResolveCount = 0;
+    const rosters: ResolvedRosters = {
+      homePlayers: this.resolvePlayers(homeTeam),
+      awayPlayers: this.resolvePlayers(awayTeam)
+    };
+    const initialState = this.initializeMatchState(match, homeTeam, rosters.homePlayers);
+    const tactics = this.calculateTeamTactics(homeTeam, awayTeam, rosters.homePlayers, rosters.awayPlayers);
+    const fatigue = this.initializeFatigue(homeTeam, awayTeam, rosters.homePlayers, rosters.awayPlayers);
 
     let currentState = initialState;
 
     // Simulate 90 minutes + stoppage time
     for (let minute = 1; minute <= 95; minute++) {
-      currentState = this.simulateMinute(currentState, tactics, fatigue, homeTeam, awayTeam, minute, config);
+      currentState = this.simulateMinute(currentState, tactics, fatigue, homeTeam, awayTeam, minute, config, rosters);
     }
+
+    this.lastSimulationRosterResolveCount = this.currentSimulationRosterResolveCount;
 
     return currentState;
   }
 
-  private initializeMatchState(_match: Match, homeTeam: Team): MatchState {
+  private initializeMatchState(_match: Match, homeTeam: Team, homePlayers: Player[]): MatchState {
     const initialPossession: MatchState['ballPossession'] = {
       teamId: homeTeam.id,
-      playerWithBall: this.getRandomPlayerId(homeTeam),
+      playerWithBall: this.getRandomPlayerId(homeTeam, homePlayers),
       location: { x: 50, y: 50 },
       phase: MatchPhase.BUILD_UP,
       passes: 0,
@@ -85,9 +108,12 @@ export class MatchSimulationService {
     };
   }
 
-  private calculateTeamTactics(homeTeam: Team, awayTeam: Team): { home: TacticalSetup; away: TacticalSetup } {
-    const homePlayers = resolveTeamPlayers(homeTeam);
-    const awayPlayers = resolveTeamPlayers(awayTeam);
+  private calculateTeamTactics(
+    homeTeam: Team,
+    awayTeam: Team,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
+  ): { home: TacticalSetup; away: TacticalSetup } {
 
     return {
       home: this.fieldService.calculateTeamTactics(homeTeam, homePlayers),
@@ -95,9 +121,14 @@ export class MatchSimulationService {
     };
   }
 
-  private initializeFatigue(homeTeam: Team, _awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
-    const createFatigue = (team: Team): PlayerFatigue[] => {
-      return resolveTeamPlayers(team).map(player => ({
+  private initializeFatigue(
+    homeTeam: Team,
+    _awayTeam: Team,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(_awayTeam)
+  ): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
+    const createFatigue = (players: Player[]): PlayerFatigue[] => {
+      return players.map(player => ({
         playerId: player.id,
         currentStamina: 100,
         fatigueLevel: 0,
@@ -106,8 +137,8 @@ export class MatchSimulationService {
     };
 
     return {
-      home: createFatigue(homeTeam),
-      away: createFatigue(_awayTeam)
+      home: createFatigue(homePlayers),
+      away: createFatigue(awayPlayers)
     };
   }
 
@@ -118,7 +149,8 @@ export class MatchSimulationService {
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    rosters: ResolvedRosters
   ): MatchState {
     const newState = { ...state };
     newState.currentMinute = minute;
@@ -127,31 +159,31 @@ export class MatchSimulationService {
     this.updateFatigue(fatigue, minute);
 
     // Determine action based on current possession and tactics
-    const action = this.determineAction(state, tactics, fatigue, homeTeam, awayTeam);
+    const action = this.determineAction(state, tactics, fatigue, homeTeam, awayTeam, rosters);
     
     switch (action.type) {
       case EventType.PASS:
-        this.handlePass(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
+        this.handlePass(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config, rosters.homePlayers, rosters.awayPlayers);
         break;
       case EventType.SHOT:
-        this.handleShot(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
+        this.handleShot(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config, rosters.homePlayers, rosters.awayPlayers);
         break;
       case EventType.TACKLE:
-        this.handleTackle(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
+        this.handleTackle(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config, rosters.homePlayers, rosters.awayPlayers);
         break;
       case EventType.GOAL:
-        this.handleGoal(newState, action, homeTeam, awayTeam, minute, config);
+        this.handleGoal(newState, action, homeTeam, awayTeam, minute, config, rosters.homePlayers, rosters.awayPlayers);
         break;
       case EventType.CORNER:
-        this.handleCorner(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config);
+        this.handleCorner(newState, action, homeTeam, awayTeam, tactics, fatigue, minute, config, rosters.homePlayers, rosters.awayPlayers);
         break;
       case EventType.FOUL:
-        this.handleFoul(newState, action, homeTeam, awayTeam, minute, config);
+        this.handleFoul(newState, action, homeTeam, awayTeam, minute, config, rosters.homePlayers, rosters.awayPlayers);
         break;
     }
 
     // Update possession statistics
-    this.updatePossessionStats(newState, homeTeam, awayTeam);
+    this.updatePossessionStats(newState, homeTeam, rosters.homePlayers, awayTeam);
 
     return newState;
   }
@@ -161,14 +193,18 @@ export class MatchSimulationService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     homeTeam: Team,
-    awayTeam: Team
+    awayTeam: Team,
+    rosters: ResolvedRosters
   ): MatchAction {
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
 
     // Get player with ball
-    const player = this.getPlayerById(state.ballPossession.playerWithBall, currentTeam === 'home' ? homeTeam : awayTeam);
+    const currentTeamData = currentTeam === 'home'
+      ? { team: homeTeam, players: rosters.homePlayers }
+      : { team: awayTeam, players: rosters.awayPlayers };
+    const player = this.getPlayerById(state.ballPossession.playerWithBall, currentTeamData.team, currentTeamData.players);
     const playerFatigue = teamFatigue.find(f => f.playerId === player.id);
 
     // Calculate action probabilities based on position, tactics, and fatigue
@@ -216,22 +252,28 @@ export class MatchSimulationService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
   ) {
     const passer = action.player;
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
-    const team = currentTeam === 'home' ? homeTeam : awayTeam;
+    const teamPlayers = currentTeam === 'home' ? homePlayers : awayPlayers;
+    const opponentPlayers = currentTeam === 'home' ? awayPlayers : homePlayers;
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
 
     // Find target player based on tactics and position
-    const targetPlayer = this.findPassTarget(passer, team, teamTactics, state.ballPossession.location);
+    const targetPlayer = this.findPassTarget(passer, teamPlayers, teamTactics, state.ballPossession.location);
     
     if (!targetPlayer) {
       // Turnover
       this.createEvent(state, EventType.TACKLE, [passer.id], state.ballPossession.location, minute, false, config);
       state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
-      state.ballPossession.playerWithBall = this.getRandomPlayerId(state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam);
+      state.ballPossession.playerWithBall = this.getRandomPlayerId(
+        state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam,
+        opponentPlayers
+      );
       return;
     }
 
@@ -251,7 +293,10 @@ export class MatchSimulationService {
       // Interception
       this.createEvent(state, EventType.INTERCEPTION, [passer.id], state.ballPossession.location, minute, false, config);
       state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
-      state.ballPossession.playerWithBall = this.getRandomPlayerId(state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam);
+      state.ballPossession.playerWithBall = this.getRandomPlayerId(
+        state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam,
+        opponentPlayers
+      );
     }
   }
 
@@ -263,11 +308,14 @@ export class MatchSimulationService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
   ) {
     const shooter = action.player;
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     const opponentTeam = currentTeam === 'home' ? awayTeam : homeTeam;
+    const opponentPlayers = currentTeam === 'home' ? awayPlayers : homePlayers;
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
 
@@ -279,7 +327,7 @@ export class MatchSimulationService {
     }
 
     // Find goalkeeper using schema-driven method
-    const goalkeeper = this.getGoalkeeperForTeam(opponentTeam);
+    const goalkeeper = this.getGoalkeeperForTeam(opponentTeam, opponentPlayers);
     
     // Calculate shot success
     const shotSuccess = this.calculateShotSuccess(shooter, goalkeeper, teamTactics, teamFatigue, state.ballPossession.location);
@@ -291,7 +339,16 @@ export class MatchSimulationService {
       } else {
         state.awayShotsOnTarget++;
       }
-      this.handleGoal(state, { type: EventType.GOAL, player: shooter, goalkeeper: goalkeeper }, homeTeam, awayTeam, minute, config);
+      this.handleGoal(
+        state,
+        { type: EventType.GOAL, player: shooter, goalkeeper: goalkeeper },
+        homeTeam,
+        awayTeam,
+        minute,
+        config,
+        homePlayers,
+        awayPlayers
+      );
     } else {
       // Shot on/off target
       const onTarget = shotSuccess.onTarget;
@@ -324,7 +381,9 @@ export class MatchSimulationService {
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
   ) {
     const shooter = action.player;
     const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
@@ -339,7 +398,10 @@ export class MatchSimulationService {
     
     // Reset possession for kickoff
     state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
-    state.ballPossession.playerWithBall = this.getRandomPlayerId(state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam);
+    state.ballPossession.playerWithBall = this.getRandomPlayerId(
+      state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam,
+      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers
+    );
     state.ballPossession.location = { x: 50, y: 50 };
     state.ballPossession.passes = 0;
   }
@@ -352,14 +414,17 @@ export class MatchSimulationService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
   ) {
     const tackler = action.player;
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     const opponentTeam = currentTeam === 'home' ? awayTeam : homeTeam;
+    const opponentPlayers = currentTeam === 'home' ? awayPlayers : homePlayers;
     
     // Simple tackle success calculation
-    const tacklerStats = this.getPlayerStats(tackler, opponentTeam);
+    const tacklerStats = this.getPlayerStats(tackler, opponentTeam, opponentPlayers);
     
     const tackleSuccess = Math.random() * 100 < (tacklerStats.skills.tackling + tacklerStats.physical.strength) / 2;
     
@@ -367,12 +432,12 @@ export class MatchSimulationService {
       // Successful tackle
       this.createEvent(state, EventType.TACKLE, [tackler.id, state.ballPossession.playerWithBall], state.ballPossession.location, minute, true, config);
       state.ballPossession.teamId = opponentTeam.id;
-      state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentTeam);
+      state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentTeam, opponentPlayers);
     } else {
       // Failed tackle - possible foul
       const foulChance = 0.3;
       if (Math.random() < foulChance) {
-        this.handleFoul(state, { type: EventType.FOUL, player: tackler }, homeTeam, awayTeam, minute, config);
+        this.handleFoul(state, { type: EventType.FOUL, player: tackler }, homeTeam, awayTeam, minute, config, homePlayers, awayPlayers);
       }
     }
   }
@@ -385,7 +450,9 @@ export class MatchSimulationService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     _fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
   ) {
     const _shooter = action.player;
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
@@ -395,12 +462,12 @@ export class MatchSimulationService {
     
     if (cornerSuccess) {
       // Header attempt
-      const headerPlayer = this.findHeaderPlayer(currentTeam === 'home' ? homeTeam : awayTeam);
+      const headerPlayer = this.findHeaderPlayer(currentTeam === 'home' ? homePlayers : awayPlayers);
       
       const headerSuccess = Math.random() * 100 < headerPlayer.skills.heading;
       
       if (headerSuccess) {
-        this.handleGoal(state, { type: EventType.GOAL, player: headerPlayer }, homeTeam, awayTeam, minute, config);
+        this.handleGoal(state, { type: EventType.GOAL, player: headerPlayer }, homeTeam, awayTeam, minute, config, homePlayers, awayPlayers);
       } else {
         this.createEvent(state, EventType.MISS, [headerPlayer.id], { x: 50, y: 95 }, minute, false, config);
       }
@@ -420,7 +487,9 @@ export class MatchSimulationService {
     homeTeam: Team, 
     awayTeam: Team, 
     minute: number, 
-    config: SimulationConfig
+    config: SimulationConfig,
+    homePlayers: Player[] = this.resolvePlayers(homeTeam),
+    awayPlayers: Player[] = this.resolvePlayers(awayTeam)
   ) {
     const fouler = action.player;
     const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
@@ -456,15 +525,17 @@ export class MatchSimulationService {
     
     // Free kick to opponent
     state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
-    state.ballPossession.playerWithBall = this.getRandomPlayerId(state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam);
+    state.ballPossession.playerWithBall = this.getRandomPlayerId(
+      state.ballPossession.teamId === homeTeam.id ? homeTeam : awayTeam,
+      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers
+    );
   }
 
-  private getPlayerStats(player: Player, team: Team): Player {
-    return resolveTeamPlayers(team).find(p => p.id === player.id) || player;
+  private getPlayerStats(player: Player, team: Team, teamPlayers: Player[] = this.resolvePlayers(team)): Player {
+    return teamPlayers.find(p => p.id === player.id) || player;
   }
 
-  private findHeaderPlayer(team: Team): Player {
-    const players = resolveTeamPlayers(team);
+  private findHeaderPlayer(players: Player[]): Player {
     const headers = players.filter(p => p.position === Position.DEFENDER || p.position === Position.MIDFIELDER);
     return headers.length > 0 ? headers[0] : players[0];
   }
@@ -547,7 +618,7 @@ export class MatchSimulationService {
     });
   }
 
-  private updatePossessionStats(state: MatchState, homeTeam: Team, _awayTeam: Team) {
+  private updatePossessionStats(state: MatchState, homeTeam: Team, homePlayers: Player[], _awayTeam: Team) {
     // Calculate possession based on time spent in possession
     // This is a simplified calculation - in a real simulation, you'd track actual possession time
     const totalEvents = state.events.length;
@@ -555,7 +626,7 @@ export class MatchSimulationService {
       const homeEvents = state.events.filter(e => 
         e.playerIds.some(playerId => {
           // Check if player belongs to home team
-          const player = this.findPlayerById(playerId, homeTeam);
+          const player = this.findPlayerById(playerId, homePlayers);
           return player !== null;
         })
       );
@@ -566,17 +637,17 @@ export class MatchSimulationService {
     }
   }
 
-  private findPlayerById(playerId: string, team: Team): Player | null {
-    const player = resolveTeamPlayers(team).find(p => p.id === playerId);
+  private findPlayerById(playerId: string, players: Player[]): Player | null {
+    const player = players.find(p => p.id === playerId);
     return player || null;
   }
 
-  private findPassTarget(passer: Player, team: Team, tactics: TacticalSetup, currentLocation: Coordinates): Player | null {
+  private findPassTarget(passer: Player, teamPlayers: Player[], tactics: TacticalSetup, currentLocation: Coordinates): Player | null {
     // Find players in similar or attacking zone
     const zone = this.fieldService.getZoneFromY(currentLocation.y);
     const _targetZone = zone === FieldZone.DEFENSE ? FieldZone.MIDFIELD : zone === FieldZone.MIDFIELD ? FieldZone.ATTACK : FieldZone.ATTACK;
     
-    const potentialTargets = resolveTeamPlayers(team).filter(p => 
+    const potentialTargets = teamPlayers.filter(p => 
       p.id !== passer.id && 
       p.role === Role.STARTER
     );
@@ -606,13 +677,13 @@ export class MatchSimulationService {
     return location.y > 92 && (location.x < 8 || location.x > 92);
   }
 
-  private getRandomPlayerId(team: Team): string {
-    const players = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
+  private getRandomPlayerId(team: Team, teamPlayers: Player[] = this.resolvePlayers(team)): string {
+    const players = teamPlayers.filter(p => p.role === Role.STARTER);
     return players[Math.floor(Math.random() * players.length)].id;
   }
 
-  private getPlayerById(playerId: string, team: Team): Player {
-    const player = resolveTeamPlayers(team).find(p => p.id === playerId);
+  private getPlayerById(playerId: string, team: Team, teamPlayers: Player[] = this.resolvePlayers(team)): Player {
+    const player = teamPlayers.find(p => p.id === playerId);
     if (!player) {
       throw new Error(`Player with ID ${playerId} not found in team ${team.name}`);
     }
@@ -623,19 +694,19 @@ export class MatchSimulationService {
    * Get the goalkeeper for a team based on their selected formation schema.
    * Returns undefined if no goalkeeper is found or formation schema is invalid.
    */
-  private getGoalkeeperForTeam(team: Team): Player | undefined {
+  private getGoalkeeperForTeam(team: Team, teamPlayers: Player[] = this.resolvePlayers(team)): Player | undefined {
     // Get the formation schema for this team
     const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
     if (!schema) {
       // Formation not found; fallback to first goalkeeper
-      return resolveTeamPlayers(team).find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
+      return teamPlayers.find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
     }
 
     // Find the goalkeeper slot in the formation (preferredPosition is GOALKEEPER)
     const goalkeeperSlot = schema.slots.find(s => s.preferredPosition === PositionEnum.GOALKEEPER);
     if (!goalkeeperSlot) {
       // No goalkeeper slot defined; fallback to search
-      return resolveTeamPlayers(team).find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
+      return teamPlayers.find(p => p.position === PositionEnum.GOALKEEPER && p.role === Role.STARTER);
     }
 
     // Get the player assigned to the goalkeeper slot
@@ -644,6 +715,6 @@ export class MatchSimulationService {
       return undefined;
     }
 
-    return resolveTeamPlayers(team).find(p => p.id === goalkeeperPlayerId);
+    return teamPlayers.find(p => p.id === goalkeeperPlayerId);
   }
 }

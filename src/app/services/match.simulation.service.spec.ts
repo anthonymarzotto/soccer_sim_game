@@ -12,6 +12,7 @@ interface MatchSimulationServicePrivateApi {
   getGoalkeeperForTeam(team: Team): Player | undefined;
   calculateTeamTactics(homeTeam: Team, awayTeam: Team): { home: TacticalSetup; away: TacticalSetup };
   initializeFatigue(homeTeam: Team, awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] };
+  getLastSimulationRosterResolveCount(): number;
   calculateShotSuccess: (
     shooter: Player,
     goalkeeper: Player | undefined,
@@ -366,6 +367,46 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
 
       // Both should be valid with same assignments
       expect(val1.isValid).toBe(val2.isValid);
+    });
+  });
+
+  describe('Simulation Performance Guardrails', () => {
+    it('should avoid repeatedly resolving team players during a full match simulation', () => {
+      const awayPlayers = mockPlayers.map(p => ({
+        ...p,
+        id: `away_${p.id}`,
+        teamId: 'team_away_perf'
+      }));
+      const awayTeam = {
+        ...createMockTeam('team_away_perf', awayPlayers, 'formation_4_4_2'),
+        formationAssignments: {
+          gk_1: 'away_gk1',
+          def_l: 'away_def1',
+          def_lc: 'away_def2',
+          def_rc: 'away_def3',
+          def_r: 'away_def4',
+          mid_l: 'away_mid1',
+          mid_lc: 'away_mid2',
+          mid_rc: 'away_mid3',
+          mid_r: 'away_mid4',
+          att_l: 'away_fwd1',
+          att_r: 'away_fwd2'
+        }
+      };
+
+      const match = {
+        id: 'perf_match_1',
+        week: 1,
+        homeTeamId: mockTeam442.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      simulationService.simulateMatch(match, mockTeam442, awayTeam);
+
+      // Full match simulation should resolve both team rosters once up front,
+      // then reuse cached arrays across minute/action helpers.
+      expect(privateApi.getLastSimulationRosterResolveCount()).toBeLessThanOrEqual(2);
     });
   });
 

@@ -218,6 +218,18 @@ export class FieldService {
         name: 'Unavailable Formation',
         positions: []
       };
+
+    if (teamPlayers.length === 0) {
+      return {
+        teamId: team.id,
+        formation,
+        playingStyle: PlayingStyle.DEFENSIVE,
+        mentality: Mentality.BALANCED,
+        pressingIntensity: 50,
+        defensiveLine: 50,
+        tempo: 50
+      };
+    }
     
     // Calculate team averages for different attributes
     const overallAvg = teamPlayers.reduce((sum, p) => sum + p.overall, 0) / teamPlayers.length;

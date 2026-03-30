@@ -38,7 +38,7 @@ export class PostMatchAnalysisService {
     };
   }
 
-  generateSeasonReport(team: Team, matchStates: MatchState[], matchContexts?: SeasonMatchContext[]): SeasonReport {
+  generateSeasonReport(team: Team, matchStates: MatchState[], matchContexts: SeasonMatchContext[]): SeasonReport {
     const teamStats = this.statisticsService.generateTeamStatistics(team, matchStates);
     const recentForm = this.analyzeRecentForm(matchStates, team.id, matchContexts);
     const strengths = this.identifyStrengths(teamStats, recentForm);
@@ -200,9 +200,17 @@ export class PostMatchAnalysisService {
     return summary.join('\n');
   }
 
-  private analyzeRecentForm(matchStates: MatchState[], teamId: string, matchContexts?: SeasonMatchContext[]): RecentForm {
+  private analyzeRecentForm(matchStates: MatchState[], teamId: string, matchContexts: SeasonMatchContext[]): RecentForm {
     const recentMatches = matchStates.slice(-5);
-    const recentContexts = matchContexts?.slice(-5) ?? [];
+    if (matchContexts.length < recentMatches.length) {
+      throw new Error(
+        `analyzeRecentForm requires matchContexts for each analyzed match state. ` +
+        `Expected at least ${recentMatches.length}, received ${matchContexts.length}. ` +
+        `Please provide a SeasonMatchContext entry for each match in matchStates when calling analyzeRecentForm.`
+      );
+    }
+
+    const recentContexts = matchContexts.slice(-recentMatches.length);
     const results: ('W' | 'D' | 'L')[] = [];
     let goalsScored = 0;
     let goalsConceded = 0;
@@ -210,7 +218,11 @@ export class PostMatchAnalysisService {
     recentMatches.forEach((match, index) => {
       const side = this.resolveTeamSide(teamId, recentContexts[index]);
       if (!side) {
-        return;
+        const originalIndex = matchStates.length - recentMatches.length + index;
+        throw new Error(
+          `Team ${teamId} is not present in the match context for recent match index ${index} ` +
+          `out of ${recentMatches.length} recent matches (overall matchStates index ${originalIndex}).`
+        );
       }
 
       const result = this.getMatchResult(match, side);
