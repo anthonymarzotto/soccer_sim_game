@@ -64,15 +64,11 @@ describe('AppDbService', () => {
 
   function setIndexedDbAvailable(available: boolean) {
     if (available) {
-      Object.defineProperty(globalThis, 'indexedDB', {
-        value: {},
-        configurable: true,
-        writable: true
-      });
+      vi.stubGlobal('indexedDB', {});
       return;
     }
 
-    Reflect.deleteProperty(globalThis, 'indexedDB');
+    vi.stubGlobal('indexedDB', undefined);
   }
 
   beforeEach(() => {
@@ -84,7 +80,7 @@ describe('AppDbService', () => {
   });
 
   afterEach(() => {
-    Reflect.deleteProperty(globalThis, 'indexedDB');
+    vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
 
