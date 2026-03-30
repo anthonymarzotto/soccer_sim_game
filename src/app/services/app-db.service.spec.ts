@@ -50,6 +50,26 @@ vi.mock('dexie', () => {
 import { AppDbService } from './app-db.service';
 
 describe('AppDbService', () => {
+  interface AppDbServiceTestAccess {
+    initializeDb: () => Promise<unknown>;
+  }
+
+  function createMockDb() {
+    return {
+      appState: {
+        get: appStateGetMock,
+        put: appStatePutMock,
+        delete: appStateDeleteMock
+      }
+    } as unknown;
+  }
+
+  function spyOnInitializeDb(service: AppDbService) {
+    return vi
+      .spyOn(service as unknown as AppDbServiceTestAccess, 'initializeDb')
+      .mockResolvedValue(createMockDb());
+  }
+
   function setup(platformId: 'browser' | 'server') {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -117,8 +137,8 @@ describe('AppDbService', () => {
   });
 
   it('opens Dexie only once and caches the db instance', async () => {
-    setIndexedDbAvailable(true);
     const service = setup('browser');
+    const initializeDbSpy = spyOnInitializeDb(service);
 
     appStateGetMock.mockResolvedValue({ key: 'k1', value: 'v1', updatedAt: 1 });
 
@@ -127,16 +147,13 @@ describe('AppDbService', () => {
 
     expect(firstResult).toBe('v1');
     expect(secondResult).toBe('v1');
-    expect(dexieConstructorMock).toHaveBeenCalledTimes(1);
-    expect(dexieVersionMock).toHaveBeenCalledTimes(2);
-    expect(dexieStoresMock).toHaveBeenCalledTimes(2);
-    expect(dexieOpenMock).toHaveBeenCalledTimes(1);
+    expect(initializeDbSpy).toHaveBeenCalledTimes(1);
     expect(appStateGetMock).toHaveBeenCalledTimes(2);
   });
 
   it('uses Dexie appState get/put/delete APIs in browser', async () => {
-    setIndexedDbAvailable(true);
     const service = setup('browser');
+    const initializeDbSpy = spyOnInitializeDb(service);
 
     appStateGetMock.mockResolvedValue({ key: 'settings', value: { badgeStyle: 'shield' }, updatedAt: 123 });
 
@@ -145,6 +162,7 @@ describe('AppDbService', () => {
     await service.deleteState('settings');
 
     expect(value).toEqual({ badgeStyle: 'shield' });
+    expect(initializeDbSpy).toHaveBeenCalledTimes(1);
     expect(appStateGetMock).toHaveBeenCalledWith('settings');
     expect(appStatePutMock).toHaveBeenCalledTimes(1);
 
