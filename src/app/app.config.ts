@@ -6,16 +6,31 @@ import {
 import {provideRouter} from '@angular/router';
 
 import {routes} from './app.routes';
+import { DataSchemaVersionService } from './services/data-schema-version.service';
 import { GameService } from './services/game.service';
 import { ScheduleStateService } from './services/schedule-state.service';
 import { SettingsService } from './services/settings.service';
 
-function initializeApp(gameService: GameService, settingsService: SettingsService, scheduleStateService: ScheduleStateService) {
+function initializeApp(
+  dataSchemaVersionService: DataSchemaVersionService,
+  gameService: GameService,
+  settingsService: SettingsService,
+  scheduleStateService: ScheduleStateService
+) {
   return async () => {
-    await Promise.all([
-      gameService.ensureHydrated(),
-      settingsService.ensureHydrated()
-    ]);
+    await dataSchemaVersionService.ensureHydrated();
+
+    if (dataSchemaVersionService.hasPersistedDataSchemaVersionMismatch()) {
+      return;
+    }
+
+    await settingsService.ensureHydrated();
+
+    if (settingsService.hasPersistedSettingsVersionMismatch()) {
+      return;
+    }
+
+    await gameService.ensureHydrated();
 
     await scheduleStateService.ensureHydrated();
   };
@@ -28,7 +43,7 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       useFactory: initializeApp,
-      deps: [GameService, SettingsService, ScheduleStateService],
+      deps: [DataSchemaVersionService, GameService, SettingsService, ScheduleStateService],
       multi: true
     }
   ],

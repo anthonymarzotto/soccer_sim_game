@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { PersistenceService } from './persistence.service';
 import { AppDbService } from './app-db.service';
 import { NormalizedDbService } from './normalized-db.service';
+import { DataSchemaVersionService } from './data-schema-version.service';
 import { MatchResult, Position, Role } from '../models/enums';
 import { Match, Team } from '../models/types';
 
@@ -76,6 +78,8 @@ describe('PersistenceService', () => {
     NormalizedDbService,
     'loadLeague' | 'saveLeague' | 'clearLeagueData' | 'saveLeagueMetadata' | 'saveTeamFromLeague' | 'saveTeamDefinitionFromLeague' | 'saveMatch' | 'saveMatchResultFromLeague'
   >;
+  let dataSchemaVersionSpy: Pick<DataSchemaVersionService, 'ensureHydrated' | 'hasPersistedDataSchemaVersionMismatch'>;
+  let hasSchemaMismatch: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
     appDbSpy = {
@@ -95,11 +99,19 @@ describe('PersistenceService', () => {
       saveMatchResultFromLeague: vi.fn()
     };
 
+    hasSchemaMismatch = signal(false);
+
+    dataSchemaVersionSpy = {
+      ensureHydrated: vi.fn().mockResolvedValue(undefined),
+      hasPersistedDataSchemaVersionMismatch: hasSchemaMismatch.asReadonly()
+    };
+
     TestBed.configureTestingModule({
       providers: [
         PersistenceService,
         { provide: AppDbService, useValue: appDbSpy as AppDbService },
-        { provide: NormalizedDbService, useValue: normalizedDbSpy as NormalizedDbService }
+        { provide: NormalizedDbService, useValue: normalizedDbSpy as NormalizedDbService },
+        { provide: DataSchemaVersionService, useValue: dataSchemaVersionSpy as DataSchemaVersionService }
       ]
     });
 
@@ -119,7 +131,7 @@ describe('PersistenceService', () => {
   });
 
   it('should load and save settings using the settings key', async () => {
-    const settings = { badgeStyle: 'shield' };
+    const settings = { version: '0.1.0-alpha.data.1', badgeStyle: 'shield' };
     vi.mocked(appDbSpy.getState).mockResolvedValue(settings);
 
     const loaded = await service.loadSettings();
@@ -165,8 +177,11 @@ describe('PersistenceService', () => {
     const firstWrite = service.saveTeam(createTeam('team-1'));
     const secondWrite = service.saveTeam(createTeam('team-2'));
 
-    await Promise.resolve();
+    for (let attempt = 0; attempt < 10 && !releaseFirstWrite; attempt += 1) {
+      await Promise.resolve();
+    }
 
+    expect(releaseFirstWrite).toBeDefined();
     expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenCalledTimes(1);
     expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'team-1' }));
 
@@ -185,5 +200,17 @@ describe('PersistenceService', () => {
     await service.saveMatchResult(match, teams);
 
     expect(normalizedDbSpy.saveMatchResultFromLeague).toHaveBeenCalledWith(match, teams);
+  });
+
+  it('should block mutating writes when persisted schema version mismatches', async () => {
+    hasSchemaMismatch.set(true);
+
+    await service.saveSettings({ version: '0.1.0-alpha.data.1', badgeStyle: 'shield' });
+    await service.saveSelectedWeek(4);
+    await service.saveLeague({ teams: [], schedule: [], currentWeek: 1 });
+
+    expect(dataSchemaVersionSpy.ensureHydrated).toHaveBeenCalled();
+    expect(appDbSpy.putState).not.toHaveBeenCalled();
+    expect(normalizedDbSpy.saveLeague).not.toHaveBeenCalled();
   });
 });

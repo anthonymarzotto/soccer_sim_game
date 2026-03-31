@@ -1,16 +1,26 @@
 {
   "name": "soccer-simulator",
   "version": "0.0.0",
+  "dataSchemaVersion": "0.1.0-alpha.data.1",
   "scripts": {
+    "check:data-schema-version": "node scripts/sync-data-schema-version.mjs --check",
+    "sync:data-schema-version": "node scripts/sync-data-schema-version.mjs",
+    "prestart": "npm run sync:data-schema-version",
     "ng": "ng",
     "start": "ng serve",
+    "predev": "npm run sync:data-schema-version",
     "dev": "cross-env ng serve --port=3000 --host=0.0.0.0 --allowed-hosts",
+    "prebuild": "npm run sync:data-schema-version",
     "build": "ng build",
+    "prewatch": "npm run sync:data-schema-version",
     "watch": "ng build --watch --configuration development",
+    "version:data": "node -e \"console.log(require('./package.json').dataSchemaVersion)\"",
+    "pretest": "npm run sync:data-schema-version",
     "test": "ng test",
+    "prelint": "npm run sync:data-schema-version",
     "lint": "ng lint",
     "serve:ssr:app": "node dist/app/server/server.mjs",
-    "prepare": "husky install"
+    "prepare": "npm run sync:data-schema-version && husky install"
   },
   "private": true,
   "lint-staged": {

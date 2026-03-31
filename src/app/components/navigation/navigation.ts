@@ -1,7 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { SettingsService } from '../../services/settings.service';
 import { APP_TITLE } from '../../constants';
+
+function resolveSchemaVersion(value: string | (() => string)): string {
+  return typeof value === 'function' ? value() : value;
+}
 
 @Component({
   selector: 'app-navigation',
@@ -16,9 +21,12 @@ import { APP_TITLE } from '../../constants';
 })
 export class NavigationComponent {
   private gameService = inject(GameService);
+  private settingsService = inject(SettingsService);
 
   appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
+  currentDataSchemaVersion = computed(() => resolveSchemaVersion(this.settingsService.currentDataSchemaVersion));
+  hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
 
   userTeamId = computed(() => {
     const league = this.gameService.league();
