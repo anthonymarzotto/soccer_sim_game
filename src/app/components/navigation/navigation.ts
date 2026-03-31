@@ -4,6 +4,10 @@ import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 import { APP_TITLE } from '../../constants';
 
+function resolveSchemaVersion(value: string | (() => string)): string {
+  return typeof value === 'function' ? value() : value;
+}
+
 @Component({
   selector: 'app-navigation',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,7 +25,7 @@ export class NavigationComponent {
 
   appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
-  currentDataSchemaVersion = this.settingsService.currentDataSchemaVersion;
+  currentDataSchemaVersion = computed(() => resolveSchemaVersion(this.settingsService.currentDataSchemaVersion));
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
 
   userTeamId = computed(() => {

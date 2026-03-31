@@ -7,6 +7,10 @@ import { ScheduleStateService } from '../../services/schedule-state.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { FormationEditorComponent } from '../../components/formation-editor/formation-editor';
 
+function resolveSchemaVersion(value: string | (() => string)): string {
+  return typeof value === 'function' ? value() : value;
+}
+
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,7 +25,7 @@ export class SettingsComponent {
 
   badgeStyles = this.settingsService.getBadgeStyles();
   selectedStyle = this.settingsService.badgeStyle;
-  currentDataSchemaVersion = this.settingsService.currentDataSchemaVersion;
+  currentDataSchemaVersion = computed(() => resolveSchemaVersion(this.settingsService.currentDataSchemaVersion));
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
   @ViewChild('cancelResetBtn') cancelResetBtn?: ElementRef<HTMLButtonElement>;
 
