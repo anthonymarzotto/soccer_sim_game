@@ -21,7 +21,7 @@ export class NavigationComponent {
 
   appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
-  settingsVersion = this.settingsService.persistedSettingsVersion;
+  currentDataSchemaVersion = this.settingsService.currentDataSchemaVersion;
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
 
   userTeamId = computed(() => {

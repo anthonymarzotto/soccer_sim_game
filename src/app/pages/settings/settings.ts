@@ -21,7 +21,7 @@ export class SettingsComponent {
 
   badgeStyles = this.settingsService.getBadgeStyles();
   selectedStyle = this.settingsService.badgeStyle;
-  dataSchemaVersion = this.settingsService.persistedSettingsVersion;
+  currentDataSchemaVersion = this.settingsService.currentDataSchemaVersion;
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
   @ViewChild('cancelResetBtn') cancelResetBtn?: ElementRef<HTMLButtonElement>;
 

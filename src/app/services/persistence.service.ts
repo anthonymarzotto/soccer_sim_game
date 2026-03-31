@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { League, Match, Team } from '../models/types';
 import { AppDbService } from './app-db.service';
 import { NormalizedDbService } from './normalized-db.service';
+import { DataSchemaVersionService } from './data-schema-version.service';
 
 export interface PersistedSettings {
   version: string;
@@ -22,7 +23,13 @@ const SELECTED_WEEK_KEY = 'schedule-selected-week';
 export class PersistenceService {
   private readonly appDb = inject(AppDbService);
   private readonly normalizedDb = inject(NormalizedDbService);
+  private readonly dataSchemaVersionService = inject(DataSchemaVersionService);
   private normalizedWriteQueue = Promise.resolve();
+
+  private async shouldBlockMutatingWrite(): Promise<boolean> {
+    await this.dataSchemaVersionService.ensureHydrated();
+    return this.dataSchemaVersionService.hasPersistedDataSchemaVersionMismatch();
+  }
 
   private enqueueNormalizedWrite(operation: () => Promise<void>): Promise<void> {
     const queuedOperation = this.normalizedWriteQueue.then(operation, operation);
@@ -30,12 +37,28 @@ export class PersistenceService {
     return queuedOperation;
   }
 
+  private async doSafeNormalizedWrite(operation: () => Promise<void>): Promise<void> {
+    if (await this.shouldBlockMutatingWrite()) {
+      return;
+    }
+
+    await this.enqueueNormalizedWrite(operation);
+  }
+
+  private async doSafeStateWrite<TValue>(key: string, value: TValue): Promise<void> {
+    if (await this.shouldBlockMutatingWrite()) {
+      return;
+    }
+
+    await this.appDb.putState(key, value);
+  }
+
   async loadLeague(): Promise<League | null> {
     return this.normalizedDb.loadLeague();
   }
 
   async saveLeague(league: League): Promise<void> {
-    await this.enqueueNormalizedWrite(() => this.normalizedDb.saveLeague(league));
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveLeague(league));
   }
 
   async clearLeague(): Promise<void> {
@@ -43,23 +66,23 @@ export class PersistenceService {
   }
 
   async saveLeagueMetadata(metadata: Pick<League, 'currentWeek' | 'userTeamId'>): Promise<void> {
-    await this.enqueueNormalizedWrite(() => this.normalizedDb.saveLeagueMetadata(metadata));
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveLeagueMetadata(metadata));
   }
 
   async saveTeam(team: Team): Promise<void> {
-    await this.enqueueNormalizedWrite(() => this.normalizedDb.saveTeamFromLeague(team));
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveTeamFromLeague(team));
   }
 
   async saveTeamDefinition(team: Team): Promise<void> {
-    await this.enqueueNormalizedWrite(() => this.normalizedDb.saveTeamDefinitionFromLeague(team));
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveTeamDefinitionFromLeague(team));
   }
 
   async saveMatchResult(match: Match, teams: Team[]): Promise<void> {
-    await this.enqueueNormalizedWrite(() => this.normalizedDb.saveMatchResultFromLeague(match, teams));
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveMatchResultFromLeague(match, teams));
   }
 
   async saveMatch(match: Match): Promise<void> {
-    await this.enqueueNormalizedWrite(() => this.normalizedDb.saveMatch(match));
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveMatch(match));
   }
 
   async loadSettings(): Promise<PersistedSettingsRecord | null> {
@@ -67,7 +90,7 @@ export class PersistenceService {
   }
 
   async saveSettings(settings: PersistedSettings): Promise<void> {
-    await this.appDb.putState(SETTINGS_STATE_KEY, settings);
+    await this.doSafeStateWrite(SETTINGS_STATE_KEY, settings);
   }
 
   async clearSettings(): Promise<void> {
@@ -79,7 +102,7 @@ export class PersistenceService {
   }
 
   async saveSelectedWeek(week: number): Promise<void> {
-    await this.appDb.putState(SELECTED_WEEK_KEY, week);
+    await this.doSafeStateWrite(SELECTED_WEEK_KEY, week);
   }
 
   async clearSelectedWeek(): Promise<void> {

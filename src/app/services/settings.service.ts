@@ -2,6 +2,7 @@
 import { Injectable, signal, effect, computed, inject } from '@angular/core';
 import { PersistenceService } from './persistence.service';
 import { APP_DATA_SCHEMA_VERSION } from '../constants';
+import { DataSchemaVersionService } from './data-schema-version.service';
 
 
 const BADGE_STYLES = [
@@ -33,6 +34,7 @@ export interface Settings {
 })
 export class SettingsService {
   private readonly persistenceService = inject(PersistenceService);
+  private readonly dataSchemaVersionService = inject(DataSchemaVersionService);
   private readonly dataSchemaVersion = APP_DATA_SCHEMA_VERSION;
   private defaultSettings: Settings = {
     badgeStyle: 'initials'
@@ -45,8 +47,10 @@ export class SettingsService {
   private settings = signal<Settings>(this.defaultSettings);
 
   badgeStyle = computed(() => this.settings().badgeStyle);
-  readonly persistedSettingsVersion = this.dataSchemaVersion;
-  readonly hasPersistedSettingsVersionMismatch = computed(() => this.hasVersionMismatch());
+  readonly currentDataSchemaVersion = this.dataSchemaVersionService.currentDataSchemaVersion;
+  readonly hasPersistedSettingsVersionMismatch = computed(
+    () => this.dataSchemaVersionService.hasPersistedDataSchemaVersionMismatch() || this.hasVersionMismatch()
+  );
 
   constructor() {
     void this.ensureHydrated();
@@ -54,7 +58,7 @@ export class SettingsService {
     // Auto-save settings whenever they change after hydration is complete.
     effect(() => {
       const currentSettings = this.settings();
-      if (this.isHydrating()) {
+      if (this.isHydrating() || this.hasVersionMismatch()) {
         return;
       }
 
@@ -83,6 +87,11 @@ export class SettingsService {
 
   private async hydrateFromPersistence(): Promise<void> {
     try {
+      await this.dataSchemaVersionService.ensureHydrated();
+      if (this.dataSchemaVersionService.hasPersistedDataSchemaVersionMismatch()) {
+        return;
+      }
+
       const stored = await this.persistenceService.loadSettings();
       if (stored) {
         if (stored.version !== this.dataSchemaVersion) {
@@ -114,7 +123,10 @@ export class SettingsService {
   }
 
   setBadgeStyle(style: BadgeStyle): void {
-    this.hasVersionMismatch.set(false);
+    if (this.hasVersionMismatch()) {
+      return;
+    }
+
     this.settings.update(s => ({ ...s, badgeStyle: style }));
   }
 
@@ -123,6 +135,7 @@ export class SettingsService {
     this.hasVersionMismatch.set(false);
     this.settings.set(this.defaultSettings);
     await this.persistenceService.clearSettings();
+    await this.dataSchemaVersionService.markResolvedAfterReset();
   }
 
   getBadgeStyles(): BadgeStyle[] {

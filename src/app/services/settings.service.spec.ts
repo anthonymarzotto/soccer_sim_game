@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { SettingsService } from './settings.service';
 import { PersistenceService } from './persistence.service';
 import { APP_DATA_SCHEMA_VERSION } from '../constants';
+import { DataSchemaVersionService } from './data-schema-version.service';
 
 describe('SettingsService', () => {
   function setup(loadSettingsValue: { badgeStyle?: string; version?: string } | null) {
@@ -14,15 +16,28 @@ describe('SettingsService', () => {
       clearSettings: vi.fn().mockResolvedValue(undefined)
     };
 
+    const hasSchemaMismatch = signal(false);
+
+    const dataSchemaVersionSpy: Pick<
+      DataSchemaVersionService,
+      'currentDataSchemaVersion' | 'ensureHydrated' | 'hasPersistedDataSchemaVersionMismatch' | 'markResolvedAfterReset'
+    > = {
+      currentDataSchemaVersion: APP_DATA_SCHEMA_VERSION,
+      ensureHydrated: vi.fn().mockResolvedValue(undefined),
+      hasPersistedDataSchemaVersionMismatch: hasSchemaMismatch.asReadonly(),
+      markResolvedAfterReset: vi.fn().mockResolvedValue(undefined)
+    };
+
     TestBed.configureTestingModule({
       providers: [
         SettingsService,
-        { provide: PersistenceService, useValue: persistenceSpy as PersistenceService }
+        { provide: PersistenceService, useValue: persistenceSpy as PersistenceService },
+        { provide: DataSchemaVersionService, useValue: dataSchemaVersionSpy as DataSchemaVersionService }
       ]
     });
 
     const service = TestBed.inject(SettingsService);
-    return { service, persistenceSpy };
+    return { service, persistenceSpy, dataSchemaVersionSpy };
   }
 
   afterEach(() => TestBed.resetTestingModule());
@@ -68,16 +83,17 @@ describe('SettingsService', () => {
   });
 
   it('should keep defaults and set mismatch flag when persisted version is missing', async () => {
-    const { service } = setup({ badgeStyle: 'shield' });
+    const { service, persistenceSpy } = setup({ badgeStyle: 'shield' });
     await service.ensureHydrated();
     TestBed.flushEffects();
 
     expect(service.badgeStyle()).toBe('initials');
     expect(service.hasPersistedSettingsVersionMismatch()).toBe(true);
+    expect(persistenceSpy.saveSettings).not.toHaveBeenCalled();
   });
 
   it('should keep defaults and set mismatch flag when persisted version is outdated', async () => {
-    const { service } = setup({
+    const { service, persistenceSpy } = setup({
       badgeStyle: 'shield',
       version: '0.0.1'
     });
@@ -86,10 +102,27 @@ describe('SettingsService', () => {
 
     expect(service.badgeStyle()).toBe('initials');
     expect(service.hasPersistedSettingsVersionMismatch()).toBe(true);
+    expect(persistenceSpy.saveSettings).not.toHaveBeenCalled();
+  });
+
+  it('should block style updates while persisted version mismatch is active', async () => {
+    const { service, persistenceSpy } = setup({
+      badgeStyle: 'shield',
+      version: '0.0.1'
+    });
+    await service.ensureHydrated();
+    TestBed.flushEffects();
+
+    service.setBadgeStyle('jersey');
+    TestBed.flushEffects();
+
+    expect(service.badgeStyle()).toBe('initials');
+    expect(service.hasPersistedSettingsVersionMismatch()).toBe(true);
+    expect(persistenceSpy.saveSettings).not.toHaveBeenCalled();
   });
 
   it('should reset to defaults and clear persisted settings key', async () => {
-    const { service, persistenceSpy } = setup({
+    const { service, persistenceSpy, dataSchemaVersionSpy } = setup({
       badgeStyle: 'hexagon',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -101,5 +134,28 @@ describe('SettingsService', () => {
 
     expect(service.badgeStyle()).toBe('initials');
     expect(persistenceSpy.clearSettings).toHaveBeenCalled();
+    expect(dataSchemaVersionSpy.markResolvedAfterReset).toHaveBeenCalled();
+  });
+
+  it('should allow persistence again after resetting mismatch state', async () => {
+    const { service, persistenceSpy } = setup({
+      badgeStyle: 'shield',
+      version: '0.0.1'
+    });
+    await service.ensureHydrated();
+    TestBed.flushEffects();
+
+    await service.resetToDefaultsAndClearPersisted();
+    TestBed.flushEffects();
+
+    service.setBadgeStyle('jersey');
+    TestBed.flushEffects();
+
+    expect(service.hasPersistedSettingsVersionMismatch()).toBe(false);
+    expect(service.badgeStyle()).toBe('jersey');
+    expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
+      badgeStyle: 'jersey',
+      version: APP_DATA_SCHEMA_VERSION
+    });
   });
 });
