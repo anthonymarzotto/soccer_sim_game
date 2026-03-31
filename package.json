@@ -1,12 +1,14 @@
 {
   "name": "soccer-simulator",
   "version": "0.0.0",
+  "dataSchemaVersion": "0.1.0-alpha.data.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "dev": "cross-env ng serve --port=3000 --host=0.0.0.0 --allowed-hosts",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "version:data": "node -e \"console.log(require('./package.json').dataSchemaVersion)\"",
     "test": "ng test",
     "lint": "ng lint",
     "serve:ssr:app": "node dist/app/server/server.mjs",

@@ -13,6 +13,23 @@
       </div>
     </div>
 
+    @if (hasSettingsVersionMismatch()) {
+      <div class="rounded-2xl border border-amber-800/80 bg-amber-950/40 p-5 shadow-lg">
+        <h2 class="text-sm font-semibold text-amber-200">Saved settings are from an older data format</h2>
+        <p class="mt-2 text-sm text-amber-100/90">
+          The app is now using data schema version <span class="font-semibold">{{ dataSchemaVersion }}</span>,
+          so older saved settings were ignored and defaults are being used.
+        </p>
+        <button
+          type="button"
+          (click)="openResetConfirmation()"
+          class="mt-4 rounded-lg border border-amber-700 px-3 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+        >
+          Review and clear saved data
+        </button>
+      </div>
+    }
+
     <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
       <h2 class="text-xl font-semibold text-white mb-6">Team Badge Style</h2>
       

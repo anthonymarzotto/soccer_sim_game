@@ -119,7 +119,7 @@ describe('PersistenceService', () => {
   });
 
   it('should load and save settings using the settings key', async () => {
-    const settings = { badgeStyle: 'shield' };
+    const settings = { version: '0.1.0-alpha.data.1', badgeStyle: 'shield' };
     vi.mocked(appDbSpy.getState).mockResolvedValue(settings);
 
     const loaded = await service.loadSettings();

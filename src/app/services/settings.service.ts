@@ -1,6 +1,7 @@
 
 import { Injectable, signal, effect, computed, inject } from '@angular/core';
 import { PersistenceService } from './persistence.service';
+import { APP_DATA_SCHEMA_VERSION } from '../constants';
 
 
 const BADGE_STYLES = [
@@ -32,16 +33,20 @@ export interface Settings {
 })
 export class SettingsService {
   private readonly persistenceService = inject(PersistenceService);
+  private readonly dataSchemaVersion = APP_DATA_SCHEMA_VERSION;
   private defaultSettings: Settings = {
     badgeStyle: 'initials'
   };
   private isHydrating = signal(true);
+  private hasVersionMismatch = signal(false);
   private hydrationPromise: Promise<void> | null = null;
   private skipNextPersist = false;
 
   private settings = signal<Settings>(this.defaultSettings);
 
   badgeStyle = computed(() => this.settings().badgeStyle);
+  readonly persistedSettingsVersion = this.dataSchemaVersion;
+  readonly hasPersistedSettingsVersionMismatch = computed(() => this.hasVersionMismatch());
 
   constructor() {
     void this.ensureHydrated();
@@ -58,7 +63,10 @@ export class SettingsService {
         return;
       }
 
-      void this.persistenceService.saveSettings(currentSettings).catch(error => {
+      void this.persistenceService.saveSettings({
+        version: this.dataSchemaVersion,
+        ...currentSettings
+      }).catch(error => {
         console.error('Failed to save settings:', error);
       });
     });
@@ -77,6 +85,12 @@ export class SettingsService {
     try {
       const stored = await this.persistenceService.loadSettings();
       if (stored) {
+        if (stored.version !== this.dataSchemaVersion) {
+          this.hasVersionMismatch.set(true);
+          return;
+        }
+
+        this.hasVersionMismatch.set(false);
         this.settings.set(this.sanitizeSettings(stored));
       }
     } catch (error) {
@@ -100,11 +114,13 @@ export class SettingsService {
   }
 
   setBadgeStyle(style: BadgeStyle): void {
+    this.hasVersionMismatch.set(false);
     this.settings.update(s => ({ ...s, badgeStyle: style }));
   }
 
   async resetToDefaultsAndClearPersisted(): Promise<void> {
     this.skipNextPersist = true;
+    this.hasVersionMismatch.set(false);
     this.settings.set(this.defaultSettings);
     await this.persistenceService.clearSettings();
   }

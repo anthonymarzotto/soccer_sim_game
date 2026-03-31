@@ -12,10 +12,13 @@ import { SettingsService } from './services/settings.service';
 
 function initializeApp(gameService: GameService, settingsService: SettingsService, scheduleStateService: ScheduleStateService) {
   return async () => {
-    await Promise.all([
-      gameService.ensureHydrated(),
-      settingsService.ensureHydrated()
-    ]);
+    await settingsService.ensureHydrated();
+
+    if (settingsService.hasPersistedSettingsVersionMismatch()) {
+      return;
+    }
+
+    await gameService.ensureHydrated();
 
     await scheduleStateService.ensureHydrated();
   };

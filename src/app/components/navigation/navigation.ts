@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { SettingsService } from '../../services/settings.service';
 import { APP_TITLE } from '../../constants';
 
 @Component({
@@ -16,9 +17,12 @@ import { APP_TITLE } from '../../constants';
 })
 export class NavigationComponent {
   private gameService = inject(GameService);
+  private settingsService = inject(SettingsService);
 
   appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
+  settingsVersion = this.settingsService.persistedSettingsVersion;
+  hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
 
   userTeamId = computed(() => {
     const league = this.gameService.league();

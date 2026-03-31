@@ -4,7 +4,13 @@ import { AppDbService } from './app-db.service';
 import { NormalizedDbService } from './normalized-db.service';
 
 export interface PersistedSettings {
+  version: string;
   badgeStyle: string;
+}
+
+export interface PersistedSettingsRecord {
+  version?: string;
+  badgeStyle?: string;
 }
 
 const SETTINGS_STATE_KEY = 'app-settings';
@@ -56,8 +62,8 @@ export class PersistenceService {
     await this.enqueueNormalizedWrite(() => this.normalizedDb.saveMatch(match));
   }
 
-  async loadSettings(): Promise<PersistedSettings | null> {
-    return this.appDb.getState<PersistedSettings>(SETTINGS_STATE_KEY);
+  async loadSettings(): Promise<PersistedSettingsRecord | null> {
+    return this.appDb.getState<PersistedSettingsRecord>(SETTINGS_STATE_KEY);
   }
 
   async saveSettings(settings: PersistedSettings): Promise<void> {
