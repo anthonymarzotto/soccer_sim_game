@@ -15,17 +15,18 @@
 
     @if (hasSettingsVersionMismatch()) {
       <div class="rounded-2xl border border-amber-800/80 bg-amber-950/40 p-5 shadow-lg">
-        <h2 class="text-sm font-semibold text-amber-200">Saved settings are from an older data format</h2>
+        <h2 class="text-sm font-semibold text-amber-200">Saved data is from an older format</h2>
         <p class="mt-2 text-sm text-amber-100/90">
           The app is now using data schema version <span class="font-semibold">{{ dataSchemaVersion }}</span>,
-          so older saved settings were ignored and defaults are being used.
+          so older saved settings were ignored and defaults are being used. If you choose to clear data,
+          all saved simulation data (league, schedule, and settings) will be permanently removed.
         </p>
         <button
           type="button"
           (click)="openResetConfirmation()"
           class="mt-4 rounded-lg border border-amber-700 px-3 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
         >
-          Review and clear saved data
+          Review and clear all saved simulation data
         </button>
       </div>
     }
