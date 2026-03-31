@@ -63,6 +63,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private halfTimeIndex = -1;
   private finalKeyEvents: MatchEvent[] = [];
   private finalMatchStats: MatchStatistics | null = null;
+  private playerTeamLookup = new Map<string, 'home' | 'away'>();
 
   constructor() {
     // Effect to load match data when matchId changes
@@ -150,9 +151,12 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.halfTimeIndex = -1;
     this.finalKeyEvents = [];
     this.finalMatchStats = null;
+    this.playerTeamLookup.clear();
     this.keyEvents.set([]);
     this.matchStats.set(null);
     this.commentary.set([]);
+
+    this.buildPlayerTeamLookup(home.id, away.id);
 
     // Keep summary visible while replay state streams in.
     this.displayMatch.set({
@@ -188,9 +192,14 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   private generateCommentaryFromMatch(matchState: MatchState, homeTeam: Team, awayTeam: Team) {
     this.allCommentary = [];
+    const homePlayers = this.gameService.getPlayersForTeam(homeTeam.id);
+    const awayPlayers = this.gameService.getPlayersForTeam(awayTeam.id);
 
     // Add starting commentary
-    const startingCommentary = this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam);
+    const startingCommentary = this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam, {
+      homePlayers,
+      awayPlayers
+    });
     startingCommentary.forEach((text, index) => {
       this.allCommentary.push({
         id: `start-${index}`,
@@ -208,7 +217,16 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     // Helper function to add event commentary
     const addEventCommentary = (event: typeof matchState.events[0]) => {
-      const text = this.commentaryService.generateEventCommentary(event, homeTeam, awayTeam, CommentaryStyle.DETAILED);
+      const text = this.commentaryService.generateEventCommentary(
+        event,
+        homeTeam,
+        awayTeam,
+        CommentaryStyle.DETAILED,
+        {
+          homePlayers,
+          awayPlayers
+        }
+      );
       
       // Determine importance based on event type
       let importance = EventImportance.LOW;
@@ -374,6 +392,18 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }
   }
 
+  private buildPlayerTeamLookup(homeTeamId: string, awayTeamId: string) {
+    this.playerTeamLookup.clear();
+
+    this.gameService.getPlayersForTeam(homeTeamId).forEach((player) => {
+      this.playerTeamLookup.set(player.id, 'home');
+    });
+
+    this.gameService.getPlayersForTeam(awayTeamId).forEach((player) => {
+      this.playerTeamLookup.set(player.id, 'away');
+    });
+  }
+
   private updateDisplayMatchAtMinute(minute: number) {
     const match = this.match();
     const matchState = this.matchState();
@@ -417,11 +447,23 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       return null;
     }
 
-    if (homeTeam.players.some((player) => player.id === scorerId)) {
+    const cachedTeam = this.playerTeamLookup.get(scorerId);
+    if (cachedTeam) {
+      return cachedTeam;
+    }
+
+    const scorer = this.gameService.getPlayer(scorerId);
+    if (!scorer) {
+      return null;
+    }
+
+    if (scorer.teamId === homeTeam.id) {
+      this.playerTeamLookup.set(scorerId, 'home');
       return 'home';
     }
 
-    if (awayTeam.players.some((player) => player.id === scorerId)) {
+    if (scorer.teamId === awayTeam.id) {
+      this.playerTeamLookup.set(scorerId, 'away');
       return 'away';
     }
 

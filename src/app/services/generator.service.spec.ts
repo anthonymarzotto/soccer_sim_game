@@ -49,5 +49,14 @@ describe('GeneratorService', () => {
 
       formationLibrary.getDefaultFormationId = originalGetDefault;
     });
+
+    it('should generate playerIds synchronized with team players', () => {
+      const { teams } = service.generateLeague();
+
+      teams.forEach(team => {
+        const expectedPlayerIds = team.players.map(player => player.id);
+        expect(team.playerIds).toEqual(expectedPlayerIds);
+      });
+    });
   });
 });
