@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Coordinates, FieldZone, TeamFormation, TacticalSetup, FormationSlot } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
+import { resolveTeamPlayers } from '../models/team-players';
 import { PlayingStyle, Mentality, Role, Position } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
 
@@ -149,9 +150,10 @@ export class FieldService {
     };
   }
 
-  validateFormationAssignments(team: Team): { isValid: boolean; errors: string[] } {
+  validateFormationAssignments(team: Team, players?: Player[]): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
     const schema = this.formationLibrary.getFormationById(team.selectedFormationId);
+    const teamPlayers = resolveTeamPlayers(team, players);
     
     // Invalid schema
     if (!schema) {
@@ -170,7 +172,7 @@ export class FieldService {
         continue;
       }
 
-      const player = team.players.find(p => p.id === playerId);
+      const player = teamPlayers.find(p => p.id === playerId);
       if (!player) {
         errors.push(`Assigned player for ${slot.label} was not found`);
         continue;
@@ -204,7 +206,8 @@ export class FieldService {
     return this.formationLibrary.getAllFormations().map(f => f.id);
   }
 
-  calculateTeamTactics(team: Team): TacticalSetup {
+  calculateTeamTactics(team: Team, players?: Player[]): TacticalSetup {
+    const teamPlayers = resolveTeamPlayers(team, players);
     const formation =
       this.assignPlayersToFormation(team) ??
       this.assignPlayersToFormation({
@@ -215,13 +218,25 @@ export class FieldService {
         name: 'Unavailable Formation',
         positions: []
       };
+
+    if (teamPlayers.length === 0) {
+      return {
+        teamId: team.id,
+        formation,
+        playingStyle: PlayingStyle.DEFENSIVE,
+        mentality: Mentality.BALANCED,
+        pressingIntensity: 50,
+        defensiveLine: 50,
+        tempo: 50
+      };
+    }
     
     // Calculate team averages for different attributes
-    const overallAvg = team.players.reduce((sum, p) => sum + p.overall, 0) / team.players.length;
-    const speedAvg = team.players.reduce((sum, p) => sum + p.physical.speed, 0) / team.players.length;
-    const passingAvg = team.players.reduce((sum, p) => sum + p.skills.shortPassing + p.skills.longPassing, 0) / (team.players.length * 2);
-    const defendingAvg = team.players.reduce((sum, p) => sum + p.skills.tackling, 0) / team.players.length;
-    const attackingAvg = team.players.reduce((sum, p) => sum + p.skills.shooting, 0) / team.players.length;
+    const overallAvg = teamPlayers.reduce((sum, p) => sum + p.overall, 0) / teamPlayers.length;
+    const speedAvg = teamPlayers.reduce((sum, p) => sum + p.physical.speed, 0) / teamPlayers.length;
+    const passingAvg = teamPlayers.reduce((sum, p) => sum + p.skills.shortPassing + p.skills.longPassing, 0) / (teamPlayers.length * 2);
+    const defendingAvg = teamPlayers.reduce((sum, p) => sum + p.skills.tackling, 0) / teamPlayers.length;
+    const attackingAvg = teamPlayers.reduce((sum, p) => sum + p.skills.shooting, 0) / teamPlayers.length;
 
     // Determine playing style based on team attributes
     let playingStyle: PlayingStyle;

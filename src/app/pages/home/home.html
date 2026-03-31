@@ -6,7 +6,7 @@
     </div>
     
     <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
-      @if (!leagueGenerated()) {
+      @if (!hasLeague()) {
         <p class="text-zinc-300 mb-8 leading-relaxed">
           Take control of a generated league. View standings, manage team rosters, and simulate weekly matches.
         </p>
@@ -17,17 +17,70 @@
           Generate New League
         </button>
       } @else {
-        <h2 class="text-xl font-semibold text-white mb-4">Select Your Team</h2>
-        <div class="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-          @for (team of gameService.league()?.teams; track team.id) {
-            <button 
-              (click)="selectTeam(team.id)"
-              class="w-full text-left px-4 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors border border-zinc-700/50 hover:border-emerald-500/50">
-              <div class="flex justify-between items-center">
-                <span class="font-medium">{{ team.name }}</span>
-                <span class="text-xs text-zinc-500 font-mono">OVR {{ gameService.calculateTeamOverall(team) }}</span>
-              </div>
+        <h2 class="text-xl font-semibold text-white mb-2">League Ready</h2>
+        <p class="text-zinc-400 mb-6">
+          Continue your saved season, or regenerate to start over.
+        </p>
+
+        @if (selectedTeam(); as team) {
+          <button
+            (click)="continueLeague()"
+            class="w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20"
+          >
+            Continue League as {{ team.name }}
+          </button>
+        } @else {
+          <h3 class="text-left text-sm font-semibold uppercase tracking-wide text-zinc-400 mb-3">Select Your Team</h3>
+          <div class="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar mb-6">
+            @for (team of gameService.league()?.teams; track team.id) {
+              <button
+                (click)="selectTeam(team.id)"
+                class="w-full text-left px-4 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors border border-zinc-700/50 hover:border-emerald-500/50"
+              >
+                <div class="flex justify-between items-center">
+                  <span class="font-medium">{{ team.name }}</span>
+                  <span class="text-xs text-zinc-500 font-mono">OVR {{ gameService.calculateTeamOverall(team) }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        }
+
+        <div class="mt-6 border-t border-zinc-800 pt-6 text-left">
+          <p class="text-xs uppercase tracking-wide text-amber-400 font-semibold mb-2">Destructive action</p>
+          <p class="text-sm text-zinc-400 mb-4">
+            Regenerating deletes your current league progress and resets schedule week selection.
+          </p>
+
+          @if (!isRegenerateConfirmationOpen()) {
+            <button
+              (click)="openRegenerateConfirmation()"
+              class="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold py-3 px-6 rounded-xl transition-colors border border-zinc-700"
+            >
+              Regenerate League
             </button>
+          } @else {
+            <div class="rounded-xl border border-red-500/40 bg-red-950/40 p-4 space-y-4">
+              <p class="text-sm text-red-200">
+                This cannot be undone. Your current league table, schedule progress, and selected team will be removed.
+              </p>
+              <div class="flex gap-3">
+                <button
+                  (click)="confirmRegenerateLeague()"
+                  [disabled]="isRegenerating()"
+                  class="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-900/50 disabled:text-red-300/70 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                >
+                  {{ isRegenerating() ? 'Regenerating...' : 'Confirm Regenerate' }}
+                </button>
+                <button
+                  (click)="cancelRegenerateConfirmation()"
+                  [disabled]="isRegenerating()"
+                  class="flex-1 bg-zinc-800 hover:bg-zinc-700 disabled:text-zinc-500 text-zinc-200 font-semibold py-3 px-4 rounded-lg transition-colors border border-zinc-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           }
         </div>
       }

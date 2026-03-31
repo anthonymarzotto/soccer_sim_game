@@ -83,6 +83,7 @@ export interface Team {
   id: string;
   name: string;
   players: Player[];
+  playerIds: string[]; // Canonical player identity order for normalized persistence and roster resolution.
   stats: TeamStats;
   selectedFormationId: string;  // References a formation schema ID from FormationLibraryService
   formationAssignments: Record<string, string>;  // slotId -> playerId mapping, validated against selectedFormation

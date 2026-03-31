@@ -6,11 +6,13 @@ import { CommentaryService } from './commentary.service';
 import { Team, Player } from '../models/types';
 import { MatchState, SimulationConfig, TacticalSetup, PlayerFatigue } from '../models/simulation.types';
 import { Role, Position as PositionEnum, FieldZone, EventType, CommentaryStyle, MatchPhase } from '../models/enums';
+import { resolveTeamPlayers } from '../models/team-players';
 
 interface MatchSimulationServicePrivateApi {
   getGoalkeeperForTeam(team: Team): Player | undefined;
   calculateTeamTactics(homeTeam: Team, awayTeam: Team): { home: TacticalSetup; away: TacticalSetup };
   initializeFatigue(homeTeam: Team, awayTeam: Team): { home: PlayerFatigue[]; away: PlayerFatigue[] };
+  getLastSimulationRosterResolveCount(): number;
   calculateShotSuccess: (
     shooter: Player,
     goalkeeper: Player | undefined,
@@ -151,7 +153,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         }
       };
 
-      const shooter = homeTeam.players.find(p => p.id === 'fwd1')!;
+      const shooter = resolveTeamPlayers(homeTeam).find(p => p.id === 'fwd1')!;
       const state = createShotTestState(homeTeam.id, shooter.id);
 
       const tactics = privateApi.calculateTeamTactics(homeTeam, awayTeam);
@@ -198,7 +200,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
         }
       };
 
-      const shooter = homeTeam.players.find(p => p.id === 'fwd1')!;
+      const shooter = resolveTeamPlayers(homeTeam).find(p => p.id === 'fwd1')!;
       const state = createShotTestState(homeTeam.id, shooter.id);
 
       const tactics = privateApi.calculateTeamTactics(homeTeam, awayTeam);
@@ -368,6 +370,46 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
     });
   });
 
+  describe('Simulation Performance Guardrails', () => {
+    it('should avoid repeatedly resolving team players during a full match simulation', () => {
+      const awayPlayers = mockPlayers.map(p => ({
+        ...p,
+        id: `away_${p.id}`,
+        teamId: 'team_away_perf'
+      }));
+      const awayTeam = {
+        ...createMockTeam('team_away_perf', awayPlayers, 'formation_4_4_2'),
+        formationAssignments: {
+          gk_1: 'away_gk1',
+          def_l: 'away_def1',
+          def_lc: 'away_def2',
+          def_rc: 'away_def3',
+          def_r: 'away_def4',
+          mid_l: 'away_mid1',
+          mid_lc: 'away_mid2',
+          mid_rc: 'away_mid3',
+          mid_r: 'away_mid4',
+          att_l: 'away_fwd1',
+          att_r: 'away_fwd2'
+        }
+      };
+
+      const match = {
+        id: 'perf_match_1',
+        week: 1,
+        homeTeamId: mockTeam442.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      simulationService.simulateMatch(match, mockTeam442, awayTeam);
+
+      // Full match simulation should resolve both team rosters once up front,
+      // then reuse cached arrays across minute/action helpers.
+      expect(privateApi.getLastSimulationRosterResolveCount()).toBeLessThanOrEqual(2);
+    });
+  });
+
   /* Helper functions */
   function createShotTestState(teamId: string, shooterId: string): MatchState {
     return {
@@ -459,6 +501,7 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       id,
       name: 'Mock Team',
       players,
+      playerIds: players.map(player => player.id),
       selectedFormationId: formationId,
       formationAssignments: {
         gk_1: 'gk1',

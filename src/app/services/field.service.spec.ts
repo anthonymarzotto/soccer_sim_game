@@ -194,6 +194,24 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
 
       (fieldService as FieldService & { assignPlayersToFormation: (team: Team) => ReturnType<FieldService['assignPlayersToFormation']> }).assignPlayersToFormation = originalAssignPlayersToFormation;
     });
+
+    it('should return safe defaults when team roster resolves to empty', () => {
+      const emptyTeam = {
+        ...mockTeam,
+        players: [],
+        playerIds: []
+      };
+
+      const tactics = fieldService.calculateTeamTactics(emptyTeam);
+
+      expect(tactics.playingStyle).toBeDefined();
+      expect(tactics.mentality).toBeDefined();
+      expect(tactics.pressingIntensity).toBe(50);
+      expect(tactics.defensiveLine).toBe(50);
+      expect(tactics.tempo).toBe(50);
+      expect(Number.isFinite(tactics.pressingIntensity)).toBe(true);
+      expect(Number.isFinite(tactics.tempo)).toBe(true);
+    });
   });
 
   describe('Formation Availability', () => {
@@ -306,6 +324,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       id,
       name: 'Mock Team',
       players,
+      playerIds: players.map(player => player.id),
       selectedFormationId: 'formation_4_4_2',
       formationAssignments: {
         gk_1: 'p1',

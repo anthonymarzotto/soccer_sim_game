@@ -74,6 +74,7 @@ export class GeneratorService {
       id,
       name,
       players,
+      playerIds: players.map(player => player.id),
       selectedFormationId: this.formationLibrary.getDefaultFormationId(),
       formationAssignments,
       stats: {

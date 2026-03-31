@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { AfterRenderRef, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { SettingsService, BadgeStyle } from '../../services/settings.service';
 import { GameService } from '../../services/game.service';
+import { ScheduleStateService } from '../../services/schedule-state.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { FormationEditorComponent } from '../../components/formation-editor/formation-editor';
 
@@ -15,9 +16,16 @@ import { FormationEditorComponent } from '../../components/formation-editor/form
 export class SettingsComponent {
   settingsService = inject(SettingsService);
   gameService = inject(GameService);
+  private scheduleStateService = inject(ScheduleStateService);
+  private router = inject(Router);
 
   badgeStyles = this.settingsService.getBadgeStyles();
   selectedStyle = this.settingsService.badgeStyle;
+  @ViewChild('cancelResetBtn') cancelResetBtn?: ElementRef<HTMLButtonElement>;
+
+  showResetConfirmation = signal(false);
+  isResetting = signal(false);
+  private _focusAfterRender: AfterRenderRef | null = null;
 
   // Get user's team or default to first team
   previewTeamId = computed(() => {
@@ -35,5 +43,40 @@ export class SettingsComponent {
 
   setBadgeStyle(style: string): void {
     this.settingsService.setBadgeStyle(style as BadgeStyle);
+  }
+
+  openResetConfirmation(): void {
+    this.showResetConfirmation.set(true);
+    this._focusAfterRender?.destroy();
+    this._focusAfterRender = afterNextRender(() => {
+      this.cancelResetBtn?.nativeElement.focus();
+    });
+  }
+
+  cancelResetConfirmation(): void {
+    this.showResetConfirmation.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (!this.showResetConfirmation() || this.isResetting()) {
+      return;
+    }
+
+    this.cancelResetConfirmation();
+  }
+
+  async resetSimulationData(): Promise<void> {
+    this.isResetting.set(true);
+
+    try {
+      await this.settingsService.resetToDefaultsAndClearPersisted();
+      await this.gameService.clearLeague();
+      await this.scheduleStateService.clearPersistedWeek();
+      this.showResetConfirmation.set(false);
+      await this.router.navigate(['/']);
+    } finally {
+      this.isResetting.set(false);
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
@@ -22,18 +22,7 @@ export class ScheduleComponent {
   // Expose enum values for template access
   EventImportance = EventImportance;
 
-  selectedWeek = signal<number>(this.gameService.league()?.currentWeek || 1);
-
-  constructor() {
-    // Initialize service with current week
-    this.scheduleStateService.selectedWeek.set(this.selectedWeek());
-    
-    // Sync selectedWeek with scheduleStateService whenever it changes
-    effect(() => {
-      const week = this.selectedWeek();
-      this.scheduleStateService.selectedWeek.set(week);
-    });
-  }
+  selectedWeek = this.scheduleStateService.selectedWeek;
 
   maxWeeks = computed(() => {
     const l = this.gameService.league();
@@ -70,35 +59,11 @@ export class ScheduleComponent {
   }
 
   getTeamOverall(id: string): number {
-    const team = this.gameService.getTeam(id);
-    if (!team) return 0;
-    return this.gameService.calculateTeamOverall(team);
+    return this.gameService.getTeamOverall(id);
   }
 
   getProbabilities(homeId: string, awayId: string) {
-    const homeTeam = this.gameService.getTeam(homeId);
-    const awayTeam = this.gameService.getTeam(awayId);
-    if (!homeTeam || !awayTeam) return { home: 0, draw: 0, away: 0 };
-
-    const homeOverall = this.gameService.calculateTeamOverall(homeTeam);
-    const awayOverall = this.gameService.calculateTeamOverall(awayTeam);
-
-    const homeAdvantage = 5;
-    const homeChance = homeOverall + homeAdvantage;
-    const awayChance = awayOverall;
-    const totalChance = homeChance + awayChance;
-
-    const homeWinProb = Math.round((homeChance / totalChance) * 100);
-    const awayWinProb = Math.round((awayChance / totalChance) * 100);
-    
-    const diff = Math.abs(homeChance - awayChance);
-    const drawProb = Math.max(5, 30 - diff);
-    
-    const adjustedHome = Math.round(homeWinProb * (100 - drawProb) / 100);
-    const adjustedAway = Math.round(awayWinProb * (100 - drawProb) / 100);
-    const finalDraw = 100 - adjustedHome - adjustedAway;
-
-    return { home: adjustedHome, draw: finalDraw, away: adjustedAway };
+    return this.gameService.getMatchProbabilities(homeId, awayId);
   }
 
   getPlayerNames(playerIds: string[]): string[] {

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchStatistics, Team, Player } from '../models/types';
 import { EventType } from '../models/enums';
+import { resolveTeamPlayers } from '../models/team-players';
 
 @Injectable({
   providedIn: 'root'
@@ -58,10 +59,11 @@ export class StatisticsService {
     };
   }
 
-  generatePlayerStatistics(matchState: MatchState, team: Team): PlayerStatistics[] {
+  generatePlayerStatistics(matchState: MatchState, team: Team, players?: Player[]): PlayerStatistics[] {
     const playerStats: PlayerStatistics[] = [];
+    const teamPlayers = resolveTeamPlayers(team, players);
 
-    team.players.forEach(player => {
+    teamPlayers.forEach(player => {
       const playerEvents = matchState.events.filter(e => e.playerIds.includes(player.id));
       
       const stats: PlayerStatistics = {

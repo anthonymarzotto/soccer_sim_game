@@ -1,12 +1,16 @@
 import { Injectable } from '@angular/core';
 import { PlayByPlayEvent, FieldZone } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
+import { resolveTeamPlayers } from '../models/team-players';
 import { CommentaryStyle, EventType, Role } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CommentaryService {
+  private getTeamPlayers(team: Team, explicitPlayers?: Player[]): Player[] {
+    return resolveTeamPlayers(team, explicitPlayers);
+  }
   
   private readonly COMMENTARY_STYLES = {
     DETAILED: {
@@ -80,19 +84,27 @@ export class CommentaryService {
     }
   };
 
-  generateEventCommentary(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team, style: CommentaryStyle = CommentaryStyle.DETAILED): string {
+  generateEventCommentary(
+    event: PlayByPlayEvent,
+    homeTeam: Team,
+    awayTeam: Team,
+    style: CommentaryStyle = CommentaryStyle.DETAILED,
+    rosters?: { homePlayers?: Player[]; awayPlayers?: Player[] }
+  ): string {
     const commentaryStyle = this.COMMENTARY_STYLES[style];
     let template = '';
     let playerName = '';
     let targetName = '';
+    const homePlayers = this.getTeamPlayers(homeTeam, rosters?.homePlayers);
+    const awayPlayers = this.getTeamPlayers(awayTeam, rosters?.awayPlayers);
 
     if (event.playerIds.length > 0) {
-      const player = this.findPlayerById(event.playerIds[0], homeTeam, awayTeam);
+      const player = this.findPlayerById(event.playerIds[0], homePlayers, awayPlayers);
       playerName = player ? player.name : 'Player';
     }
 
     if (event.playerIds.length > 1) {
-      const target = this.findPlayerById(event.playerIds[1], homeTeam, awayTeam);
+      const target = this.findPlayerById(event.playerIds[1], homePlayers, awayPlayers);
       targetName = target ? target.name : 'Player';
     }
 
@@ -124,8 +136,8 @@ export class CommentaryService {
         return `${playerName} receives a ${event.type === EventType.YELLOW_CARD ? 'yellow' : 'red'} card!`;
       
       case EventType.SUBSTITUTION: {
-        const subIn = this.findPlayerById(event.playerIds[1], homeTeam, awayTeam);
-        const subOut = this.findPlayerById(event.playerIds[0], homeTeam, awayTeam);
+        const subIn = this.findPlayerById(event.playerIds[1], homePlayers, awayPlayers);
+        const subOut = this.findPlayerById(event.playerIds[0], homePlayers, awayPlayers);
         return `${subOut?.name || 'Player'} off, ${subIn?.name || 'Player'} on.`;
       }
       
@@ -147,8 +159,15 @@ export class CommentaryService {
     }
   }
 
-  generateMatchSummary(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team): string[] {
+  generateMatchSummary(
+    events: PlayByPlayEvent[],
+    homeTeam: Team,
+    awayTeam: Team,
+    rosters?: { homePlayers?: Player[]; awayPlayers?: Player[] }
+  ): string[] {
     const summary: string[] = [];
+    const homePlayers = this.getTeamPlayers(homeTeam, rosters?.homePlayers);
+    const awayPlayers = this.getTeamPlayers(awayTeam, rosters?.awayPlayers);
     const goals = events.filter(e => e.type === EventType.GOAL);
     const shots = events.filter(e => e.type === EventType.SHOT);
     const saves = events.filter(e => e.type === EventType.SAVE);
@@ -157,7 +176,7 @@ export class CommentaryService {
     if (goals.length > 0) {
       summary.push(`Match ended with ${goals.length} goal(s) scored.`);
       goals.forEach(goal => {
-        const scorer = this.findPlayerById(goal.playerIds[0], homeTeam, awayTeam);
+        const scorer = this.findPlayerById(goal.playerIds[0], homePlayers, awayPlayers);
         summary.push(`${goal.time}': GOAL by ${scorer?.name || 'Player'}!`);
       });
     }
@@ -207,18 +226,25 @@ export class CommentaryService {
       .replace('{target}', target);
   }
 
-  private findPlayerById(playerId: string, homeTeam: Team, awayTeam: Team): Player | undefined {
-    return homeTeam.players.find(p => p.id === playerId) || 
-           awayTeam.players.find(p => p.id === playerId);
+  private findPlayerById(playerId: string, homePlayers: Player[], awayPlayers: Player[]): Player | undefined {
+    return homePlayers.find(p => p.id === playerId) ||
+           awayPlayers.find(p => p.id === playerId);
   }
 
-  generateStartingXICommentary(homeTeam: Team, awayTeam: Team): string[] {
+  generateStartingXICommentary(
+    homeTeam: Team,
+    awayTeam: Team,
+    rosters?: { homePlayers?: Player[]; awayPlayers?: Player[] }
+  ): string[] {
+    const homePlayers = this.getTeamPlayers(homeTeam, rosters?.homePlayers);
+    const awayPlayers = this.getTeamPlayers(awayTeam, rosters?.awayPlayers);
+
     const commentary = [
       `We're ready for kick-off!`,
       `${homeTeam.name} vs ${awayTeam.name}`,
       `The teams are lining up:`,
-      `Home team: ${homeTeam.players.filter(p => p.role === Role.STARTER).map(p => p.name).join(', ')}`,
-      `Away team: ${awayTeam.players.filter(p => p.role === Role.STARTER).map(p => p.name).join(', ')}`,
+      `Home team: ${homePlayers.filter(p => p.role === Role.STARTER).map(p => p.name).join(', ')}`,
+      `Away team: ${awayPlayers.filter(p => p.role === Role.STARTER).map(p => p.name).join(', ')}`,
       `Let's play some football!`
     ];
     return commentary;
