@@ -1,9 +1,11 @@
 
 import { Injectable, signal, effect, computed, inject } from '@angular/core';
 import { PersistenceService } from './persistence.service';
-import { APP_DATA_SCHEMA_VERSION } from '../constants';
+import { APP_DATA_SCHEMA_VERSION, SIMULATION_SEED_MAX_LENGTH } from '../constants';
 import { DataSchemaVersionService } from './data-schema-version.service';
+import { SimulationVariant } from '../models/simulation.types';
 
+const SIMULATION_VARIANTS: readonly SimulationVariant[] = ['A', 'B'];
 
 const BADGE_STYLES = [
   'initials',
@@ -27,6 +29,12 @@ export type BadgeStyle = typeof BADGE_STYLES[number];
 
 export interface Settings {
   badgeStyle: BadgeStyle;
+  simulationVariant: SimulationVariant;
+  simulationSeed: string;
+}
+
+function isSimulationVariant(value: string | undefined): value is SimulationVariant {
+  return typeof value === 'string' && SIMULATION_VARIANTS.includes(value as SimulationVariant);
 }
 
 @Injectable({
@@ -37,7 +45,9 @@ export class SettingsService {
   private readonly dataSchemaVersionService = inject(DataSchemaVersionService);
   private readonly dataSchemaVersion = APP_DATA_SCHEMA_VERSION;
   private defaultSettings: Settings = {
-    badgeStyle: 'initials'
+    badgeStyle: 'initials',
+    simulationVariant: 'A',
+    simulationSeed: ''
   };
   private isHydrating = signal(true);
   private hasVersionMismatch = signal(false);
@@ -47,6 +57,8 @@ export class SettingsService {
   private settings = signal<Settings>(this.defaultSettings);
 
   badgeStyle = computed(() => this.settings().badgeStyle);
+  simulationVariant = computed(() => this.settings().simulationVariant);
+  simulationSeed = computed(() => this.settings().simulationSeed);
   readonly currentDataSchemaVersion = this.dataSchemaVersionService.currentDataSchemaVersion;
   readonly hasPersistedSettingsVersionMismatch = computed(
     () => this.dataSchemaVersionService.hasPersistedDataSchemaVersionMismatch() || this.hasVersionMismatch()
@@ -109,15 +121,23 @@ export class SettingsService {
     }
   }
 
-  private sanitizeSettings(raw: { badgeStyle?: string }): Settings {
+  private sanitizeSettings(raw: { badgeStyle?: string; simulationVariant?: string; simulationSeed?: string }): Settings {
     const merged: Settings = {
       ...this.defaultSettings,
-      ...(raw.badgeStyle ? { badgeStyle: raw.badgeStyle as BadgeStyle } : {})
+      ...(raw.badgeStyle ? { badgeStyle: raw.badgeStyle as BadgeStyle } : {}),
+      ...(isSimulationVariant(raw.simulationVariant) ? { simulationVariant: raw.simulationVariant } : {}),
+      ...(typeof raw.simulationSeed === 'string' ? { simulationSeed: raw.simulationSeed } : {})
     };
 
     if (!BADGE_STYLES.includes(merged.badgeStyle as BadgeStyle)) {
       merged.badgeStyle = this.defaultSettings.badgeStyle;
     }
+
+    if (!isSimulationVariant(merged.simulationVariant)) {
+      merged.simulationVariant = this.defaultSettings.simulationVariant;
+    }
+
+    merged.simulationSeed = this.normalizeSeed(merged.simulationSeed);
 
     return merged;
   }
@@ -128,6 +148,26 @@ export class SettingsService {
     }
 
     this.settings.update(s => ({ ...s, badgeStyle: style }));
+  }
+
+  setSimulationVariant(variant: SimulationVariant): void {
+    if (this.hasVersionMismatch()) {
+      return;
+    }
+
+    this.settings.update(s => ({ ...s, simulationVariant: variant }));
+  }
+
+  setSimulationSeed(seed: string): void {
+    if (this.hasVersionMismatch()) {
+      return;
+    }
+
+    this.settings.update(s => ({ ...s, simulationSeed: this.normalizeSeed(seed) }));
+  }
+
+  private normalizeSeed(seed: string): string {
+    return seed.trim().slice(0, SIMULATION_SEED_MAX_LENGTH);
   }
 
   async resetToDefaultsAndClearPersisted(): Promise<void> {

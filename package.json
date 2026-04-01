@@ -17,6 +17,7 @@
     "version:data": "node -e \"console.log(require('./package.json').dataSchemaVersion)\"",
     "pretest": "npm run sync:data-schema-version",
     "test": "ng test",
+    "test:simulation-ab": "ng test --watch=false --include src/app/services/match.simulation.ab.spec.ts",
     "prelint": "npm run sync:data-schema-version",
     "lint": "ng lint",
     "serve:ssr:app": "node dist/app/server/server.mjs",

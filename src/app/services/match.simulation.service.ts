@@ -13,6 +13,7 @@ import { resolveTeamPlayers } from '../models/team-players';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
+import { RngService } from './rng.service';
 import { EventType, CommentaryStyle, PlayingStyle, MatchPhase, Role, Position as PositionEnum } from '../models/enums';
 
 interface MatchAction {
@@ -26,6 +27,15 @@ interface ResolvedRosters {
   awayPlayers: Player[];
 }
 
+export const MATCH_SIMULATION_DEFAULT_CONFIG: SimulationConfig = {
+  enablePlayByPlay: true,
+  enableSpatialTracking: true,
+  enableTactics: true,
+  enableFatigue: true,
+  commentaryStyle: CommentaryStyle.DETAILED,
+  simulationVariant: 'A'
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -33,16 +43,11 @@ export class MatchSimulationService {
   private fieldService = inject(FieldService);
   private formationLibrary = inject(FormationLibraryService);
   private commentaryService = inject(CommentaryService);
+  private rng = inject(RngService);
   private currentSimulationRosterResolveCount = 0;
   private lastSimulationRosterResolveCount = 0;
 
-  private readonly DEFAULT_CONFIG: SimulationConfig = {
-    enablePlayByPlay: true,
-    enableSpatialTracking: true,
-    enableTactics: true,
-    enableFatigue: true,
-    commentaryStyle: CommentaryStyle.DETAILED
-  };
+  private readonly DEFAULT_CONFIG: SimulationConfig = MATCH_SIMULATION_DEFAULT_CONFIG;
 
   private resolvePlayers(team: Team): Player[] {
     this.currentSimulationRosterResolveCount++;
@@ -54,6 +59,7 @@ export class MatchSimulationService {
   }
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig = this.DEFAULT_CONFIG): MatchState {
+    this.rng.beginSimulation(config.seed);
     this.currentSimulationRosterResolveCount = 0;
     const rosters: ResolvedRosters = {
       homePlayers: this.resolvePlayers(homeTeam),
@@ -235,7 +241,7 @@ export class MatchSimulationService {
       tackleChance *= 1.2;
     }
 
-    const random = Math.random();
+    const random = this.rng.random();
 
     if (random < foulChance) return { type: EventType.FOUL, player: player };
     if (random < foulChance + tackleChance) return { type: EventType.TACKLE, player: player };
@@ -426,7 +432,7 @@ export class MatchSimulationService {
     // Simple tackle success calculation
     const tacklerStats = this.getPlayerStats(tackler, opponentTeam, opponentPlayers);
     
-    const tackleSuccess = Math.random() * 100 < (tacklerStats.skills.tackling + tacklerStats.physical.strength) / 2;
+    const tackleSuccess = this.rng.random() * 100 < (tacklerStats.skills.tackling + tacklerStats.physical.strength) / 2;
     
     if (tackleSuccess) {
       // Successful tackle
@@ -436,7 +442,7 @@ export class MatchSimulationService {
     } else {
       // Failed tackle - possible foul
       const foulChance = 0.3;
-      if (Math.random() < foulChance) {
+      if (this.rng.random() < foulChance) {
         this.handleFoul(state, { type: EventType.FOUL, player: tackler }, homeTeam, awayTeam, minute, config, homePlayers, awayPlayers);
       }
     }
@@ -458,13 +464,13 @@ export class MatchSimulationService {
     const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
     
     // Corner kick logic
-    const cornerSuccess = Math.random() * 100 < 40; // 40% chance of dangerous corner
+    const cornerSuccess = this.rng.random() * 100 < 40; // 40% chance of dangerous corner
     
     if (cornerSuccess) {
       // Header attempt
       const headerPlayer = this.findHeaderPlayer(currentTeam === 'home' ? homePlayers : awayPlayers);
       
-      const headerSuccess = Math.random() * 100 < headerPlayer.skills.heading;
+      const headerSuccess = this.rng.random() * 100 < headerPlayer.skills.heading;
       
       if (headerSuccess) {
         this.handleGoal(state, { type: EventType.GOAL, player: headerPlayer }, homeTeam, awayTeam, minute, config, homePlayers, awayPlayers);
@@ -502,10 +508,10 @@ export class MatchSimulationService {
     }
     
     // Card probability
-    const cardChance = Math.random();
+    const cardChance = this.rng.random();
     if (cardChance > 0.9) {
       // Red card
-      const cardType = Math.random() > 0.5 ? EventType.RED_CARD : EventType.YELLOW_CARD;
+      const cardType = this.rng.random() > 0.5 ? EventType.RED_CARD : EventType.YELLOW_CARD;
       this.createEvent(state, cardType, [fouler.id], state.ballPossession.location, minute, false, config);
       
       if (cardType === EventType.RED_CARD) {
@@ -550,7 +556,7 @@ export class MatchSimulationService {
     _config: SimulationConfig
   ) {
     const event: PlayByPlayEvent = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: this.createRandomId(),
       type,
       description: '',
       playerIds,
@@ -575,7 +581,7 @@ export class MatchSimulationService {
     // Adjust for tactics
     if (tactics.playingStyle === PlayingStyle.POSSESSION) baseChance += 10;
     
-    return Math.random() * 100 < baseChance;
+    return this.rng.random() * 100 < baseChance;
   }
 
   private calculateShotSuccess(shooter: Player, goalkeeper: Player | undefined, tactics: TacticalSetup, fatigue: PlayerFatigue[], location: Coordinates): { goal: boolean; onTarget: boolean } {
@@ -594,7 +600,7 @@ export class MatchSimulationService {
       shotPower += 15;
     }
 
-    const onTarget = Math.random() * 100 < shotPower;
+    const onTarget = this.rng.random() * 100 < shotPower;
     
     if (!onTarget) return { goal: false, onTarget: false };
     
@@ -603,7 +609,7 @@ export class MatchSimulationService {
     const goalkeeperFatigue = fatigue.find(f => f.playerId === goalkeeper?.id);
     if (goalkeeperFatigue) saveChance *= goalkeeperFatigue.performanceModifier;
     
-    const goal = Math.random() * 100 > saveChance;
+    const goal = this.rng.random() * 100 > saveChance;
     
     return { goal, onTarget: true };
   }
@@ -679,7 +685,11 @@ export class MatchSimulationService {
 
   private getRandomPlayerId(team: Team, teamPlayers: Player[] = this.resolvePlayers(team)): string {
     const players = teamPlayers.filter(p => p.role === Role.STARTER);
-    return players[Math.floor(Math.random() * players.length)].id;
+    return players[Math.floor(this.rng.random() * players.length)].id;
+  }
+
+  private createRandomId(): string {
+    return this.rng.random().toString(36).substring(2, 9);
   }
 
   private getPlayerById(playerId: string, team: Team, teamPlayers: Player[] = this.resolvePlayers(team)): Player {

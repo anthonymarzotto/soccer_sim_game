@@ -54,6 +54,7 @@ export class App implements OnInit {
       'home': 'Home',
       'standings': 'Standings',
       'schedule': 'Schedule',
+      'debug': 'Simulation Debug',
       'settings': 'Settings',
     };
 

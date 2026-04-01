@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { MatchSimulationService } from './match.simulation.service';
+import { MatchSimulationService, MATCH_SIMULATION_DEFAULT_CONFIG } from './match.simulation.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
 import { Team, Player } from '../models/types';
 import { MatchState, SimulationConfig, TacticalSetup, PlayerFatigue } from '../models/simulation.types';
-import { Role, Position as PositionEnum, FieldZone, EventType, CommentaryStyle, MatchPhase } from '../models/enums';
+import { Role, Position as PositionEnum, FieldZone, EventType, MatchPhase } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
 
 interface MatchSimulationServicePrivateApi {
@@ -408,6 +408,44 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
       // then reuse cached arrays across minute/action helpers.
       expect(privateApi.getLastSimulationRosterResolveCount()).toBeLessThanOrEqual(2);
     });
+
+    it('should produce deterministic output when seed is provided', () => {
+      const awayPlayers = mockPlayers.map(p => ({
+        ...p,
+        id: `away_${p.id}`,
+        teamId: 'team_away_seed'
+      }));
+      const awayTeam = {
+        ...createMockTeam('team_away_seed', awayPlayers, 'formation_4_4_2'),
+        formationAssignments: {
+          gk_1: 'away_gk1',
+          def_l: 'away_def1',
+          def_lc: 'away_def2',
+          def_rc: 'away_def3',
+          def_r: 'away_def4',
+          mid_l: 'away_mid1',
+          mid_lc: 'away_mid2',
+          mid_rc: 'away_mid3',
+          mid_r: 'away_mid4',
+          att_l: 'away_fwd1',
+          att_r: 'away_fwd2'
+        }
+      };
+
+      const match = {
+        id: 'seed_match_1',
+        week: 1,
+        homeTeamId: mockTeam442.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      const config = createSimulationConfig({ seed: 'ab-seed-001' });
+      const firstRun = simulationService.simulateMatch(match, mockTeam442, awayTeam, config);
+      const secondRun = simulationService.simulateMatch(match, mockTeam442, awayTeam, config);
+
+      expect(secondRun).toEqual(firstRun);
+    });
   });
 
   /* Helper functions */
@@ -442,13 +480,10 @@ describe('MatchSimulationService - Schema-Driven Simulation', () => {
     };
   }
 
-  function createSimulationConfig(): SimulationConfig {
+  function createSimulationConfig(overrides: Partial<SimulationConfig> = {}): SimulationConfig {
     return {
-      enablePlayByPlay: true,
-      enableSpatialTracking: true,
-      enableTactics: true,
-      enableFatigue: true,
-      commentaryStyle: CommentaryStyle.DETAILED
+      ...MATCH_SIMULATION_DEFAULT_CONFIG,
+      ...overrides
     };
   }
 

@@ -70,12 +70,16 @@ export interface MatchState {
   awayRedCards: number;
 }
 
+export type SimulationVariant = 'A' | 'B';
+
 export interface SimulationConfig {
   enablePlayByPlay: boolean;
   enableSpatialTracking: boolean;
   enableTactics: boolean;
   enableFatigue: boolean;
   commentaryStyle: CommentaryStyle;
+  simulationVariant?: SimulationVariant;
+  seed?: string;
   skipCommentary?: boolean;
 }
 

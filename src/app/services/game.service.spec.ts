@@ -3,14 +3,16 @@ import { vi } from 'vitest';
 import { GameService } from './game.service';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationService } from './match.simulation.service';
+import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
-import { MatchResult, Position, Role } from '../models/enums';
+import { CommentaryStyle, MatchResult, Position, Role } from '../models/enums';
 import { MatchStatistics, Team } from '../models/types';
+import { SimulationConfig } from '../models/simulation.types';
 
 describe('GameService persistence integration', () => {
   function setup(storedLeague: { teams: []; schedule: []; currentWeek: number } | null = null) {
@@ -37,6 +39,7 @@ describe('GameService persistence integration', () => {
         { provide: GeneratorService, useValue: generatorSpy as GeneratorService },
         { provide: PersistenceService, useValue: persistenceSpy as PersistenceService },
         { provide: MatchSimulationService, useValue: {} },
+        { provide: MatchSimulationVariantBService, useValue: {} },
         { provide: CommentaryService, useValue: {} },
         { provide: StatisticsService, useValue: {} },
         { provide: PostMatchAnalysisService, useValue: {} },
@@ -453,5 +456,89 @@ describe('GameService persistence integration', () => {
     );
     expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
     expect(persistenceSpy.saveMatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('GameService simulation variant dispatch', () => {
+  it('should dispatch variant A to MatchSimulationService', () => {
+    TestBed.resetTestingModule();
+
+    const variantAMatchState = { currentMinute: 90 };
+    const variantBMatchState = { currentMinute: 90 };
+    const variantASpy = { simulateMatch: vi.fn().mockReturnValue(variantAMatchState) };
+    const variantBSpy = { simulateMatch: vi.fn().mockReturnValue(variantBMatchState) };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: MatchSimulationService, useValue: variantASpy },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: {} },
+        { provide: StatisticsService, useValue: {} },
+        { provide: PostMatchAnalysisService, useValue: {} },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: {} }
+      ]
+    });
+
+    const service = TestBed.inject(GameService) as unknown as {
+      simulateMatchByVariant: (match: unknown, homeTeam: unknown, awayTeam: unknown, config: SimulationConfig) => unknown;
+    };
+
+    const result = service.simulateMatchByVariant({} as object, {} as object, {} as object, {
+      enablePlayByPlay: true,
+      enableSpatialTracking: true,
+      enableTactics: true,
+      enableFatigue: true,
+      commentaryStyle: CommentaryStyle.DETAILED,
+      simulationVariant: 'A'
+    });
+
+    expect(result).toBe(variantAMatchState);
+    expect(variantASpy.simulateMatch).toHaveBeenCalledTimes(1);
+    expect(variantBSpy.simulateMatch).not.toHaveBeenCalled();
+  });
+
+  it('should dispatch variant B to MatchSimulationVariantBService', () => {
+    TestBed.resetTestingModule();
+
+    const variantAMatchState = { currentMinute: 90 };
+    const variantBMatchState = { currentMinute: 75 };
+    const variantASpy = { simulateMatch: vi.fn().mockReturnValue(variantAMatchState) };
+    const variantBSpy = { simulateMatch: vi.fn().mockReturnValue(variantBMatchState) };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: MatchSimulationService, useValue: variantASpy },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: {} },
+        { provide: StatisticsService, useValue: {} },
+        { provide: PostMatchAnalysisService, useValue: {} },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: {} }
+      ]
+    });
+
+    const service = TestBed.inject(GameService) as unknown as {
+      simulateMatchByVariant: (match: unknown, homeTeam: unknown, awayTeam: unknown, config: SimulationConfig) => unknown;
+    };
+
+    const result = service.simulateMatchByVariant({} as object, {} as object, {} as object, {
+      enablePlayByPlay: true,
+      enableSpatialTracking: true,
+      enableTactics: true,
+      enableFatigue: true,
+      commentaryStyle: CommentaryStyle.DETAILED,
+      simulationVariant: 'B'
+    });
+
+    expect(result).toBe(variantBMatchState);
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(1);
+    expect(variantASpy.simulateMatch).not.toHaveBeenCalled();
   });
 });
