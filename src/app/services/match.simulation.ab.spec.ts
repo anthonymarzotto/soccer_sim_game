@@ -93,6 +93,12 @@ describe('Match Simulation A/B Batch Harness', () => {
     expect(outputPath.endsWith('.json')).toBe(true);
     expect(outputPath.includes('test-output')).toBe(true);
 
+    const baselineSummary = report.summary.find(item => item.variant === 'A');
+    const variantBSummary = report.summary.find(item => item.variant === 'B');
+    expect(baselineSummary).toBeDefined();
+    expect(variantBSummary).toBeDefined();
+    expect((variantBSummary?.avgEvents ?? 0)).toBeGreaterThan(baselineSummary?.avgEvents ?? Number.POSITIVE_INFINITY);
+
     const fs = await import('fs/promises');
     const saved = await fs.readFile(outputPath, 'utf-8');
     expect(saved.length).toBeGreaterThan(0);

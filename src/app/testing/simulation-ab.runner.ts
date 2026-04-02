@@ -87,7 +87,9 @@ export class SimulationABRunner {
 
   private buildSummary(rows: SimulationABMatchRow[], variants: SimulationABVariant[]): SimulationABSummaryRow[] {
     return variants.map(variant => {
-      const variantRows = rows.filter(row => row.variant === variant.variant);
+      const variantRows = rows.filter(
+        row => row.variant === variant.variant && row.variantName === variant.name
+      );
       const matchCount = variantRows.length || 1;
 
       const sum = variantRows.reduce(

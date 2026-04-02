@@ -60,20 +60,44 @@ export class MatchSimulationService {
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig = this.DEFAULT_CONFIG): MatchState {
     this.rng.beginSimulation(config.seed);
+
+    // Simulate against isolated copies so in-match mutations never leak into canonical league state.
+    const simulatedHomeTeam = structuredClone(homeTeam);
+    const simulatedAwayTeam = structuredClone(awayTeam);
+
     this.currentSimulationRosterResolveCount = 0;
     const rosters: ResolvedRosters = {
-      homePlayers: this.resolvePlayers(homeTeam),
-      awayPlayers: this.resolvePlayers(awayTeam)
+      homePlayers: this.resolvePlayers(simulatedHomeTeam),
+      awayPlayers: this.resolvePlayers(simulatedAwayTeam)
     };
-    const initialState = this.initializeMatchState(match, homeTeam, rosters.homePlayers);
-    const tactics = this.calculateTeamTactics(homeTeam, awayTeam, rosters.homePlayers, rosters.awayPlayers);
-    const fatigue = this.initializeFatigue(homeTeam, awayTeam, rosters.homePlayers, rosters.awayPlayers);
+    const initialState = this.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
+    const tactics = this.calculateTeamTactics(
+      simulatedHomeTeam,
+      simulatedAwayTeam,
+      rosters.homePlayers,
+      rosters.awayPlayers
+    );
+    const fatigue = this.initializeFatigue(
+      simulatedHomeTeam,
+      simulatedAwayTeam,
+      rosters.homePlayers,
+      rosters.awayPlayers
+    );
 
     let currentState = initialState;
 
     // Simulate 90 minutes + stoppage time
     for (let minute = 1; minute <= 95; minute++) {
-      currentState = this.simulateMinute(currentState, tactics, fatigue, homeTeam, awayTeam, minute, config, rosters);
+      currentState = this.simulateMinute(
+        currentState,
+        tactics,
+        fatigue,
+        simulatedHomeTeam,
+        simulatedAwayTeam,
+        minute,
+        config,
+        rosters
+      );
     }
 
     this.lastSimulationRosterResolveCount = this.currentSimulationRosterResolveCount;

@@ -18,6 +18,7 @@
     "pretest": "npm run sync:data-schema-version",
     "test": "ng test",
     "test:simulation-ab": "ng test --watch=false --include src/app/services/match.simulation.ab.spec.ts",
+    "test:simulation-calibration": "ng test --watch=false --include src/app/services/match.simulation.variant-b.calibration.spec.ts",
     "prelint": "npm run sync:data-schema-version",
     "lint": "ng lint",
     "serve:ssr:app": "node dist/app/server/server.mjs",
