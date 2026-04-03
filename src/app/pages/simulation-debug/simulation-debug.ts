@@ -2,11 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { RouterLink } from '@angular/router';
 import { SIMULATION_SEED_MAX_LENGTH } from '../../constants';
 import { GameService } from '../../services/game.service';
-import { MatchSimulationService } from '../../services/match.simulation.service';
 import { MatchSimulationVariantBService } from '../../services/match.simulation.variant-b.service';
 import { CommentaryStyle } from '../../models/enums';
 import { Match, Team } from '../../models/types';
-import { MatchState, SimulationConfig, SimulationVariant } from '../../models/simulation.types';
+import { MatchState, SimulationConfig } from '../../models/simulation.types';
 
 interface VariantMetrics {
   homeScore: number;
@@ -19,11 +18,7 @@ interface VariantMetrics {
 
 interface SimulationRunRow {
   run: number;
-  variantA: VariantMetrics;
   variantB: VariantMetrics;
-  goalsDiff: number;
-  shotsDiff: number;
-  shotsOnTargetDiff: number;
   seed?: string;
 }
 
@@ -35,12 +30,6 @@ interface SimulationSummary {
   homeWins: number;
   draws: number;
   awayWins: number;
-}
-
-interface ComparisonHighlight {
-  label: string;
-  value: string;
-  tone: 'positive' | 'negative' | 'neutral';
 }
 
 @Component({
@@ -57,15 +46,15 @@ interface ComparisonHighlight {
             </a>
             <div>
               <h1 class="text-3xl font-bold tracking-tight text-white">Simulation Playground</h1>
-              <p class="text-zinc-400 mt-1">Run Variant A and B together for side-by-side comparison</p>
+              <p class="text-zinc-400 mt-1">Run isolated Variant B batches without touching saved league state</p>
             </div>
           </div>
         </div>
 
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
           <div>
-            <h2 class="text-xl font-semibold text-white">A/B Comparison Mode</h2>
-            <p class="text-zinc-400 mt-2">Each run executes both variants with the same matchup and seed value.</p>
+            <h2 class="text-xl font-semibold text-white">Variant B Sandbox</h2>
+            <p class="text-zinc-400 mt-2">Each run executes the current Variant B engine with an isolated matchup and deterministic seed.</p>
           </div>
 
           @if (teams().length < 2) {
@@ -148,47 +137,17 @@ interface ComparisonHighlight {
               <span class="text-sm text-zinc-400">Runs are isolated and do not alter saved league results.</span>
             </div>
 
-            @if (summaryA() && summaryB()) {
+            @if (summaryB()) {
               <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <h3 class="text-sm font-semibold text-zinc-300">Variant Summary</h3>
-                <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                  @for (highlight of highlights(); track highlight.label) {
-                    <div
-                      [class]="highlight.tone === 'positive'
-                        ? 'rounded-lg border border-emerald-700/60 bg-emerald-950/30 p-3'
-                        : highlight.tone === 'negative'
-                          ? 'rounded-lg border border-rose-700/60 bg-rose-950/30 p-3'
-                          : 'rounded-lg border border-zinc-800 bg-zinc-900 p-3'"
-                    >
-                      <div class="text-zinc-400">{{ highlight.label }}</div>
-                      <div class="mt-1 font-semibold text-white">{{ highlight.value }}</div>
-                    </div>
-                  }
-                </div>
+                <h3 class="text-sm font-semibold text-zinc-300">Batch Summary</h3>
 
-                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="rounded-lg border border-zinc-800 p-4">
-                    <h4 class="text-emerald-300 font-semibold">Variant A</h4>
-                    <p class="mt-2 text-sm text-zinc-300">Runs: {{ summaryA()!.runs }}</p>
-                    <p class="text-sm text-zinc-300">Avg Goals: {{ summaryA()!.avgGoals.toFixed(2) }}</p>
-                    <p class="text-sm text-zinc-300">Avg Shots: {{ summaryA()!.avgShots.toFixed(2) }}</p>
-                    <p class="text-sm text-zinc-300">Avg SOT: {{ summaryA()!.avgShotsOnTarget.toFixed(2) }}</p>
-                    <p class="text-sm text-zinc-500">W-D-L: {{ summaryA()!.homeWins }}-{{ summaryA()!.draws }}-{{ summaryA()!.awayWins }}</p>
-                  </div>
-                  <div class="rounded-lg border border-zinc-800 p-4">
-                    <h4 class="text-cyan-300 font-semibold">Variant B</h4>
-                    <p class="mt-2 text-sm text-zinc-300">Runs: {{ summaryB()!.runs }}</p>
-                    <p class="text-sm text-zinc-300">Avg Goals: {{ summaryB()!.avgGoals.toFixed(2) }}</p>
-                    <p class="text-sm text-zinc-300">Avg Shots: {{ summaryB()!.avgShots.toFixed(2) }}</p>
-                    <p class="text-sm text-zinc-300">Avg SOT: {{ summaryB()!.avgShotsOnTarget.toFixed(2) }}</p>
-                    <p class="text-sm text-zinc-500">W-D-L: {{ summaryB()!.homeWins }}-{{ summaryB()!.draws }}-{{ summaryB()!.awayWins }}</p>
-                  </div>
-                </div>
-
-                <div class="mt-4 rounded-lg border border-zinc-800 p-3 text-sm text-zinc-300">
-                  <p>Avg Goals Diff (B - A): {{ goalsAvgDiff().toFixed(2) }}</p>
-                  <p>Avg Shots Diff (B - A): {{ shotsAvgDiff().toFixed(2) }}</p>
-                  <p>Avg SOT Diff (B - A): {{ shotsOnTargetAvgDiff().toFixed(2) }}</p>
+                <div class="mt-3 rounded-lg border border-zinc-800 p-4">
+                  <h4 class="text-cyan-300 font-semibold">Variant B</h4>
+                  <p class="mt-2 text-sm text-zinc-300">Runs: {{ summaryB()!.runs }}</p>
+                  <p class="text-sm text-zinc-300">Avg Goals: {{ summaryB()!.avgGoals.toFixed(2) }}</p>
+                  <p class="text-sm text-zinc-300">Avg Shots: {{ summaryB()!.avgShots.toFixed(2) }}</p>
+                  <p class="text-sm text-zinc-300">Avg SOT: {{ summaryB()!.avgShotsOnTarget.toFixed(2) }}</p>
+                  <p class="text-sm text-zinc-500">W-D-L: {{ summaryB()!.homeWins }}-{{ summaryB()!.draws }}-{{ summaryB()!.awayWins }}</p>
                 </div>
               </div>
             }
@@ -201,31 +160,23 @@ interface ComparisonHighlight {
                       <tr class="text-zinc-400 text-left">
                         <th class="px-3 py-2">Run</th>
                         <th class="px-3 py-2">Seed</th>
-                        <th class="px-3 py-2">A Score</th>
                         <th class="px-3 py-2">B Score</th>
-                        <th class="px-3 py-2">A Goals</th>
                         <th class="px-3 py-2">B Goals</th>
-                        <th class="px-3 py-2">Goals Diff</th>
-                        <th class="px-3 py-2">Shots Diff</th>
-                        <th class="px-3 py-2">SOT Diff</th>
+                        <th class="px-3 py-2">Shots</th>
+                        <th class="px-3 py-2">SOT</th>
+                        <th class="px-3 py-2">Events</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (row of rows(); track row.run) {
-                        <tr [class]="row.goalsDiff > 0
-                          ? 'border-t border-emerald-900/60 bg-emerald-950/10 text-zinc-200'
-                          : row.goalsDiff < 0
-                            ? 'border-t border-rose-900/60 bg-rose-950/10 text-zinc-200'
-                            : 'border-t border-zinc-800 text-zinc-200'">
+                        <tr class="border-t border-zinc-800 text-zinc-200">
                           <td class="px-3 py-2">{{ row.run }}</td>
                           <td class="px-3 py-2">{{ row.seed || '-' }}</td>
-                          <td class="px-3 py-2">{{ row.variantA.homeScore }}-{{ row.variantA.awayScore }}</td>
                           <td class="px-3 py-2">{{ row.variantB.homeScore }}-{{ row.variantB.awayScore }}</td>
-                          <td class="px-3 py-2">{{ row.variantA.totalGoals }}</td>
                           <td class="px-3 py-2">{{ row.variantB.totalGoals }}</td>
-                          <td [class]="formatDiffClass(row.goalsDiff)" class="px-3 py-2 font-semibold">{{ formatDiff(row.goalsDiff) }}</td>
-                          <td [class]="formatDiffClass(row.shotsDiff)" class="px-3 py-2 font-semibold">{{ formatDiff(row.shotsDiff) }}</td>
-                          <td [class]="formatDiffClass(row.shotsOnTargetDiff)" class="px-3 py-2 font-semibold">{{ formatDiff(row.shotsOnTargetDiff) }}</td>
+                          <td class="px-3 py-2">{{ row.variantB.totalShots }}</td>
+                          <td class="px-3 py-2">{{ row.variantB.shotsOnTarget }}</td>
+                          <td class="px-3 py-2">{{ row.variantB.events }}</td>
                         </tr>
                       }
                     </tbody>
@@ -241,7 +192,6 @@ interface ComparisonHighlight {
 })
 export class SimulationDebugComponent {
   private gameService = inject(GameService);
-  private simulationA = inject(MatchSimulationService);
   private simulationB = inject(MatchSimulationVariantBService);
 
   readonly teams = computed(() => this.gameService.league()?.teams ?? []);
@@ -254,36 +204,6 @@ export class SimulationDebugComponent {
 
   readonly canRun = computed(() => {
     return this.homeTeamId().length > 0 && this.awayTeamId().length > 0 && this.homeTeamId() !== this.awayTeamId();
-  });
-
-  readonly summaryA = computed<SimulationSummary | null>(() => {
-    const rows = this.rows();
-    if (rows.length === 0) {
-      return null;
-    }
-
-    const totals = rows.reduce(
-      (acc, row) => {
-        acc.goals += row.variantA.totalGoals;
-        acc.shots += row.variantA.totalShots;
-        acc.shotsOnTarget += row.variantA.shotsOnTarget;
-        if (row.variantA.homeScore > row.variantA.awayScore) acc.homeWins++;
-        else if (row.variantA.homeScore < row.variantA.awayScore) acc.awayWins++;
-        else acc.draws++;
-        return acc;
-      },
-      { goals: 0, shots: 0, shotsOnTarget: 0, homeWins: 0, awayWins: 0, draws: 0 }
-    );
-
-    return {
-      runs: rows.length,
-      avgGoals: totals.goals / rows.length,
-      avgShots: totals.shots / rows.length,
-      avgShotsOnTarget: totals.shotsOnTarget / rows.length,
-      homeWins: totals.homeWins,
-      draws: totals.draws,
-      awayWins: totals.awayWins
-    };
   });
 
   readonly summaryB = computed<SimulationSummary | null>(() => {
@@ -314,51 +234,6 @@ export class SimulationDebugComponent {
       draws: totals.draws,
       awayWins: totals.awayWins
     };
-  });
-
-  readonly goalsAvgDiff = computed(() => {
-    const a = this.summaryA();
-    const b = this.summaryB();
-    return a && b ? b.avgGoals - a.avgGoals : 0;
-  });
-
-  readonly shotsAvgDiff = computed(() => {
-    const a = this.summaryA();
-    const b = this.summaryB();
-    return a && b ? b.avgShots - a.avgShots : 0;
-  });
-
-  readonly shotsOnTargetAvgDiff = computed(() => {
-    const a = this.summaryA();
-    const b = this.summaryB();
-    return a && b ? b.avgShotsOnTarget - a.avgShotsOnTarget : 0;
-  });
-
-  readonly highlights = computed<ComparisonHighlight[]>(() => {
-    const summaryA = this.summaryA();
-    const summaryB = this.summaryB();
-
-    if (!summaryA || !summaryB) {
-      return [];
-    }
-
-    return [
-      {
-        label: 'Goals Delta',
-        value: this.formatDiff(this.goalsAvgDiff(), 2),
-        tone: this.diffTone(this.goalsAvgDiff())
-      },
-      {
-        label: 'Shots Delta',
-        value: this.formatDiff(this.shotsAvgDiff(), 2),
-        tone: this.diffTone(this.shotsAvgDiff())
-      },
-      {
-        label: 'SOT Delta',
-        value: this.formatDiff(this.shotsOnTargetAvgDiff(), 2),
-        tone: this.diffTone(this.shotsOnTargetAvgDiff())
-      }
-    ];
   });
 
   constructor() {
@@ -439,19 +314,12 @@ export class SimulationDebugComponent {
           played: false
         };
 
-        const stateA = this.simulateMatch({ ...matchBase, id: `${matchBase.id}-A` }, homeTeam, awayTeam, 'A', seed);
-        const stateB = this.simulateMatch({ ...matchBase, id: `${matchBase.id}-B` }, homeTeam, awayTeam, 'B', seed);
-
-        const metricsA = this.toMetrics(stateA);
+        const stateB = this.simulateMatch({ ...matchBase, id: `${matchBase.id}-B` }, homeTeam, awayTeam, seed);
         const metricsB = this.toMetrics(stateB);
 
         rows.push({
           run: runIndex + 1,
-          variantA: metricsA,
           variantB: metricsB,
-          goalsDiff: metricsB.totalGoals - metricsA.totalGoals,
-          shotsDiff: metricsB.totalShots - metricsA.totalShots,
-          shotsOnTargetDiff: metricsB.shotsOnTarget - metricsA.shotsOnTarget,
           seed
         });
       }
@@ -473,56 +341,23 @@ export class SimulationDebugComponent {
     };
   }
 
-  formatDiff(value: number, digits = 0): string {
-    const formatted = value.toFixed(digits);
-    return value > 0 ? `+${formatted}` : formatted;
-  }
-
-  formatDiffClass(value: number): string {
-    if (value > 0) {
-      return 'text-emerald-300';
-    }
-
-    if (value < 0) {
-      return 'text-rose-300';
-    }
-
-    return 'text-zinc-300';
-  }
-
-  private diffTone(value: number): ComparisonHighlight['tone'] {
-    if (value > 0) {
-      return 'positive';
-    }
-
-    if (value < 0) {
-      return 'negative';
-    }
-
-    return 'neutral';
-  }
-
   private async yieldToUi(): Promise<void> {
     await new Promise<void>(resolve => {
       setTimeout(resolve, 0);
     });
   }
 
-  private simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, variant: SimulationVariant, seed?: string) {
+  private simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, seed?: string) {
     const config: SimulationConfig = {
       enablePlayByPlay: true,
       enableSpatialTracking: true,
       enableTactics: true,
       enableFatigue: true,
       commentaryStyle: CommentaryStyle.DETAILED,
-      simulationVariant: variant,
+      simulationVariant: 'B',
       seed
     };
 
-    if (variant === 'B') {
-      return this.simulationB.simulateMatch(match, homeTeam, awayTeam, config);
-    }
-
-    return this.simulationA.simulateMatch(match, homeTeam, awayTeam, config);
+    return this.simulationB.simulateMatch(match, homeTeam, awayTeam, config);
   }
 }

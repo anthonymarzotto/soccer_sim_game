@@ -7,7 +7,7 @@ import { DataSchemaVersionService } from './data-schema-version.service';
 export interface PersistedSettings {
   version: string;
   badgeStyle: string;
-  simulationVariant?: 'A' | 'B';
+  simulationVariant?: 'B';
   simulationSeed?: string;
 }
 

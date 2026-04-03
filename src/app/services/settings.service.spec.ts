@@ -78,7 +78,7 @@ describe('SettingsService', () => {
 
     expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
       badgeStyle: 'jersey',
-      simulationVariant: 'A',
+      simulationVariant: 'B',
       simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -157,7 +157,7 @@ describe('SettingsService', () => {
     expect(service.badgeStyle()).toBe('jersey');
     expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
       badgeStyle: 'jersey',
-      simulationVariant: 'A',
+      simulationVariant: 'B',
       simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -168,7 +168,7 @@ describe('SettingsService', () => {
     const expectedSeed = 'x'.repeat(SIMULATION_SEED_MAX_LENGTH);
     const { service } = setup({
       badgeStyle: 'shield',
-      simulationVariant: 'A',
+      simulationVariant: 'B',
       simulationSeed: persistedSeed,
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -182,7 +182,7 @@ describe('SettingsService', () => {
   it('should normalize simulation seed on update before persisting', async () => {
     const { service, persistenceSpy } = setup({
       badgeStyle: 'shield',
-      simulationVariant: 'A',
+      simulationVariant: 'B',
       simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -197,7 +197,7 @@ describe('SettingsService', () => {
     expect(service.simulationSeed()).toBe(expectedSeed);
     expect(persistenceSpy.saveSettings).toHaveBeenLastCalledWith({
       badgeStyle: 'shield',
-      simulationVariant: 'A',
+      simulationVariant: 'B',
       simulationSeed: expectedSeed,
       version: APP_DATA_SCHEMA_VERSION
     });

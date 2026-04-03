@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-import { MatchSimulationService } from './match.simulation.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
@@ -10,8 +9,7 @@ import { SimulationConfig } from '../models/simulation.types';
 import { SimulationABReporter } from '../testing/simulation-ab.reporter';
 import { SimulationABRunner, SimulationABVariant } from '../testing/simulation-ab.runner';
 
-describe('Match Simulation A/B Batch Harness', () => {
-  let simulationA: MatchSimulationService;
+describe('Match Simulation Variant B Guardrails', () => {
   let simulationB: MatchSimulationVariantBService;
   let homeTeam: Team;
   let awayTeam: Team;
@@ -19,7 +17,6 @@ describe('Match Simulation A/B Batch Harness', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        MatchSimulationService,
         MatchSimulationVariantBService,
         FieldService,
         FormationLibraryService,
@@ -27,7 +24,6 @@ describe('Match Simulation A/B Batch Harness', () => {
       ]
     });
 
-    simulationA = TestBed.inject(MatchSimulationService);
     simulationB = TestBed.inject(MatchSimulationVariantBService);
 
     const homePlayers = create442Players('home');
@@ -36,15 +32,14 @@ describe('Match Simulation A/B Batch Harness', () => {
     awayTeam = createTeam('away', awayPlayers);
   });
 
-  it('should generate JSON summary and per-match rows for both variants', async () => {
+  it('should generate a Variant B report and stay within acceptance bands', async () => {
     const runner = new SimulationABRunner();
     const reporter = new SimulationABReporter();
     const variants: SimulationABVariant[] = [
-      { name: 'Baseline A', variant: 'A', seedPrefix: 'ab-batch-a' },
-      { name: 'Tuning B', variant: 'B', seedPrefix: 'ab-batch-b' }
+      { name: 'Current Variant B', variant: 'B', seedPrefix: 'guardrail-b' }
     ];
 
-    const iterations = 10;
+    const iterations = 20;
 
     const report = await runner.run(iterations, variants, async (variant, seed) => {
       const config: SimulationConfig = {
@@ -67,9 +62,7 @@ describe('Match Simulation A/B Batch Harness', () => {
       };
 
       const state =
-        variant.variant === 'B'
-          ? simulationB.simulateMatch(match, homeTeam, awayTeam, config)
-          : simulationA.simulateMatch(match, homeTeam, awayTeam, config);
+        simulationB.simulateMatch(match, homeTeam, awayTeam, config);
 
       return {
         homeScore: state.homeScore,
@@ -93,11 +86,13 @@ describe('Match Simulation A/B Batch Harness', () => {
     expect(outputPath.endsWith('.json')).toBe(true);
     expect(outputPath.includes('test-output')).toBe(true);
 
-    const baselineSummary = report.summary.find(item => item.variant === 'A');
     const variantBSummary = report.summary.find(item => item.variant === 'B');
-    expect(baselineSummary).toBeDefined();
     expect(variantBSummary).toBeDefined();
-    expect((variantBSummary?.avgEvents ?? 0)).toBeGreaterThan(baselineSummary?.avgEvents ?? Number.POSITIVE_INFINITY);
+    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeGreaterThanOrEqual(2.0);
+    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeLessThanOrEqual(3.5);
+    expect((variantBSummary?.avgShots ?? 0)).toBeGreaterThanOrEqual(20);
+    expect((variantBSummary?.avgShots ?? 0)).toBeLessThanOrEqual(30);
+    expect((variantBSummary?.avgEvents ?? 0)).toBeGreaterThan(120);
 
     const fs = await import('fs/promises');
     const saved = await fs.readFile(outputPath, 'utf-8');

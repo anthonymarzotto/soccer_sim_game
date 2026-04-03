@@ -1,7 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { League, Match, Team, Player, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { GeneratorService } from './generator.service';
-import { MatchSimulationService } from './match.simulation.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
@@ -11,7 +10,7 @@ import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { normalizeTeamFormation } from '../models/team-migration';
 import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players';
-import { SimulationConfig, MatchState, PlayByPlayEvent, SimulationVariant } from '../models/simulation.types';
+import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
 @Injectable({
@@ -224,7 +223,7 @@ export class GameService {
         enableTactics: true,
         enableFatigue: true,
         commentaryStyle: CommentaryStyle.DETAILED,
-        simulationVariant: 'A',
+        simulationVariant: 'B',
         ...config
       });
 
@@ -487,7 +486,6 @@ export class GameService {
   }
 
   // Enhanced simulation methods
-  private matchSimulationService = inject(MatchSimulationService);
   private matchSimulationVariantBService = inject(MatchSimulationVariantBService);
   private commentaryService = inject(CommentaryService);
   private statisticsService = inject(StatisticsService);
@@ -502,11 +500,11 @@ export class GameService {
       enableTactics: true,
       enableFatigue: true,
       commentaryStyle: CommentaryStyle.DETAILED,
-      simulationVariant: 'A',
+      simulationVariant: 'B',
       ...config
     };
 
-    const matchState = this.simulateMatchByVariant(match, homeTeam, awayTeam, simConfig);
+    const matchState = this.matchSimulationVariantBService.simulateMatch(match, homeTeam, awayTeam, simConfig);
     
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
@@ -527,16 +525,6 @@ export class GameService {
       keyEvents,
       commentary: simConfig.skipCommentary ? [] : this.generateMatchCommentary(matchState, homeTeam, awayTeam, simConfig.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : simConfig.commentaryStyle)
     };
-  }
-
-  private simulateMatchByVariant(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig): MatchState {
-    const variant: SimulationVariant = config.simulationVariant ?? 'A';
-
-    if (variant === 'B') {
-      return this.matchSimulationVariantBService.simulateMatch(match, homeTeam, awayTeam, config);
-    }
-
-    return this.matchSimulationService.simulateMatch(match, homeTeam, awayTeam, config);
   }
 
   private updateLeagueWithMatchResult(match: Match, matchState: MatchState, homeTeam: Team, awayTeam: Team, keyEvents: MatchEvent[], matchStats: MatchStatistics, matchReport: MatchReport) {

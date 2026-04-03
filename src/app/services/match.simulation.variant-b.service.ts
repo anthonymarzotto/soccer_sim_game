@@ -9,7 +9,6 @@ import {
   VariantBReplayMetadata,
   VariantBTuningConfig
 } from '../models/simulation.types';
-import { MatchSimulationService } from './match.simulation.service';
 import { FieldService } from './field.service';
 import { RngService } from './rng.service';
 import { EventType, FieldZone, MatchPhase, PlayingStyle, Position as PositionEnum, Role } from '../models/enums';
@@ -18,99 +17,6 @@ import { resolveTeamPlayers } from '../models/team-players';
 interface ResolvedRosters {
   homePlayers: Player[];
   awayPlayers: Player[];
-}
-
-interface MatchSimulationBridge {
-  initializeMatchState(match: Match, homeTeam: Team, homePlayers: Player[]): MatchState;
-  calculateTeamTactics(
-    homeTeam: Team,
-    awayTeam: Team,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): { home: TacticalSetup; away: TacticalSetup };
-  initializeFatigue(
-    homeTeam: Team,
-    awayTeam: Team,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): { home: PlayerFatigue[]; away: PlayerFatigue[] };
-  simulateMinute(
-    state: MatchState,
-    tactics: { home: TacticalSetup; away: TacticalSetup },
-    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
-    homeTeam: Team,
-    awayTeam: Team,
-    minute: number,
-    config: SimulationConfig,
-    rosters: ResolvedRosters
-  ): MatchState;
-  handlePass(
-    state: MatchState,
-    action: MatchAction,
-    homeTeam: Team,
-    awayTeam: Team,
-    tactics: { home: TacticalSetup; away: TacticalSetup },
-    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
-    minute: number,
-    config: SimulationConfig,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): void;
-  handleShot(
-    state: MatchState,
-    action: MatchAction,
-    homeTeam: Team,
-    awayTeam: Team,
-    tactics: { home: TacticalSetup; away: TacticalSetup },
-    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
-    minute: number,
-    config: SimulationConfig,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): void;
-  handleFoul(
-    state: MatchState,
-    action: MatchAction,
-    homeTeam: Team,
-    awayTeam: Team,
-    minute: number,
-    config: SimulationConfig,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): void;
-  handleGoal(
-    state: MatchState,
-    action: MatchAction,
-    homeTeam: Team,
-    awayTeam: Team,
-    minute: number,
-    config: SimulationConfig,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): void;
-  handleCorner(
-    state: MatchState,
-    action: MatchAction,
-    homeTeam: Team,
-    awayTeam: Team,
-    tactics: { home: TacticalSetup; away: TacticalSetup },
-    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
-    minute: number,
-    config: SimulationConfig,
-    homePlayers: Player[],
-    awayPlayers: Player[]
-  ): void;
-  updateFatigue(fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }, minute: number): void;
-  updatePossessionStats(state: MatchState, homeTeam: Team, homePlayers: Player[], awayTeam: Team): void;
-  createEvent(
-    state: MatchState,
-    type: EventType,
-    playerIds: string[],
-    location: Coordinates,
-    time: number,
-    success: boolean,
-    config: SimulationConfig
-  ): void;
 }
 
 interface MatchAction {
@@ -154,11 +60,9 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   providedIn: 'root'
 })
 export class MatchSimulationVariantBService {
-  private baselineSimulation = inject(MatchSimulationService);
   private fieldService = inject(FieldService);
   private rng = inject(RngService);
 
-  private readonly bridge = this.baselineSimulation as unknown as MatchSimulationBridge;
   private activeTuning: VariantBTuningConfig = DEFAULT_VARIANT_B_TUNING;
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig): MatchState {
@@ -177,20 +81,20 @@ export class MatchSimulationVariantBService {
       awayPlayers: resolveTeamPlayers(simulatedAwayTeam)
     };
 
-    const tactics = this.bridge.calculateTeamTactics(
+    const tactics = this.calculateTeamTactics(
       simulatedHomeTeam,
       simulatedAwayTeam,
       rosters.homePlayers,
       rosters.awayPlayers
     );
-    const fatigue = this.bridge.initializeFatigue(
+    const fatigue = this.initializeFatigue(
       simulatedHomeTeam,
       simulatedAwayTeam,
       rosters.homePlayers,
       rosters.awayPlayers
     );
 
-    let currentState = this.bridge.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
+    let currentState = this.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
 
     // Variant B increases dynamism with adaptive ticks per minute.
     for (let minute = 1; minute <= 95; minute++) {
@@ -228,7 +132,7 @@ export class MatchSimulationVariantBService {
     const newState = { ...state };
     newState.currentMinute = minute;
 
-    this.bridge.updateFatigue(fatigue, minute);
+    this.updateFatigue(fatigue, minute);
 
     const currentTeam = newState.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
     const teamPlayers = currentTeam === 'home' ? rosters.homePlayers : rosters.awayPlayers;
@@ -260,8 +164,72 @@ export class MatchSimulationVariantBService {
       );
     }
 
-    this.bridge.updatePossessionStats(newState, homeTeam, rosters.homePlayers, awayTeam);
+    this.updatePossessionStats(newState, rosters.homePlayers);
     return newState;
+  }
+
+  private initializeMatchState(_match: Match, homeTeam: Team, homePlayers: Player[]): MatchState {
+    return {
+      ballPossession: {
+        teamId: homeTeam.id,
+        playerWithBall: this.getRandomPlayerId(homePlayers),
+        location: { x: 50, y: 50 },
+        phase: MatchPhase.BUILD_UP,
+        passes: 0,
+        timeElapsed: 0
+      },
+      events: [],
+      currentMinute: 0,
+      homeScore: 0,
+      awayScore: 0,
+      homeShots: 0,
+      awayShots: 0,
+      homeShotsOnTarget: 0,
+      awayShotsOnTarget: 0,
+      homePossession: 50,
+      awayPossession: 50,
+      homeCorners: 0,
+      awayCorners: 0,
+      homeFouls: 0,
+      awayFouls: 0,
+      homeYellowCards: 0,
+      awayYellowCards: 0,
+      homeRedCards: 0,
+      awayRedCards: 0
+    };
+  }
+
+  private calculateTeamTactics(
+    homeTeam: Team,
+    awayTeam: Team,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): { home: TacticalSetup; away: TacticalSetup } {
+    return {
+      home: this.fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: this.fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
+  }
+
+  private initializeFatigue(
+    _homeTeam: Team,
+    _awayTeam: Team,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
+    const createFatigue = (players: Player[]): PlayerFatigue[] => {
+      return players.map(player => ({
+        playerId: player.id,
+        currentStamina: 100,
+        fatigueLevel: 0,
+        performanceModifier: 1
+      }));
+    };
+
+    return {
+      home: createFatigue(homePlayers),
+      away: createFatigue(awayPlayers)
+    };
   }
 
   private determineTicksForMinute(state: MatchState, minute: number): number {
@@ -438,7 +406,7 @@ export class MatchSimulationVariantBService {
     }
 
     if (action.type === EventType.PASS) {
-      this.bridge.handlePass(
+      this.handlePass(
         state,
         action,
         homeTeam,
@@ -468,7 +436,7 @@ export class MatchSimulationVariantBService {
     }
 
     if (action.type === EventType.FOUL) {
-      this.bridge.handleFoul(
+      this.handleFoul(
         state,
         action,
         homeTeam,
@@ -481,7 +449,7 @@ export class MatchSimulationVariantBService {
       return true;
     }
 
-    this.bridge.handlePass(
+    this.handlePass(
       state,
       { type: EventType.PASS, player: action.player },
       homeTeam,
@@ -518,6 +486,190 @@ export class MatchSimulationVariantBService {
 
     normalize(fatigue.home);
     normalize(fatigue.away);
+  }
+
+  private handlePass(
+    state: MatchState,
+    action: MatchAction,
+    homeTeam: Team,
+    awayTeam: Team,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    minute: number,
+    config: SimulationConfig,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): void {
+    const passer = action.player;
+    const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? 'home' : 'away';
+    const teamPlayers = currentTeam === 'home' ? homePlayers : awayPlayers;
+    const opponentPlayers = currentTeam === 'home' ? awayPlayers : homePlayers;
+    const teamTactics = tactics[currentTeam];
+    const teamFatigue = fatigue[currentTeam];
+
+    const targetPlayer = this.findPassTarget(passer, teamPlayers, teamTactics, state.ballPossession.location);
+
+    if (!targetPlayer) {
+      this.createEvent(state, EventType.TACKLE, [passer.id], state.ballPossession.location, minute, false, config);
+      state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
+      state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentPlayers);
+      return;
+    }
+
+    const passSuccess = this.calculatePassSuccess(passer, targetPlayer, teamTactics, teamFatigue);
+
+    if (passSuccess) {
+      state.ballPossession.playerWithBall = targetPlayer.id;
+      state.ballPossession.passes++;
+      const targetPos = this.fieldService.getStartingPositionForPlayer(targetPlayer, teamTactics.formation);
+      state.ballPossession.location = this.calculateNewBallPosition(state.ballPossession.location, targetPos);
+      this.createEvent(state, EventType.PASS, [passer.id, targetPlayer.id], state.ballPossession.location, minute, true, config);
+      return;
+    }
+
+    this.createEvent(state, EventType.INTERCEPTION, [passer.id], state.ballPossession.location, minute, false, config);
+    state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
+    state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentPlayers);
+  }
+
+  private handleGoal(
+    state: MatchState,
+    action: MatchAction,
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): void {
+    const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+
+    if (currentTeam === 'home') {
+      state.homeScore++;
+    } else {
+      state.awayScore++;
+    }
+
+    this.createEvent(state, EventType.GOAL, [action.player.id], state.ballPossession.location, minute, true, config);
+    state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
+    state.ballPossession.playerWithBall = this.getRandomPlayerId(
+      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers
+    );
+    state.ballPossession.location = { x: 50, y: 50 };
+    state.ballPossession.passes = 0;
+  }
+
+  private handleFoul(
+    state: MatchState,
+    action: MatchAction,
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): void {
+    const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+
+    if (currentTeam === 'home') {
+      state.homeFouls++;
+    } else {
+      state.awayFouls++;
+    }
+
+    const cardChance = this.rng.random();
+    if (cardChance > 0.9) {
+      const cardType = this.rng.random() > 0.5 ? EventType.RED_CARD : EventType.YELLOW_CARD;
+      this.createEvent(state, cardType, [action.player.id], state.ballPossession.location, minute, false, config);
+
+      if (cardType === EventType.RED_CARD) {
+        if (currentTeam === 'home') {
+          state.homeRedCards++;
+        } else {
+          state.awayRedCards++;
+        }
+      } else if (currentTeam === 'home') {
+        state.homeYellowCards++;
+      } else {
+        state.awayYellowCards++;
+      }
+    }
+
+    state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
+    state.ballPossession.playerWithBall = this.getRandomPlayerId(
+      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers
+    );
+  }
+
+  private calculatePassSuccess(
+    passer: Player,
+    target: Player,
+    tactics: TacticalSetup,
+    fatigue: PlayerFatigue[]
+  ): boolean {
+    const passerFatigue = fatigue.find(entry => entry.playerId === passer.id);
+    const targetFatigue = fatigue.find(entry => entry.playerId === target.id);
+
+    let baseChance = (passer.skills.shortPassing + passer.skills.longPassing) / 2;
+
+    if (passerFatigue) {
+      baseChance *= passerFatigue.performanceModifier;
+    }
+
+    if (targetFatigue) {
+      baseChance *= targetFatigue.performanceModifier;
+    }
+
+    if (tactics.playingStyle === PlayingStyle.POSSESSION) {
+      baseChance += 10;
+    }
+
+    return this.rng.random() * 100 < baseChance;
+  }
+
+  private updateFatigue(fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }, _minute: number): void {
+    Object.values(fatigue).forEach(teamFatigue => {
+      teamFatigue.forEach(entry => {
+        entry.fatigueLevel = Math.min(100, entry.fatigueLevel + 0.5);
+        entry.currentStamina = Math.max(0, entry.currentStamina - 0.3);
+        entry.performanceModifier = Math.max(0.5, 1 - (entry.fatigueLevel / 200));
+      });
+    });
+  }
+
+  private updatePossessionStats(state: MatchState, homePlayers: Player[]): void {
+    const totalEvents = state.events.length;
+    if (totalEvents <= 0) {
+      return;
+    }
+
+    const homeEvents = state.events.filter(event => {
+      return event.playerIds.some(playerId => this.findPlayerById(playerId, homePlayers) !== null);
+    });
+
+    const homeEventRatio = homeEvents.length / totalEvents;
+    state.homePossession = Math.round(homeEventRatio * 100);
+    state.awayPossession = 100 - state.homePossession;
+  }
+
+  private createEvent(
+    state: MatchState,
+    type: EventType,
+    playerIds: string[],
+    location: Coordinates,
+    time: number,
+    success: boolean,
+    _config: SimulationConfig
+  ): void {
+    state.events.push({
+      id: this.createRandomId(),
+      type,
+      description: '',
+      playerIds,
+      location,
+      time,
+      success
+    });
   }
 
   private clamp(value: number, min: number, max: number): number {
@@ -573,7 +725,7 @@ export class MatchSimulationVariantBService {
     const onTarget = this.rng.random() < onTargetChance;
 
     if (!onTarget) {
-      this.bridge.createEvent(
+      this.createEvent(
         state,
         EventType.MISS,
         [shooter.id],
@@ -606,7 +758,7 @@ export class MatchSimulationVariantBService {
     goalChance = this.clampChance(goalChance, this.activeTuning.goalChanceMin, this.activeTuning.goalChanceMax);
 
     if (this.rng.random() < goalChance) {
-      this.bridge.handleGoal(
+      this.handleGoal(
         state,
         { type: EventType.GOAL, player: shooter },
         homeTeam,
@@ -619,7 +771,7 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    this.bridge.createEvent(
+    this.createEvent(
       state,
       EventType.SAVE,
       goalkeeper ? [shooter.id, goalkeeper.id] : [shooter.id],
@@ -707,6 +859,54 @@ export class MatchSimulationVariantBService {
     }
 
     return -1;
+  }
+
+  private findPlayerById(playerId: string, players: Player[]): Player | null {
+    return players.find(player => player.id === playerId) ?? null;
+  }
+
+  private findPassTarget(
+    passer: Player,
+    teamPlayers: Player[],
+    tactics: TacticalSetup,
+    currentLocation: Coordinates
+  ): Player | null {
+    const potentialTargets = teamPlayers.filter(player => player.id !== passer.id && player.role === Role.STARTER);
+
+    if (potentialTargets.length === 0) {
+      return null;
+    }
+
+    potentialTargets.sort((left, right) => {
+      const leftDistance = this.fieldService.getDistance(
+        currentLocation,
+        this.fieldService.getStartingPositionForPlayer(left, tactics.formation)
+      );
+      const rightDistance = this.fieldService.getDistance(
+        currentLocation,
+        this.fieldService.getStartingPositionForPlayer(right, tactics.formation)
+      );
+      return leftDistance - rightDistance;
+    });
+
+    return potentialTargets[0];
+  }
+
+  private calculateNewBallPosition(current: Coordinates, target: Coordinates): Coordinates {
+    return {
+      x: (current.x + target.x) / 2,
+      y: (current.y + target.y) / 2
+    };
+  }
+
+  private getRandomPlayerId(teamPlayers: Player[]): string {
+    const starters = teamPlayers.filter(player => player.role === Role.STARTER);
+    const selectablePlayers = starters.length > 0 ? starters : teamPlayers;
+    return selectablePlayers[Math.floor(this.rng.random() * selectablePlayers.length)].id;
+  }
+
+  private createRandomId(): string {
+    return this.rng.random().toString(36).substring(2, 9);
   }
 
 }

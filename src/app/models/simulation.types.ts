@@ -114,7 +114,7 @@ export interface MatchState {
   awayRedCards: number;
 }
 
-export type SimulationVariant = 'A' | 'B';
+export type SimulationVariant = 'B';
 
 export interface SimulationConfig {
   enablePlayByPlay: boolean;

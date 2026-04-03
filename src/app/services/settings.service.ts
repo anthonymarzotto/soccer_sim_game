@@ -5,8 +5,6 @@ import { APP_DATA_SCHEMA_VERSION, SIMULATION_SEED_MAX_LENGTH } from '../constant
 import { DataSchemaVersionService } from './data-schema-version.service';
 import { SimulationVariant } from '../models/simulation.types';
 
-const SIMULATION_VARIANTS: readonly SimulationVariant[] = ['A', 'B'];
-
 const BADGE_STYLES = [
   'initials',
   'shield',
@@ -34,7 +32,7 @@ export interface Settings {
 }
 
 function isSimulationVariant(value: string | undefined): value is SimulationVariant {
-  return typeof value === 'string' && SIMULATION_VARIANTS.includes(value as SimulationVariant);
+  return value === 'B';
 }
 
 @Injectable({
@@ -46,7 +44,7 @@ export class SettingsService {
   private readonly dataSchemaVersion = APP_DATA_SCHEMA_VERSION;
   private defaultSettings: Settings = {
     badgeStyle: 'initials',
-    simulationVariant: 'A',
+    simulationVariant: 'B',
     simulationSeed: ''
   };
   private isHydrating = signal(true);
@@ -148,14 +146,6 @@ export class SettingsService {
     }
 
     this.settings.update(s => ({ ...s, badgeStyle: style }));
-  }
-
-  setSimulationVariant(variant: SimulationVariant): void {
-    if (this.hasVersionMismatch()) {
-      return;
-    }
-
-    this.settings.update(s => ({ ...s, simulationVariant: variant }));
   }
 
   setSimulationSeed(seed: string): void {
