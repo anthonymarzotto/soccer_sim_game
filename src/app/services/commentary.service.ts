@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { PlayByPlayEvent, FieldZone } from '../models/simulation.types';
+import { PlayByPlayEvent, FieldZone, Coordinates } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
 import { CommentaryStyle, EventType, Role } from '../models/enums';
@@ -36,11 +36,11 @@ export class CommentaryService {
         "Excellent technique from {player} in the box!"
       ],
       save: [
-        "Outstanding save from {player}!",
-        "{player} makes a fantastic stop!",
+        "Outstanding save from {player} to deny {target}!",
+        "{player} makes a fantastic stop from {target}!",
         "Brilliant reaction save from {player}!",
-        "{player} denies the shot with a strong hand!",
-        "Superb positioning from {player}!"
+        "{player} gets down well to keep out {target}!",
+        "Superb positioning from {player} keeps {target} out!"
       ],
       goal: [
         "GOAL! {player} scores! What a finish!",
@@ -52,7 +52,7 @@ export class CommentaryService {
       miss: [
         "Close! {player} just wide of the target!",
         "{player} should have done better there!",
-        "Excellent save keeps {player} out!",
+        "{player} flashes the attempt wide!",
         "{player} hits the post!",
         "Just over the bar from {player}!"
       ],
@@ -98,13 +98,16 @@ export class CommentaryService {
     const homePlayers = this.getTeamPlayers(homeTeam, rosters?.homePlayers);
     const awayPlayers = this.getTeamPlayers(awayTeam, rosters?.awayPlayers);
 
-    if (event.playerIds.length > 0) {
-      const player = this.findPlayerById(event.playerIds[0], homePlayers, awayPlayers);
+    const primaryPlayerId = this.getPrimaryPlayerId(event);
+    const secondaryPlayerId = this.getSecondaryPlayerId(event);
+
+    if (primaryPlayerId) {
+      const player = this.findPlayerById(primaryPlayerId, homePlayers, awayPlayers);
       playerName = player ? player.name : 'Player';
     }
 
-    if (event.playerIds.length > 1) {
-      const target = this.findPlayerById(event.playerIds[1], homePlayers, awayPlayers);
+    if (secondaryPlayerId) {
+      const target = this.findPlayerById(secondaryPlayerId, homePlayers, awayPlayers);
       targetName = target ? target.name : 'Player';
     }
 
@@ -120,15 +123,31 @@ export class CommentaryService {
       
       case EventType.SHOT:
         template = this.getRandomCommentary(commentaryStyle.shot);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
+
+      case EventType.MISS:
+        template = this.getRandomCommentary(commentaryStyle.miss);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
       
       case EventType.SAVE:
         template = this.getRandomCommentary(commentaryStyle.save);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
       
       case EventType.GOAL: {
         template = this.getRandomCommentary(commentaryStyle.goal);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
       }
       
       case EventType.YELLOW_CARD:
@@ -216,8 +235,57 @@ export class CommentaryService {
     return this.getRandomCommentary(tactics);
   }
 
+  describeChanceLocation(location?: Coordinates): string | null {
+    if (!location) {
+      return null;
+    }
+
+    const goalDistance = Math.min(location.y, 100 - location.y);
+    const lateralLabel =
+      location.x < 33 ? 'the left channel' : location.x > 67 ? 'the right channel' : 'a central area';
+
+    if (goalDistance <= 10) {
+      return `${lateralLabel} in the six-yard box`;
+    }
+
+    if (goalDistance <= 22) {
+      return `${lateralLabel} inside the box`;
+    }
+
+    if (goalDistance <= 32) {
+      return `${lateralLabel} at the edge of the box`;
+    }
+
+    return `${lateralLabel} from long range`;
+  }
+
   private getRandomCommentary(templates: string[]): string {
     return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  private appendChanceLocationContext(commentary: string, event: PlayByPlayEvent): string {
+    const locationDescription = this.describeChanceLocation(event.location);
+    if (!locationDescription) {
+      return commentary;
+    }
+
+    return `${commentary} It came from ${locationDescription}.`;
+  }
+
+  private getPrimaryPlayerId(event: PlayByPlayEvent): string | undefined {
+    if (event.type === EventType.SAVE) {
+      return event.playerIds[1] ?? event.playerIds[0];
+    }
+
+    return event.playerIds[0];
+  }
+
+  private getSecondaryPlayerId(event: PlayByPlayEvent): string | undefined {
+    if (event.type === EventType.SAVE) {
+      return event.playerIds[0];
+    }
+
+    return event.playerIds[1];
   }
 
   private formatCommentary(template: string, player: string, target: string): string {

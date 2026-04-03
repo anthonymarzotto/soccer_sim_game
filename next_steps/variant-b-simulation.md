@@ -12,6 +12,29 @@
 - **Deep team cloning** (`structuredClone`) at match start in *both* Variant A and B services — in-simulation mutations (future substitutions, injuries, tactical changes) will never leak into canonical league state.
 - **Animation-ready replay metadata** emitted per event in `additionalData.variantBReplay`: actor player ID, action type, duration, and 3-keyframe ball path. Fully additive and backward-compatible with existing UI consumers.
 
+### Watch-game playback (`watch-game.ts`)
+- Replaced the old fixed 1-second commentary interval with **importance-based replay pacing**.
+- **Routine commentary** stays at the original 1-second cadence, preserving the previous replay feel for normal match flow.
+- **Medium and high-importance events** now hold longer on screen, giving shots, saves, goals, cards, and other major moments more breathing room.
+- Half-time remains an explicit pause point, and second-half playback resumes with its own cadence rather than dropping straight back into a fixed timer.
+- Expanded key moments in replay are now **minute-gated during live simulation** to prevent spoiler reveals before they occur.
+
+### Post-match and summary consumers
+- `PostMatchAnalysisService.extractKeyMoments` now surfaces notable non-goal attacking moments (saves and notable misses/shots), not just goals/cards/set-piece milestones.
+- Chance selection now uses both spatial context (`event.location`) and Variant B metadata (`additionalData.variantBReplay`) for better signal.
+- `CommentaryService` now includes location-aware chance phrasing (e.g., left channel inside the box, central area from long range).
+- Save commentary now correctly attributes the save action to the goalkeeper.
+- `match-summary` now has a collapsible **Expanded Key Moments** section backed by `matchReport.keyMoments`.
+- Schedule page now reuses `app-match-summary`, so schedule and watch-game share the same summary rendering behavior.
+
+### Stat attribution fixes (`game.service.ts`)
+- Fixed career stat attribution for multi-player events:
+	- Goals now credit only the scorer (`event.playerIds[0]`).
+	- Saves now credit only the goalkeeper (`event.playerIds[1]` when present).
+- Fixed clean-sheet attribution:
+	- Home goalkeeper clean sheet now checks `awayScore === 0`.
+	- Away goalkeeper clean sheet now checks `homeScore === 0`.
+
 ### Calibration infrastructure
 - **`VariantBTuningConfig`** interface in `simulation.types.ts` exposes all scoring levers as first-class named fields.
 - **`SimulationConfig.variantBTuning?: Partial<VariantBTuningConfig>`** lets callers pass preset overrides without code changes.
@@ -39,66 +62,83 @@
 | File | Role |
 |---|---|
 | `src/app/services/match.simulation.variant-b.service.ts` | Variant B engine + tuning constants |
-| `src/app/services/match.simulation.service.ts` | Variant A baseline; shared bridge methods (`simulateMinute`, `handlePass`, `handleShot`, `handleFoul`, `handleGoal`, `handleCorner`, `updateFatigue`, `updatePossessionStats`, `createEvent`, `initializeMatchState`, `calculateTeamTactics`, `initializeFatigue`) |
 | `src/app/models/simulation.types.ts` | `VariantBTuningConfig`, `VariantBReplayMetadata`, `ReplayKeyframe`, `SimulationConfig.variantBTuning` |
 | `src/app/services/match.simulation.variant-b.calibration.spec.ts` | 100-match calibration benchmark with acceptance bands |
 | `src/app/services/match.simulation.ab.spec.ts` | A/B batch harness (10 matches per variant, JSON report) |
 | `src/app/testing/simulation-ab.runner.ts` | Batch runner; summary grouping fixed to `(variant, variantName)` |
+| `src/app/pages/watch-game/watch-game.ts` | Replay/commentary pacing consumer for dense Variant B event streams |
+| `src/app/components/match-summary/match-summary.ts` | Shared summary card with collapsible expanded key moments |
+| `src/app/pages/schedule/schedule.ts` | Schedule page now reuses shared summary component |
+| `src/app/services/post.match.analysis.service.ts` | Post-match key-moment extraction with notable non-goal chances |
+| `src/app/services/commentary.service.ts` | Commentary generation with location-aware chance language |
+| `src/app/services/game.service.ts` | Match persistence + player career stat attribution (goals/saves/clean sheets) |
 | `test-output/simulation-ab/variant-b-calibration-latest.json` | Latest calibration output (overwritten each run) |
 
 ---
 
-## Bridge pattern — important contract
+## Current architecture note
 
-Variant B calls private methods on `MatchSimulationService` via `MatchSimulationBridge` (a local cast interface). The methods it currently depends on are marked in `match.simulation.service.ts` with the comment `// ** TEMPORARY BRIDGE FOR VARIANT B **`. These should eventually either be:
-- Moved to a shared `MatchSimulationCoreService`, or
-- Re-implemented natively in Variant B and the bridge stripped.
+Variant B is no longer delegating core match flow to a shared Variant A service. The current implementation owns its own match-state initialization, tactics derivation, fatigue updates, possession updates, pass handling, foul handling, and shot resolution inside `match.simulation.variant-b.service.ts`.
 
-Do not refactor the shared methods in Variant A without checking they aren't relied on through the bridge.
+That changes the risk profile of future work:
+- Variant B tuning and feature work can proceed without preserving a temporary bridge contract.
+- The main follow-on integration risk is now in downstream consumers (`watch-game`, post-match analysis, commentary), not in hidden coupling to a baseline simulation service.
 
 ---
 
 ## Next steps
 
-### 1. Possession-chain quality (Phase 2 continuation)
-Variant B currently does not differentiate *attacking* passes from *recycling* passes. A pass in the own half always looks the same as a through-ball. Consider:
-- Add `PassIntent` within the carrier decision: `RECYCLE | PROGRESSION | THROUGH_BALL | CROSS`.
-- Each intent maps to a different target-player selection strategy (nearest safe target vs. furthest forward-progressing target etc.).
-- Track pass chain length in `Possession.passes` and use it to reward sequences that break into the final third.
+### 1. Post-match event consumption
+Status: finished for this round.
 
-### 2. Defensive pressure proxy
+Completed baseline work:
+- Dangerous saves and notable non-goal chances are now eligible for post-match key moments.
+- `additionalData.variantBReplay` and `event.location` are now used when deciding whether a non-goal attacking event is worth surfacing.
+- Shot/save/miss commentary now includes rough origin context, such as left channel inside the box or central area from long range.
+
+Round decision:
+- Keep `keyEvents` and `matchReport.keyMoments` intentionally distinct:
+	- `keyEvents` remains the compact, low-noise summary track.
+	- `keyMoments` remains the richer post-match analysis track.
+
+## Simulation-first priority order
+
+### 1. Defensive pressure proxy
 There is no opponent defensive presence modelled per tick. A shot from an open position is treated the same as a shot under pressing. Consider:
 - Derive a lightweight pressure score from team pressing intensity (`TacticalSetup.pressingIntensity`) and match phase.
 - Apply pressure discount to pass success and shot quality in `determineCarrierAction`.
 - This will naturally reduce goal conversion when under pressure and increase it on counter-attacks.
 
-### 3. Scoreline-state aggression
+### 2. Scoreline-state aggression
 Trailing teams currently have only a mild late-game shot weight boost. Realistic urgency logic requires:
 - Losing teams in the final 15 minutes increase shot attempts, reduce passing safety, and push more ticks.
 - Winning teams in the final 15 minutes lower tick density and increase recycling carries to waste time.
 - This change will add variance to match outcomes and produce more realistic "late winner" patterns.
 
-### 4. Home advantage
+### 3. Home advantage
 Both teams currently run the same probability model. Add a configurable home advantage modifier (~+5% on shot quality, slightly higher pressing intensity for home team) to reflect the real-world home win rate (~46%).
 
-### 5. Acceptance gates in the main A/B spec
-The calibration spec has acceptance bands, but `match.simulation.ab.spec.ts` only checks event-density uplift. Add explicit checks:
-- Variant B avg goals in a realistic range (e.g. 2.0–3.5 per game).
-- Variant B avg shots in a realistic range (e.g. 20–30 per game).
-- This prevents tuning drift between sessions.
+### 4. Possession-chain quality (Phase 2 continuation) — stretch goal
+Variant B currently does not differentiate *attacking* passes from *recycling* passes. A pass in the own half always looks the same as a through-ball. Consider:
+- Add `PassIntent` within the carrier decision: `RECYCLE | PROGRESSION | THROUGH_BALL | CROSS`.
+- Each intent maps to a different target-player selection strategy (nearest safe target vs. furthest forward-progressing target etc.).
+- Track pass chain length in `Possession.passes` and use it to reward sequences that break into the final third.
 
-### 6. Watch-game commentary density
-At ~227 events per match (vs. Variant A ~87), watch-game commentary feed now has ~2.6× as many items feeding in at 1-second intervals. This will feel too fast at the current 1-second/item rate:
-- Consider grouping low-importance events (PASSes, CARRYs that produced no event) at 0.3-second intervals.
-- Keep goal / save / foul / card events at their own pause cadence.
-- The `EventImportance` filter in `watch-game.ts:generateCommentaryFromMatch` already gates MEDIUM/HIGH, so most silent carries won't appear — but worth verifying the pacing in the browser.
+Note for this round:
+- An earlier attempt produced noisy, hard-to-tune outcomes.
+- Treat this as a focused follow-up pass rather than core-scope tuning work.
 
-### 7. Substitutions and injuries (groundwork is ready)
-Team cloning is in place. The groundwork for in-match mutations is done. The first feature to layer on top:
-- A `MatchSimulationContext` object attached to each simulation run containing: active player list (from clone), substitution slots used, injury flags.
-- Variant B can reduce a fatigued player's `performanceModifier` below the current 0.5 floor and trigger a substitution by swapping `playerWithBall` to a bench player.
+### 5. Guardrail maintenance
+Acceptance gates already exist in `match.simulation.ab.spec.ts` and in the calibration benchmark spec. The remaining work here is maintenance, not initial setup. Consider:
+- Keeping the fast A/B spec broad enough to catch obvious tuning drift.
+- Using the 100-match calibration benchmark for slower realism tuning passes.
+- Tightening event-density expectations only after browser pacing checks remain consistently good.
 
-### 8. Post-match analysis compatibility
-`post.match.analysis.service.ts:extractKeyMoments` currently filters on `EventImportance`. With more events and richer metadata, a quality review is worthwhile:
-- Verify that shot events with `additionalData.variantBReplay` are properly surfaced as key moments.
-- Commentary templates in `commentary.service.ts` don't yet use spatial data from events — passing `event.location` into commentary templates for shot events would get "a shot from the left side of the box" level of detail cheaply.
+## Completed decisions and validation
+
+- Browser validation pass completed:
+	- Watch-game pacing and expanded moments feel good in manual testing.
+	- No spoiler leakage observed for expanded key moments during live simulation.
+	- Goalkeeper stat line sanity checks (goals/saves/clean sheets) look resolved after the latest fixes.
+- Product decision confirmed:
+	- `keyEvents` and `keyMoments` remain distinct on purpose.

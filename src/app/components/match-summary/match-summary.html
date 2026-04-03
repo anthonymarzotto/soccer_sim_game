@@ -79,6 +79,29 @@
       </div>
     </div>
   }
+
+  @if (showEvents() && hasExpandedKeyMoments()) {
+    <div class="mt-4 pt-4 border-t border-zinc-800">
+      <details class="group rounded-lg bg-zinc-900/70 border border-zinc-800">
+        <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-semibold text-zinc-200">
+          <span>Expanded Key Moments ({{ expandedKeyMoments().length }})</span>
+          <span class="text-zinc-400 transition-transform duration-200 group-open:rotate-180">▼</span>
+        </summary>
+
+        <div class="space-y-2 border-t border-zinc-800 px-3 py-3">
+          @for (moment of expandedKeyMoments(); track moment.id) {
+            <div class="rounded-lg bg-zinc-950 p-2">
+              <div class="flex items-start gap-2 text-sm">
+                <div class="w-8 shrink-0 text-right font-mono text-xs text-zinc-400">{{ moment.time }}'</div>
+                <span class="text-base">{{ moment.icon || '•' }}</span>
+                <div class="flex-1 text-zinc-200">{{ moment.description }}</div>
+              </div>
+            </div>
+          }
+        </div>
+      </details>
+    </div>
+  }
   
   <!-- Match Statistics (Post-match) -->
   @if (showStats() && match().matchStats) {

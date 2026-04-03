@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { MatchState } from '../models/simulation.types';
-import { Team } from '../models/types';
-import { MatchPhase } from '../models/enums';
+import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
+import { Player, Team } from '../models/types';
+import { EventImportance, EventType, MatchPhase, Position, Role } from '../models/enums';
 import { CommentaryService } from './commentary.service';
 import { PostMatchAnalysisService, SeasonMatchContext } from './post.match.analysis.service';
 import { StatisticsService, TeamSeasonStatistics } from './statistics.service';
+import { vi } from 'vitest';
 
 describe('PostMatchAnalysisService', () => {
   let service: PostMatchAnalysisService;
@@ -30,18 +31,37 @@ describe('PostMatchAnalysisService', () => {
 
   beforeEach(() => {
     const statisticsServiceMock: Partial<StatisticsService> = {
-      generateTeamStatistics: () => mockTeamStats
+      generateTeamStatistics: () => mockTeamStats,
+      generateMatchStatistics: () => ({
+        possession: { home: 50, away: 50 },
+        shots: { home: 4, away: 2 },
+        shotsOnTarget: { home: 2, away: 1 },
+        corners: { home: 3, away: 1 },
+        fouls: { home: 8, away: 10 },
+        cards: {
+          home: { yellow: 1, red: 0 },
+          away: { yellow: 2, red: 0 }
+        },
+        passes: { home: 320, away: 281 },
+        tackles: { home: 14, away: 16 },
+        saves: { home: 1, away: 2 }
+      }),
+      generatePlayerStatistics: () => []
     };
 
     TestBed.configureTestingModule({
       providers: [
         PostMatchAnalysisService,
         { provide: StatisticsService, useValue: statisticsServiceMock },
-        { provide: CommentaryService, useValue: {} }
+        CommentaryService
       ]
     });
 
     service = TestBed.inject(PostMatchAnalysisService);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should compute recent form from the last 5 matches with matching contexts', () => {
@@ -117,12 +137,50 @@ describe('PostMatchAnalysisService', () => {
     );
   });
 
-  function createMockTeam(id: string): Team {
+  it('should surface notable saves and close-range misses in key moments', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    const homeTeam = createMockTeam('team_a', [
+      createMockPlayer('home-striker', 'Home Striker', 'team_a', Position.FORWARD),
+      createMockPlayer('home-keeper', 'Home Keeper', 'team_a', Position.GOALKEEPER)
+    ]);
+    const awayTeam = createMockTeam('team_b', [
+      createMockPlayer('away-striker', 'Away Striker', 'team_b', Position.FORWARD),
+      createMockPlayer('away-keeper', 'Away Keeper', 'team_b', Position.GOALKEEPER)
+    ]);
+
+    const report = service.generateMatchReport(
+      createMatchState(1, 0, [
+        createEvent('goal-1', EventType.GOAL, ['home-striker'], 12, { x: 49, y: 14 }, true),
+        createEvent('save-1', EventType.SAVE, ['home-striker', 'away-keeper'], 37, { x: 22, y: 16 }, true),
+        createEvent('miss-1', EventType.MISS, ['away-striker'], 64, { x: 74, y: 18 }, false, true),
+        createEvent('miss-2', EventType.MISS, ['away-striker'], 70, { x: 52, y: 50 }, false)
+      ]),
+      homeTeam,
+      awayTeam
+    );
+
+    expect(report.keyMoments.map(moment => moment.type)).toEqual([
+      EventType.GOAL,
+      EventType.SAVE,
+      EventType.MISS
+    ]);
+    expect(report.keyMoments[1]).toMatchObject({
+      type: EventType.SAVE,
+      importance: EventImportance.MEDIUM,
+      icon: '🧤'
+    });
+    expect(report.keyMoments[1].description).toContain('Away Keeper');
+    expect(report.keyMoments[1].description).toContain('left channel inside the box');
+    expect(report.keyMoments[2].description).toContain('right channel inside the box');
+  });
+
+  function createMockTeam(id: string, players: Player[] = []): Team {
     return {
       id,
       name: 'Team A',
-      players: [],
-      playerIds: [],
+      players,
+      playerIds: players.map(player => player.id),
       selectedFormationId: 'formation_4_4_2',
       formationAssignments: {},
       stats: {
@@ -138,7 +196,45 @@ describe('PostMatchAnalysisService', () => {
     };
   }
 
-  function createMatchState(homeScore: number, awayScore: number): MatchState {
+  function createMockPlayer(id: string, name: string, teamId: string, position: Position): Player {
+    return {
+      id,
+      name,
+      teamId,
+      position,
+      role: Role.STARTER,
+      personal: { height: 180, weight: 75, age: 25, nationality: 'ENG' },
+      physical: { speed: 70, strength: 70, endurance: 70 },
+      mental: { flair: 70, vision: 70, determination: 70 },
+      skills: {
+        tackling: 70,
+        shooting: 70,
+        heading: 70,
+        longPassing: 70,
+        shortPassing: 70,
+        goalkeeping: 70
+      },
+      hidden: { luck: 50, injuryRate: 5 },
+      overall: 70,
+      careerStats: {
+        matchesPlayed: 0,
+        goals: 0,
+        assists: 0,
+        yellowCards: 0,
+        redCards: 0,
+        shots: 0,
+        shotsOnTarget: 0,
+        tackles: 0,
+        interceptions: 0,
+        passes: 0,
+        saves: 0,
+        cleanSheets: 0,
+        minutesPlayed: 0
+      }
+    };
+  }
+
+  function createMatchState(homeScore: number, awayScore: number, events: PlayByPlayEvent[] = []): MatchState {
     return {
       ballPossession: {
         teamId: 'team_a',
@@ -148,7 +244,7 @@ describe('PostMatchAnalysisService', () => {
         passes: 0,
         timeElapsed: 0
       },
-      events: [],
+      events,
       currentMinute: 90,
       homeScore,
       awayScore,
@@ -166,6 +262,27 @@ describe('PostMatchAnalysisService', () => {
       awayYellowCards: 0,
       homeRedCards: 0,
       awayRedCards: 0
+    };
+  }
+
+  function createEvent(
+    id: string,
+    type: EventType,
+    playerIds: string[],
+    time: number,
+    location: { x: number; y: number },
+    success: boolean,
+    includeReplayMetadata = false
+  ): PlayByPlayEvent {
+    return {
+      id,
+      type,
+      description: '',
+      playerIds,
+      location,
+      time,
+      success,
+      additionalData: includeReplayMetadata ? { variantBReplay: { durationMs: 1400 } } : undefined
     };
   }
 });

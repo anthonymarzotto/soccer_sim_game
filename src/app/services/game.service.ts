@@ -623,15 +623,29 @@ export class GameService {
 
     // Update player stats based on events
     events.forEach(event => {
+      if (event.type === EventType.GOAL) {
+        const scorer = allPlayers.get(event.playerIds[0]);
+        if (scorer) {
+          scorer.careerStats.goals++;
+        }
+        return;
+      }
+
+      if (event.type === EventType.SAVE) {
+        const keeperId = event.playerIds[1] ?? event.playerIds[0];
+        const keeper = allPlayers.get(keeperId);
+        if (keeper) {
+          keeper.careerStats.saves++;
+        }
+        return;
+      }
+
       event.playerIds.forEach((playerId: string) => {
         const player = allPlayers.get(playerId);
         if (!player) return;
 
         // Update career stats based on event type
         switch (event.type) {
-          case EventType.GOAL:
-            player.careerStats.goals++;
-            break;
           case EventType.SHOT:
             player.careerStats.shots++;
             if (event.success) {
@@ -646,9 +660,6 @@ export class GameService {
             break;
           case EventType.PASS:
             player.careerStats.passes++;
-            break;
-          case EventType.SAVE:
-            player.careerStats.saves++;
             break;
           case EventType.YELLOW_CARD:
             player.careerStats.yellowCards++;
@@ -679,10 +690,10 @@ export class GameService {
     const homeGoalkeeper = homePlayers.find(p => p.id === homeTeam.formationAssignments['gk_1']);
     const awayGoalkeeper = awayPlayers.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
-    if (homeGoalkeeper && homeScore === 0) {
+    if (homeGoalkeeper && awayScore === 0) {
       homeGoalkeeper.careerStats.cleanSheets++;
     }
-    if (awayGoalkeeper && awayScore === 0) {
+    if (awayGoalkeeper && homeScore === 0) {
       awayGoalkeeper.careerStats.cleanSheets++;
     }
   }

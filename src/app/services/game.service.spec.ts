@@ -453,6 +453,11 @@ describe('GameService persistence integration', () => {
     );
     expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
     expect(persistenceSpy.saveMatch).not.toHaveBeenCalled();
+
+    const homeKeeper = homeTeam.players.find(player => player.id === 'p1');
+    const awayKeeper = awayTeam.players.find(player => player.id === 'p2');
+    expect(homeKeeper?.careerStats.cleanSheets).toBe(1);
+    expect(awayKeeper?.careerStats.cleanSheets).toBe(0);
   });
 });
 

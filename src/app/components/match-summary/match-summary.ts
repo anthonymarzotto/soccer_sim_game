@@ -31,6 +31,21 @@ export class MatchSummaryComponent {
   // Expose enum for template
   EventImportance = EventImportance;
 
+  hasExpandedKeyMoments = computed(() => {
+    return this.expandedKeyMoments().length > 0;
+  });
+
+  expandedKeyMoments = computed(() => {
+    const allMoments = this.match().matchReport?.keyMoments ?? [];
+
+    if (!this.isLive()) {
+      return allMoments;
+    }
+
+    const minute = this.currentMinute();
+    return allMoments.filter(moment => moment.time <= minute);
+  });
+
   getTeamName(id: string): string {
     return this.gameService.getTeam(id)?.name || 'Unknown';
   }

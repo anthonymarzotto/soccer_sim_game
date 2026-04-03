@@ -24,7 +24,9 @@ interface CommentaryItem {
 })
 export class WatchGameComponent implements OnInit, OnDestroy {
   private static readonly FIRST_HALF_END_MINUTE = 45;
-  private static readonly FEED_INTERVAL_MS = 1000;
+  private static readonly DEFAULT_COMMENTARY_DELAY_MS = 1000;
+  private static readonly HIGH_IMPORTANCE_DELAY_MS = 1800;
+  private static readonly RESUME_DELAY_MS = 900;
   private static readonly NEW_COMMENTARY_ANIMATION_MS = 500;
 
   private route = inject(ActivatedRoute);
@@ -56,8 +58,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   showStats = signal<boolean>(false);
   validationError = signal<string | null>(null);
   
-  // Animation interval
-  private commentaryInterval: ReturnType<typeof setInterval> | null = null;
+  // Replay scheduling
+  private commentaryTimer: ReturnType<typeof setTimeout> | null = null;
   private allCommentary: CommentaryItem[] = [];
   private commentaryIndex = 0;
   private halfTimeIndex = -1;
@@ -266,7 +268,6 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     // Add half-time commentary at the correct chronological position
     const halfTimeGoals = firstHalfEvents.filter(e => e.type === EventType.GOAL).length;
     if (halfTimeGoals > 0 || matchState.events.length > 0) {
-      this.halfTimeIndex = this.allCommentary.length;
       this.allCommentary.push({
         id: 'halftime',
         minute: WatchGameComponent.FIRST_HALF_END_MINUTE,
@@ -289,23 +290,30 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       importance: EventImportance.HIGH,
       isNew: false
     });
+    this.halfTimeIndex = this.allCommentary.findIndex(item => item.id === 'halftime');
   }
 
   private startCommentaryFeed(resetIndex = true) {
-    if (this.commentaryInterval) {
+    if (this.commentaryTimer) {
       return;
     }
 
     if (resetIndex) {
       this.commentaryIndex = 0;
-      // Add first comment immediately
-      this.addNextCommentary();
     }
 
-    // Then add one every second
-    this.commentaryInterval = setInterval(() => {
+    this.scheduleNextCommentary(resetIndex ? 0 : WatchGameComponent.RESUME_DELAY_MS);
+  }
+
+  private scheduleNextCommentary(delayMs: number) {
+    if (this.commentaryTimer) {
+      return;
+    }
+
+    this.commentaryTimer = setTimeout(() => {
+      this.commentaryTimer = null;
       this.addNextCommentary();
-    }, WatchGameComponent.FEED_INTERVAL_MS);
+    }, delayMs);
   }
 
   private addNextCommentary() {
@@ -352,6 +360,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }, WatchGameComponent.NEW_COMMENTARY_ANIMATION_MS);
 
     this.commentaryIndex++;
+    this.scheduleNextCommentary(this.getCommentaryDelay(item));
   }
 
   continueAfterHalfTime() {
@@ -361,10 +370,18 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   private stopCommentaryFeed() {
-    if (this.commentaryInterval) {
-      clearInterval(this.commentaryInterval);
-      this.commentaryInterval = null;
+    if (this.commentaryTimer) {
+      clearTimeout(this.commentaryTimer);
+      this.commentaryTimer = null;
     }
+  }
+
+  private getCommentaryDelay(item: CommentaryItem): number {
+    if (item.importance === EventImportance.HIGH || item.importance === EventImportance.MEDIUM) {
+      return WatchGameComponent.HIGH_IMPORTANCE_DELAY_MS;
+    }
+
+    return WatchGameComponent.DEFAULT_COMMENTARY_DELAY_MS;
   }
 
   private finishMatch() {
