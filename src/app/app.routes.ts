@@ -8,6 +8,7 @@ import { ScheduleComponent } from './pages/schedule/schedule';
 import { SettingsComponent } from './pages/settings/settings';
 import { WatchGameComponent } from './pages/watch-game/watch-game';
 import { SimulationDebugComponent } from './pages/simulation-debug/simulation-debug';
+import { ChangelogComponent } from './pages/changelog/changelog';
 import { GameService } from './services/game.service';
 
 const redirectToUserTeam = () => {
@@ -31,5 +32,6 @@ export const routes: Routes = [
   { path: 'watch/:id', component: WatchGameComponent },
   { path: 'debug/simulation', component: SimulationDebugComponent },
   { path: 'settings', component: SettingsComponent },
+  { path: 'changelog', component: ChangelogComponent },
   { path: '**', redirectTo: '' }
 ];
