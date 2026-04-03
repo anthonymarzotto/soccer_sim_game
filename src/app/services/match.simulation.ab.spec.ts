@@ -39,7 +39,7 @@ describe('Match Simulation Variant B Guardrails', () => {
       { name: 'Current Variant B', variant: 'B', seedPrefix: 'guardrail-b' }
     ];
 
-    const iterations = 20;
+    const iterations = 30;
 
     const report = await runner.run(iterations, variants, async (variant, seed) => {
       const config: SimulationConfig = {
@@ -88,8 +88,8 @@ describe('Match Simulation Variant B Guardrails', () => {
 
     const variantBSummary = report.summary.find(item => item.variant === 'B');
     expect(variantBSummary).toBeDefined();
-    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeGreaterThanOrEqual(2.0);
-    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeLessThanOrEqual(3.5);
+    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeGreaterThanOrEqual(2.4);
+    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeLessThanOrEqual(2.8);
     expect((variantBSummary?.avgShots ?? 0)).toBeGreaterThanOrEqual(20);
     expect((variantBSummary?.avgShots ?? 0)).toBeLessThanOrEqual(30);
     expect((variantBSummary?.avgEvents ?? 0)).toBeGreaterThan(120);

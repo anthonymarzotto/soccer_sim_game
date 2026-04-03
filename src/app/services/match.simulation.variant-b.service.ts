@@ -49,11 +49,11 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.23,
+  goalChanceBase: 0.21,
   goalChanceSkillVsKeeperScale: 0.0033,
   goalChanceWidePenalty: 0.035,
   goalChanceMin: 0.1,
-  goalChanceMax: 0.54
+  goalChanceMax: 0.50
 };
 
 @Injectable({

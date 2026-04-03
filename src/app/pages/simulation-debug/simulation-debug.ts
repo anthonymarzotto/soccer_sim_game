@@ -5,7 +5,7 @@ import { GameService } from '../../services/game.service';
 import { MatchSimulationVariantBService } from '../../services/match.simulation.variant-b.service';
 import { CommentaryStyle } from '../../models/enums';
 import { Match, Team } from '../../models/types';
-import { MatchState, SimulationConfig } from '../../models/simulation.types';
+import { MatchState, SimulationConfig, VariantBTuningConfig } from '../../models/simulation.types';
 
 interface VariantMetrics {
   homeScore: number;
@@ -122,6 +122,127 @@ interface SimulationSummary {
             <div class="flex items-center gap-3">
               <button
                 type="button"
+                (click)="showTuning.set(!showTuning())"
+                class="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 font-semibold text-white hover:bg-zinc-700"
+              >
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                <span>{{ showTuning() ? 'Hide' : 'Show' }} Advanced Tuning</span>
+              </button>
+            </div>
+
+            @if (showTuning()) {
+              <div class="rounded-xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+                <h3 class="text-sm font-semibold text-white">Variant B Tuning Parameters</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label for="goalChanceBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Goal Chance Base: {{ goalChanceBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="goalChanceBase"
+                      type="range"
+                      min="0.05"
+                      max="0.40"
+                      step="0.01"
+                      [value]="goalChanceBase()"
+                      (input)="setGoalChanceBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Base conversion rate for shots on target</p>
+                  </div>
+
+                  <div>
+                    <label for="goalChanceMin" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Goal Chance Min: {{ goalChanceMin().toFixed(2) }}
+                    </label>
+                    <input
+                      id="goalChanceMin"
+                      type="range"
+                      min="0.05"
+                      max="0.30"
+                      step="0.01"
+                      [value]="goalChanceMin()"
+                      (input)="setGoalChanceMin($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Minimum goal probability floor</p>
+                  </div>
+
+                  <div>
+                    <label for="goalChanceMax" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Goal Chance Max: {{ goalChanceMax().toFixed(2) }}
+                    </label>
+                    <input
+                      id="goalChanceMax"
+                      type="range"
+                      min="0.40"
+                      max="0.80"
+                      step="0.01"
+                      [value]="goalChanceMax()"
+                      (input)="setGoalChanceMax($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Maximum goal probability ceiling</p>
+                  </div>
+
+                  <div>
+                    <label for="onTargetBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                      On Target Base: {{ onTargetBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="onTargetBase"
+                      type="range"
+                      min="0.15"
+                      max="0.50"
+                      step="0.01"
+                      [value]="onTargetBase()"
+                      (input)="setOnTargetBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Base rate of shots hitting the target</p>
+                  </div>
+
+                  <div>
+                    <label for="passWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Pass Weight: {{ passWeightBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="passWeightBase"
+                      type="range"
+                      min="0.30"
+                      max="0.80"
+                      step="0.01"
+                      [value]="passWeightBase()"
+                      (input)="setPassWeightBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Weighting toward passing vs shooting/carrying</p>
+                  </div>
+
+                  <div>
+                    <label for="shotWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Shot Weight: {{ shotWeightBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="shotWeightBase"
+                      type="range"
+                      min="0.10"
+                      max="0.50"
+                      step="0.01"
+                      [value]="shotWeightBase()"
+                      (input)="setShotWeightBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Weighting toward shooting vs passing/carrying</p>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
                 (click)="runSandbox()"
                 [disabled]="isRunning() || !canRun()"
                 class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -201,6 +322,15 @@ export class SimulationDebugComponent {
   readonly awayTeamId = signal('');
   readonly isRunning = signal(false);
   readonly rows = signal<SimulationRunRow[]>([]);
+  readonly showTuning = signal(false);
+
+  // Tuning parameters
+  readonly goalChanceBase = signal(0.21);
+  readonly goalChanceMin = signal(0.1);
+  readonly goalChanceMax = signal(0.50);
+  readonly onTargetBase = signal(0.31);
+  readonly passWeightBase = signal(0.57);
+  readonly shotWeightBase = signal(0.24);
 
   readonly canRun = computed(() => {
     return this.homeTeamId().length > 0 && this.awayTeamId().length > 0 && this.homeTeamId() !== this.awayTeamId();
@@ -281,6 +411,48 @@ export class SimulationDebugComponent {
     this.seedPrefix.set(value.trim().slice(0, SIMULATION_SEED_MAX_LENGTH));
   }
 
+  setGoalChanceBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.goalChanceBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setGoalChanceMin(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.goalChanceMin.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setGoalChanceMax(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.goalChanceMax.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setOnTargetBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.onTargetBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setPassWeightBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.passWeightBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setShotWeightBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.shotWeightBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
   async runSandbox(): Promise<void> {
     if (!this.canRun() || this.isRunning()) {
       return;
@@ -348,6 +520,15 @@ export class SimulationDebugComponent {
   }
 
   private simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, seed?: string) {
+    const tuning: Partial<VariantBTuningConfig> = {
+      goalChanceBase: this.goalChanceBase(),
+      goalChanceMin: this.goalChanceMin(),
+      goalChanceMax: this.goalChanceMax(),
+      onTargetBase: this.onTargetBase(),
+      passWeightBase: this.passWeightBase(),
+      shotWeightBase: this.shotWeightBase()
+    };
+
     const config: SimulationConfig = {
       enablePlayByPlay: true,
       enableSpatialTracking: true,
@@ -355,7 +536,8 @@ export class SimulationDebugComponent {
       enableFatigue: true,
       commentaryStyle: CommentaryStyle.DETAILED,
       simulationVariant: 'B',
-      seed
+      seed,
+      variantBTuning: tuning
     };
 
     return this.simulationB.simulateMatch(match, homeTeam, awayTeam, config);
