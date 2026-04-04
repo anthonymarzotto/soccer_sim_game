@@ -1,5 +1,5 @@
 ---
-name: version-and-changelog-update
+name: version-bump
 description: 'Update app version metadata and the ChangeLog page for a branch. Use when you need to increment package.json version, increment dataSchemaVersion, sync generated schema version file, and add a 1-3 sentence summary of branch changes.'
 argument-hint: 'Provide target version(s), bump type, and optional release date'
 user-invocable: true

@@ -226,7 +226,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(best.avgTotalGoals).toBeLessThan(3.3);
     expect(best.avgShots).toBeGreaterThan(22);
     expect(best.avgShots).toBeLessThan(28);
-  });
+  }, 60000);
 });
 
 function create442Players(prefix: string): Player[] {

@@ -10,12 +10,17 @@ const outputPath = resolve(workspaceRoot, 'src/app/generated/data-schema-version
 
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 const dataSchemaVersion = packageJson.dataSchemaVersion;
+const appVersion = packageJson.version;
 
 if (typeof dataSchemaVersion !== 'string' || dataSchemaVersion.length === 0) {
   throw new Error('package.json dataSchemaVersion must be a non-empty string.');
 }
 
-const output = `export const GENERATED_APP_DATA_SCHEMA_VERSION = ${JSON.stringify(dataSchemaVersion)};\n`;
+if (typeof appVersion !== 'string' || appVersion.length === 0) {
+  throw new Error('package.json version must be a non-empty string.');
+}
+
+const output = `export const GENERATED_APP_VERSION = ${JSON.stringify(appVersion)};\nexport const GENERATED_APP_DATA_SCHEMA_VERSION = ${JSON.stringify(dataSchemaVersion)};\n`;
 
 mkdirSync(dirname(outputPath), { recursive: true });
 
