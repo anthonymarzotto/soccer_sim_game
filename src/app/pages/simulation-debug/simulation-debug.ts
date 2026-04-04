@@ -236,6 +236,23 @@ interface SimulationSummary {
                     />
                     <p class="text-xs text-zinc-500 mt-1">Weighting toward shooting vs passing/carrying</p>
                   </div>
+
+                  <div>
+                    <label for="homeAdvantageGoalBonus" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Home Advantage Bonus: {{ homeAdvantageGoalBonus().toFixed(3) }}
+                    </label>
+                    <input
+                      id="homeAdvantageGoalBonus"
+                      type="range"
+                      min="0.00"
+                      max="0.15"
+                      step="0.005"
+                      [value]="homeAdvantageGoalBonus()"
+                      (input)="setHomeAdvantageGoalBonus($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Goal conversion bonus added for home team shots</p>
+                  </div>
                 </div>
               </div>
             }
@@ -331,6 +348,7 @@ export class SimulationDebugComponent {
   readonly onTargetBase = signal(0.31);
   readonly passWeightBase = signal(0.57);
   readonly shotWeightBase = signal(0.24);
+  readonly homeAdvantageGoalBonus = signal(0.04);
 
   readonly canRun = computed(() => {
     return this.homeTeamId().length > 0 && this.awayTeamId().length > 0 && this.homeTeamId() !== this.awayTeamId();
@@ -453,6 +471,13 @@ export class SimulationDebugComponent {
     }
   }
 
+  setHomeAdvantageGoalBonus(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.homeAdvantageGoalBonus.set(Math.round(parsed * 1000) / 1000);
+    }
+  }
+
   async runSandbox(): Promise<void> {
     if (!this.canRun() || this.isRunning()) {
       return;
@@ -526,7 +551,8 @@ export class SimulationDebugComponent {
       goalChanceMax: this.goalChanceMax(),
       onTargetBase: this.onTargetBase(),
       passWeightBase: this.passWeightBase(),
-      shotWeightBase: this.shotWeightBase()
+      shotWeightBase: this.shotWeightBase(),
+      homeAdvantageGoalBonus: this.homeAdvantageGoalBonus()
     };
 
     const config: SimulationConfig = {

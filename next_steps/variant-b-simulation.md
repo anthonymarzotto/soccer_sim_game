@@ -116,7 +116,9 @@ Trailing teams currently have only a mild late-game shot weight boost. Realistic
 - This change will add variance to match outcomes and produce more realistic "late winner" patterns.
 
 ### 3. Home advantage
-Both teams currently run the same probability model. Add a configurable home advantage modifier (~+5% on shot quality, slightly higher pressing intensity for home team) to reflect the real-world home win rate (~46%).
+Status: finished.
+
+Added `homeAdvantageGoalBonus` (default `0.04`) to `VariantBTuningConfig`. Applied in `executeVariantBShot` after the lateral penalty and before the final clamp — home team shots on target get a small conversion lift. Tunable via the debug sandbox slider (range 0.00–0.15). A/B guardrail spec passes.
 
 ### 4. Possession-chain quality (Phase 2 continuation) — stretch goal
 Variant B currently does not differentiate *attacking* passes from *recycling* passes. A pass in the own half always looks the same as a through-ball. Consider:

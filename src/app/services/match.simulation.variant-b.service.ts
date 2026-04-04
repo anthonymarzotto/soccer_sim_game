@@ -53,7 +53,9 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   goalChanceSkillVsKeeperScale: 0.0033,
   goalChanceWidePenalty: 0.035,
   goalChanceMin: 0.1,
-  goalChanceMax: 0.50
+  goalChanceMax: 0.50,
+
+  homeAdvantageGoalBonus: 0.04
 };
 
 @Injectable({
@@ -755,6 +757,9 @@ export class MatchSimulationVariantBService {
     }
 
     goalChance -= (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
+    if (isHomeInPossession) {
+      goalChance += this.activeTuning.homeAdvantageGoalBonus;
+    }
     goalChance = this.clampChance(goalChance, this.activeTuning.goalChanceMin, this.activeTuning.goalChanceMax);
 
     if (this.rng.random() < goalChance) {

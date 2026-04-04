@@ -90,6 +90,8 @@ export interface VariantBTuningConfig {
   goalChanceWidePenalty: number;
   goalChanceMin: number;
   goalChanceMax: number;
+
+  homeAdvantageGoalBonus: number;
 }
 
 export interface MatchState {
