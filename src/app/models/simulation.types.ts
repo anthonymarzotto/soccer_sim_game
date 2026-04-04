@@ -74,6 +74,7 @@ export interface VariantBTuningConfig {
   lateUrgencyMultiplier: number;
 
   passWeightBase: number;
+  carryWeightBase: number;
   shotWeightBase: number;
   foulWeightBase: number;
   outOfWindowShotMultiplier: number;

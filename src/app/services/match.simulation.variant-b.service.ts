@@ -38,6 +38,7 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   lateUrgencyMultiplier: 1.2,
 
   passWeightBase: 0.57,
+  carryWeightBase: 0.12,
   shotWeightBase: 0.24,
   foulWeightBase: 0.03,
   outOfWindowShotMultiplier: 0.27,
@@ -311,7 +312,7 @@ export class MatchSimulationVariantBService {
     const teamFatigue = fatigue[currentTeam].find(entry => entry.playerId === carrier.id);
 
     let passWeight = this.activeTuning.passWeightBase;
-    let carryWeight = 0.12;
+    let carryWeight = this.activeTuning.carryWeightBase;
     let shotWeight = this.activeTuning.shotWeightBase;
     let foulWeight = this.activeTuning.foulWeightBase;
 
@@ -451,19 +452,7 @@ export class MatchSimulationVariantBService {
       return true;
     }
 
-    this.handlePass(
-      state,
-      { type: EventType.PASS, player: action.player },
-      homeTeam,
-      awayTeam,
-      tactics,
-      fatigue,
-      minute,
-      config,
-      rosters.homePlayers,
-      rosters.awayPlayers
-    );
-    return true;
+    return false;
   }
 
   private normalizeFatigueForTickCount(

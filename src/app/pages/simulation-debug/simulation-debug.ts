@@ -221,6 +221,23 @@ interface SimulationSummary {
                   </div>
 
                   <div>
+                    <label for="carryWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Carry Weight: {{ carryWeightBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="carryWeightBase"
+                      type="range"
+                      min="0.02"
+                      max="0.40"
+                      step="0.01"
+                      [value]="carryWeightBase()"
+                      (input)="setCarryWeightBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Weighting toward carrying vs passing/shooting</p>
+                  </div>
+
+                  <div>
                     <label for="shotWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
                       Shot Weight: {{ shotWeightBase().toFixed(2) }}
                     </label>
@@ -347,6 +364,7 @@ export class SimulationDebugComponent {
   readonly goalChanceMax = signal(0.50);
   readonly onTargetBase = signal(0.31);
   readonly passWeightBase = signal(0.57);
+  readonly carryWeightBase = signal(0.12);
   readonly shotWeightBase = signal(0.24);
   readonly homeAdvantageGoalBonus = signal(0.04);
 
@@ -464,6 +482,13 @@ export class SimulationDebugComponent {
     }
   }
 
+  setCarryWeightBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.carryWeightBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
   setShotWeightBase(value: string): void {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
@@ -551,6 +576,7 @@ export class SimulationDebugComponent {
       goalChanceMax: this.goalChanceMax(),
       onTargetBase: this.onTargetBase(),
       passWeightBase: this.passWeightBase(),
+      carryWeightBase: this.carryWeightBase(),
       shotWeightBase: this.shotWeightBase(),
       homeAdvantageGoalBonus: this.homeAdvantageGoalBonus()
     };
