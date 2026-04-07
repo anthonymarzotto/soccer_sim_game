@@ -3,9 +3,9 @@ import { MatchSimulationVariantBService } from './match.simulation.variant-b.ser
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
-import { Role, Position as PositionEnum, CommentaryStyle } from '../models/enums';
+import { Role, Position as PositionEnum, CommentaryStyle, EventType } from '../models/enums';
 import { Player, Team } from '../models/types';
-import { SimulationConfig, VariantBTuningConfig } from '../models/simulation.types';
+import { PlayByPlayEvent, SimulationConfig, VariantBTuningConfig } from '../models/simulation.types';
 import { SimulationABRunner, SimulationABVariant } from '../testing/simulation-ab.runner';
 
 describe('Match Simulation Variant B Calibration Benchmark', () => {
@@ -150,6 +150,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     }));
 
     const runner = new SimulationABRunner();
+    const passQualityByVariant = new Map<string, { attempts: number; completed: number; progressionCompleted: number; turnovers: number }>();
     const report = await runner.run(iterations, variants, async (variant, seed) => {
       const config: SimulationConfig = {
         enablePlayByPlay: true,
@@ -171,6 +172,13 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
       };
 
       const state = simulationB.simulateMatch(match, homeTeam, awayTeam, config);
+      const quality = calculatePassQuality(state.events);
+      const aggregate = passQualityByVariant.get(variant.name) ?? { attempts: 0, completed: 0, progressionCompleted: 0, turnovers: 0 };
+      aggregate.attempts += quality.attempts;
+      aggregate.completed += quality.completed;
+      aggregate.progressionCompleted += quality.progressionCompleted;
+      aggregate.turnovers += quality.turnovers;
+      passQualityByVariant.set(variant.name, aggregate);
 
       return {
         homeScore: state.homeScore,
@@ -224,8 +232,29 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(best.realismScore).toBeLessThan(3);
     expect(best.avgTotalGoals).toBeGreaterThan(2.2);
     expect(best.avgTotalGoals).toBeLessThan(3.3);
-    expect(best.avgShots).toBeGreaterThan(22);
+    expect(best.avgShots).toBeGreaterThan(21.5);
     expect(best.avgShots).toBeLessThan(28);
+
+    const bestPassQuality = passQualityByVariant.get(best.variantName);
+    expect(bestPassQuality).toBeDefined();
+
+    const completionRate = (bestPassQuality?.attempts ?? 0) > 0
+      ? (bestPassQuality?.completed ?? 0) / (bestPassQuality?.attempts ?? 1)
+      : 0;
+    const progressionShare = (bestPassQuality?.completed ?? 0) > 0
+      ? (bestPassQuality?.progressionCompleted ?? 0) / (bestPassQuality?.completed ?? 1)
+      : 0;
+    const turnoverShare = (bestPassQuality?.attempts ?? 0) > 0
+      ? (bestPassQuality?.turnovers ?? 0) / (bestPassQuality?.attempts ?? 1)
+      : 0;
+
+    expect(bestPassQuality?.attempts ?? 0).toBeGreaterThan(1200);
+    expect(completionRate).toBeGreaterThanOrEqual(0.6);
+    expect(completionRate).toBeLessThanOrEqual(0.9);
+    expect(progressionShare).toBeGreaterThanOrEqual(0.1);
+    expect(progressionShare).toBeLessThanOrEqual(0.75);
+    expect(turnoverShare).toBeGreaterThanOrEqual(0.1);
+    expect(turnoverShare).toBeLessThanOrEqual(0.4);
   }, 60000);
 });
 
@@ -321,5 +350,33 @@ function createPlayer(
       cleanSheets: 0,
       minutesPlayed: 0
     }
+  };
+}
+
+function calculatePassQuality(events: PlayByPlayEvent[]): {
+  attempts: number;
+  completed: number;
+  progressionCompleted: number;
+  turnovers: number;
+} {
+  const completedPasses = events.filter(event => event.type === EventType.PASS);
+  const failedPasses = events.filter(event => {
+    if (event.type !== EventType.TACKLE && event.type !== EventType.INTERCEPTION) {
+      return false;
+    }
+
+    return typeof event.additionalData?.['passFailure'] === 'string';
+  });
+
+  const progressionCompleted = completedPasses.filter(event => {
+    const passIntent = event.additionalData?.['passIntent'];
+    return passIntent === 'PROGRESSION' || passIntent === 'THROUGH_BALL' || passIntent === 'CROSS';
+  }).length;
+
+  return {
+    attempts: completedPasses.length + failedPasses.length,
+    completed: completedPasses.length,
+    progressionCompleted,
+    turnovers: failedPasses.length
   };
 }

@@ -113,13 +113,11 @@ export class CommentaryService {
 
     switch (event.type) {
       case EventType.PASS:
-        template = this.getRandomCommentary(commentaryStyle.pass);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.generatePassCommentary(event, style, commentaryStyle.pass, playerName, targetName);
       
       case EventType.TACKLE:
       case EventType.INTERCEPTION:
-        template = this.getRandomCommentary(commentaryStyle.tackle);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.generateTurnoverCommentary(event, style, commentaryStyle.tackle, playerName, targetName);
       
       case EventType.SHOT:
         template = this.getRandomCommentary(commentaryStyle.shot);
@@ -273,6 +271,91 @@ export class CommentaryService {
 
   private getRandomCommentary(templates: string[]): string {
     return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  private generatePassCommentary(
+    event: PlayByPlayEvent,
+    style: CommentaryStyle,
+    defaultTemplates: string[],
+    playerName: string,
+    targetName: string
+  ): string {
+    const passIntent = this.getStringMetadata(event, 'passIntent');
+
+    if (style === CommentaryStyle.DETAILED && passIntent) {
+      const intentTemplate = this.getDetailedPassIntentTemplate(passIntent);
+      if (intentTemplate) {
+        return this.formatCommentary(intentTemplate, playerName, targetName);
+      }
+    }
+
+    const template = this.getRandomCommentary(defaultTemplates);
+    return this.formatCommentary(template, playerName, targetName);
+  }
+
+  private generateTurnoverCommentary(
+    event: PlayByPlayEvent,
+    style: CommentaryStyle,
+    defaultTemplates: string[],
+    playerName: string,
+    targetName: string
+  ): string {
+    const passFailure = this.getStringMetadata(event, 'passFailure');
+
+    if (style === CommentaryStyle.DETAILED && passFailure) {
+      const passIntent = this.getStringMetadata(event, 'passIntent');
+      const intentLabel = this.describePassIntent(passIntent);
+
+      if (passFailure === 'TACKLED') {
+        return `${playerName} loses out after an attempted ${intentLabel}. Possession turns over.`;
+      }
+
+      if (passFailure === 'LANE_CUT_OUT') {
+        return `${playerName} tries an ${intentLabel}, but the lane is cut out.`;
+      }
+
+      if (passFailure === 'OVERHIT') {
+        return `${playerName} overhits the ${intentLabel} and it runs through.`;
+      }
+    }
+
+    const template = this.getRandomCommentary(defaultTemplates);
+    return this.formatCommentary(template, playerName, targetName);
+  }
+
+  private getDetailedPassIntentTemplate(passIntent: string): string | null {
+    switch (passIntent) {
+      case 'RECYCLE':
+        return '{player} recycles possession calmly to {target}.';
+      case 'PROGRESSION':
+        return '{player} plays a progressive ball into {target}.';
+      case 'THROUGH_BALL':
+        return '{player} slips a through ball in behind for {target}!';
+      case 'CROSS':
+        return '{player} swings a cross toward {target}.';
+      default:
+        return null;
+    }
+  }
+
+  private describePassIntent(passIntent: string | null): string {
+    switch (passIntent) {
+      case 'RECYCLE':
+        return 'recycle pass';
+      case 'PROGRESSION':
+        return 'progressive pass';
+      case 'THROUGH_BALL':
+        return 'through ball';
+      case 'CROSS':
+        return 'cross';
+      default:
+        return 'pass';
+    }
+  }
+
+  private getStringMetadata(event: PlayByPlayEvent, key: string): string | null {
+    const value = event.additionalData?.[key];
+    return typeof value === 'string' ? value : null;
   }
 
   private appendChanceLocationContext(commentary: string, event: PlayByPlayEvent): string {

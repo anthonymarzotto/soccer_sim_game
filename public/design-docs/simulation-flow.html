@@ -20,47 +20,53 @@
 </head>
 <body>
   <h1>Variant B Simulation – High-Level Flow</h1>
-  <div class="mermaid">
-flowchart TD
-    START([simulateMatch]) --> INIT[Clone teams & rosters\nDerive tactics\nInitialise fatigue]
-    INIT --> LOOP["For each minute 1–95"]
+  <div id="variant-b-flow" class="mermaid"></div>
+  <script>
+    const mermaidConfig = JSON.parse('\u007b"startOnLoad":false,"theme":"dark"\u007d');
+    mermaid.initialize(mermaidConfig);
 
-    LOOP --> TICKS["Determine tick count\n(zone + late-game urgency)"]
+    const diagramSource = `flowchart TD
+    START([simulateMatch]) --> INIT[Clone teams & rosters\\nDerive tactics\\nInitialise fatigue]
+    INIT --> LOOP["For each minute 1-95"]
+
+    LOOP --> TICKS["Determine tick count\\n(zone + late-game urgency)"]
     TICKS --> TICK_LOOP["For each tick"]
 
     TICK_LOOP --> FATIGUE[Update fatigue]
     FATIGUE --> CARRIER[Identify ball carrier]
-    CARRIER --> MOVE[Apply carrier movement\non the pitch]
-    MOVE --> ACTION&#123;"Weighted action roll\n(zone · role · tactics · fatigue · scoreline)"&#125;
+    CARRIER --> MOVE[Apply carrier movement\\non the pitch]
+    MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality)"}
 
-    ACTION -->|CARRY| QUIET[Silent progression\nball moves, no event logged]
+    ACTION -->|CARRY| QUIET[Silent progression\\nball moves, no event logged]
     ACTION -->|PASS| PASS_START[Pass attempt]
-    ACTION -->|SHOT| SHOT_START[Shot attempt\nIncrement team shots]
-    ACTION -->|FOUL| FOUL_START[Defending player fouls carrier\nIncrement defending team fouls\nEmit FOUL event]
+    ACTION -->|SHOT| SHOT_START[Shot attempt\\nIncrement team shots]
+    ACTION -->|FOUL| FOUL_START[Defending player fouls carrier\\nIncrement defending team fouls\\nEmit FOUL event]
 
-    PASS_START --> PASS_TARGET&#123;"Pass target found?\n(findPassTarget)"&#125;
-    PASS_TARGET -->|No| TACKLE[TACKLE event\nTurnover]
-    PASS_TARGET -->|Yes| PASS_SUCCESS&#123;"Pass success?\n(passer skill · target · fatigue · style)"&#125;
-    PASS_SUCCESS -->|Yes| PASS_COMPLETE[PASS event\nReceiver takes ball\nBall position advances]
-    PASS_SUCCESS -->|No| INTERCEPTION[INTERCEPTION event\nTurnover]
+    PASS_START --> PASS_INTENT[Select pass intent\\nRECYCLE / PROGRESSION / THROUGH_BALL / CROSS]
+    PASS_INTENT --> PASS_TARGET{"Pass target found?\\nintent scoring plus weighted draw across top candidates"}
+    PASS_TARGET -->|No| TACKLE[TACKLE event\\nTurnover]
+    PASS_TARGET -->|Yes| PASS_SUCCESS{"Pass success?\\nskill fatigue pressure intent style"}
+    PASS_SUCCESS -->|Yes| PASS_COMPLETE[PASS event\\nReceiver takes ball\\nBall position advances]
+    PASS_SUCCESS -->|No| PASS_FAIL{"Failure type"}
+    PASS_FAIL -->|Tackled| TACKLE_FAIL[TACKLE event\\nTurnover]
+    PASS_FAIL -->|Lane cut out| INTERCEPTION[INTERCEPTION event\\nTurnover]
+    PASS_FAIL -->|Overhit| OVERHIT["INTERCEPTION event overhit\\nTurnover"]
 
-    SHOT_START --> ON_TARGET&#123;"On target?\nshooting skill · depth · angle · fatigue"&#125;
+    SHOT_START --> ON_TARGET{"On target?\\nshooting skill depth angle fatigue pressure\\n+ possession-chain quality"}
     ON_TARGET -->|No| MISS[MISS event]
     ON_TARGET -->|Yes| SOT[Increment shots on target]
-    SOT --> GOAL_CHANCE&#123;"Goal?\nskill vs keeper · depth · angle\n+ home advantage bonus"&#125;
-    GOAL_CHANCE -->|Yes| GOAL[GOAL event\nUpdate score\nReset to kickoff]
-    GOAL_CHANCE -->|No| SAVE[SAVE event\nKeeper claims ball\nPossession switches]
+    SOT --> GOAL_CHANCE{"Goal?\\nskill vs keeper depth angle pressure\\n+ possession-chain quality + home advantage bonus"}
+    GOAL_CHANCE -->|Yes| GOAL[GOAL event\\nUpdate score\\nReset to kickoff]
+    GOAL_CHANCE -->|No| SAVE[SAVE event\\nKeeper claims ball\\nPossession switches]
 
-    FOUL_START --> CARD_CHANCE&#123;"Card triggered?\n10% chance"&#125;
-    CARD_CHANCE -->|No| FOUL_RESTART[Fouled side keeps possession\nZone-aware restart:
-  advanced fouls stay dangerous,
-  deep fouls reset further away]
-    CARD_CHANCE -->|Yes| CARD_TYPE&#123;"Which card?"&#125;
-    CARD_TYPE -->|Yellow| YELLOW[YELLOW_CARD event\nIncrement yellow count]
-    CARD_TYPE -->|Red| RED[RED_CARD event\nDirect red\nDismiss offender]
-    YELLOW --> SECOND_YELLOW&#123;"Second yellow?"&#125;
+    FOUL_START --> CARD_CHANCE{"Card triggered?\\n10% chance"}
+    CARD_CHANCE -->|No| FOUL_RESTART["Fouled side keeps possession\\nZone-aware restart\\nadvanced fouls stay dangerous\\ndeep fouls reset further away"]
+    CARD_CHANCE -->|Yes| CARD_TYPE{"Which card?"}
+    CARD_TYPE -->|Yellow| YELLOW[YELLOW_CARD event\\nIncrement yellow count]
+    CARD_TYPE -->|Red| RED[RED_CARD event\\nDirect red\\nDismiss offender]
+    YELLOW --> SECOND_YELLOW{"Second yellow?"}
     SECOND_YELLOW -->|No| FOUL_RESTART
-    SECOND_YELLOW -->|Yes| SECOND_RED[RED_CARD event\nSecond yellow send-off\nDismiss offender]
+    SECOND_YELLOW -->|Yes| SECOND_RED[RED_CARD event\\nSecond yellow send-off\\nDismiss offender]
     RED --> FOUL_RESTART
     SECOND_RED --> FOUL_RESTART
 
@@ -68,6 +74,8 @@ flowchart TD
     TACKLE --> NEXT_TICK
     PASS_COMPLETE --> NEXT_TICK
     INTERCEPTION --> NEXT_TICK
+    TACKLE_FAIL --> NEXT_TICK
+    OVERHIT --> NEXT_TICK
     FOUL_RESTART --> NEXT_TICK
     MISS --> NEXT_TICK
     GOAL --> NEXT_TICK
@@ -75,14 +83,16 @@ flowchart TD
 
     NEXT_TICK --> TICK_LOOP
 
-    TICK_LOOP -->|All ticks done| NORM[Normalise fatigue\nfor tick count]
+    TICK_LOOP -->|All ticks done| NORM[Normalise fatigue\\nfor tick count]
     NORM --> LOOP
     LOOP -->|Minute 95| RESULT([Return MatchState])
 
     style QUIET fill:#3f3f46,color:#ccc
     style PASS_COMPLETE fill:#14532d,color:#fff
     style INTERCEPTION fill:#1e3a5f,color:#fff
+    style OVERHIT fill:#1e3a5f,color:#fff
     style TACKLE fill:#7c2d12,color:#fff
+    style TACKLE_FAIL fill:#7c2d12,color:#fff
     style YELLOW fill:#854d0e,color:#fff
     style RED fill:#991b1b,color:#fff
     style SECOND_RED fill:#991b1b,color:#fff
@@ -91,11 +101,22 @@ flowchart TD
     style SAVE fill:#1e3a5f,color:#fff
     style MISS fill:#7f1d1d,color:#fff
     style SOT fill:#3f3f46,color:#ccc
-    style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e
-  </div>
-  <script>
-    const mermaidConfig = JSON.parse('\u007b"startOnLoad":true,"theme":"dark"\u007d');
-    mermaid.initialize(mermaidConfig);
+    style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e`;
+
+    mermaid
+      .render('variantBFlowSvg', diagramSource)
+      .then(({ svg }) => {
+        const container = document.getElementById('variant-b-flow');
+        if (container) {
+          container.innerHTML = svg;
+        }
+      })
+      .catch((error) => {
+        const container = document.getElementById('variant-b-flow');
+        if (container) {
+          container.textContent = `Mermaid render error: ${String(error)}`;
+        }
+      });
   </script>
 </body>
 </html>
