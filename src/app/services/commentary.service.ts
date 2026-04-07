@@ -149,10 +149,22 @@ export class CommentaryService {
           event
         );
       }
+
+      case EventType.FOUL:
+        template = this.getRandomCommentary(commentaryStyle.foul);
+        return this.formatCommentary(template, playerName, targetName);
       
       case EventType.YELLOW_CARD:
-      case EventType.RED_CARD:
-        return `${playerName} receives a ${event.type === EventType.YELLOW_CARD ? 'yellow' : 'red'} card!`;
+        return `${playerName} receives a yellow card!`;
+
+      case EventType.RED_CARD: {
+        const cardReason = event.additionalData?.['cardReason'];
+        if (cardReason === 'SECOND_YELLOW') {
+          return `${playerName} is sent off for a second yellow!`;
+        }
+
+        return `${playerName} receives a red card!`;
+      }
       
       case EventType.SUBSTITUTION: {
         const subIn = this.findPlayerById(event.playerIds[1], homePlayers, awayPlayers);
@@ -190,7 +202,7 @@ export class CommentaryService {
     const goals = events.filter(e => e.type === EventType.GOAL);
     const shots = events.filter(e => e.type === EventType.SHOT);
     const saves = events.filter(e => e.type === EventType.SAVE);
-    const fouls = events.filter(e => e.type === EventType.FOUL || e.type === EventType.YELLOW_CARD || e.type === EventType.RED_CARD);
+    const fouls = events.filter(e => e.type === EventType.FOUL);
 
     if (goals.length > 0) {
       summary.push(`Match ended with ${goals.length} goal(s) scored.`);

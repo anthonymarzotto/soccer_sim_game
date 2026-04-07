@@ -560,36 +560,143 @@ export class MatchSimulationVariantBService {
     homePlayers: Player[],
     awayPlayers: Player[]
   ): void {
-    const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+    const attackingTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+    const defendingTeam = attackingTeam === 'home' ? 'away' : 'home';
+    const defendingPlayers = defendingTeam === 'home' ? homePlayers : awayPlayers;
+    const victim = action.player;
+    const offender = this.selectFoulOffender(defendingPlayers);
 
-    if (currentTeam === 'home') {
+    if (defendingTeam === 'home') {
       state.homeFouls++;
     } else {
       state.awayFouls++;
     }
 
-    const cardChance = this.rng.random();
-    if (cardChance > 0.9) {
-      const cardType = this.rng.random() > 0.5 ? EventType.RED_CARD : EventType.YELLOW_CARD;
-      this.createEvent(state, cardType, [action.player.id], state.ballPossession.location, minute, false, config);
+    this.createEvent(
+      state,
+      EventType.FOUL,
+      [offender.id, victim.id],
+      { ...state.ballPossession.location },
+      minute,
+      false,
+      config
+    );
 
-      if (cardType === EventType.RED_CARD) {
-        if (currentTeam === 'home') {
-          state.homeRedCards++;
-        } else {
-          state.awayRedCards++;
+    let offenderSentOff = false;
+    if (this.rng.random() > 0.9) {
+      const directRed = this.rng.random() > 0.5;
+
+      if (directRed) {
+        this.createEvent(
+          state,
+          EventType.RED_CARD,
+          [offender.id, victim.id],
+          { ...state.ballPossession.location },
+          minute,
+          false,
+          config,
+          { cardReason: 'DIRECT_RED' }
+        );
+        this.incrementCardCount(state, defendingTeam, EventType.RED_CARD);
+        offenderSentOff = true;
+      } else {
+        this.createEvent(
+          state,
+          EventType.YELLOW_CARD,
+          [offender.id, victim.id],
+          { ...state.ballPossession.location },
+          minute,
+          false,
+          config
+        );
+        this.incrementCardCount(state, defendingTeam, EventType.YELLOW_CARD);
+
+        if (this.countPlayerEvents(state, offender.id, EventType.YELLOW_CARD) >= 2) {
+          this.createEvent(
+            state,
+            EventType.RED_CARD,
+            [offender.id, victim.id],
+            { ...state.ballPossession.location },
+            minute,
+            false,
+            config,
+            { cardReason: 'SECOND_YELLOW' }
+          );
+          this.incrementCardCount(state, defendingTeam, EventType.RED_CARD);
+          offenderSentOff = true;
         }
-      } else if (currentTeam === 'home') {
+      }
+    }
+
+    if (offenderSentOff) {
+      this.dismissPlayer(offender.id, defendingPlayers);
+    }
+
+    state.ballPossession.teamId = attackingTeam === 'home' ? homeTeam.id : awayTeam.id;
+    state.ballPossession.playerWithBall = victim.id;
+    state.ballPossession.location = this.getFoulRestartLocation(attackingTeam, state.ballPossession.location);
+    state.ballPossession.passes = 0;
+  }
+
+  private getFoulRestartLocation(attackingTeam: 'home' | 'away', currentLocation: Coordinates): Coordinates {
+    const attackingY = attackingTeam === 'home' ? currentLocation.y : 100 - currentLocation.y;
+    let restartAttackingY = attackingY;
+    let restartX = currentLocation.x;
+
+    // Keep advanced fouls dangerous, while deeper fouls reset play further from goal.
+    if (attackingY >= 78) {
+      restartAttackingY = this.clamp(attackingY + 1, 0, 90);
+      restartX = this.clamp(currentLocation.x + ((50 - currentLocation.x) * 0.2), 0, 100);
+    } else if (attackingY >= 60) {
+      restartAttackingY = this.clamp(attackingY - 2, 0, 100);
+      restartX = this.clamp(currentLocation.x + ((50 - currentLocation.x) * 0.2), 0, 100);
+    } else {
+      restartAttackingY = this.clamp(attackingY - 8, 0, 100);
+    }
+
+    return attackingTeam === 'home'
+      ? { x: restartX, y: restartAttackingY }
+      : { x: restartX, y: 100 - restartAttackingY };
+  }
+
+  private selectFoulOffender(teamPlayers: Player[]): Player {
+    const starters = teamPlayers.filter(player => player.role === Role.STARTER);
+    const activePlayers = starters.length > 0 ? starters : teamPlayers;
+    const preferredPlayers = activePlayers.filter(
+      player => player.position === PositionEnum.DEFENDER || player.position === PositionEnum.MIDFIELDER
+    );
+    const outfieldPlayers = activePlayers.filter(player => player.position !== PositionEnum.GOALKEEPER);
+    const candidatePool = preferredPlayers.length > 0 ? preferredPlayers : outfieldPlayers.length > 0 ? outfieldPlayers : activePlayers;
+
+    return candidatePool[Math.floor(this.rng.random() * candidatePool.length)] ?? teamPlayers[0];
+  }
+
+  private incrementCardCount(state: MatchState, team: 'home' | 'away', cardType: EventType.YELLOW_CARD | EventType.RED_CARD): void {
+    if (cardType === EventType.YELLOW_CARD) {
+      if (team === 'home') {
         state.homeYellowCards++;
       } else {
         state.awayYellowCards++;
       }
+      return;
     }
 
-    state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
-    state.ballPossession.playerWithBall = this.getRandomPlayerId(
-      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers
-    );
+    if (team === 'home') {
+      state.homeRedCards++;
+    } else {
+      state.awayRedCards++;
+    }
+  }
+
+  private countPlayerEvents(state: MatchState, playerId: string, eventType: EventType): number {
+    return state.events.filter(event => event.type === eventType && event.playerIds[0] === playerId).length;
+  }
+
+  private dismissPlayer(playerId: string, teamPlayers: Player[]): void {
+    const dismissedPlayer = teamPlayers.find(player => player.id === playerId);
+    if (dismissedPlayer) {
+      dismissedPlayer.role = Role.DISMISSED;
+    }
   }
 
   private calculatePassSuccess(
@@ -650,7 +757,8 @@ export class MatchSimulationVariantBService {
     location: Coordinates,
     time: number,
     success: boolean,
-    _config: SimulationConfig
+    _config: SimulationConfig,
+    additionalData?: Record<string, unknown>
   ): void {
     state.events.push({
       id: this.createRandomId(),
@@ -659,7 +767,8 @@ export class MatchSimulationVariantBService {
       playerIds,
       location,
       time,
-      success
+      success,
+      additionalData
     });
   }
 

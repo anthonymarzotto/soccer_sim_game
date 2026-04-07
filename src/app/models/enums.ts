@@ -29,7 +29,8 @@ export enum Position {
 export enum Role {
   STARTER = 'Starter',
   BENCH = 'Bench',
-  RESERVE = 'Reserve'
+  RESERVE = 'Reserve',
+  DISMISSED = 'Dismissed'
 }
 
 // Tactical Types

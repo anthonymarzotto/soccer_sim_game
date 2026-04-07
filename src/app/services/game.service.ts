@@ -640,6 +640,8 @@ export class GameService {
         return;
       }
 
+      const primaryPlayerId = event.playerIds[0];
+
       event.playerIds.forEach((playerId: string) => {
         const player = allPlayers.get(playerId);
         if (!player) return;
@@ -662,9 +664,11 @@ export class GameService {
             player.careerStats.passes++;
             break;
           case EventType.YELLOW_CARD:
+            if (playerId !== primaryPlayerId) return;
             player.careerStats.yellowCards++;
             break;
           case EventType.RED_CARD:
+            if (playerId !== primaryPlayerId) return;
             player.careerStats.redCards++;
             break;
         }
@@ -715,12 +719,12 @@ export class GameService {
         case EventType.RED_CARD:
           importance = EventImportance.HIGH;
           icon = '🟥';
-          description = `Red card for ${event.playerIds.join(', ')} at ${event.time}'`;
+          description = `Red card for ${event.playerIds[0]} at ${event.time}'`;
           break;
         case EventType.YELLOW_CARD:
           importance = EventImportance.MEDIUM;
           icon = '🟨';
-          description = `Yellow card for ${event.playerIds.join(', ')} at ${event.time}'`;
+          description = `Yellow card for ${event.playerIds[0]} at ${event.time}'`;
           break;
         case EventType.PENALTY:
           importance = EventImportance.HIGH;

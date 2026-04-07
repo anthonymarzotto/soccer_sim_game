@@ -34,19 +34,41 @@ flowchart TD
     MOVE --> ACTION&#123;"Weighted action roll\n(zone · role · tactics · fatigue · scoreline)"&#125;
 
     ACTION -->|CARRY| QUIET[Silent progression\nball moves, no event logged]
-    ACTION -->|PASS| PASS[Handle pass\nevent logged]
-    ACTION -->|SHOT| SHOT_RES[Shot resolution]
-    ACTION -->|FOUL| FOUL[Handle foul\nevent logged]
+    ACTION -->|PASS| PASS_START[Pass attempt]
+    ACTION -->|SHOT| SHOT_START[Shot attempt\nIncrement team shots]
+    ACTION -->|FOUL| FOUL_START[Defending player fouls carrier\nIncrement defending team fouls\nEmit FOUL event]
 
-    SHOT_RES --> ON_TARGET&#123;"On target?\n(position · skill · fatigue · angle)"&#125;
+    PASS_START --> PASS_TARGET&#123;"Pass target found?\n(findPassTarget)"&#125;
+    PASS_TARGET -->|No| TACKLE[TACKLE event\nTurnover]
+    PASS_TARGET -->|Yes| PASS_SUCCESS&#123;"Pass success?\n(passer skill · target · fatigue · style)"&#125;
+    PASS_SUCCESS -->|Yes| PASS_COMPLETE[PASS event\nReceiver takes ball\nBall position advances]
+    PASS_SUCCESS -->|No| INTERCEPTION[INTERCEPTION event\nTurnover]
+
+    SHOT_START --> ON_TARGET&#123;"On target?\nshooting skill · depth · angle · fatigue"&#125;
     ON_TARGET -->|No| MISS[MISS event]
-    ON_TARGET -->|Yes| GOAL_CHANCE&#123;"Goal?\n(skill vs keeper · depth · angle\n+ home advantage bonus)"&#125;
-    GOAL_CHANCE -->|Yes| GOAL[GOAL event\nUpdate score]
-    GOAL_CHANCE -->|No| SAVE[SAVE event\nPossession switches]
+    ON_TARGET -->|Yes| SOT[Increment shots on target]
+    SOT --> GOAL_CHANCE&#123;"Goal?\nskill vs keeper · depth · angle\n+ home advantage bonus"&#125;
+    GOAL_CHANCE -->|Yes| GOAL[GOAL event\nUpdate score\nReset to kickoff]
+    GOAL_CHANCE -->|No| SAVE[SAVE event\nKeeper claims ball\nPossession switches]
+
+    FOUL_START --> CARD_CHANCE&#123;"Card triggered?\n10% chance"&#125;
+    CARD_CHANCE -->|No| FOUL_RESTART[Fouled side keeps possession\nZone-aware restart:
+  advanced fouls stay dangerous,
+  deep fouls reset further away]
+    CARD_CHANCE -->|Yes| CARD_TYPE&#123;"Which card?"&#125;
+    CARD_TYPE -->|Yellow| YELLOW[YELLOW_CARD event\nIncrement yellow count]
+    CARD_TYPE -->|Red| RED[RED_CARD event\nDirect red\nDismiss offender]
+    YELLOW --> SECOND_YELLOW&#123;"Second yellow?"&#125;
+    SECOND_YELLOW -->|No| FOUL_RESTART
+    SECOND_YELLOW -->|Yes| SECOND_RED[RED_CARD event\nSecond yellow send-off\nDismiss offender]
+    RED --> FOUL_RESTART
+    SECOND_RED --> FOUL_RESTART
 
     QUIET --> NEXT_TICK[Next tick]
-    PASS --> NEXT_TICK
-    FOUL --> NEXT_TICK
+    TACKLE --> NEXT_TICK
+    PASS_COMPLETE --> NEXT_TICK
+    INTERCEPTION --> NEXT_TICK
+    FOUL_RESTART --> NEXT_TICK
     MISS --> NEXT_TICK
     GOAL --> NEXT_TICK
     SAVE --> NEXT_TICK
@@ -58,9 +80,17 @@ flowchart TD
     LOOP -->|Minute 95| RESULT([Return MatchState])
 
     style QUIET fill:#3f3f46,color:#ccc
+    style PASS_COMPLETE fill:#14532d,color:#fff
+    style INTERCEPTION fill:#1e3a5f,color:#fff
+    style TACKLE fill:#7c2d12,color:#fff
+    style YELLOW fill:#854d0e,color:#fff
+    style RED fill:#991b1b,color:#fff
+    style SECOND_RED fill:#991b1b,color:#fff
+    style FOUL_RESTART fill:#1e3a5f,color:#fff
     style GOAL fill:#166534,color:#fff
     style SAVE fill:#1e3a5f,color:#fff
     style MISS fill:#7f1d1d,color:#fff
+    style SOT fill:#3f3f46,color:#ccc
     style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e
   </div>
   <script>
