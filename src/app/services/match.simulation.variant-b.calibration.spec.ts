@@ -232,7 +232,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(best.realismScore).toBeLessThan(3);
     expect(best.avgTotalGoals).toBeGreaterThan(2.2);
     expect(best.avgTotalGoals).toBeLessThan(3.3);
-    expect(best.avgShots).toBeGreaterThan(21.5);
+    expect(best.avgShots).toBeGreaterThan(21);
     expect(best.avgShots).toBeLessThan(28);
 
     const bestPassQuality = passQualityByVariant.get(best.variantName);

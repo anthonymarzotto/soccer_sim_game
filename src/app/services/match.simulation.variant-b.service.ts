@@ -164,10 +164,11 @@ export class MatchSimulationVariantBService {
     const locationAfterAction = { ...newState.ballPossession.location };
 
     if (eventCreated) {
+      const replayActionType = this.resolveReplayActionType(newState, minute, action.type);
       this.attachVariantBReplayMetadata(
         newState,
         minute,
-        this.createReplayMetadata(carrier.id, action.type === 'CARRY' ? EventType.PASS : action.type, locationBeforeMove, locationBeforeAction, locationAfterAction)
+        this.createReplayMetadata(carrier.id, replayActionType, locationBeforeMove, locationBeforeAction, locationAfterAction)
       );
     }
 
@@ -416,8 +417,17 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters
   ): boolean {
     if (action.type === 'CARRY') {
-      this.applyQuietProgression(state, action.player, homeTeam, awayTeam, rosters);
-      return false;
+      return this.handleCarry(
+        state,
+        action,
+        tactics,
+        fatigue,
+        homeTeam,
+        awayTeam,
+        minute,
+        config,
+        rosters
+      );
     }
 
     if (action.type === EventType.PASS) {
@@ -466,6 +476,88 @@ export class MatchSimulationVariantBService {
     }
 
     return false;
+  }
+
+  private handleCarry(
+    state: MatchState,
+    action: MatchAction,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters
+  ): boolean {
+    const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+    const teamFatigue = fatigue[currentTeam].find(entry => entry.playerId === action.player.id);
+    const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
+    const successChance = this.calculateCarrySuccessChance(state, action.player, currentTeam, teamFatigue, pressure);
+
+    if (this.rng.random() >= successChance) {
+      this.createEvent(
+        state,
+        EventType.TACKLE,
+        [action.player.id],
+        { ...state.ballPossession.location },
+        minute,
+        false,
+        config,
+        { carryResult: 'DISPOSSESSED' }
+      );
+
+      state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
+      const newCarrierPool = state.ballPossession.teamId === homeTeam.id ? rosters.homePlayers : rosters.awayPlayers;
+      state.ballPossession.playerWithBall = this.getRandomPlayerId(newCarrierPool);
+      state.ballPossession.passes = 0;
+
+      const newPossessionTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+      state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, newPossessionTeam);
+      return true;
+    }
+
+    this.applyQuietProgression(state, action.player, homeTeam, awayTeam, rosters, pressure);
+    return false;
+  }
+
+  private calculateCarrySuccessChance(
+    state: MatchState,
+    carrier: Player,
+    currentTeam: 'home' | 'away',
+    carrierFatigue: PlayerFatigue | undefined,
+    pressure: number
+  ): number {
+    let successChance = 0.72;
+
+    if (carrier.position === PositionEnum.FORWARD) {
+      successChance += 0.04;
+    } else if (carrier.position === PositionEnum.MIDFIELDER) {
+      successChance += 0.015;
+    } else if (carrier.position === PositionEnum.DEFENDER) {
+      successChance -= 0.05;
+    }
+
+    successChance += (carrier.physical.speed - 70) * 0.002;
+    successChance += (carrier.mental.flair - 70) * 0.0015;
+
+    const attackingY = currentTeam === 'home'
+      ? state.ballPossession.location.y
+      : 100 - state.ballPossession.location.y;
+
+    if (attackingY < 55) {
+      successChance += 0.04;
+    } else if (attackingY > 78) {
+      successChance -= 0.03;
+    }
+
+    successChance -= pressure * 0.23;
+
+    if (carrierFatigue && carrierFatigue.fatigueLevel > 70) {
+      const fatiguePenaltyScale = (carrierFatigue.fatigueLevel - 70) / 30;
+      successChance -= this.clamp(fatiguePenaltyScale, 0, 1) * 0.12;
+    }
+
+    return this.clamp(successChance, 0.3, 0.86);
   }
 
   private normalizeFatigueForTickCount(
@@ -879,7 +971,7 @@ export class MatchSimulationVariantBService {
       return 'RECYCLE';
     }
 
-    if (attackingY < 70) {
+    if (attackingY < 67) {
       return 'RECYCLE';
     }
 
@@ -1100,9 +1192,19 @@ export class MatchSimulationVariantBService {
     carrier: Player,
     homeTeam: Team,
     awayTeam: Team,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
+    pressure: number
   ): void {
-    const currentPlayers = state.ballPossession.teamId === homeTeam.id ? rosters.homePlayers : rosters.awayPlayers;
+    const currentTeam = state.ballPossession.teamId === homeTeam.id ? 'home' : 'away';
+    const currentPlayers = currentTeam === 'home' ? rosters.homePlayers : rosters.awayPlayers;
+    const attackDirection = currentTeam === 'home' ? 1 : -1;
+    const carryAdvance = this.calculateCarryAdvanceDistance(carrier, pressure);
+
+    state.ballPossession.location = {
+      x: this.clamp(state.ballPossession.location.x + ((this.rng.random() - 0.5) * 2.5), 0, 100),
+      y: this.clamp(state.ballPossession.location.y + (carryAdvance * attackDirection), 0, 100)
+    };
+
     const sameRolePlayers = currentPlayers.filter(
       player => player.id !== carrier.id && player.role === Role.STARTER && player.position === carrier.position
     );
@@ -1115,10 +1217,42 @@ export class MatchSimulationVariantBService {
     }
 
     state.ballPossession.passes += 1;
-    state.ballPossession.phase =
-      state.ballPossession.location.y > 66 || state.ballPossession.location.y < 34
-        ? MatchPhase.ATTACKING
-        : MatchPhase.BUILD_UP;
+    state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, currentTeam);
+  }
+
+  private calculateCarryAdvanceDistance(carrier: Player, pressure: number): number {
+    const baseAdvance = 1.0 + (this.rng.random() * 2.0);
+    const roleMultiplier =
+      carrier.position === PositionEnum.FORWARD
+        ? 1.15
+        : carrier.position === PositionEnum.MIDFIELDER
+          ? 1
+          : 0.85;
+    const pressureMultiplier = this.clamp(1 - (pressure * 0.65), 0.35, 1);
+
+    return baseAdvance * roleMultiplier * pressureMultiplier;
+  }
+
+  private getPhaseFromLocation(location: Coordinates, currentTeam: 'home' | 'away'): MatchPhase {
+    const attackingY = currentTeam === 'home' ? location.y : 100 - location.y;
+    return attackingY >= 67 ? MatchPhase.ATTACKING : MatchPhase.BUILD_UP;
+  }
+
+  private resolveReplayActionType(
+    state: MatchState,
+    minute: number,
+    actionType: MatchAction['type']
+  ): EventType {
+    if (actionType !== 'CARRY') {
+      return actionType;
+    }
+
+    const latestEventIndex = this.findLatestEventIndexForMinute(state, minute);
+    if (latestEventIndex >= 0) {
+      return state.events[latestEventIndex].type;
+    }
+
+    return EventType.PASS;
   }
 
   private createReplayMetadata(

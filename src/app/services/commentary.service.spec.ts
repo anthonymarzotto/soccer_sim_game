@@ -105,6 +105,24 @@ describe('CommentaryService', () => {
     expect(commentary).toContain('overhits');
     expect(commentary).toContain('cross');
   });
+
+  it('describes carry dispossession as a contested event without pass intent', () => {
+    const event = createEvent(EventType.TACKLE, ['home-mid'], false, {
+      carryResult: 'DISPOSSESSED'
+    });
+
+    const commentary = service.generateEventCommentary(
+      event,
+      homeTeam,
+      awayTeam,
+      CommentaryStyle.DETAILED,
+      { homePlayers, awayPlayers }
+    );
+
+    expect(commentary).toContain('Home Mid');
+    expect(commentary).toMatch(/loses the ball|dispossessed|gives away possession|caught out of possession/);
+    expect(commentary).not.toContain('pass');
+  });
 });
 
 function createEvent(

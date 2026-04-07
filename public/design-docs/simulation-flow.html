@@ -37,7 +37,10 @@
     CARRIER --> MOVE[Apply carrier movement\\non the pitch]
     MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality)"}
 
-    ACTION -->|CARRY| QUIET[Silent progression\\nball moves, no event logged]
+    ACTION -->|CARRY| CARRY_ATTEMPT[Carry attempt]
+    CARRY_ATTEMPT --> CARRY_SUCCESS{"Carry succeeds?\\ncarrier quality vs pressure and fatigue"}
+    CARRY_SUCCESS -->|No| CARRY_LOST[TACKLE event\\nDispossessed turnover]
+    CARRY_SUCCESS -->|Yes| CARRY_ADVANCE[Extra dribble progress\\noptional same-role handoff\\nincrement possession chain]
     ACTION -->|PASS| PASS_START[Pass attempt]
     ACTION -->|SHOT| SHOT_START[Shot attempt\\nIncrement team shots]
     ACTION -->|FOUL| FOUL_START[Defending player fouls carrier\\nIncrement defending team fouls\\nEmit FOUL event]
@@ -70,7 +73,8 @@
     RED --> FOUL_RESTART
     SECOND_RED --> FOUL_RESTART
 
-    QUIET --> NEXT_TICK[Next tick]
+    CARRY_ADVANCE --> NEXT_TICK[Next tick]
+    CARRY_LOST --> NEXT_TICK
     TACKLE --> NEXT_TICK
     PASS_COMPLETE --> NEXT_TICK
     INTERCEPTION --> NEXT_TICK
@@ -87,7 +91,10 @@
     NORM --> LOOP
     LOOP -->|Minute 95| RESULT([Return MatchState])
 
-    style QUIET fill:#3f3f46,color:#ccc
+    style CARRY_ATTEMPT fill:#3f3f46,color:#ccc
+    style CARRY_ADVANCE fill:#3f3f46,color:#ccc
+    style CARRY_SUCCESS fill:#1c1917,color:#fff,stroke:#a8a29e
+    style CARRY_LOST fill:#7c2d12,color:#fff
     style PASS_COMPLETE fill:#14532d,color:#fff
     style INTERCEPTION fill:#1e3a5f,color:#fff
     style OVERHIT fill:#1e3a5f,color:#fff

@@ -300,6 +300,19 @@ export class CommentaryService {
     playerName: string,
     targetName: string
   ): string {
+    const carryResult = this.getStringMetadata(event, 'carryResult');
+
+    if (style === CommentaryStyle.DETAILED && carryResult === 'DISPOSSESSED') {
+      const carryDispossessionPhrases = [
+        `${playerName} loses the ball fighting for space.`,
+        `${playerName} is dispossessed in a contested challenge.`,
+        `${playerName} gives away possession trying to carry the ball forward.`,
+        `The ball is lost as ${playerName} tries to break through.`,
+        `${playerName} is caught out of possession.`
+      ];
+      return carryDispossessionPhrases[Math.floor(Math.random() * carryDispossessionPhrases.length)];
+    }
+
     const passFailure = this.getStringMetadata(event, 'passFailure');
 
     if (style === CommentaryStyle.DETAILED && passFailure) {
