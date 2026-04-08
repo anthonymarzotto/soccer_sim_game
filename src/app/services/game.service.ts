@@ -417,7 +417,7 @@ export class GameService {
       for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = Role.STARTER;
 
       if (gks.length > 1) gks[1].role = Role.BENCH;
-      for (let i = 4; i < Math.min(7, defs.length); i++) defs[i].role = Role.BENCH;
+      for (let i = 4; i < Math.min(6, defs.length); i++) defs[i].role = Role.BENCH;
       for (let i = 4; i < Math.min(8, mids.length); i++) mids[i].role = Role.BENCH;
       for (let i = 2; i < Math.min(4, fwds.length); i++) fwds[i].role = Role.BENCH;
 
@@ -675,17 +675,46 @@ export class GameService {
       });
     });
 
-    // Update minutes played for all players who participated
+    // Compute exact minutes played per player using substitution events.
+    // Starters play from minute 0; substituted-in players play from their sub minute.
+    // Substituted-out players stop at their sub minute.
+    const matchLength = 90;
+    const substitutions = events.filter(e => e.type === EventType.SUBSTITUTION);
+    const minutesOnPitch = new Map<string, number>();
+
     const allTeamPlayers = [...homePlayers, ...awayPlayers];
+    for (const player of allTeamPlayers) {
+      if (player.role === Role.RESERVE) continue;
+      // Starters get full match as default; bench players get 0 until subbed on.
+      minutesOnPitch.set(player.id, player.role === Role.STARTER ? matchLength : 0);
+    }
+
+    for (const sub of substitutions) {
+      const outId = sub.playerIds[0];
+      const inId = sub.playerIds[1];
+      const minute = Math.min(sub.time, matchLength);
+
+      if (minutesOnPitch.has(outId)) {
+        minutesOnPitch.set(outId, minute);
+      }
+
+      if (minutesOnPitch.has(inId)) {
+        minutesOnPitch.set(inId, matchLength - minute);
+      }
+    }
+
+    // Update minutes played for all players who participated
     allTeamPlayers.forEach(player => {
-      if (player.role !== Role.RESERVE) {
-        player.careerStats.minutesPlayed += 90; // Full match
+      const minutes = minutesOnPitch.get(player.id) ?? 0;
+      if (minutes > 0) {
+        player.careerStats.minutesPlayed += minutes;
       }
     });
 
-    // Update matches played for all players who participated
+    // Update matches played for players with any pitch time
     allTeamPlayers.forEach(player => {
-      if (player.role !== Role.RESERVE) {
+      const minutes = minutesOnPitch.get(player.id) ?? 0;
+      if (minutes > 0) {
         player.careerStats.matchesPlayed++;
       }
     });
@@ -737,11 +766,6 @@ export class GameService {
             icon = '📐';
             description = `Dangerous corner at ${event.time}'`;
           }
-          break;
-        case EventType.SUBSTITUTION:
-          importance = EventImportance.MEDIUM;
-          icon = '🔄';
-          description = `Substitution at ${event.time}'`;
           break;
       }
 

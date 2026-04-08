@@ -133,6 +133,23 @@ export class PostMatchAnalysisService {
           icon: '📐',
           importance: EventImportance.MEDIUM
         });
+      } else if (event.type === EventType.SUBSTITUTION) {
+        keyMoments.push({
+          id: event.id,
+          time: event.time,
+          type: EventType.SUBSTITUTION,
+          description: `${this.commentaryService.generateEventCommentary(
+            event,
+            homeTeam,
+            awayTeam,
+            undefined,
+            { homePlayers, awayPlayers }
+          )} (${event.time}')`,
+          playerIds: event.playerIds,
+          location: event.location,
+          icon: '🔄',
+          importance: EventImportance.LOW
+        });
       }
     });
 

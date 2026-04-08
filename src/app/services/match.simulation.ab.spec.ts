@@ -128,7 +128,266 @@ describe('Match Simulation Variant B Guardrails', () => {
     const saved = await fs.readFile(outputPath, 'utf-8');
     expect(saved.length).toBeGreaterThan(0);
   });
+
+  it('should shift late-game behavior by scoreline state without breaking metadata', () => {
+    const iterations = 90;
+    const combined = createCombinedLateGameMetrics();
+
+    for (let i = 0; i < iterations; i++) {
+      const config: SimulationConfig = {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED,
+        simulationVariant: 'B',
+        seed: `late-game-${i}`
+      };
+
+      const match = {
+        id: `late-game-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      const state = simulationB.simulateMatch(match, homeTeam, awayTeam, config);
+      const perMatch = calculateLateGameBehaviorMetrics(state.events);
+      mergeLateGameMetrics(combined, perMatch);
+    }
+
+    expect(combined.trailing.late.passAttempts).toBeGreaterThan(200);
+    expect(combined.trailing.early.passAttempts).toBeGreaterThan(200);
+    expect(combined.leading.late.passAttempts).toBeGreaterThan(200);
+
+    const trailingLateShotShare = getShotShare(combined.trailing.late);
+    const trailingEarlyShotShare = getShotShare(combined.trailing.early);
+    const trailingLateDirectShare = getDirectPassShare(combined.trailing.late);
+    const trailingEarlyDirectShare = getDirectPassShare(combined.trailing.early);
+    const trailingLateRecycleShare = getRecycleShare(combined.trailing.late);
+    const trailingEarlyRecycleShare = getRecycleShare(combined.trailing.early);
+
+    expect(trailingLateShotShare).toBeGreaterThanOrEqual(trailingEarlyShotShare);
+    expect(trailingLateDirectShare).toBeGreaterThan(trailingEarlyDirectShare);
+    expect(trailingLateRecycleShare).toBeLessThan(trailingEarlyRecycleShare);
+
+    const leadingLateRecycleShare = getRecycleShare(combined.leading.late);
+    const leadingLateDirectShare = getDirectPassShare(combined.leading.late);
+    const leadingLateShotShare = getShotShare(combined.leading.late);
+
+    expect(leadingLateRecycleShare).toBeGreaterThan(0.75);
+    expect(leadingLateDirectShare).toBeLessThan(trailingLateDirectShare);
+    expect(leadingLateShotShare).toBeLessThanOrEqual(trailingLateShotShare);
+
+    const homeTrailingLateDirectShare = getDirectPassShare(combined.homeTrailing.late);
+    const homeTrailingEarlyDirectShare = getDirectPassShare(combined.homeTrailing.early);
+    const awayTrailingLateDirectShare = getDirectPassShare(combined.awayTrailing.late);
+    const awayTrailingEarlyDirectShare = getDirectPassShare(combined.awayTrailing.early);
+
+    expect(combined.homeTrailing.late.passAttempts).toBeGreaterThan(80);
+    expect(combined.awayTrailing.late.passAttempts).toBeGreaterThan(80);
+    expect(homeTrailingLateDirectShare).toBeGreaterThanOrEqual(homeTrailingEarlyDirectShare);
+    expect(awayTrailingLateDirectShare).toBeGreaterThanOrEqual(awayTrailingEarlyDirectShare);
+
+    expect(combined.metadata.passWithIntent).toBeGreaterThan(2000);
+    expect(combined.metadata.failedPassTurnovers).toBeGreaterThan(300);
+    expect(combined.metadata.carryDispossessed).toBeGreaterThan(80);
+  });
 });
+
+type TeamEvent = 'home' | 'away' | null;
+type ScorelineState = 'LEADING' | 'TRAILING' | 'LEVEL';
+
+interface BehaviorWindowMetrics {
+  passAttempts: number;
+  shotEvents: number;
+  recyclePasses: number;
+  directPasses: number;
+}
+
+interface CombinedLateGameMetrics {
+  trailing: { early: BehaviorWindowMetrics; late: BehaviorWindowMetrics };
+  leading: { early: BehaviorWindowMetrics; late: BehaviorWindowMetrics };
+  homeTrailing: { early: BehaviorWindowMetrics; late: BehaviorWindowMetrics };
+  awayTrailing: { early: BehaviorWindowMetrics; late: BehaviorWindowMetrics };
+  metadata: {
+    passWithIntent: number;
+    failedPassTurnovers: number;
+    carryDispossessed: number;
+  };
+}
+
+function createWindowMetrics(): BehaviorWindowMetrics {
+  return {
+    passAttempts: 0,
+    shotEvents: 0,
+    recyclePasses: 0,
+    directPasses: 0
+  };
+}
+
+function createCombinedLateGameMetrics(): CombinedLateGameMetrics {
+  return {
+    trailing: { early: createWindowMetrics(), late: createWindowMetrics() },
+    leading: { early: createWindowMetrics(), late: createWindowMetrics() },
+    homeTrailing: { early: createWindowMetrics(), late: createWindowMetrics() },
+    awayTrailing: { early: createWindowMetrics(), late: createWindowMetrics() },
+    metadata: {
+      passWithIntent: 0,
+      failedPassTurnovers: 0,
+      carryDispossessed: 0
+    }
+  };
+}
+
+function mergeLateGameMetrics(target: CombinedLateGameMetrics, source: CombinedLateGameMetrics): void {
+  addWindow(target.trailing.early, source.trailing.early);
+  addWindow(target.trailing.late, source.trailing.late);
+  addWindow(target.leading.early, source.leading.early);
+  addWindow(target.leading.late, source.leading.late);
+  addWindow(target.homeTrailing.early, source.homeTrailing.early);
+  addWindow(target.homeTrailing.late, source.homeTrailing.late);
+  addWindow(target.awayTrailing.early, source.awayTrailing.early);
+  addWindow(target.awayTrailing.late, source.awayTrailing.late);
+
+  target.metadata.passWithIntent += source.metadata.passWithIntent;
+  target.metadata.failedPassTurnovers += source.metadata.failedPassTurnovers;
+  target.metadata.carryDispossessed += source.metadata.carryDispossessed;
+}
+
+function addWindow(target: BehaviorWindowMetrics, source: BehaviorWindowMetrics): void {
+  target.passAttempts += source.passAttempts;
+  target.shotEvents += source.shotEvents;
+  target.recyclePasses += source.recyclePasses;
+  target.directPasses += source.directPasses;
+}
+
+function getShotShare(window: BehaviorWindowMetrics): number {
+  const attempts = window.passAttempts + window.shotEvents;
+  return attempts > 0 ? window.shotEvents / attempts : 0;
+}
+
+function getRecycleShare(window: BehaviorWindowMetrics): number {
+  return window.passAttempts > 0 ? window.recyclePasses / window.passAttempts : 0;
+}
+
+function getDirectPassShare(window: BehaviorWindowMetrics): number {
+  return window.passAttempts > 0 ? window.directPasses / window.passAttempts : 0;
+}
+
+function calculateLateGameBehaviorMetrics(events: PlayByPlayEvent[]): CombinedLateGameMetrics {
+  const metrics = createCombinedLateGameMetrics();
+  let homeScore = 0;
+  let awayScore = 0;
+
+  for (const event of events) {
+    const team = inferTeamFromEvent(event);
+
+    if (event.type === EventType.PASS) {
+      const passIntent = event.additionalData?.['passIntent'];
+      if (typeof passIntent === 'string') {
+        metrics.metadata.passWithIntent += 1;
+      }
+    }
+
+    if ((event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION)
+      && typeof event.additionalData?.['passFailure'] === 'string') {
+      metrics.metadata.failedPassTurnovers += 1;
+    }
+
+    if (event.type === EventType.TACKLE && event.additionalData?.['carryResult'] === 'DISPOSSESSED') {
+      metrics.metadata.carryDispossessed += 1;
+    }
+
+    const isPassTurnover = (event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION)
+      && typeof event.additionalData?.['passFailure'] === 'string';
+
+    if (team && (event.type === EventType.PASS || event.type === EventType.SHOT || isPassTurnover)) {
+      const scorelineState = getScorelineStateForTeam(team, homeScore, awayScore);
+      const isLateWindow = event.time >= 80;
+      const windowBucket = isLateWindow ? 'late' : 'early';
+
+      if (scorelineState === 'TRAILING') {
+        registerBehaviorEvent(metrics.trailing[windowBucket], event);
+        if (team === 'home') {
+          registerBehaviorEvent(metrics.homeTrailing[windowBucket], event);
+        } else {
+          registerBehaviorEvent(metrics.awayTrailing[windowBucket], event);
+        }
+      } else if (scorelineState === 'LEADING') {
+        registerBehaviorEvent(metrics.leading[windowBucket], event);
+      }
+    }
+
+    if (event.type === EventType.GOAL && team) {
+      if (team === 'home') {
+        homeScore += 1;
+      } else {
+        awayScore += 1;
+      }
+    }
+  }
+
+  return metrics;
+}
+
+function registerBehaviorEvent(window: BehaviorWindowMetrics, event: PlayByPlayEvent): void {
+  if (event.type === EventType.SHOT) {
+    window.shotEvents += 1;
+    return;
+  }
+
+  const isPassEvent = event.type === EventType.PASS;
+  const isPassTurnover = (event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION)
+    && typeof event.additionalData?.['passFailure'] === 'string';
+
+  if (!isPassEvent && !isPassTurnover) {
+    return;
+  }
+
+  window.passAttempts += 1;
+  const passIntent = event.additionalData?.['passIntent'];
+  if (passIntent === 'RECYCLE') {
+    window.recyclePasses += 1;
+  }
+
+  if (passIntent === 'THROUGH_BALL' || passIntent === 'CROSS') {
+    window.directPasses += 1;
+  }
+}
+
+function inferTeamFromEvent(event: PlayByPlayEvent): TeamEvent {
+  const primaryId = event.playerIds[0];
+  if (!primaryId) {
+    return null;
+  }
+
+  if (primaryId.startsWith('home-')) {
+    return 'home';
+  }
+
+  if (primaryId.startsWith('away-')) {
+    return 'away';
+  }
+
+  return null;
+}
+
+function getScorelineStateForTeam(team: 'home' | 'away', homeScore: number, awayScore: number): ScorelineState {
+  const teamScore = team === 'home' ? homeScore : awayScore;
+  const opponentScore = team === 'home' ? awayScore : homeScore;
+
+  if (teamScore > opponentScore) {
+    return 'LEADING';
+  }
+
+  if (teamScore < opponentScore) {
+    return 'TRAILING';
+  }
+
+  return 'LEVEL';
+}
 
 function create442Players(prefix: string): Player[] {
   return [

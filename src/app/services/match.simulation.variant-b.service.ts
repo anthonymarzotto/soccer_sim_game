@@ -19,6 +19,11 @@ interface ResolvedRosters {
   awayPlayers: Player[];
 }
 
+interface TeamSubstitutionUsage {
+  home: number;
+  away: number;
+}
+
 interface MatchAction {
   type: EventType | 'CARRY';
   player: Player;
@@ -27,6 +32,7 @@ interface MatchAction {
 
 type PassIntent = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS';
 type PassFailureMode = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
+type LateGameScorelineState = 'LEADING' | 'TRAILING' | 'LEVEL';
 
 const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   baseTickMin: 1,
@@ -69,6 +75,7 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
 export class MatchSimulationVariantBService {
   private fieldService = inject(FieldService);
   private rng = inject(RngService);
+  private readonly maxSubstitutionsPerTeam = 5;
 
   private activeTuning: VariantBTuningConfig = DEFAULT_VARIANT_B_TUNING;
 
@@ -102,6 +109,7 @@ export class MatchSimulationVariantBService {
     );
 
     let currentState = this.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
+    const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
 
     // Variant B increases dynamism with adaptive ticks per minute.
     for (let minute = 1; minute <= 95; minute++) {
@@ -119,6 +127,17 @@ export class MatchSimulationVariantBService {
           rosters
         );
       }
+
+      this.processMinuteSubstitutions(
+        currentState,
+        fatigue,
+        simulatedHomeTeam,
+        simulatedAwayTeam,
+        minute,
+        config,
+        rosters,
+        substitutionsUsed
+      );
 
       this.normalizeFatigueForTickCount(fatigue, ticks);
     }
@@ -316,6 +335,7 @@ export class MatchSimulationVariantBService {
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam].find(entry => entry.playerId === carrier.id);
     const chainQuality = this.calculatePossessionChainQuality(state, currentTeam);
+    const scorelineState = this.getLateGameScorelineState(state, currentTeam, minute);
 
     let passWeight = this.activeTuning.passWeightBase;
     let carryWeight = this.activeTuning.carryWeightBase;
@@ -365,6 +385,17 @@ export class MatchSimulationVariantBService {
       passWeight -= 0.01;
     }
 
+    if (scorelineState === 'TRAILING') {
+      shotWeight += 0.07;
+      carryWeight += 0.03;
+      passWeight -= 0.02;
+      foulWeight += 0.01;
+    } else if (scorelineState === 'LEADING') {
+      passWeight += 0.05;
+      carryWeight -= 0.01;
+      shotWeight -= 0.05;
+    }
+
     shotWeight += chainQuality * 0.03;
     passWeight -= chainQuality * 0.01;
 
@@ -390,7 +421,7 @@ export class MatchSimulationVariantBService {
       return {
         type: EventType.PASS,
         player: carrier,
-        passIntent: this.selectPassIntent(state, carrier, currentTeam, teamTactics, teamFatigue)
+        passIntent: this.selectPassIntent(state, carrier, currentTeam, teamTactics, minute, teamFatigue)
       };
     }
 
@@ -602,7 +633,8 @@ export class MatchSimulationVariantBService {
     const opponentPlayers = currentTeam === 'home' ? awayPlayers : homePlayers;
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
-    const passIntent = action.passIntent ?? this.selectPassIntent(state, passer, currentTeam, teamTactics, teamFatigue.find(entry => entry.playerId === passer.id));
+    const passIntent = action.passIntent
+      ?? this.selectPassIntent(state, passer, currentTeam, teamTactics, minute, teamFatigue.find(entry => entry.playerId === passer.id));
     const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
 
     const targetPlayer = this.findPassTarget(passer, teamPlayers, teamTactics, state.ballPossession.location, currentTeam, passIntent);
@@ -948,12 +980,14 @@ export class MatchSimulationVariantBService {
     passer: Player,
     currentTeam: 'home' | 'away',
     teamTactics: TacticalSetup,
+    minute: number,
     passerFatigue?: PlayerFatigue
   ): PassIntent {
     const y = state.ballPossession.location.y;
     const x = state.ballPossession.location.x;
     const attackingY = currentTeam === 'home' ? y : 100 - y;
     const wideChannel = Math.abs(x - 50) >= 18;
+    const scorelineState = this.getLateGameScorelineState(state, currentTeam, minute);
 
     if ((passer.position === PositionEnum.DEFENDER || (passerFatigue?.fatigueLevel ?? 0) > 75) && attackingY < 78) {
       return 'RECYCLE';
@@ -969,6 +1003,14 @@ export class MatchSimulationVariantBService {
 
     if (teamTactics.playingStyle === PlayingStyle.POSSESSION && attackingY < 60) {
       return 'RECYCLE';
+    }
+
+    if (scorelineState === 'LEADING' && attackingY < 82) {
+      return 'RECYCLE';
+    }
+
+    if (scorelineState === 'TRAILING' && attackingY >= 70) {
+      return wideChannel ? 'CROSS' : 'THROUGH_BALL';
     }
 
     if (attackingY < 67) {
@@ -1006,6 +1048,153 @@ export class MatchSimulationVariantBService {
     }
 
     return this.clamp(pressure, 0.1, 0.75);
+  }
+
+  private getLateGameScorelineState(
+    state: MatchState,
+    currentTeam: 'home' | 'away',
+    minute: number
+  ): LateGameScorelineState {
+    if (minute < 80) {
+      return 'LEVEL';
+    }
+
+    const teamScore = currentTeam === 'home' ? state.homeScore : state.awayScore;
+    const opponentScore = currentTeam === 'home' ? state.awayScore : state.homeScore;
+
+    if (teamScore > opponentScore) {
+      return 'LEADING';
+    }
+
+    if (teamScore < opponentScore) {
+      return 'TRAILING';
+    }
+
+    return 'LEVEL';
+  }
+
+  private processMinuteSubstitutions(
+    state: MatchState,
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    substitutionsUsed: TeamSubstitutionUsage
+  ): void {
+    this.tryTeamSubstitution('home', state, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+    this.tryTeamSubstitution('away', state, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+  }
+
+  private tryTeamSubstitution(
+    teamKey: 'home' | 'away',
+    state: MatchState,
+    homeTeam: Team,
+    awayTeam: Team,
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    substitutionsUsed: TeamSubstitutionUsage
+  ): void {
+    if (substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam) {
+      return;
+    }
+
+    if (minute < 58 || minute > 88) {
+      return;
+    }
+
+    const teamPlayers = teamKey === 'home' ? rosters.homePlayers : rosters.awayPlayers;
+    const teamFatigue = fatigue[teamKey];
+    const triggerChance = this.calculateSubstitutionTriggerChance(teamPlayers, teamFatigue, minute);
+    if (this.rng.random() >= triggerChance) {
+      return;
+    }
+
+    const outgoingPlayer = this.selectSubstitutionOutgoingPlayer(teamPlayers, teamFatigue);
+    if (!outgoingPlayer) {
+      return;
+    }
+
+    const incomingPlayer = this.selectSubstitutionIncomingPlayer(teamPlayers, outgoingPlayer.position);
+    if (!incomingPlayer) {
+      return;
+    }
+
+    outgoingPlayer.role = Role.SUBSTITUTED_OUT;
+    incomingPlayer.role = Role.STARTER;
+    substitutionsUsed[teamKey] += 1;
+
+    const teamId = teamKey === 'home' ? homeTeam.id : awayTeam.id;
+    if (state.ballPossession.teamId === teamId && state.ballPossession.playerWithBall === outgoingPlayer.id) {
+      state.ballPossession.playerWithBall = incomingPlayer.id;
+    }
+
+    this.createEvent(
+      state,
+      EventType.SUBSTITUTION,
+      [outgoingPlayer.id, incomingPlayer.id],
+      { ...state.ballPossession.location },
+      minute,
+      true,
+      config
+    );
+  }
+
+  private calculateSubstitutionTriggerChance(
+    teamPlayers: Player[],
+    teamFatigue: PlayerFatigue[],
+    minute: number
+  ): number {
+    let baseChance = minute >= 82 ? 0.38 : minute >= 72 ? 0.24 : 0.14;
+    const fatigueByPlayer = new Map(teamFatigue.map(entry => [entry.playerId, entry.fatigueLevel]));
+    const fatiguedStarters = teamPlayers.filter(
+      player => player.role === Role.STARTER && player.position !== PositionEnum.GOALKEEPER && (fatigueByPlayer.get(player.id) ?? 0) >= 62
+    ).length;
+
+    baseChance += this.clamp((fatiguedStarters - 1) * 0.06, 0, 0.24);
+    return this.clamp(baseChance, 0.08, 0.72);
+  }
+
+  private selectSubstitutionOutgoingPlayer(teamPlayers: Player[], teamFatigue: PlayerFatigue[]): Player | null {
+    const fatigueByPlayer = new Map(teamFatigue.map(entry => [entry.playerId, entry.fatigueLevel]));
+    const starterOutfield = teamPlayers.filter(
+      player => player.role === Role.STARTER && player.position !== PositionEnum.GOALKEEPER
+    );
+
+    if (starterOutfield.length === 0) {
+      return null;
+    }
+
+    const sortedByFatigue = [...starterOutfield].sort(
+      (left, right) => (fatigueByPlayer.get(right.id) ?? 0) - (fatigueByPlayer.get(left.id) ?? 0)
+    );
+
+    const topCandidates = sortedByFatigue.slice(0, Math.min(3, sortedByFatigue.length));
+    return topCandidates[Math.floor(this.rng.random() * topCandidates.length)] ?? sortedByFatigue[0] ?? null;
+  }
+
+  private selectSubstitutionIncomingPlayer(teamPlayers: Player[], outgoingPosition: PositionEnum): Player | null {
+    const benchPlayers = teamPlayers.filter(player => player.role === Role.BENCH);
+
+    if (benchPlayers.length === 0) {
+      return null;
+    }
+
+    const samePositionPool = benchPlayers.filter(player => player.position === outgoingPosition);
+    const candidatePool = samePositionPool.length > 0 ? samePositionPool : benchPlayers;
+
+    const sortedByQuality = [...candidatePool].sort((left, right) => {
+      if (right.overall === left.overall) {
+        return right.physical.endurance - left.physical.endurance;
+      }
+
+      return right.overall - left.overall;
+    });
+
+    return sortedByQuality[0] ?? null;
   }
 
   private updateFatigue(fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }, _minute: number): void {

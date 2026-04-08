@@ -87,7 +87,10 @@
 
     NEXT_TICK --> TICK_LOOP
 
-    TICK_LOOP -->|All ticks done| NORM[Normalise fatigue\\nfor tick count]
+    TICK_LOOP -->|All ticks done| SUB_CHECK{"Substitution window?\nminute + fatigue + bench availability"}
+    SUB_CHECK -->|No| NORM[Normalise fatigue\nfor tick count]
+    SUB_CHECK -->|Yes| SUB_EVENT[SUBSTITUTION event\nRole-safe starter-bench swap\nMax 3 per team]
+    SUB_EVENT --> NORM
     NORM --> LOOP
     LOOP -->|Minute 95| RESULT([Return MatchState])
 
@@ -107,6 +110,8 @@
     style GOAL fill:#166534,color:#fff
     style SAVE fill:#1e3a5f,color:#fff
     style MISS fill:#7f1d1d,color:#fff
+    style SUB_EVENT fill:#0c4a6e,color:#fff
+    style SUB_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e
     style SOT fill:#3f3f46,color:#ccc
     style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e`;
 

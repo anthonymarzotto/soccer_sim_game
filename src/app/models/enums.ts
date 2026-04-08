@@ -30,6 +30,7 @@ export enum Role {
   STARTER = 'Starter',
   BENCH = 'Bench',
   RESERVE = 'Reserve',
+  SUBSTITUTED_OUT = 'SubstitutedOut',
   DISMISSED = 'Dismissed'
 }
 

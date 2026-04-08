@@ -175,6 +175,30 @@ describe('PostMatchAnalysisService', () => {
     expect(report.keyMoments[2].description).toContain('right channel inside the box');
   });
 
+  it('should include substitutions in expanded key moments with player names', () => {
+    const homeTeam = createMockTeam('team_a', [
+      createMockPlayer('home-mid1', 'Home Mid 1', 'team_a', Position.MIDFIELDER),
+      createMockPlayer('home-mid2', 'Home Mid 2', 'team_a', Position.MIDFIELDER)
+    ]);
+    const awayTeam = createMockTeam('team_b', [
+      createMockPlayer('away-mid1', 'Away Mid 1', 'team_b', Position.MIDFIELDER)
+    ]);
+
+    const report = service.generateMatchReport(
+      createMatchState(0, 0, [
+        createEvent('sub-1', EventType.SUBSTITUTION, ['home-mid1', 'home-mid2'], 67, { x: 50, y: 50 }, true)
+      ]),
+      homeTeam,
+      awayTeam
+    );
+
+    expect(report.keyMoments.length).toBe(1);
+    expect(report.keyMoments[0].type).toBe(EventType.SUBSTITUTION);
+    expect(report.keyMoments[0].importance).toBe(EventImportance.LOW);
+    expect(report.keyMoments[0].description).toContain('Home Mid 1 off, Home Mid 2 on.');
+    expect(report.keyMoments[0].description).toContain("(67')");
+  });
+
   function createMockTeam(id: string, players: Player[] = []): Team {
     return {
       id,

@@ -29,30 +29,33 @@
 	- progression-pass share: `0.10` to `0.75`
 	- turnover-from-pass share: `0.10` to `0.40`
 - Commentary enrichment for the passing model is complete and covered by `src/app/services/commentary.service.spec.ts`.
+- Scoreline-state aggression is complete:
+	- final-15 behavior split is active (minute `>= 80`)
+	- trailing side increases risk (more shot/carry pressure and direct intent)
+	- leading side increases recycle-first game management
+	- regression coverage added for late-game scoreline behavior and metadata integrity in `src/app/services/match.simulation.ab.spec.ts`
+	- AB, calibration, and fouls guardrails remain green after rollout
+- Substitution handling is complete:
+	- substitution checks run at minute boundaries in the simulation loop
+	- max substitutions per team is `5`
+	- incoming eligibility is `Role.BENCH` only
+	- outgoing players are marked `Role.SUBSTITUTED_OUT` to prevent same-match re-entry
+	- substitutions emit `SUBSTITUTION` events with outgoing/incoming player ids
+	- substitutions are shown in Expanded Key Moments, not Key Events summary
+	- dedicated substitution specs added and guardrails remain green
 
 ## Active priorities
 
-### 1) Scoreline-state aggression
+### 1) Manpower effects (separate from substitutions)
 
 Goal:
-- Improve late-game realism in the final 15 minutes without destabilizing baseline goals/shots.
+- Model 10v11/11v10 impacts after dismissals without changing substitution mechanics.
 
 Plan:
-- Trailing side: increase risk and tempo.
-- Leading side: increase recycling/clock-management behavior.
-- Validate against existing AB/calibration guardrails.
+- Apply lightweight manpower modifiers to action weights and pass/shot success.
+- Keep `Role.DISMISSED` constraints explicit and test-covered.
 
-### 2) Substitutions and manpower effects
-
-Goal:
-- Add substitution behavior and explicit 10v11 effects while preserving dismissal constraints.
-
-Plan:
-- Add substitution framework with limits and role-safe replacement pools.
-- Ensure `Role.DISMISSED` players can never re-enter.
-- Add lightweight manpower impact on action weights and pass/shot success.
-
-### 3) Guardrail maintenance
+### 2) Guardrail maintenance
 
 - Keep fast AB spec broad for drift detection.
 - Keep calibration benchmark for slower realism tuning.
