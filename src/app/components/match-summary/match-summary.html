@@ -42,20 +42,32 @@
     </div>
   }
   
-  <!-- Key Events -->
-  @if (showEvents() && match().keyEvents && match().keyEvents!.length > 0) {
+  <!-- Unified Match Moments -->
+  @if (showEvents() && hasAnyMoments()) {
     <div class="mt-4 pt-4 border-t border-zinc-800">
-      <h4 class="text-sm font-semibold text-zinc-300 mb-3">Key Events</h4>
+      <div class="mb-3 flex items-center gap-2">
+        @if (hasAdditionalMoments()) {
+          <button
+            type="button"
+            class="inline-flex h-5 w-5 items-center justify-center rounded border border-zinc-700 bg-zinc-900 text-xs font-semibold text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+            (click)="toggleExpandedMoments()"
+            [attr.aria-label]="showExpandedMoments() ? 'Collapse expanded moments' : 'Expand moments'"
+          >
+            {{ showExpandedMoments() ? '−' : '+' }}
+          </button>
+        }
+        <h4 class="text-sm font-semibold text-zinc-300">Key Events</h4>
+      </div>
       
       <div class="space-y-2">
-        @for (event of match().keyEvents; track event.id) {
+        @for (moment of visibleMoments(); track moment.event.id) {
           <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
-            <div class="text-xs text-zinc-400 font-mono w-8 text-right">{{ event.time }}'</div>
-            <span class="text-lg">{{ event.icon }}</span>
+            <div class="text-xs text-zinc-400 font-mono w-8 text-right">{{ moment.event.time }}'</div>
+            <span class="text-lg">{{ moment.event.icon || '•' }}</span>
             <div class="flex-1">
               <div class="text-sm font-medium text-white">
-                @if (event.playerIds && event.playerIds.length > 0) {
-                  @for (player of getPlayerLinks(event.playerIds); track player.playerId) {
+                @if (!moment.isExpanded && moment.event.playerIds && moment.event.playerIds.length > 0) {
+                  @for (player of getPlayerLinks(moment.event.playerIds); track player.playerId) {
                     <span class="inline-flex items-center gap-1">
                       <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm" [link]="true"></app-team-badge>
                       <a [routerLink]="['/player', player.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
@@ -65,41 +77,18 @@
                     @if (!$last) {, }
                   }
                 } @else {
-                  {{ event.description }}
+                  {{ moment.event.description }}
                 }
               </div>
             </div>
-            @if (event.importance === EventImportance.HIGH) {
+            @if (moment.event.importance === EventImportance.HIGH) {
               <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">Important</span>
-            } @else if (event.importance === EventImportance.MEDIUM) {
+            } @else if (moment.event.importance === EventImportance.MEDIUM) {
               <span class="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">Key</span>
             }
           </div>
         }
       </div>
-    </div>
-  }
-
-  @if (showEvents() && hasExpandedKeyMoments()) {
-    <div class="mt-4 pt-4 border-t border-zinc-800">
-      <details class="group rounded-lg bg-zinc-900/70 border border-zinc-800">
-        <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-semibold text-zinc-200">
-          <span>Expanded Key Moments ({{ expandedKeyMoments().length }})</span>
-          <span class="text-zinc-400 transition-transform duration-200 group-open:rotate-180">▼</span>
-        </summary>
-
-        <div class="space-y-2 border-t border-zinc-800 px-3 py-3">
-          @for (moment of expandedKeyMoments(); track moment.id) {
-            <div class="rounded-lg bg-zinc-950 p-2">
-              <div class="flex items-start gap-2 text-sm">
-                <div class="w-8 shrink-0 text-right font-mono text-xs text-zinc-400">{{ moment.time }}'</div>
-                <span class="text-base">{{ moment.icon || '•' }}</span>
-                <div class="flex-1 text-zinc-200">{{ moment.description }}</div>
-              </div>
-            </div>
-          }
-        </div>
-      </details>
     </div>
   }
   
