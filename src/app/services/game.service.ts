@@ -688,33 +688,63 @@ export class GameService {
       });
     });
 
-    // Compute exact minutes played per player using substitution events.
-    // Starters play from minute 0; substituted-in players play from their sub minute.
-    // Substituted-out players stop at their sub minute.
+    // Compute exact minutes played using on/off intervals.
+    // Starters begin on the pitch at minute 0; players can leave via substitution or red card.
     const matchLength = 90;
-    const substitutions = events.filter(e => e.type === EventType.SUBSTITUTION);
+    const substitutionsAndDismissals = events
+      .filter(e => e.type === EventType.SUBSTITUTION || e.type === EventType.RED_CARD)
+      .sort((left, right) => left.time - right.time);
     const minutesOnPitch = new Map<string, number>();
+    const activeSince = new Map<string, number | null>();
 
     const allTeamPlayers = [...homePlayers, ...awayPlayers];
     for (const player of allTeamPlayers) {
       if (player.role === Role.RESERVE) continue;
-      // Starters get full match as default; bench players get 0 until subbed on.
-      minutesOnPitch.set(player.id, player.role === Role.STARTER ? matchLength : 0);
+      minutesOnPitch.set(player.id, 0);
+      activeSince.set(player.id, player.role === Role.STARTER ? 0 : null);
     }
 
-    for (const sub of substitutions) {
-      const outId = sub.playerIds[0];
-      const inId = sub.playerIds[1];
-      const minute = Math.min(sub.time, matchLength);
+    for (const event of substitutionsAndDismissals) {
+      const minute = Math.max(0, Math.min(event.time, matchLength));
 
-      if (minutesOnPitch.has(outId)) {
-        minutesOnPitch.set(outId, minute);
+      if (event.type === EventType.SUBSTITUTION) {
+        const outId = event.playerIds[0];
+        const inId = event.playerIds[1];
+
+        if (outId && activeSince.has(outId)) {
+          const startedAt = activeSince.get(outId);
+          if (typeof startedAt === 'number') {
+            minutesOnPitch.set(outId, (minutesOnPitch.get(outId) ?? 0) + (minute - startedAt));
+            activeSince.set(outId, null);
+          }
+        }
+
+        if (inId && activeSince.has(inId) && activeSince.get(inId) === null) {
+          activeSince.set(inId, minute);
+        }
+        continue;
       }
 
-      if (minutesOnPitch.has(inId)) {
-        minutesOnPitch.set(inId, matchLength - minute);
+      const dismissedPlayerId = event.playerIds[0];
+      if (dismissedPlayerId && activeSince.has(dismissedPlayerId)) {
+        const startedAt = activeSince.get(dismissedPlayerId);
+        if (typeof startedAt === 'number') {
+          minutesOnPitch.set(
+            dismissedPlayerId,
+            (minutesOnPitch.get(dismissedPlayerId) ?? 0) + (minute - startedAt)
+          );
+          activeSince.set(dismissedPlayerId, null);
+        }
       }
     }
+
+    activeSince.forEach((startedAt, playerId) => {
+      if (typeof startedAt !== 'number') {
+        return;
+      }
+
+      minutesOnPitch.set(playerId, (minutesOnPitch.get(playerId) ?? 0) + (matchLength - startedAt));
+    });
 
     // Update minutes played for all players who participated
     allTeamPlayers.forEach(player => {
