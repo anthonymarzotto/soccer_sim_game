@@ -4,7 +4,7 @@ import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
 import { Match, MatchEvent, MatchStatistics, Team } from '../../models/types';
-import { EventType, EventImportance, CommentaryStyle } from '../../models/enums';
+import { EventType, EventImportance, CommentaryStyle, TeamSide } from '../../models/enums';
 import { PlayByPlayEvent, MatchState } from '../../models/simulation.types';
 
 interface CommentaryItem {
@@ -65,7 +65,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private halfTimeIndex = -1;
   private finalKeyEvents: MatchEvent[] = [];
   private finalMatchStats: MatchStatistics | null = null;
-  private playerTeamLookup = new Map<string, 'home' | 'away'>();
+  private playerTeamLookup = new Map<string, TeamSide>();
 
   constructor() {
     // Effect to load match data when matchId changes
@@ -258,9 +258,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       .filter((event) => event.type === EventType.GOAL)
       .forEach((event) => {
         const scoringTeam = this.getScoringTeam(event, homeTeam, awayTeam);
-        if (scoringTeam === 'home') {
+        if (scoringTeam === TeamSide.HOME) {
           halfTimeHomeScore++;
-        } else if (scoringTeam === 'away') {
+        } else if (scoringTeam === TeamSide.AWAY) {
           halfTimeAwayScore++;
         }
       });
@@ -413,11 +413,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.playerTeamLookup.clear();
 
     this.gameService.getPlayersForTeam(homeTeamId).forEach((player) => {
-      this.playerTeamLookup.set(player.id, 'home');
+      this.playerTeamLookup.set(player.id, TeamSide.HOME);
     });
 
     this.gameService.getPlayersForTeam(awayTeamId).forEach((player) => {
-      this.playerTeamLookup.set(player.id, 'away');
+      this.playerTeamLookup.set(player.id, TeamSide.AWAY);
     });
   }
 
@@ -438,9 +438,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       .filter((event) => event.type === EventType.GOAL && event.time <= minute)
       .forEach((event) => {
         const scoringTeam = this.getScoringTeam(event, homeTeam, awayTeam);
-        if (scoringTeam === 'home') {
+        if (scoringTeam === TeamSide.HOME) {
           homeGoals++;
-        } else if (scoringTeam === 'away') {
+        } else if (scoringTeam === TeamSide.AWAY) {
           awayGoals++;
         }
       });
@@ -458,7 +458,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     });
   }
 
-  private getScoringTeam(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team): 'home' | 'away' | null {
+  private getScoringTeam(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team): TeamSide | null {
     const scorerId = event.playerIds[0];
     if (!scorerId) {
       return null;
@@ -475,13 +475,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }
 
     if (scorer.teamId === homeTeam.id) {
-      this.playerTeamLookup.set(scorerId, 'home');
-      return 'home';
+      this.playerTeamLookup.set(scorerId, TeamSide.HOME);
+      return TeamSide.HOME;
     }
 
     if (scorer.teamId === awayTeam.id) {
-      this.playerTeamLookup.set(scorerId, 'away');
-      return 'away';
+      this.playerTeamLookup.set(scorerId, TeamSide.AWAY);
+      return TeamSide.AWAY;
     }
 
     return null;

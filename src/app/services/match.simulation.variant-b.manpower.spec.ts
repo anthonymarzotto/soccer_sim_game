@@ -3,7 +3,7 @@ import { MatchSimulationVariantBService } from './match.simulation.variant-b.ser
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
-import { MatchPhase, Position as PositionEnum, Role } from '../models/enums';
+import { MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/enums';
 import { MatchState, TeamFormation } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 
@@ -21,37 +21,37 @@ interface VariantBManpowerInternals {
   activeMatchShape: MatchShapeState | null;
   initializeMatchShape: (homeTeam: Team, awayTeam: Team) => MatchShapeState;
   rebalanceShapeAfterDismissal: (
-    teamKey: 'home' | 'away',
+    teamKey: TeamSide,
     teamPlayers: Player[],
     dismissedPlayerId: string,
     tactics: { home: { formation: TeamFormation }; away: { formation: TeamFormation } }
   ) => void;
   buildTeamFormationFromShape: (shape: ActiveShapeSlot[], originalFormation: TeamFormation) => TeamFormation;
-  checkForfeitCondition: () => 'home' | 'away' | null;
+  checkForfeitCondition: () => TeamSide | null;
   calculateDefensivePressure: (
     state: MatchState,
-    currentTeam: 'home' | 'away',
+    currentTeam: TeamSide,
     tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> }
   ) => number;
   calculateCarrySuccessChance: (
     state: MatchState,
     carrier: Player,
-    currentTeam: 'home' | 'away',
+    currentTeam: TeamSide,
     carrierFatigue: undefined,
     pressure: number
   ) => number;
   calculateShotShapeModifier: (
     state: MatchState,
-    currentTeam: 'home' | 'away'
+    currentTeam: TeamSide
   ) => { onTargetBonus: number; goalChanceBonus: number };
   calculatePassShapeModifier: (
     currentLocation: { x: number; y: number },
-    currentTeam: 'home' | 'away',
+    currentTeam: TeamSide,
     passIntent: 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS'
   ) => number;
   determinePassFailureMode: (
     currentLocation: { x: number; y: number },
-    currentTeam: 'home' | 'away',
+    currentTeam: TeamSide,
     passIntent: 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS',
     pressure: number,
     passDistance: number,
@@ -106,7 +106,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
     homePlayers.find(player => player.id === 'home-def4')!.role = Role.DISMISSED;
 
-    internals.rebalanceShapeAfterDismissal('home', homePlayers, 'home-def4', tactics);
+    internals.rebalanceShapeAfterDismissal(TeamSide.HOME, homePlayers, 'home-def4', tactics);
 
     const homeShape = internals.activeMatchShape?.home ?? [];
     expect(homeShape.filter(slot => slot.playerId !== null)).toHaveLength(10);
@@ -154,7 +154,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       }))
     };
 
-    expect(internals.checkForfeitCondition()).toBe('home');
+    expect(internals.checkForfeitCondition()).toBe(TeamSide.HOME);
   });
 
   it('should reduce defensive pressure when the relevant defensive band is understaffed', () => {
@@ -167,7 +167,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     const state = createMatchState(awayTeam.id, 'away-fwd1', { x: 50, y: 24 });
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
-    const baselinePressure = internals.calculateDefensivePressure(state, 'away', tactics);
+    const baselinePressure = internals.calculateDefensivePressure(state, TeamSide.AWAY, tactics);
 
     internals.activeMatchShape = {
       ...(internals.activeMatchShape as MatchShapeState),
@@ -180,7 +180,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const reducedPressure = internals.calculateDefensivePressure(state, 'away', tactics);
+    const reducedPressure = internals.calculateDefensivePressure(state, TeamSide.AWAY, tactics);
 
     expect(reducedPressure).toBeLessThan(baselinePressure);
   });
@@ -195,7 +195,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     const state = createMatchState(awayTeam.id, 'away-fwd1', { x: 18, y: 27 });
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
-    const baselinePressure = internals.calculateDefensivePressure(state, 'away', tactics);
+    const baselinePressure = internals.calculateDefensivePressure(state, TeamSide.AWAY, tactics);
 
     internals.activeMatchShape = {
       ...(internals.activeMatchShape as MatchShapeState),
@@ -208,7 +208,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const reducedPressure = internals.calculateDefensivePressure(state, 'away', tactics);
+    const reducedPressure = internals.calculateDefensivePressure(state, TeamSide.AWAY, tactics);
 
     expect(reducedPressure).toBeLessThan(baselinePressure);
   });
@@ -219,7 +219,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     const carrier = homePlayers.find(player => player.id === 'home-mid2') as Player;
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
-    const baselineChance = internals.calculateCarrySuccessChance(state, carrier, 'home', undefined, 0.35);
+    const baselineChance = internals.calculateCarrySuccessChance(state, carrier, TeamSide.HOME, undefined, 0.35);
 
     internals.activeMatchShape = {
       ...(internals.activeMatchShape as MatchShapeState),
@@ -232,7 +232,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const improvedChance = internals.calculateCarrySuccessChance(state, carrier, 'home', undefined, 0.35);
+    const improvedChance = internals.calculateCarrySuccessChance(state, carrier, TeamSide.HOME, undefined, 0.35);
 
     expect(improvedChance).toBeGreaterThan(baselineChance);
   });
@@ -242,7 +242,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     const state = createMatchState(homeTeam.id, 'home-fwd1', { x: 18, y: 86 });
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
-    const baselineModifier = internals.calculateShotShapeModifier(state, 'home');
+    const baselineModifier = internals.calculateShotShapeModifier(state, TeamSide.HOME);
 
     internals.activeMatchShape = {
       ...(internals.activeMatchShape as MatchShapeState),
@@ -255,7 +255,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const improvedModifier = internals.calculateShotShapeModifier(state, 'home');
+    const improvedModifier = internals.calculateShotShapeModifier(state, TeamSide.HOME);
 
     expect(improvedModifier.onTargetBonus).toBeGreaterThan(baselineModifier.onTargetBonus);
     expect(improvedModifier.goalChanceBonus).toBeGreaterThan(baselineModifier.goalChanceBonus);
@@ -266,7 +266,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     const ballLocation = { x: 50, y: 76 };
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
-    const baselineModifier = internals.calculatePassShapeModifier(ballLocation, 'home', 'THROUGH_BALL');
+    const baselineModifier = internals.calculatePassShapeModifier(ballLocation, TeamSide.HOME, 'THROUGH_BALL');
 
     internals.activeMatchShape = {
       ...(internals.activeMatchShape as MatchShapeState),
@@ -279,7 +279,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const depletedModifier = internals.calculatePassShapeModifier(ballLocation, 'home', 'THROUGH_BALL');
+    const depletedModifier = internals.calculatePassShapeModifier(ballLocation, TeamSide.HOME, 'THROUGH_BALL');
 
     expect(depletedModifier).toBeGreaterThan(baselineModifier);
   });
@@ -289,7 +289,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
     const wideBallLocation = { x: 18, y: 76 };
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
-    const baselineModifier = internals.calculatePassShapeModifier(wideBallLocation, 'home', 'PROGRESSION');
+    const baselineModifier = internals.calculatePassShapeModifier(wideBallLocation, TeamSide.HOME, 'PROGRESSION');
 
     internals.activeMatchShape = {
       ...(internals.activeMatchShape as MatchShapeState),
@@ -302,7 +302,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const depletedModifier = internals.calculatePassShapeModifier(wideBallLocation, 'home', 'PROGRESSION');
+    const depletedModifier = internals.calculatePassShapeModifier(wideBallLocation, TeamSide.HOME, 'PROGRESSION');
 
     expect(depletedModifier).toBeGreaterThan(baselineModifier);
   });
@@ -315,7 +315,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
 
     const failureMode = internals.determinePassFailureMode(
       centralBallLocation,
-      'home',
+      TeamSide.HOME,
       'THROUGH_BALL',
       0.42,
       31,
@@ -343,7 +343,7 @@ describe('Match Simulation Variant B Manpower Shape', () => {
 
     const failureMode = internals.determinePassFailureMode(
       wideBallLocation,
-      'home',
+      TeamSide.HOME,
       'CROSS',
       0.38,
       32,

@@ -4,7 +4,7 @@ import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis, Pl
 import { resolveTeamPlayers } from '../models/team-players';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
-import { EventType, PlayingStyle, EventImportance } from '../models/enums';
+import { EventType, PlayingStyle, EventImportance, TeamSide } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -359,8 +359,8 @@ export class PostMatchAnalysisService {
       const result = this.getMatchResult(match, side);
       results.push(result);
 
-      goalsScored += side === 'home' ? match.homeScore : match.awayScore;
-      goalsConceded += side === 'home' ? match.awayScore : match.homeScore;
+      goalsScored += side === TeamSide.HOME ? match.homeScore : match.awayScore;
+      goalsConceded += side === TeamSide.HOME ? match.awayScore : match.homeScore;
     });
 
     const points = results.reduce((sum, result) => {
@@ -472,17 +472,17 @@ export class PostMatchAnalysisService {
     return improvements;
   }
 
-  private resolveTeamSide(teamId: string, matchContext?: SeasonMatchContext): 'home' | 'away' | null {
+  private resolveTeamSide(teamId: string, matchContext?: SeasonMatchContext): TeamSide | null {
     if (!matchContext) {
       return null;
     }
 
     if (matchContext.homeTeamId === teamId) {
-      return 'home';
+      return TeamSide.HOME;
     }
 
     if (matchContext.awayTeamId === teamId) {
-      return 'away';
+      return TeamSide.AWAY;
     }
 
     return null;
@@ -542,9 +542,9 @@ export class PostMatchAnalysisService {
     return Math.round(totalRating / playerStats.length);
   }
 
-  private getMatchResult(matchState: MatchState, side: 'home' | 'away'): 'W' | 'D' | 'L' {
-    const teamScore = side === 'home' ? matchState.homeScore : matchState.awayScore;
-    const opponentScore = side === 'home' ? matchState.awayScore : matchState.homeScore;
+  private getMatchResult(matchState: MatchState, side: TeamSide): 'W' | 'D' | 'L' {
+    const teamScore = side === TeamSide.HOME ? matchState.homeScore : matchState.awayScore;
+    const opponentScore = side === TeamSide.HOME ? matchState.awayScore : matchState.homeScore;
 
     if (teamScore > opponentScore) return 'W';
     if (teamScore < opponentScore) return 'L';

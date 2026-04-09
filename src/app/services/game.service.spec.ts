@@ -9,7 +9,7 @@ import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
-import { CommentaryStyle, EventType, MatchResult, Position, Role } from '../models/enums';
+import { CommentaryStyle, EventType, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
 import { MatchStatistics, Team } from '../models/types';
 
 describe('GameService persistence integration', () => {
@@ -422,13 +422,13 @@ describe('GameService persistence integration', () => {
       finalScore: '1-0',
       keyMoments: [],
       tacticalAnalysis: {
-        homeTeam: { possession: 50, shots: 1, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 50 },
-        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 40 },
+        homeTeam: { possession: 50, shots: 1, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 40 },
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: 'GK', rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: 'GK', rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
       matchSummary: 'Summary'
     };
@@ -614,13 +614,13 @@ describe('GameService persistence integration', () => {
       finalScore: '0-0',
       keyMoments: [],
       tacticalAnalysis: {
-        homeTeam: { possession: 45, shots: 0, corners: 0, fouls: 1, style: 'Balanced', effectiveness: 45 },
-        awayTeam: { possession: 55, shots: 0, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 55 },
+        homeTeam: { possession: 45, shots: 0, corners: 0, fouls: 1, style: PlayingStyle.DEFENSIVE, effectiveness: 45 },
+        awayTeam: { possession: 55, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 55 },
         tacticalBattle: 'Away control'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: 'GK', rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: 'GK', rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
       },
       matchSummary: 'Player One was dismissed in the first half.'
     };
@@ -768,13 +768,13 @@ describe('GameService persistence integration', () => {
       finalScore: '1-0',
       keyMoments: [],
       tacticalAnalysis: {
-        homeTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 50 },
-        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 40 },
+        homeTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 40 },
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: 'GK', rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: 'GK', rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
       matchSummary: 'Forfeit'
     };
@@ -877,13 +877,13 @@ describe('GameService persistence integration', () => {
     const matchReport = {
       matchId: 'match-sub-red', finalScore: '0-0', keyMoments: [],
       tacticalAnalysis: {
-        homeTeam: { possession: 50, shots: 0, corners: 0, fouls: 1, style: 'Balanced', effectiveness: 50 },
-        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 50 },
+        homeTeam: { possession: 50, shots: 0, corners: 0, fouls: 1, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p-sub', playerName: 'p-sub', position: 'MID', rating: 5, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
-        awayTeam: { mvp: { playerId: 'p-opp', playerName: 'p-opp', position: 'GK', rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 }
+        homeTeam: { mvp: { playerId: 'p-sub', playerName: 'p-sub', position: Position.MIDFIELDER, rating: 5, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
+        awayTeam: { mvp: { playerId: 'p-opp', playerName: 'p-opp', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 }
       },
       matchSummary: 'p-sub sent off after coming on.'
     };

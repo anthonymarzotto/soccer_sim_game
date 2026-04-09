@@ -4,7 +4,7 @@ import { MatchSummaryComponent } from './match-summary';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 import { Match, MatchEvent } from '../../models/types';
-import { EventImportance, EventType } from '../../models/enums';
+import { EventImportance, EventType, PlayingStyle, Position } from '../../models/enums';
 
 describe('MatchSummaryComponent', () => {
   beforeEach(() => {
@@ -110,8 +110,8 @@ function createMatch(input: { keyEvents: MatchEvent[]; expandedMoments: MatchEve
       finalScore: '1-0',
       keyMoments: input.expandedMoments,
       tacticalAnalysis: {
-        homeTeam: { possession: 50, shots: 5, corners: 2, fouls: 8, style: 'POSSESSION', effectiveness: 50 },
-        awayTeam: { possession: 50, shots: 4, corners: 3, fouls: 9, style: 'COUNTER_ATTACK', effectiveness: 50 },
+        homeTeam: { possession: 50, shots: 5, corners: 2, fouls: 8, style: PlayingStyle.POSSESSION, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 4, corners: 3, fouls: 9, style: PlayingStyle.COUNTER_ATTACK, effectiveness: 50 },
         tacticalBattle: 'Even'
       },
       playerPerformances: {
@@ -150,7 +150,7 @@ function createPlayerStats(playerId: string) {
   return {
     playerId,
     playerName: playerId,
-    position: 'MID',
+    position: Position.MIDFIELDER,
     rating: 7,
     goals: 0,
     assists: 0,

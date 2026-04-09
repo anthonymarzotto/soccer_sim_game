@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchStatistics, Team, Player } from '../models/types';
-import { EventType } from '../models/enums';
+import { EventType, Position } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
 
 @Injectable({
@@ -259,7 +259,7 @@ export class StatisticsService {
 export interface PlayerStatistics {
   playerId: string;
   playerName: string;
-  position: string;
+  position: Position;
   minutesPlayed: number;
   passes: number;
   passesSuccessful: number;

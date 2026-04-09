@@ -3,7 +3,7 @@ import { MatchSimulationVariantBService } from './match.simulation.variant-b.ser
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
-import { Role, Position as PositionEnum, CommentaryStyle, EventType } from '../models/enums';
+import { Role, Position as PositionEnum, CommentaryStyle, EventType, TeamSide } from '../models/enums';
 import { Player, Team } from '../models/types';
 import { PlayByPlayEvent, SimulationConfig } from '../models/simulation.types';
 import { SimulationABReporter } from '../testing/simulation-ab.reporter';
@@ -325,7 +325,7 @@ describe('Match Simulation Variant B Guardrails', () => {
   });
 });
 
-type TeamEvent = 'home' | 'away' | null;
+type TeamEvent = TeamSide | null;
 type ScorelineState = 'LEADING' | 'TRAILING' | 'LEVEL';
 
 interface BehaviorWindowMetrics {
@@ -439,7 +439,7 @@ function calculateLateGameBehaviorMetrics(events: PlayByPlayEvent[]): CombinedLa
 
       if (scorelineState === 'TRAILING') {
         registerBehaviorEvent(metrics.trailing[windowBucket], event);
-        if (team === 'home') {
+        if (team === TeamSide.HOME) {
           registerBehaviorEvent(metrics.homeTrailing[windowBucket], event);
         } else {
           registerBehaviorEvent(metrics.awayTrailing[windowBucket], event);
@@ -450,7 +450,7 @@ function calculateLateGameBehaviorMetrics(events: PlayByPlayEvent[]): CombinedLa
     }
 
     if (event.type === EventType.GOAL && team) {
-      if (team === 'home') {
+      if (team === TeamSide.HOME) {
         homeScore += 1;
       } else {
         awayScore += 1;
@@ -493,19 +493,19 @@ function inferTeamFromEvent(event: PlayByPlayEvent): TeamEvent {
   }
 
   if (primaryId.startsWith('home-')) {
-    return 'home';
+    return TeamSide.HOME;
   }
 
   if (primaryId.startsWith('away-')) {
-    return 'away';
+    return TeamSide.AWAY;
   }
 
   return null;
 }
 
-function getScorelineStateForTeam(team: 'home' | 'away', homeScore: number, awayScore: number): ScorelineState {
-  const teamScore = team === 'home' ? homeScore : awayScore;
-  const opponentScore = team === 'home' ? awayScore : homeScore;
+function getScorelineStateForTeam(team: TeamSide, homeScore: number, awayScore: number): ScorelineState {
+  const teamScore = team === TeamSide.HOME ? homeScore : awayScore;
+  const opponentScore = team === TeamSide.HOME ? awayScore : homeScore;
 
   if (teamScore > opponentScore) {
     return 'LEADING';
