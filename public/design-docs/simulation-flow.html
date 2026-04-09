@@ -26,10 +26,12 @@
     mermaid.initialize(mermaidConfig);
 
     const diagramSource = `flowchart TD
-    START([simulateMatch]) --> INIT[Clone teams & rosters\\nDerive tactics\\nInitialise fatigue]
+    START([simulateMatch]) --> INIT[Clone teams & rosters\\nDerive tactics\\nInitialise fatigue\\nInitialise active match shape]
     INIT --> LOOP["For each minute 1-95"]
 
-    LOOP --> TICKS["Determine tick count\\n(zone + late-game urgency)"]
+    LOOP --> FORFEIT_CHECK{"Any team below 7\\nactive players?"}
+    FORFEIT_CHECK -->|Yes| FORFEIT_END[Apply fixed 1-0 forfeit loss\\nClear match events and player stats impact\\nReturn MatchState]
+    FORFEIT_CHECK -->|No| TICKS["Determine tick count\\n(zone + late-game urgency)"]
     TICKS --> TICK_LOOP["For each tick"]
 
     TICK_LOOP --> FATIGUE[Update fatigue]
@@ -38,7 +40,7 @@
     MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality)"}
 
     ACTION -->|CARRY| CARRY_ATTEMPT[Carry attempt]
-    CARRY_ATTEMPT --> CARRY_SUCCESS{"Carry succeeds?\\ncarrier quality vs pressure and fatigue"}
+    CARRY_ATTEMPT --> CARRY_SUCCESS{"Carry succeeds?\\ncarrier quality vs pressure and fatigue\\nplus defensive shape coverage"}
     CARRY_SUCCESS -->|No| CARRY_LOST[TACKLE event\\nDispossessed turnover]
     CARRY_SUCCESS -->|Yes| CARRY_ADVANCE[Extra dribble progress\\noptional same-role handoff\\nincrement possession chain]
     ACTION -->|PASS| PASS_START[Pass attempt]
@@ -48,17 +50,17 @@
     PASS_START --> PASS_INTENT[Select pass intent\\nRECYCLE / PROGRESSION / THROUGH_BALL / CROSS]
     PASS_INTENT --> PASS_TARGET{"Pass target found?\\nintent scoring plus weighted draw across top candidates"}
     PASS_TARGET -->|No| TACKLE[TACKLE event\\nTurnover]
-    PASS_TARGET -->|Yes| PASS_SUCCESS{"Pass success?\\nskill fatigue pressure intent style"}
+    PASS_TARGET -->|Yes| PASS_SUCCESS{"Pass success?\\nskill fatigue pressure intent style\\npressure plus direct defensive shape lane coverage"}
     PASS_SUCCESS -->|Yes| PASS_COMPLETE[PASS event\\nReceiver takes ball\\nBall position advances]
-    PASS_SUCCESS -->|No| PASS_FAIL{"Failure type"}
+    PASS_SUCCESS -->|No| PASS_FAIL{"Failure type\nshape-aware lane vs overhit pressure"}
     PASS_FAIL -->|Tackled| TACKLE_FAIL[TACKLE event\\nTurnover]
     PASS_FAIL -->|Lane cut out| INTERCEPTION[INTERCEPTION event\\nTurnover]
     PASS_FAIL -->|Overhit| OVERHIT["INTERCEPTION event overhit\\nTurnover"]
 
-    SHOT_START --> ON_TARGET{"On target?\\nshooting skill depth angle fatigue pressure\\n+ possession-chain quality"}
+    SHOT_START --> ON_TARGET{"On target?\\nshooting skill depth angle fatigue pressure\\n+ possession-chain quality\\nplus defensive shape coverage"}
     ON_TARGET -->|No| MISS[MISS event]
     ON_TARGET -->|Yes| SOT[Increment shots on target]
-    SOT --> GOAL_CHANCE{"Goal?\\nskill vs keeper depth angle pressure\\n+ possession-chain quality + home advantage bonus"}
+    SOT --> GOAL_CHANCE{"Goal?\\nskill vs keeper depth angle pressure\\n+ possession-chain quality + home advantage bonus\\nplus defensive shape coverage"}
     GOAL_CHANCE -->|Yes| GOAL[GOAL event\\nUpdate score\\nReset to kickoff]
     GOAL_CHANCE -->|No| SAVE[SAVE event\\nKeeper claims ball\\nPossession switches]
 
@@ -70,8 +72,9 @@
     YELLOW --> SECOND_YELLOW{"Second yellow?"}
     SECOND_YELLOW -->|No| FOUL_RESTART
     SECOND_YELLOW -->|Yes| SECOND_RED[RED_CARD event\\nSecond yellow send-off\\nDismiss offender]
-    RED --> FOUL_RESTART
-    SECOND_RED --> FOUL_RESTART
+    RED --> REBALANCE[Rebalance active shape immediately\\nRebuild formation from staffed slots\\nMark optional tactical sub for next sub phase]
+    SECOND_RED --> REBALANCE
+    REBALANCE --> FOUL_RESTART
 
     CARRY_ADVANCE --> NEXT_TICK[Next tick]
     CARRY_LOST --> NEXT_TICK
@@ -87,9 +90,9 @@
 
     NEXT_TICK --> TICK_LOOP
 
-    TICK_LOOP -->|All ticks done| SUB_CHECK{"Substitution window?\nminute + fatigue + bench availability"}
+    TICK_LOOP -->|All ticks done| SUB_CHECK{"Substitution phase?\nfatigue window or pending tactical rebalance"}
     SUB_CHECK -->|No| NORM[Normalise fatigue\nfor tick count]
-    SUB_CHECK -->|Yes| SUB_EVENT[SUBSTITUTION event\nRole-safe starter-bench swap\nMax 3 per team]
+    SUB_CHECK -->|Yes| SUB_EVENT[SUBSTITUTION event\nRole-safe starter-bench swap or tactical rebalance\nOptional after dismissal\nMax 5 per team]
     SUB_EVENT --> NORM
     NORM --> LOOP
     LOOP -->|Minute 95| RESULT([Return MatchState])
@@ -106,12 +109,15 @@
     style YELLOW fill:#854d0e,color:#fff
     style RED fill:#991b1b,color:#fff
     style SECOND_RED fill:#991b1b,color:#fff
+    style REBALANCE fill:#0f766e,color:#fff
     style FOUL_RESTART fill:#1e3a5f,color:#fff
     style GOAL fill:#166534,color:#fff
     style SAVE fill:#1e3a5f,color:#fff
     style MISS fill:#7f1d1d,color:#fff
     style SUB_EVENT fill:#0c4a6e,color:#fff
     style SUB_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e
+    style FORFEIT_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e
+    style FORFEIT_END fill:#7f1d1d,color:#fff
     style SOT fill:#3f3f46,color:#ccc
     style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e`;
 

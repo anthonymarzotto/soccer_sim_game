@@ -7,7 +7,8 @@ import {
   PlayerFatigue,
   Coordinates,
   VariantBReplayMetadata,
-  VariantBTuningConfig
+  VariantBTuningConfig,
+  TeamFormation
 } from '../models/simulation.types';
 import { FieldService } from './field.service';
 import { RngService } from './rng.service';
@@ -22,6 +23,20 @@ interface ResolvedRosters {
 interface TeamSubstitutionUsage {
   home: number;
   away: number;
+}
+
+interface ActiveShapeSlot {
+  slotId: string;
+  playerId: string | null;
+  coordinates: Coordinates;
+  zone: FieldZone;
+  role: string;
+  preferredPosition: PositionEnum;
+}
+
+interface MatchShapeState {
+  home: ActiveShapeSlot[];
+  away: ActiveShapeSlot[];
 }
 
 interface MatchAction {
@@ -78,6 +93,13 @@ export class MatchSimulationVariantBService {
   private readonly maxSubstitutionsPerTeam = 5;
 
   private activeTuning: VariantBTuningConfig = DEFAULT_VARIANT_B_TUNING;
+  private activeMatchShape: MatchShapeState | null = null;
+  private pendingTacticalSubstitutions: TeamSubstitutionUsage = { home: 0, away: 0 };
+  private lastSimulationForfeit: 'home' | 'away' | null = null;
+
+  didLastSimulationEndByForfeit(): boolean {
+    return this.lastSimulationForfeit !== null;
+  }
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig): MatchState {
     this.rng.beginSimulation(config.seed);
@@ -110,10 +132,20 @@ export class MatchSimulationVariantBService {
 
     let currentState = this.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
     const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
+    this.activeMatchShape = this.initializeMatchShape(simulatedHomeTeam, simulatedAwayTeam);
+    this.pendingTacticalSubstitutions = { home: 0, away: 0 };
+    this.lastSimulationForfeit = null;
 
     // Variant B increases dynamism with adaptive ticks per minute.
     for (let minute = 1; minute <= 95; minute++) {
+      const preMinuteForfeit = this.checkForfeitCondition();
+      if (preMinuteForfeit) {
+        currentState = this.applyForfeitScoreline(currentState, preMinuteForfeit, minute, simulatedHomeTeam.id, simulatedAwayTeam.id);
+        break;
+      }
+
       const ticks = this.determineTicksForMinute(currentState, minute);
+      let forfeited = false;
 
       for (let tick = 0; tick < ticks; tick++) {
         currentState = this.simulateVariantBTick(
@@ -126,10 +158,21 @@ export class MatchSimulationVariantBService {
           config,
           rosters
         );
+
+        if (this.lastSimulationForfeit) {
+          currentState = this.applyForfeitScoreline(currentState, this.lastSimulationForfeit, minute, simulatedHomeTeam.id, simulatedAwayTeam.id);
+          forfeited = true;
+          break;
+        }
+      }
+
+      if (forfeited) {
+        break;
       }
 
       this.processMinuteSubstitutions(
         currentState,
+        tactics,
         fatigue,
         simulatedHomeTeam,
         simulatedAwayTeam,
@@ -141,6 +184,9 @@ export class MatchSimulationVariantBService {
 
       this.normalizeFatigueForTickCount(fatigue, ticks);
     }
+
+    this.activeMatchShape = null;
+    this.pendingTacticalSubstitutions = { home: 0, away: 0 };
 
     return currentState;
   }
@@ -496,6 +542,7 @@ export class MatchSimulationVariantBService {
       this.handleFoul(
         state,
         action,
+        tactics,
         homeTeam,
         awayTeam,
         minute,
@@ -582,6 +629,7 @@ export class MatchSimulationVariantBService {
     }
 
     successChance -= pressure * 0.23;
+    successChance += this.calculateCarryShapeModifier(state, currentTeam);
 
     if (carrierFatigue && carrierFatigue.fatigueLevel > 70) {
       const fatiguePenaltyScale = (carrierFatigue.fatigueLevel - 70) / 30;
@@ -680,7 +728,14 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    const failureMode = this.determinePassFailureMode(passIntent, pressure, passDistance, progression);
+    const failureMode = this.determinePassFailureMode(
+      state.ballPossession.location,
+      currentTeam,
+      passIntent,
+      pressure,
+      passDistance,
+      progression
+    );
     this.createPassFailureEvent(state, failureMode, passer.id, passIntent, minute, config);
     state.ballPossession.teamId = currentTeam === 'home' ? awayTeam.id : homeTeam.id;
     state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentPlayers);
@@ -688,16 +743,38 @@ export class MatchSimulationVariantBService {
   }
 
   private determinePassFailureMode(
+    currentLocation: Coordinates,
+    currentTeam: 'home' | 'away',
     passIntent: PassIntent,
     pressure: number,
     passDistance: number,
     progression: number
   ): PassFailureMode {
-    if (pressure >= 0.6 && passDistance <= 24) {
+    const context = this.getDefendingShapeContextForLocation(currentLocation, currentTeam);
+    const uncoveredChannel = context?.channelSlots.length === 0;
+    const denseCentralCoverage = !context?.wideChannel && (context?.centralSlots.length ?? 0) >= 2 && (context?.zoneCoverage ?? 0) >= 0.75;
+
+    if (pressure >= 0.6 && passDistance <= 24 && !uncoveredChannel) {
       return 'TACKLED';
     }
 
     if ((passIntent === 'THROUGH_BALL' || passIntent === 'CROSS') && passDistance >= 30) {
+      if (passIntent === 'THROUGH_BALL' && denseCentralCoverage) {
+        return 'LANE_CUT_OUT';
+      }
+
+      if (uncoveredChannel) {
+        return 'OVERHIT';
+      }
+
+      return 'OVERHIT';
+    }
+
+    if (passIntent === 'THROUGH_BALL' && denseCentralCoverage && progression >= 8) {
+      return 'LANE_CUT_OUT';
+    }
+
+    if (uncoveredChannel && passDistance >= 26 && passIntent !== 'RECYCLE') {
       return 'OVERHIT';
     }
 
@@ -772,6 +849,7 @@ export class MatchSimulationVariantBService {
   private handleFoul(
     state: MatchState,
     action: MatchAction,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
     homeTeam: Team,
     awayTeam: Team,
     minute: number,
@@ -848,7 +926,7 @@ export class MatchSimulationVariantBService {
     }
 
     if (offenderSentOff) {
-      this.dismissPlayer(offender.id, defendingPlayers);
+      this.dismissPlayer(defendingTeam, offender.id, defendingPlayers, tactics);
     }
 
     state.ballPossession.teamId = attackingTeam === 'home' ? homeTeam.id : awayTeam.id;
@@ -911,10 +989,22 @@ export class MatchSimulationVariantBService {
     return state.events.filter(event => event.type === eventType && event.playerIds[0] === playerId).length;
   }
 
-  private dismissPlayer(playerId: string, teamPlayers: Player[]): void {
+  private dismissPlayer(
+    teamKey: 'home' | 'away',
+    playerId: string,
+    teamPlayers: Player[],
+    tactics: { home: TacticalSetup; away: TacticalSetup }
+  ): void {
     const dismissedPlayer = teamPlayers.find(player => player.id === playerId);
     if (dismissedPlayer) {
       dismissedPlayer.role = Role.DISMISSED;
+      this.rebalanceShapeAfterDismissal(teamKey, teamPlayers, playerId, tactics);
+      this.pendingTacticalSubstitutions[teamKey] = 1;
+
+      const forfeitingTeam = this.checkForfeitCondition();
+      if (forfeitingTeam) {
+        this.lastSimulationForfeit = forfeitingTeam;
+      }
     }
   }
 
@@ -956,10 +1046,37 @@ export class MatchSimulationVariantBService {
     }
 
     baseChance -= pressure * 4;
+    baseChance += this.calculatePassShapeModifier(currentLocation, currentTeam, passIntent);
 
     baseChance = this.clamp(baseChance, 20, 95);
 
     return this.rng.random() * 100 < baseChance;
+  }
+
+  private calculatePassShapeModifier(
+    currentLocation: Coordinates,
+    currentTeam: 'home' | 'away',
+    passIntent: PassIntent
+  ): number {
+    const context = this.getDefendingShapeContextForLocation(currentLocation, currentTeam);
+    if (!context) {
+      return 0;
+    }
+
+    // Keep this modifier modest so pressure remains the primary control signal for pass resistance.
+    let modifier = (1 - context.zoneCoverage) * 2;
+
+    if (context.channelSlots.length === 0) {
+      modifier += passIntent === 'RECYCLE' ? 0.4 : 1.4;
+    } else if (context.channelSlots.length >= 2) {
+      modifier -= passIntent === 'RECYCLE' ? 0.15 : 0.6;
+    }
+
+    if (!context.wideChannel && context.centralSlots.length === 0) {
+      modifier += passIntent === 'THROUGH_BALL' ? 1.2 : 0.55;
+    }
+
+    return modifier;
   }
 
   private calculatePossessionChainQuality(state: MatchState, currentTeam: 'home' | 'away'): number {
@@ -1047,6 +1164,8 @@ export class MatchSimulationVariantBService {
       pressure += 0.04;
     }
 
+    pressure += this.calculateShapePressureModifier(state, currentTeam);
+
     return this.clamp(pressure, 0.1, 0.75);
   }
 
@@ -1075,6 +1194,7 @@ export class MatchSimulationVariantBService {
 
   private processMinuteSubstitutions(
     state: MatchState,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     homeTeam: Team,
     awayTeam: Team,
@@ -1083,13 +1203,132 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     substitutionsUsed: TeamSubstitutionUsage
   ): void {
-    this.tryTeamSubstitution('home', state, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
-    this.tryTeamSubstitution('away', state, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+    const homeUsedTacticalSub = this.tryPendingTacticalSubstitution(
+      'home',
+      state,
+      tactics,
+      homeTeam,
+      awayTeam,
+      fatigue,
+      minute,
+      config,
+      rosters,
+      substitutionsUsed
+    );
+    const awayUsedTacticalSub = this.tryPendingTacticalSubstitution(
+      'away',
+      state,
+      tactics,
+      homeTeam,
+      awayTeam,
+      fatigue,
+      minute,
+      config,
+      rosters,
+      substitutionsUsed
+    );
+
+    if (!homeUsedTacticalSub) {
+      this.tryTeamSubstitution('home', state, tactics, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+    }
+    if (!awayUsedTacticalSub) {
+      this.tryTeamSubstitution('away', state, tactics, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+    }
+  }
+
+  private tryPendingTacticalSubstitution(
+    teamKey: 'home' | 'away',
+    state: MatchState,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    homeTeam: Team,
+    awayTeam: Team,
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    substitutionsUsed: TeamSubstitutionUsage
+  ): boolean {
+    if (this.pendingTacticalSubstitutions[teamKey] === 0) {
+      return false;
+    }
+
+    this.pendingTacticalSubstitutions[teamKey] = 0;
+
+    if (substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam || !this.activeMatchShape) {
+      return false;
+    }
+
+    const teamPlayers = teamKey === 'home' ? rosters.homePlayers : rosters.awayPlayers;
+    const currentShape = this.activeMatchShape[teamKey];
+    const currentQuality = this.calculateShapeQuality(currentShape, teamPlayers);
+    const benchPlayers = teamPlayers.filter(player => player.role === Role.BENCH);
+    const starterOutfield = teamPlayers.filter(
+      player => player.role === Role.STARTER && player.position !== PositionEnum.GOALKEEPER
+    );
+
+    let bestCandidate: {
+      incoming: Player;
+      outgoing: Player;
+      quality: number;
+      shape: ActiveShapeSlot[];
+    } | null = null;
+
+    for (const incoming of benchPlayers) {
+      for (const outgoing of starterOutfield) {
+        const simulatedActivePlayers = teamPlayers.filter(
+          player => player.role === Role.STARTER && player.id !== outgoing.id
+        );
+        simulatedActivePlayers.push({ ...incoming, role: Role.STARTER });
+
+        const candidateShape = this.rebalanceShapeForPlayers(currentShape, simulatedActivePlayers);
+        const candidateQuality = this.calculateShapeQuality(candidateShape, teamPlayers);
+
+        if (!bestCandidate || candidateQuality > bestCandidate.quality) {
+          bestCandidate = {
+            incoming,
+            outgoing,
+            quality: candidateQuality,
+            shape: candidateShape
+          };
+        }
+      }
+    }
+
+    if (!bestCandidate || bestCandidate.quality <= currentQuality) {
+      return false;
+    }
+
+    bestCandidate.outgoing.role = Role.SUBSTITUTED_OUT;
+    bestCandidate.incoming.role = Role.STARTER;
+    substitutionsUsed[teamKey] += 1;
+    this.activeMatchShape = {
+      ...this.activeMatchShape,
+      [teamKey]: bestCandidate.shape
+    };
+    this.rebuildFormationFromShape(teamKey, tactics);
+
+    const teamId = teamKey === 'home' ? homeTeam.id : awayTeam.id;
+    if (state.ballPossession.teamId === teamId && state.ballPossession.playerWithBall === bestCandidate.outgoing.id) {
+      state.ballPossession.playerWithBall = bestCandidate.incoming.id;
+    }
+
+    this.createEvent(
+      state,
+      EventType.SUBSTITUTION,
+      [bestCandidate.outgoing.id, bestCandidate.incoming.id],
+      { ...state.ballPossession.location },
+      minute,
+      true,
+      config
+    );
+
+    return true;
   }
 
   private tryTeamSubstitution(
     teamKey: 'home' | 'away',
     state: MatchState,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
     homeTeam: Team,
     awayTeam: Team,
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
@@ -1126,6 +1365,7 @@ export class MatchSimulationVariantBService {
     outgoingPlayer.role = Role.SUBSTITUTED_OUT;
     incomingPlayer.role = Role.STARTER;
     substitutionsUsed[teamKey] += 1;
+    this.applyShapeSubstitution(teamKey, outgoingPlayer.id, incomingPlayer.id, tactics);
 
     const teamId = teamKey === 'home' ? homeTeam.id : awayTeam.id;
     if (state.ballPossession.teamId === teamId && state.ballPossession.playerWithBall === outgoingPlayer.id) {
@@ -1274,6 +1514,7 @@ export class MatchSimulationVariantBService {
     const currentTeam: 'home' | 'away' = isHomeInPossession ? 'home' : 'away';
     const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
     const chainQuality = this.calculatePossessionChainQuality(state, currentTeam);
+    const shotShapeModifier = this.calculateShotShapeModifier(state, currentTeam);
 
     if (isHomeInPossession) {
       state.homeShots++;
@@ -1298,6 +1539,7 @@ export class MatchSimulationVariantBService {
     }
     onTargetChance -= pressure * 0.02;
     onTargetChance += chainQuality * 0.02;
+    onTargetChance += shotShapeModifier.onTargetBonus;
 
     onTargetChance = this.clampChance(onTargetChance, this.activeTuning.onTargetMin, this.activeTuning.onTargetMax);
     const onTarget = this.rng.random() < onTargetChance;
@@ -1335,6 +1577,7 @@ export class MatchSimulationVariantBService {
     goalChance -= (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
     goalChance -= pressure * 0.015;
     goalChance += chainQuality * 0.015;
+    goalChance += shotShapeModifier.goalChanceBonus;
     if (isHomeInPossession) {
       goalChance += this.activeTuning.homeAdvantageGoalBonus;
     }
@@ -1626,6 +1869,467 @@ export class MatchSimulationVariantBService {
 
   private createRandomId(): string {
     return this.rng.random().toString(36).substring(2, 9);
+  }
+
+  private initializeMatchShape(homeTeam: Team, awayTeam: Team): MatchShapeState {
+    return {
+      home: this.buildShapeSlots(homeTeam),
+      away: this.buildShapeSlots(awayTeam)
+    };
+  }
+
+  private buildShapeSlots(team: Team): ActiveShapeSlot[] {
+    // Match-time shape starts from the saved formation assignments, then diverges in-memory after dismissals and tactical rebalances.
+    return this.fieldService.getFormationSlots(team).map(slot => ({
+      slotId: slot.slotId,
+      playerId: team.formationAssignments[slot.slotId] || null,
+      coordinates: { ...slot.coordinates },
+      zone: slot.zone,
+      role: slot.label,
+      preferredPosition: slot.position
+    }));
+  }
+
+  private checkForfeitCondition(): 'home' | 'away' | null {
+    if (!this.activeMatchShape) {
+      return null;
+    }
+
+    if (this.getOnFieldPlayerCount(this.activeMatchShape.home) < 7) {
+      return 'home';
+    }
+
+    if (this.getOnFieldPlayerCount(this.activeMatchShape.away) < 7) {
+      return 'away';
+    }
+
+    return null;
+  }
+
+  private getOnFieldPlayerCount(shape: ActiveShapeSlot[]): number {
+    return shape.filter(slot => slot.playerId !== null).length;
+  }
+
+  private calculateShapePressureModifier(
+    state: MatchState,
+    currentTeam: 'home' | 'away'
+  ): number {
+    const context = this.getDefendingShapeContext(state, currentTeam);
+    if (!context || context.zoneSlots.length === 0) {
+      return 0;
+    }
+
+    let modifier = 0;
+
+    // Undermanned defensive lines should press less effectively in the active band.
+    modifier -= (1 - context.zoneCoverage) * 0.16;
+
+    if (context.channelSlots.length === 0) {
+      modifier -= context.wideChannel ? 0.06 : 0.05;
+    } else if (context.channelSlots.length >= 2) {
+      modifier += 0.015;
+    }
+
+    return modifier;
+  }
+
+  private calculateCarryShapeModifier(
+    state: MatchState,
+    currentTeam: 'home' | 'away'
+  ): number {
+    const context = this.getDefendingShapeContext(state, currentTeam);
+    if (!context) {
+      return 0;
+    }
+
+    let modifier = (1 - context.zoneCoverage) * 0.06;
+
+    if (context.channelSlots.length === 0) {
+      modifier += context.wideChannel ? 0.025 : 0.03;
+    }
+
+    if (context.centralSlots.length === 0 && !context.wideChannel) {
+      modifier += 0.025;
+    }
+
+    return modifier;
+  }
+
+  private calculateShotShapeModifier(
+    state: MatchState,
+    currentTeam: 'home' | 'away'
+  ): { onTargetBonus: number; goalChanceBonus: number } {
+    const context = this.getDefendingShapeContext(state, currentTeam);
+    if (!context) {
+      return { onTargetBonus: 0, goalChanceBonus: 0 };
+    }
+
+    const zoneGap = 1 - context.zoneCoverage;
+    let onTargetBonus = zoneGap * 0.035;
+    let goalChanceBonus = zoneGap * 0.04;
+
+    if (context.channelSlots.length === 0) {
+      onTargetBonus += context.wideChannel ? 0.02 : 0.015;
+      goalChanceBonus += context.wideChannel ? 0.015 : 0.02;
+    }
+
+    if (!context.wideChannel && context.centralSlots.length === 0) {
+      goalChanceBonus += 0.025;
+    }
+
+    return { onTargetBonus, goalChanceBonus };
+  }
+
+  private getDefendingShapeContext(
+    state: MatchState,
+    currentTeam: 'home' | 'away'
+  ): {
+    zoneSlots: ActiveShapeSlot[];
+    staffedZoneSlots: ActiveShapeSlot[];
+    zoneCoverage: number;
+    wideChannel: boolean;
+    channelSlots: ActiveShapeSlot[];
+    centralSlots: ActiveShapeSlot[];
+  } | null {
+    if (!this.activeMatchShape) {
+      return null;
+    }
+
+    return this.getDefendingShapeContextForLocation(state.ballPossession.location, currentTeam);
+  }
+
+  private getDefendingShapeContextForLocation(
+    location: Coordinates,
+    currentTeam: 'home' | 'away'
+  ): {
+    zoneSlots: ActiveShapeSlot[];
+    staffedZoneSlots: ActiveShapeSlot[];
+    zoneCoverage: number;
+    wideChannel: boolean;
+    channelSlots: ActiveShapeSlot[];
+    centralSlots: ActiveShapeSlot[];
+  } | null {
+    if (!this.activeMatchShape) {
+      return null;
+    }
+
+    // Evaluate coverage from the defending side's perspective so depleted lines and empty channels soften resistance naturally.
+    const defendingTeam = currentTeam === 'home' ? 'away' : 'home';
+    const defendingShape = this.activeMatchShape[defendingTeam];
+    const zone = this.fieldService.getZoneFromY(location.y);
+    const defendingZone = this.resolveDefendingShapeZone(currentTeam, zone);
+    const zoneSlots = defendingShape.filter(slot => slot.zone === defendingZone);
+    const staffedZoneSlots = zoneSlots.filter(slot => slot.playerId !== null);
+
+    if (zoneSlots.length === 0) {
+      return null;
+    }
+
+    const wideChannel = Math.abs(location.x - 50) >= 18;
+    const channelSlots = staffedZoneSlots.filter(slot => this.isSlotRelevantToBallChannel(slot, location.x, wideChannel));
+    const centralSlots = staffedZoneSlots.filter(slot => Math.abs(slot.coordinates.x - 50) <= 16);
+
+    return {
+      zoneSlots,
+      staffedZoneSlots,
+      zoneCoverage: staffedZoneSlots.length / zoneSlots.length,
+      wideChannel,
+      channelSlots,
+      centralSlots
+    };
+  }
+
+  private resolveDefendingShapeZone(currentTeam: 'home' | 'away', zone: FieldZone): FieldZone {
+    if (currentTeam === 'away') {
+      return zone;
+    }
+
+    if (zone === FieldZone.DEFENSE) {
+      return FieldZone.ATTACK;
+    }
+
+    if (zone === FieldZone.ATTACK) {
+      return FieldZone.DEFENSE;
+    }
+
+    return FieldZone.MIDFIELD;
+  }
+
+  private isSlotRelevantToBallChannel(slot: ActiveShapeSlot, ballX: number, wideChannel: boolean): boolean {
+    const slotOffset = Math.abs(slot.coordinates.x - 50);
+
+    if (!wideChannel) {
+      return slotOffset <= 18;
+    }
+
+    if (ballX < 50) {
+      return slot.coordinates.x <= 42;
+    }
+
+    return slot.coordinates.x >= 58;
+  }
+
+  private applyForfeitScoreline(
+    state: MatchState,
+    forfeitingTeam: 'home' | 'away',
+    minute: number,
+    homeTeamId: string,
+    awayTeamId: string
+  ): MatchState {
+    const homeForfeits = forfeitingTeam === 'home';
+
+    return {
+      ...state,
+      currentMinute: minute,
+      events: [],
+      homeScore: homeForfeits ? 0 : 1,
+      awayScore: homeForfeits ? 1 : 0,
+      homeShots: 0,
+      awayShots: 0,
+      homeShotsOnTarget: 0,
+      awayShotsOnTarget: 0,
+      homePossession: 50,
+      awayPossession: 50,
+      homeCorners: 0,
+      awayCorners: 0,
+      homeFouls: 0,
+      awayFouls: 0,
+      homeYellowCards: 0,
+      awayYellowCards: 0,
+      homeRedCards: 0,
+      awayRedCards: 0,
+      ballPossession: {
+        teamId: homeForfeits ? awayTeamId : homeTeamId,
+        playerWithBall: '',
+        location: { x: 50, y: 50 },
+        phase: MatchPhase.BUILD_UP,
+        passes: 0,
+        timeElapsed: 0
+      }
+    };
+  }
+
+  private rebalanceShapeAfterDismissal(
+    teamKey: 'home' | 'away',
+    teamPlayers: Player[],
+    dismissedPlayerId: string,
+    tactics: { home: TacticalSetup; away: TacticalSetup }
+  ): void {
+    if (!this.activeMatchShape) {
+      return;
+    }
+
+    const currentShape = this.activeMatchShape[teamKey].map(slot => ({
+      ...slot,
+      playerId: slot.playerId === dismissedPlayerId ? null : slot.playerId
+    }));
+    const activePlayers = teamPlayers.filter(player => player.role === Role.STARTER && player.id !== dismissedPlayerId);
+    const rebalancedShape = this.rebalanceShapeForPlayers(currentShape, activePlayers);
+
+    this.activeMatchShape = {
+      ...this.activeMatchShape,
+      [teamKey]: rebalancedShape
+    };
+    this.rebuildFormationFromShape(teamKey, tactics);
+  }
+
+  private rebalanceShapeForPlayers(shape: ActiveShapeSlot[], activePlayers: Player[]): ActiveShapeSlot[] {
+    const clearedShape = shape.map(slot => ({ ...slot, playerId: null }));
+    // Staff the highest-priority slots first so the team preserves its spine before wide or advanced roles.
+    const slotsToStaff = [...clearedShape]
+      .sort((left, right) => this.getShapeSlotPriority(right) - this.getShapeSlotPriority(left))
+      .slice(0, Math.min(activePlayers.length, clearedShape.length));
+    const assignments = this.assignPlayersToShapeSlots(activePlayers, slotsToStaff, shape);
+
+    return clearedShape.map(slot => ({
+      ...slot,
+      playerId: assignments.get(slot.slotId) ?? null
+    }));
+  }
+
+  private assignPlayersToShapeSlots(
+    activePlayers: Player[],
+    slotsToStaff: ActiveShapeSlot[],
+    previousShape: ActiveShapeSlot[]
+  ): Map<string, string> {
+    const assignments = new Map<string, string>();
+    const remainingPlayers = [...activePlayers];
+    const previousSlotsByPlayer = new Map(
+      previousShape
+        .filter(slot => slot.playerId !== null)
+        .map(slot => [slot.playerId as string, slot])
+    );
+
+    // Favor minimal disruption: keep players near their old slots and in compatible roles when rebuilding a reduced shape.
+    for (const slot of slotsToStaff.sort((left, right) => this.getShapeSlotPriority(right) - this.getShapeSlotPriority(left))) {
+      let bestIndex = -1;
+      let bestScore = Number.NEGATIVE_INFINITY;
+
+      remainingPlayers.forEach((player, index) => {
+        const score = this.getPlayerSlotFitScore(player, slot, previousSlotsByPlayer.get(player.id));
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      });
+
+      if (bestIndex >= 0) {
+        const [selectedPlayer] = remainingPlayers.splice(bestIndex, 1);
+        assignments.set(slot.slotId, selectedPlayer.id);
+      }
+    }
+
+    return assignments;
+  }
+
+  private getPlayerSlotFitScore(
+    player: Player,
+    slot: ActiveShapeSlot,
+    previousSlot?: ActiveShapeSlot
+  ): number {
+    let score = this.getPositionCompatibilityScore(player.position, slot.preferredPosition);
+    score += this.getShapeSlotPriority(slot) * 0.08;
+    score += player.overall * 0.2;
+
+    if (previousSlot?.slotId === slot.slotId) {
+      score += 30;
+    }
+
+    if (previousSlot?.zone === slot.zone) {
+      score += 12;
+    }
+
+    if (previousSlot) {
+      score -= this.fieldService.getDistance(previousSlot.coordinates, slot.coordinates) * 0.4;
+    }
+
+    return score;
+  }
+
+  private getPositionCompatibilityScore(playerPosition: PositionEnum, slotPosition: PositionEnum): number {
+    if (playerPosition === slotPosition) {
+      return 140;
+    }
+
+    if (playerPosition === PositionEnum.GOALKEEPER || slotPosition === PositionEnum.GOALKEEPER) {
+      return -1000;
+    }
+
+    if (playerPosition === PositionEnum.DEFENDER && slotPosition === PositionEnum.MIDFIELDER) {
+      return 72;
+    }
+
+    if (playerPosition === PositionEnum.MIDFIELDER && slotPosition === PositionEnum.DEFENDER) {
+      return 68;
+    }
+
+    if (playerPosition === PositionEnum.MIDFIELDER && slotPosition === PositionEnum.FORWARD) {
+      return 62;
+    }
+
+    if (playerPosition === PositionEnum.FORWARD && slotPosition === PositionEnum.MIDFIELDER) {
+      return 58;
+    }
+
+    if (playerPosition === PositionEnum.DEFENDER && slotPosition === PositionEnum.FORWARD) {
+      return 20;
+    }
+
+    if (playerPosition === PositionEnum.FORWARD && slotPosition === PositionEnum.DEFENDER) {
+      return 10;
+    }
+
+    return 0;
+  }
+
+  private getShapeSlotPriority(slot: ActiveShapeSlot): number {
+    const centrality = 50 - Math.abs(slot.coordinates.x - 50);
+
+    if (slot.preferredPosition === PositionEnum.GOALKEEPER) {
+      return 1000;
+    }
+
+    if (slot.preferredPosition === PositionEnum.DEFENDER) {
+      return 330 + (centrality * 2) + (slot.zone === FieldZone.DEFENSE ? 40 : 0);
+    }
+
+    if (slot.preferredPosition === PositionEnum.MIDFIELDER) {
+      return 230 + centrality + (slot.zone === FieldZone.MIDFIELD ? 25 : 0);
+    }
+
+    return 140 + (centrality * 0.6) + (slot.zone === FieldZone.ATTACK ? 10 : 0);
+  }
+
+  private rebuildFormationFromShape(
+    teamKey: 'home' | 'away',
+    tactics: { home: TacticalSetup; away: TacticalSetup }
+  ): void {
+    if (!this.activeMatchShape) {
+      return;
+    }
+
+    tactics[teamKey] = {
+      ...tactics[teamKey],
+      formation: this.buildTeamFormationFromShape(this.activeMatchShape[teamKey], tactics[teamKey].formation)
+    };
+  }
+
+  private buildTeamFormationFromShape(shape: ActiveShapeSlot[], originalFormation: TeamFormation): TeamFormation {
+    return {
+      name: originalFormation.name,
+      positions: originalFormation.positions.map(position => {
+        const shapeSlot = shape.find(slot => slot.slotId === position.slotId);
+        return {
+          ...position,
+          playerId: shapeSlot?.playerId ?? '',
+          coordinates: shapeSlot ? { ...shapeSlot.coordinates } : { ...position.coordinates },
+          zone: shapeSlot?.zone ?? position.zone,
+          role: shapeSlot?.role ?? position.role
+        };
+      })
+    };
+  }
+
+  private applyShapeSubstitution(
+    teamKey: 'home' | 'away',
+    outgoingPlayerId: string,
+    incomingPlayerId: string,
+    tactics: { home: TacticalSetup; away: TacticalSetup }
+  ): void {
+    if (!this.activeMatchShape) {
+      return;
+    }
+
+    const updatedShape = this.activeMatchShape[teamKey].map(slot => {
+      if (slot.playerId === outgoingPlayerId) {
+        return { ...slot, playerId: incomingPlayerId };
+      }
+
+      return slot;
+    });
+
+    this.activeMatchShape = {
+      ...this.activeMatchShape,
+      [teamKey]: updatedShape
+    };
+    this.rebuildFormationFromShape(teamKey, tactics);
+  }
+
+  private calculateShapeQuality(shape: ActiveShapeSlot[], teamPlayers: Player[]): number {
+    const playersById = new Map(teamPlayers.map(player => [player.id, player]));
+
+    return shape.reduce((total, slot) => {
+      if (!slot.playerId) {
+        return total;
+      }
+
+      const player = playersById.get(slot.playerId);
+      if (!player) {
+        return total;
+      }
+
+      return total + this.getShapeSlotPriority(slot) + this.getPositionCompatibilityScore(player.position, slot.preferredPosition);
+    }, 0);
   }
 
 }

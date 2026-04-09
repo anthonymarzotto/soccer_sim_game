@@ -18,6 +18,7 @@ interface VariantBSubstitutionInternals {
   tryTeamSubstitution: (
     teamKey: 'home' | 'away',
     state: MatchState,
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
     homeTeam: Team,
     awayTeam: Team,
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
@@ -30,6 +31,7 @@ interface VariantBSubstitutionInternals {
 
 describe('Match Simulation Variant B Substitutions', () => {
   let simulationB: MatchSimulationVariantBService;
+  let fieldService: FieldService;
   let homeTeam: Team;
   let awayTeam: Team;
   let homePlayers: Player[];
@@ -46,6 +48,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     });
 
     simulationB = TestBed.inject(MatchSimulationVariantBService);
+  fieldService = TestBed.inject(FieldService);
     homePlayers = create442PlayersWithBench('home');
     awayPlayers = create442PlayersWithBench('away');
     homeTeam = createTeam('home', homePlayers);
@@ -61,6 +64,10 @@ describe('Match Simulation Variant B Substitutions', () => {
     const config = createSimulationConfig();
     const state = createMatchState(homeTeam.id, 'home-mid1');
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
     const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
 
     setFatigue(fatigue.home, 'home-mid1', 88);
@@ -74,6 +81,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.tryTeamSubstitution(
       'home',
       state,
+      tactics,
       homeTeam,
       awayTeam,
       fatigue,
@@ -100,6 +108,10 @@ describe('Match Simulation Variant B Substitutions', () => {
     const config = createSimulationConfig();
     const state = createMatchState(homeTeam.id, 'home-mid2');
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
     const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
 
     // Dismiss the only bench mid so only the bench def is available as fallback.
@@ -119,6 +131,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.tryTeamSubstitution(
       'home',
       state,
+      tactics,
       homeTeam,
       awayTeam,
       fatigue,
@@ -138,6 +151,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.tryTeamSubstitution(
       'home',
       state,
+      tactics,
       homeTeam,
       awayTeam,
       fatigue,
@@ -156,6 +170,10 @@ describe('Match Simulation Variant B Substitutions', () => {
     const config = createSimulationConfig();
     const state = createMatchState(homeTeam.id, 'home-mid1');
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
     const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
 
     setFatigue(fatigue.home, 'home-mid1', 91);
@@ -171,6 +189,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.tryTeamSubstitution(
       'home',
       state,
+      tactics,
       homeTeam,
       awayTeam,
       fatigue,
@@ -192,6 +211,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.tryTeamSubstitution(
       'home',
       state,
+      tactics,
       homeTeam,
       awayTeam,
       fatigue,

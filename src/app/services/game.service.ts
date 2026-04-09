@@ -505,6 +505,9 @@ export class GameService {
     };
 
     const matchState = this.matchSimulationVariantBService.simulateMatch(match, homeTeam, awayTeam, simConfig);
+    const endedByForfeit = (this.matchSimulationVariantBService as unknown as {
+      didLastSimulationEndByForfeit?: () => boolean;
+    }).didLastSimulationEndByForfeit?.() ?? false;
     
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
@@ -516,7 +519,7 @@ export class GameService {
     const keyEvents = this.extractKeyEvents(matchState.events);
     
     // Update league state with results
-    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport);
+    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
     
     return {
       matchState,
@@ -527,7 +530,16 @@ export class GameService {
     };
   }
 
-  private updateLeagueWithMatchResult(match: Match, matchState: MatchState, homeTeam: Team, awayTeam: Team, keyEvents: MatchEvent[], matchStats: MatchStatistics, matchReport: MatchReport) {
+  private updateLeagueWithMatchResult(
+    match: Match,
+    matchState: MatchState,
+    homeTeam: Team,
+    awayTeam: Team,
+    keyEvents: MatchEvent[],
+    matchStats: MatchStatistics,
+    matchReport: MatchReport,
+    skipPlayerCareerStats = false
+  ) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -582,8 +594,9 @@ export class GameService {
       return team;
     });
 
-    // Update player career stats
-    this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
+    if (!skipPlayerCareerStats) {
+      this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
+    }
 
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.

@@ -256,6 +256,138 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(turnoverShare).toBeGreaterThanOrEqual(0.1);
     expect(turnoverShare).toBeLessThanOrEqual(0.4);
   }, 60000);
+
+  it('should keep a reduced-shape scenario within broad realism bounds', () => {
+    const iterations = 50;
+    const reducedAwayTeam = createReducedShapeTeam(
+      createReducedShapeTeam(awayTeam, 'away-fwd2', 'att_r'),
+      'away-mid4',
+      'mid_r'
+    );
+
+    let baselineAwayGoals = 0;
+    let reducedAwayGoals = 0;
+    let totalShots = 0;
+    let totalGoals = 0;
+
+    for (let i = 0; i < iterations; i++) {
+      const baselineConfig: SimulationConfig = {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED,
+        simulationVariant: 'B',
+        seed: `calibration-reduced-${i}`
+      };
+
+      const reducedConfig: SimulationConfig = {
+        ...baselineConfig,
+        seed: `calibration-reduced-${i}`
+      };
+
+      const baselineMatch = {
+        id: `calibration-reduced-baseline-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      const reducedMatch = {
+        id: `calibration-reduced-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: reducedAwayTeam.id,
+        played: false
+      };
+
+      const baselineState = simulationB.simulateMatch(baselineMatch, homeTeam, awayTeam, baselineConfig);
+      const reducedState = simulationB.simulateMatch(reducedMatch, homeTeam, reducedAwayTeam, reducedConfig);
+
+      baselineAwayGoals += baselineState.awayScore;
+      reducedAwayGoals += reducedState.awayScore;
+      totalGoals += reducedState.homeScore + reducedState.awayScore;
+      totalShots += reducedState.homeShots + reducedState.awayShots;
+    }
+
+    const avgBaselineAwayGoals = baselineAwayGoals / iterations;
+    const avgReducedAwayGoals = reducedAwayGoals / iterations;
+    const avgTotalGoals = totalGoals / iterations;
+    const avgShots = totalShots / iterations;
+
+    expect(avgReducedAwayGoals).toBeLessThan(avgBaselineAwayGoals);
+    expect(avgTotalGoals).toBeGreaterThan(1.9);
+    expect(avgTotalGoals).toBeLessThan(3.8);
+    expect(avgShots).toBeGreaterThan(19);
+    expect(avgShots).toBeLessThan(32);
+  });
+
+  it('should keep a central-spine depletion scenario within broad realism bounds', () => {
+    const iterations = 50;
+    const reducedAwayTeam = createReducedShapeTeam(
+      createReducedShapeTeam(awayTeam, 'away-def2', 'def_lc'),
+      'away-def3',
+      'def_rc'
+    );
+
+    let baselineAwayGoals = 0;
+    let reducedAwayGoals = 0;
+    let totalShots = 0;
+    let totalGoals = 0;
+
+    for (let i = 0; i < iterations; i++) {
+      const baselineConfig: SimulationConfig = {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED,
+        simulationVariant: 'B',
+        seed: `calibration-spine-${i}`
+      };
+
+      const reducedConfig: SimulationConfig = {
+        ...baselineConfig,
+        seed: `calibration-spine-${i}`
+      };
+
+      const baselineMatch = {
+        id: `calibration-spine-baseline-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      const reducedMatch = {
+        id: `calibration-spine-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: reducedAwayTeam.id,
+        played: false
+      };
+
+      const baselineState = simulationB.simulateMatch(baselineMatch, homeTeam, awayTeam, baselineConfig);
+      const reducedState = simulationB.simulateMatch(reducedMatch, homeTeam, reducedAwayTeam, reducedConfig);
+
+      baselineAwayGoals += baselineState.awayScore;
+      reducedAwayGoals += reducedState.awayScore;
+      totalGoals += reducedState.homeScore + reducedState.awayScore;
+      totalShots += reducedState.homeShots + reducedState.awayShots;
+    }
+
+    const avgBaselineAwayGoals = baselineAwayGoals / iterations;
+    const avgReducedAwayGoals = reducedAwayGoals / iterations;
+    const avgTotalGoals = totalGoals / iterations;
+    const avgShots = totalShots / iterations;
+
+    expect(avgReducedAwayGoals).toBeLessThanOrEqual(avgBaselineAwayGoals + 0.35);
+    expect(avgTotalGoals).toBeGreaterThan(1.8);
+    expect(avgTotalGoals).toBeLessThan(4.1);
+    expect(avgShots).toBeGreaterThan(18);
+    expect(avgShots).toBeLessThan(33);
+  });
 });
 
 function create442Players(prefix: string): Player[] {
@@ -305,6 +437,27 @@ function createTeam(idPrefix: string, players: Player[]): Team {
       goalsAgainst: 0,
       points: 0,
       last5: []
+    }
+  };
+}
+
+function createReducedShapeTeam(team: Team, removedPlayerId: string, vacatedSlotId: string): Team {
+  return {
+    ...team,
+    players: team.players.map(player => {
+      if (player.id !== removedPlayerId) {
+        return { ...player };
+      }
+
+      return {
+        ...player,
+        role: Role.DISMISSED
+      };
+    }),
+    playerIds: [...team.playerIds],
+    formationAssignments: {
+      ...team.formationAssignments,
+      [vacatedSlotId]: ''
     }
   };
 }
