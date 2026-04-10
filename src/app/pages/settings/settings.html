@@ -43,7 +43,7 @@
             id="badgeStyleSelect"
             #badgeStyleSelect
             [value]="selectedStyle()"
-            (change)="setBadgeStyle(badgeStyleSelect.value)"
+            (change)="onBadgeStyleChange(badgeStyleSelect.value)"
             class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
             @for (style of badgeStyles; track style) {
               <option [value]="style" [selected]="style === selectedStyle()">

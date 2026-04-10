@@ -97,6 +97,27 @@ describe('GameService persistence integration', () => {
     });
   });
 
+  it('should ignore rapid repeated week simulation calls until lock cooldown ends', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { service } = setup({ teams: [], schedule: [], currentWeek: 1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+      service.simulateCurrentWeek();
+
+      expect(service.league()?.currentWeek).toBe(2);
+
+      vi.runAllTimers();
+
+      service.simulateCurrentWeek();
+      expect(service.league()?.currentWeek).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('should persist only changed team on formation assignment clear', async () => {
     const storedLeague = {
       teams: [
@@ -1016,6 +1037,166 @@ describe('GameService persistence integration', () => {
 });
 
 describe('GameService simulation engine', () => {
+  it('should block week simulation while a single-match session is active', async () => {
+    TestBed.resetTestingModule();
+
+    const variantBSpy = {
+      simulateMatch: vi.fn().mockReturnValue({
+        currentMinute: 90,
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0
+      })
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        {
+          provide: PersistenceService,
+          useValue: {
+            loadLeague: vi.fn().mockResolvedValue({
+              teams: [
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
+              ],
+              schedule: [{ id: 'm1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false }],
+              currentWeek: 1
+            }),
+            saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+            saveMatchResult: vi.fn().mockResolvedValue(undefined)
+          }
+        },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: {} }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    await service.ensureHydrated();
+
+    service.beginSingleMatchSimulationSession();
+    service.simulateCurrentWeek();
+
+    expect(variantBSpy.simulateMatch).not.toHaveBeenCalled();
+    expect(service.league()?.currentWeek).toBe(1);
+  });
+
+  it('should allow week simulation after ending single-match session lock', async () => {
+    TestBed.resetTestingModule();
+
+    const variantBSpy = {
+      simulateMatch: vi.fn().mockReturnValue({
+        currentMinute: 90,
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0
+      })
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        {
+          provide: PersistenceService,
+          useValue: {
+            loadLeague: vi.fn().mockResolvedValue({
+              teams: [
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
+              ],
+              schedule: [{ id: 'm1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false }],
+              currentWeek: 1
+            }),
+            saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+            saveMatchResult: vi.fn().mockResolvedValue(undefined)
+          }
+        },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: {} }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    await service.ensureHydrated();
+
+    service.beginSingleMatchSimulationSession();
+    service.simulateCurrentWeek({ skipCommentary: true });
+    expect(variantBSpy.simulateMatch).not.toHaveBeenCalled();
+    expect(service.league()?.currentWeek).toBe(1);
+
+    service.endSingleMatchSimulationSession();
+    service.simulateCurrentWeek({ skipCommentary: true });
+
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(1);
+    expect(service.league()?.currentWeek).toBe(2);
+  });
+
+  it('should block single-match simulation while a week simulation is active', () => {
+    TestBed.resetTestingModule();
+
+    const variantBSpy = {
+      simulateMatch: vi.fn().mockReturnValue({
+        currentMinute: 90,
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0
+      })
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: {} }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+
+    (service as unknown as {
+      isSimulatingWeekState: { set: (value: boolean) => void };
+    }).isSimulatingWeekState.set(true);
+
+    const result = service.simulateMatchWithDetails(
+      { id: 'match-1' } as never,
+      { id: 'home' } as never,
+      { id: 'away' } as never,
+      { skipCommentary: true }
+    );
+
+    expect(result).toBeNull();
+    expect(variantBSpy.simulateMatch).not.toHaveBeenCalled();
+  });
+
   it('should use MatchSimulationVariantBService for match simulation', () => {
     TestBed.resetTestingModule();
 

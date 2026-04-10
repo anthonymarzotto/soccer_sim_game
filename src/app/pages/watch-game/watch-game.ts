@@ -86,6 +86,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.stopCommentaryFeed();
+
+    if (this.isSimulating()) {
+      this.gameService.endSingleMatchSimulationSession();
+    }
   }
 
   private loadMatchData(id: string) {
@@ -127,8 +131,25 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const home = this.homeTeam();
     const away = this.awayTeam();
 
-    if (!match || !home || !away || match.played) return;
+    if (!match) {
+      this.validationError.set('Match data is not available yet.');
+      return;
+    }
 
+    if (!home || !away) {
+      this.validationError.set('Team data is not available yet.');
+      return;
+    }
+
+    if (match.played) {
+      this.validationError.set('This match has already been played.');
+      return;
+    }
+
+    if (this.gameService.isSimulatingMatchWeek()) {
+      this.validationError.set('Cannot start match simulation while a match week is being simulated.');
+      return;
+    }
     const userTeamId = this.gameService.league()?.userTeamId;
     const userTeam = home.id === userTeamId ? home : away.id === userTeamId ? away : null;
     if (userTeam) {
@@ -140,6 +161,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }
 
     this.validationError.set(null);
+    this.gameService.beginSingleMatchSimulationSession();
 
     // Reset UI state to guarantee stats remain hidden until finishMatch().
     this.stopCommentaryFeed();
@@ -177,7 +199,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       enableTactics: true,
       enableFatigue: true,
       commentaryStyle: CommentaryStyle.DETAILED
-    });
+    }, { bypassSingleMatchSimulationLock: true });
+
+    if (!result) {
+      this.isSimulating.set(false);
+      this.gameService.endSingleMatchSimulationSession();
+      return;
+    }
 
     // Store the match state (stats will be set after commentary completes)
     this.matchState.set(result.matchState);
@@ -386,6 +414,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   private finishMatch() {
     this.stopCommentaryFeed();
+    this.gameService.endSingleMatchSimulationSession();
     this.isSimulating.set(false);
     this.isFinished.set(true);
     this.showStats.set(true);

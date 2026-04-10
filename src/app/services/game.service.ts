@@ -13,15 +13,31 @@ import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players'
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
+interface SimulateMatchWithDetailsResult {
+  matchState: MatchState;
+  matchStats: MatchStatistics;
+  matchReport: MatchReport;
+  keyEvents: MatchEvent[];
+  commentary: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class GameService {
+  private static readonly WEEK_SIMULATION_LOCK_MS = 350;
+
   private leagueState = signal<League | null>(null);
   private hydrationPromise: Promise<void> | null = null;
   private isHydrating = signal(true);
+  private isSimulatingWeekState = signal(false);
+  private singleMatchSimulationSessionCount = signal(0);
+  private weekSimulationUnlockTimer: ReturnType<typeof setTimeout> | null = null;
 
   public league = this.leagueState.asReadonly();
+  public isSimulatingMatchWeek = this.isSimulatingWeekState.asReadonly();
+  public isSimulatingSingleMatch = computed(() => this.singleMatchSimulationSessionCount() > 0);
+  public isAnySimulationInProgress = computed(() => this.isSimulatingMatchWeek() || this.isSimulatingSingleMatch());
   
   public hasLeague = computed(() => this.leagueState() !== null);
   
@@ -204,37 +220,64 @@ export class GameService {
 
   simulateCurrentWeek(config?: Partial<SimulationConfig>) {
     const l = this.leagueState();
-    if (!l) return;
+    if (!l || this.isSimulatingWeekState() || this.isSimulatingSingleMatch()) return;
 
-    const matches = l.schedule.filter(m => m.week === l.currentWeek);
+    if (this.weekSimulationUnlockTimer) {
+      clearTimeout(this.weekSimulationUnlockTimer);
+      this.weekSimulationUnlockTimer = null;
+    }
 
-    matches.forEach(match => {
-      if (match.played) return;
+    this.isSimulatingWeekState.set(true);
 
-      const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
-      const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+    try {
+      const matches = l.schedule.filter(m => m.week === l.currentWeek);
 
-      if (!homeTeam || !awayTeam) return;
+      matches.forEach(match => {
+        if (match.played) return;
 
-      // Use enhanced simulation with full features enabled
-      const result = this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
-        enablePlayByPlay: true,
-        enableSpatialTracking: true,
-        enableTactics: true,
-        enableFatigue: true,
-        commentaryStyle: CommentaryStyle.DETAILED,
-        simulationVariant: 'B',
-        ...config
+        const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
+        const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+
+        if (!homeTeam || !awayTeam) return;
+
+        // Use enhanced simulation with full features enabled.
+        // Bypass the single-match lock because this path owns the week-level lock.
+        const result = this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
+          enablePlayByPlay: true,
+          enableSpatialTracking: true,
+          enableTactics: true,
+          enableFatigue: true,
+          commentaryStyle: CommentaryStyle.DETAILED,
+          simulationVariant: 'B',
+          ...config
+        }, { bypassWeekSimulationLock: true });
+
+        if (!result) {
+          return;
+        }
+
+        // The match result is already updated in the league state by simulateMatchWithDetails
+        console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
+        console.log('Key Events:', result.matchState.events.length);
+        console.log('Commentary Sample:', result.commentary.slice(0, 3));
       });
 
-      // The match result is already updated in the league state by simulateMatchWithDetails
-      console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
-      console.log('Key Events:', result.matchState.events.length);
-      console.log('Commentary Sample:', result.commentary.slice(0, 3));
-    });
+      // Advance to next week
+      this.advanceWeek();
+    } finally {
+      this.weekSimulationUnlockTimer = setTimeout(() => {
+        this.isSimulatingWeekState.set(false);
+        this.weekSimulationUnlockTimer = null;
+      }, GameService.WEEK_SIMULATION_LOCK_MS);
+    }
+  }
 
-    // Advance to next week
-    this.advanceWeek();
+  beginSingleMatchSimulationSession() {
+    this.singleMatchSimulationSessionCount.update(count => count + 1);
+  }
+
+  endSingleMatchSimulationSession() {
+    this.singleMatchSimulationSessionCount.update(count => Math.max(0, count - 1));
   }
 
   setUserTeam(teamId: string) {
@@ -492,7 +535,21 @@ export class GameService {
   private postMatchAnalysisService = inject(PostMatchAnalysisService);
   private fieldService = inject(FieldService);
 
-  simulateMatchWithDetails(match: Match, homeTeam: Team, awayTeam: Team, config?: Partial<SimulationConfig>) {
+  simulateMatchWithDetails(
+    match: Match,
+    homeTeam: Team,
+    awayTeam: Team,
+    config?: Partial<SimulationConfig>,
+    options?: { bypassWeekSimulationLock?: boolean; bypassSingleMatchSimulationLock?: boolean }
+  ): SimulateMatchWithDetailsResult | null {
+    if (this.isSimulatingWeekState() && !options?.bypassWeekSimulationLock) {
+      return null;
+    }
+
+    if (this.isSimulatingSingleMatch() && !options?.bypassSingleMatchSimulationLock) {
+      return null;
+    }
+
     // Merge caller-supplied overrides on top of the simulation defaults.
     const simConfig: SimulationConfig = {
       enablePlayByPlay: true,

@@ -39,6 +39,10 @@ export class ScheduleComponent {
   }
 
   simulateCurrentWeek() {
+    if (this.gameService.isAnySimulationInProgress()) {
+      return;
+    }
+
     const currentWeek = this.gameService.league()?.currentWeek;
     if (currentWeek && currentWeek <= this.maxWeeks()) {
       this.gameService.simulateCurrentWeek();
@@ -48,6 +52,10 @@ export class ScheduleComponent {
 
 
   simulateMatch(matchId: string) {
+    if (this.gameService.isAnySimulationInProgress()) {
+      return;
+    }
+
     const l = this.gameService.league();
     if (!l) return;
 
@@ -59,7 +67,10 @@ export class ScheduleComponent {
 
     if (!homeTeam || !awayTeam) return;
 
-    this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam, { skipCommentary: true });
+    const result = this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam, { skipCommentary: true });
+    if (!result) {
+      return;
+    }
     
     // Check if all matches for the current week are played, and advance week if so
     const currentWeekMatches = this.gameService.getMatchesForWeek(l.currentWeek);
