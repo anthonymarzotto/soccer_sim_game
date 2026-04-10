@@ -84,7 +84,7 @@ export class StatisticsService {
         fouls: primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length,
         yellowCards: primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
         redCards: primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length,
-        saves: playerEvents.filter(e => e.type === EventType.SAVE).length,
+        saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
         rating: this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents)
       };
 

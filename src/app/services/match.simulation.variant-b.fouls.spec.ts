@@ -13,6 +13,7 @@ interface VariantBInternals {
   handleFoul: (
     state: MatchState,
     action: { type: EventType.FOUL; player: Player },
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
     homeTeam: Team,
     awayTeam: Team,
     minute: number,
@@ -24,6 +25,7 @@ interface VariantBInternals {
 
 describe('Match Simulation Variant B Fouls', () => {
   let simulationB: MatchSimulationVariantBService;
+  let fieldService: FieldService;
   let homeTeam: Team;
   let awayTeam: Team;
   let homePlayers: Player[];
@@ -40,6 +42,7 @@ describe('Match Simulation Variant B Fouls', () => {
     });
 
     simulationB = TestBed.inject(MatchSimulationVariantBService);
+    fieldService = TestBed.inject(FieldService);
     homePlayers = create442Players('home');
     awayPlayers = create442Players('away');
     homeTeam = createTeam('home', homePlayers);
@@ -53,6 +56,10 @@ describe('Match Simulation Variant B Fouls', () => {
   it('should record a defending-player foul and keep possession with the fouled side', () => {
     const state = createMatchState(homeTeam.id, homePlayers[9].id);
     const config = createSimulationConfig();
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
     const internals = simulationB as unknown as VariantBInternals;
 
     vi.spyOn(internals.rng, 'random')
@@ -63,6 +70,7 @@ describe('Match Simulation Variant B Fouls', () => {
     internals.handleFoul(
       state,
       { type: EventType.FOUL, player: homePlayers[9] },
+      tactics,
       homeTeam,
       awayTeam,
       18,
@@ -84,6 +92,10 @@ describe('Match Simulation Variant B Fouls', () => {
   it('should send a player off after a second yellow and remove them from the starter pool', () => {
     const state = createMatchState(homeTeam.id, homePlayers[10].id);
     const config = createSimulationConfig();
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
     const internals = simulationB as unknown as VariantBInternals;
     state.awayYellowCards = 1;
     state.events.push({
@@ -107,6 +119,7 @@ describe('Match Simulation Variant B Fouls', () => {
     internals.handleFoul(
       state,
       { type: EventType.FOUL, player: homePlayers[10] },
+      tactics,
       homeTeam,
       awayTeam,
       44,

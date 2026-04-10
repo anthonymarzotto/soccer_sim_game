@@ -634,21 +634,45 @@ export class GameService {
       allPlayers.set(player.id, player);
     });
 
+    // When both SHOT and terminal outcome events exist for the same attempt,
+    // count the attempt once from the terminal outcome and skip the paired SHOT.
+    const shotOutcomeByMinuteAndShooter = new Set<string>();
+    events.forEach((event) => {
+      if ((event.type === EventType.GOAL || event.type === EventType.SAVE || event.type === EventType.MISS) && event.playerIds[0]) {
+        shotOutcomeByMinuteAndShooter.add(`${event.time}:${event.playerIds[0]}`);
+      }
+    });
+
     // Update player stats based on events
     events.forEach(event => {
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
         if (scorer) {
+          scorer.careerStats.shots++;
+          scorer.careerStats.shotsOnTarget++;
           scorer.careerStats.goals++;
         }
         return;
       }
 
       if (event.type === EventType.SAVE) {
+        const shooter = allPlayers.get(event.playerIds[0]);
+        if (shooter) {
+          shooter.careerStats.shots++;
+          shooter.careerStats.shotsOnTarget++;
+        }
         const keeperId = event.playerIds[1] ?? event.playerIds[0];
         const keeper = allPlayers.get(keeperId);
         if (keeper) {
           keeper.careerStats.saves++;
+        }
+        return;
+      }
+
+      if (event.type === EventType.MISS) {
+        const shooter = allPlayers.get(event.playerIds[0]);
+        if (shooter) {
+          shooter.careerStats.shots++;
         }
         return;
       }
@@ -662,6 +686,9 @@ export class GameService {
         // Update career stats based on event type
         switch (event.type) {
           case EventType.SHOT:
+            if (shotOutcomeByMinuteAndShooter.has(`${event.time}:${playerId}`)) {
+              return;
+            }
             player.careerStats.shots++;
             if (event.success) {
               player.careerStats.shotsOnTarget++;

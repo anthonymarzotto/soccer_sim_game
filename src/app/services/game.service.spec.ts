@@ -904,6 +904,115 @@ describe('GameService persistence integration', () => {
     expect(sub?.careerStats.matchesPlayed).toBe(1);
     expect(sub?.careerStats.redCards).toBe(1);
   });
+
+  it('should not double count shots when SHOT and GOAL are emitted for the same attempt', async () => {
+    const makePlayer = (id: string, teamId: string, pos: Position, role: Role) => ({
+      id,
+      name: id,
+      teamId,
+      position: pos,
+      role,
+      personal: { height: 182, weight: 79, age: 25, nationality: 'ENG' },
+      physical: { speed: 72, strength: 70, endurance: 74 },
+      mental: { flair: 60, vision: 62, determination: 68 },
+      skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
+      hidden: { luck: 50, injuryRate: 8 },
+      overall: 72,
+      careerStats: {
+        matchesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0,
+        shots: 0, shotsOnTarget: 0, tackles: 0, interceptions: 0, passes: 0,
+        saves: 0, cleanSheets: 0, minutesPlayed: 0
+      }
+    });
+
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            makePlayer('p-home', 'team-1', Position.FORWARD, Role.STARTER),
+            makePlayer('p-home-gk', 'team-1', Position.GOALKEEPER, Role.STARTER)
+          ],
+          playerIds: ['p-home', 'p-home-gk'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p-home-gk' }
+        },
+        {
+          id: 'team-2',
+          name: 'Team Two',
+          players: [makePlayer('p-away-gk', 'team-2', Position.GOALKEEPER, Role.STARTER)],
+          playerIds: ['p-away-gk'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p-away-gk' }
+        }
+      ],
+      schedule: [{ id: 'match-shot-goal', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    const homeTeam = service.getTeam('team-1') as Team;
+    const awayTeam = service.getTeam('team-2') as Team;
+    const match = service.getMatchesForWeek(1)[0];
+
+    const matchState = {
+      homeScore: 1,
+      awayScore: 0,
+      currentMinute: 90,
+      events: [
+        {
+          id: 'shot-1', type: EventType.SHOT, description: 'Shot',
+          playerIds: ['p-home'], location: { x: 50, y: 20 }, time: 12, success: true
+        },
+        {
+          id: 'goal-1', type: EventType.GOAL, description: 'Goal',
+          playerIds: ['p-home'], location: { x: 50, y: 15 }, time: 12, success: true
+        }
+      ]
+    };
+
+    const emptyStats = {
+      possession: { home: 50, away: 50 }, shots: { home: 1, away: 0 },
+      shotsOnTarget: { home: 1, away: 0 }, corners: { home: 0, away: 0 },
+      fouls: { home: 0, away: 0 },
+      cards: { home: { yellow: 0, red: 0 }, away: { yellow: 0, red: 0 } },
+      passes: { home: 0, away: 0 }, tackles: { home: 0, away: 0 }, saves: { home: 0, away: 0 }
+    } satisfies MatchStatistics;
+
+    const matchReport = {
+      matchId: 'match-shot-goal', finalScore: '1-0', keyMoments: [],
+      tacticalAnalysis: {
+        homeTeam: { possession: 50, shots: 1, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 55 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 45 },
+        tacticalBattle: 'Even'
+      },
+      playerPerformances: {
+        homeTeam: { mvp: { playerId: 'p-home', playerName: 'p-home', position: Position.FORWARD, rating: 8, goals: 1, assists: 0, shots: 1, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p-away-gk', playerName: 'p-away-gk', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+      },
+      matchSummary: 'Single finished shot event path.'
+    };
+
+    (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
+      match,
+      matchState,
+      homeTeam,
+      awayTeam,
+      [],
+      emptyStats,
+      matchReport
+    );
+
+    const scorer = homeTeam.players.find((player) => player.id === 'p-home');
+    expect(scorer?.careerStats.shots).toBe(1);
+    expect(scorer?.careerStats.shotsOnTarget).toBe(1);
+    expect(scorer?.careerStats.goals).toBe(1);
+  });
 });
 
 describe('GameService simulation engine', () => {

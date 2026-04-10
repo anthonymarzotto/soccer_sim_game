@@ -307,7 +307,7 @@ export class CommentaryService {
         `${playerName} loses the ball fighting for space.`,
         `${playerName} is dispossessed in a contested challenge.`,
         `${playerName} gives away possession trying to carry the ball forward.`,
-        `The ball is lost as ${playerName} tries to break through.`,
+        `${playerName} loses the ball trying to break through.`,
         `${playerName} is caught out of possession.`
       ];
       return carryDispossessionPhrases[Math.floor(Math.random() * carryDispossessionPhrases.length)];

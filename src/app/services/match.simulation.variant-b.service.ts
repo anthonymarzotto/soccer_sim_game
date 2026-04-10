@@ -42,9 +42,27 @@ interface MatchAction {
   passIntent?: PassIntent;
 }
 
-type PassIntent = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS';
-type PassFailureMode = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
-type LateGameScorelineState = 'LEADING' | 'TRAILING' | 'LEVEL';
+const PASS_INTENT = {
+  RECYCLE: 'RECYCLE',
+  PROGRESSION: 'PROGRESSION',
+  THROUGH_BALL: 'THROUGH_BALL',
+  CROSS: 'CROSS'
+} as const;
+type PassIntent = (typeof PASS_INTENT)[keyof typeof PASS_INTENT];
+
+const PASS_FAILURE_MODE = {
+  TACKLED: 'TACKLED',
+  LANE_CUT_OUT: 'LANE_CUT_OUT',
+  OVERHIT: 'OVERHIT'
+} as const;
+type PassFailureMode = (typeof PASS_FAILURE_MODE)[keyof typeof PASS_FAILURE_MODE];
+
+const LATE_GAME_SCORELINE = {
+  LEADING: 'LEADING',
+  TRAILING: 'TRAILING',
+  LEVEL: 'LEVEL'
+} as const;
+type LateGameScoreLine = (typeof LATE_GAME_SCORELINE)[keyof typeof LATE_GAME_SCORELINE];
 
 const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   baseTickMin: 1,
@@ -428,12 +446,12 @@ export class MatchSimulationVariantBService {
       passWeight -= 0.01;
     }
 
-    if (scorelineState === 'TRAILING') {
+    if (scorelineState === LATE_GAME_SCORELINE.TRAILING) {
       shotWeight += 0.07;
       carryWeight += 0.03;
       passWeight -= 0.02;
       foulWeight += 0.01;
-    } else if (scorelineState === 'LEADING') {
+    } else if (scorelineState === LATE_GAME_SCORELINE.LEADING) {
       passWeight += 0.05;
       carryWeight -= 0.01;
       shotWeight -= 0.05;
@@ -752,34 +770,34 @@ export class MatchSimulationVariantBService {
     const denseCentralCoverage = !context?.wideChannel && (context?.centralSlots.length ?? 0) >= 2 && (context?.zoneCoverage ?? 0) >= 0.75;
 
     if (pressure >= 0.6 && passDistance <= 24 && !uncoveredChannel) {
-      return 'TACKLED';
+      return PASS_FAILURE_MODE.TACKLED;
     }
 
-    if ((passIntent === 'THROUGH_BALL' || passIntent === 'CROSS') && passDistance >= 30) {
-      if (passIntent === 'THROUGH_BALL' && denseCentralCoverage) {
-        return 'LANE_CUT_OUT';
+    if ((passIntent === PASS_INTENT.THROUGH_BALL || passIntent === PASS_INTENT.CROSS) && passDistance >= 30) {
+      if (passIntent === PASS_INTENT.THROUGH_BALL && denseCentralCoverage) {
+        return PASS_FAILURE_MODE.LANE_CUT_OUT;
       }
 
       if (uncoveredChannel) {
-        return 'OVERHIT';
+        return PASS_FAILURE_MODE.OVERHIT;
       }
 
-      return 'OVERHIT';
+      return PASS_FAILURE_MODE.OVERHIT;
     }
 
-    if (passIntent === 'THROUGH_BALL' && denseCentralCoverage && progression >= 8) {
-      return 'LANE_CUT_OUT';
+    if (passIntent === PASS_INTENT.THROUGH_BALL && denseCentralCoverage && progression >= 8) {
+      return PASS_FAILURE_MODE.LANE_CUT_OUT;
     }
 
-    if (uncoveredChannel && passDistance >= 26 && passIntent !== 'RECYCLE') {
-      return 'OVERHIT';
+    if (uncoveredChannel && passDistance >= 26 && passIntent !== PASS_INTENT.RECYCLE) {
+      return PASS_FAILURE_MODE.OVERHIT;
     }
 
     if (progression >= 10 || passDistance >= 24) {
-      return 'LANE_CUT_OUT';
+      return PASS_FAILURE_MODE.LANE_CUT_OUT;
     }
 
-    return 'TACKLED';
+    return PASS_FAILURE_MODE.TACKLED;
   }
 
   private createPassFailureEvent(
@@ -790,7 +808,7 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig
   ): void {
-    if (mode === 'TACKLED') {
+    if (mode === PASS_FAILURE_MODE.TACKLED) {
       this.createEvent(
         state,
         EventType.TACKLE,
@@ -1032,13 +1050,13 @@ export class MatchSimulationVariantBService {
       baseChance += 10;
     }
 
-    if (passIntent === 'RECYCLE') {
+    if (passIntent === PASS_INTENT.RECYCLE) {
       baseChance += 1;
-    } else if (passIntent === 'PROGRESSION') {
+    } else if (passIntent === PASS_INTENT.PROGRESSION) {
       baseChance -= 1;
-    } else if (passIntent === 'THROUGH_BALL') {
+    } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
       baseChance -= 6;
-    } else if (passIntent === 'CROSS') {
+    } else if (passIntent === PASS_INTENT.CROSS) {
       baseChance -= 5;
     }
 
@@ -1064,13 +1082,13 @@ export class MatchSimulationVariantBService {
     let modifier = (1 - context.zoneCoverage) * 2;
 
     if (context.channelSlots.length === 0) {
-      modifier += passIntent === 'RECYCLE' ? 0.4 : 1.4;
+      modifier += passIntent === PASS_INTENT.RECYCLE ? 0.4 : 1.4;
     } else if (context.channelSlots.length >= 2) {
-      modifier -= passIntent === 'RECYCLE' ? 0.15 : 0.6;
+      modifier -= passIntent === PASS_INTENT.RECYCLE ? 0.15 : 0.6;
     }
 
     if (!context.wideChannel && context.centralSlots.length === 0) {
-      modifier += passIntent === 'THROUGH_BALL' ? 1.2 : 0.55;
+      modifier += passIntent === PASS_INTENT.THROUGH_BALL ? 1.2 : 0.55;
     }
 
     return modifier;
@@ -1104,34 +1122,34 @@ export class MatchSimulationVariantBService {
     const scorelineState = this.getLateGameScorelineState(state, currentTeam, minute);
 
     if ((passer.position === PositionEnum.DEFENDER || (passerFatigue?.fatigueLevel ?? 0) > 75) && attackingY < 78) {
-      return 'RECYCLE';
+      return PASS_INTENT.RECYCLE;
     }
 
     if (attackingY >= 82 && wideChannel && (passer.position === PositionEnum.MIDFIELDER || passer.position === PositionEnum.FORWARD)) {
-      return 'CROSS';
+      return PASS_INTENT.CROSS;
     }
 
     if (attackingY >= 78 && !wideChannel && (passer.position === PositionEnum.MIDFIELDER || passer.position === PositionEnum.FORWARD)) {
-      return 'THROUGH_BALL';
+      return PASS_INTENT.THROUGH_BALL;
     }
 
     if (teamTactics.playingStyle === PlayingStyle.POSSESSION && attackingY < 60) {
-      return 'RECYCLE';
+      return PASS_INTENT.RECYCLE;
     }
 
-    if (scorelineState === 'LEADING' && attackingY < 82) {
-      return 'RECYCLE';
+    if (scorelineState === LATE_GAME_SCORELINE.LEADING && attackingY < 82) {
+      return PASS_INTENT.RECYCLE;
     }
 
-    if (scorelineState === 'TRAILING' && attackingY >= 70) {
-      return wideChannel ? 'CROSS' : 'THROUGH_BALL';
+    if (scorelineState === LATE_GAME_SCORELINE.TRAILING && attackingY >= 70) {
+      return wideChannel ? PASS_INTENT.CROSS : PASS_INTENT.THROUGH_BALL;
     }
 
     if (attackingY < 67) {
-      return 'RECYCLE';
+      return PASS_INTENT.RECYCLE;
     }
 
-    return 'PROGRESSION';
+    return PASS_INTENT.PROGRESSION;
   }
 
   private calculateDefensivePressure(
@@ -1170,23 +1188,23 @@ export class MatchSimulationVariantBService {
     state: MatchState,
     currentTeam: TeamSide,
     minute: number
-  ): LateGameScorelineState {
+  ): LateGameScoreLine {
     if (minute < 80) {
-      return 'LEVEL';
+      return LATE_GAME_SCORELINE.LEVEL;
     }
 
     const teamScore = currentTeam === TeamSide.HOME ? state.homeScore : state.awayScore;
     const opponentScore = currentTeam === TeamSide.HOME ? state.awayScore : state.homeScore;
 
     if (teamScore > opponentScore) {
-      return 'LEADING';
+      return LATE_GAME_SCORELINE.LEADING;
     }
 
     if (teamScore < opponentScore) {
-      return 'TRAILING';
+      return LATE_GAME_SCORELINE.TRAILING;
     }
 
-    return 'LEVEL';
+    return LATE_GAME_SCORELINE.LEVEL;
   }
 
   private processMinuteSubstitutions(
@@ -1756,7 +1774,7 @@ export class MatchSimulationVariantBService {
 
         let score = 0;
 
-        if (passIntent === 'RECYCLE') {
+        if (passIntent === PASS_INTENT.RECYCLE) {
           score += (34 - Math.min(distance, 34)) * 2.2;
           score -= Math.max(0, progression - 6) * 1.2;
           score -= Math.max(0, -progression) * 0.3;
@@ -1764,7 +1782,7 @@ export class MatchSimulationVariantBService {
           if (target.position === PositionEnum.DEFENDER || target.position === PositionEnum.MIDFIELDER) {
             score += 7;
           }
-        } else if (passIntent === 'PROGRESSION') {
+        } else if (passIntent === PASS_INTENT.PROGRESSION) {
           score += Math.max(0, progression) * 1.7;
           score -= Math.max(0, distance - 26) * 0.7;
           score -= Math.max(0, -progression) * 2.5;
@@ -1774,7 +1792,7 @@ export class MatchSimulationVariantBService {
           if (target.position === PositionEnum.FORWARD) {
             score += 3;
           }
-        } else if (passIntent === 'THROUGH_BALL') {
+        } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
           score += Math.max(0, progression) * 2.2;
           score -= Math.max(0, 14 - progression) * 1.5;
           score -= Math.max(0, distance - 32) * 0.8;
@@ -1790,11 +1808,11 @@ export class MatchSimulationVariantBService {
           }
         }
 
-        if (tactics.playingStyle === PlayingStyle.POSSESSION && passIntent !== 'THROUGH_BALL') {
+        if (tactics.playingStyle === PlayingStyle.POSSESSION && passIntent !== PASS_INTENT.THROUGH_BALL) {
           score += (34 - Math.min(distance, 34)) * 0.2;
         }
 
-        if (tactics.playingStyle === PlayingStyle.COUNTER_ATTACK && passIntent !== 'RECYCLE') {
+        if (tactics.playingStyle === PlayingStyle.COUNTER_ATTACK && passIntent !== PASS_INTENT.RECYCLE) {
           score += Math.max(0, progression) * 0.35;
         }
 
