@@ -3,9 +3,11 @@ import { MatchSimulationVariantBService } from './match.simulation.variant-b.ser
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
+import { StatisticsService } from './statistics.service';
 import { Role, Position as PositionEnum, CommentaryStyle, EventType, TeamSide } from '../models/enums';
 import { Player, Team } from '../models/types';
 import { PlayByPlayEvent, SimulationConfig } from '../models/simulation.types';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { SimulationABReporter } from '../testing/simulation-ab.reporter';
 import { SimulationABRunner, SimulationABVariant } from '../testing/simulation-ab.runner';
 
@@ -20,7 +22,8 @@ describe('Match Simulation Variant B Guardrails', () => {
         MatchSimulationVariantBService,
         FieldService,
         FormationLibraryService,
-        CommentaryService
+        CommentaryService,
+        StatisticsService
       ]
     });
 
@@ -323,6 +326,84 @@ describe('Match Simulation Variant B Guardrails', () => {
     expect(avgReducedTotalShots).toBeGreaterThan(18);
     expect(avgReducedTotalShots).toBeLessThan(33);
   });
+
+  it('should not produce goalkeeper scorers in standard simulations', () => {
+    const iterations = 60;
+    let goalkeeperGoals = 0;
+    const playersById = new Map<string, Player>([
+      ...homeTeam.players.map(player => [player.id, player] as const),
+      ...awayTeam.players.map(player => [player.id, player] as const)
+    ]);
+
+    for (let i = 0; i < iterations; i++) {
+      const config: SimulationConfig = {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED,
+        simulationVariant: 'B',
+        seed: `gk-goal-guard-${i}`
+      };
+
+      const match = {
+        id: `gk-goal-guard-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      const state = simulationB.simulateMatch(match, homeTeam, awayTeam, config);
+      goalkeeperGoals += state.events.filter((event) => {
+        if (event.type !== EventType.GOAL) {
+          return false;
+        }
+
+        const scorer = playersById.get(event.playerIds[0] ?? '');
+        return scorer?.position === PositionEnum.GOALKEEPER;
+      }).length;
+    }
+
+    expect(goalkeeperGoals).toBe(0);
+  });
+
+  it('should not credit goalkeepers with tackles in player statistics', () => {
+    const iterations = 30;
+    const statisticsService = TestBed.inject(StatisticsService);
+
+    for (let i = 0; i < iterations; i++) {
+      const config: SimulationConfig = {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED,
+        simulationVariant: 'B',
+        seed: `gk-tackle-guard-${i}`
+      };
+
+      const match = {
+        id: `gk-tackle-guard-${i}`,
+        week: 1,
+        homeTeamId: homeTeam.id,
+        awayTeamId: awayTeam.id,
+        played: false
+      };
+
+      const state = simulationB.simulateMatch(match, homeTeam, awayTeam, config);
+      const homeStats = statisticsService.generatePlayerStatistics(state, homeTeam);
+      const awayStats = statisticsService.generatePlayerStatistics(state, awayTeam);
+
+      const allStats = [...homeStats, ...awayStats];
+      const goalkeeperStats = allStats.filter(s => s.position === PositionEnum.GOALKEEPER);
+
+      goalkeeperStats.forEach(gkStats => {
+        expect(gkStats.tackles).toBe(0);
+        expect(gkStats.tacklesSuccessful).toBe(0);
+      });
+    }
+  });
 });
 
 type TeamEvent = TeamSide | null;
@@ -616,21 +697,7 @@ function createPlayer(
     },
     hidden: { luck: 50, injuryRate: 5 },
     overall,
-    careerStats: {
-      matchesPlayed: 0,
-      goals: 0,
-      assists: 0,
-      yellowCards: 0,
-      redCards: 0,
-      shots: 0,
-      shotsOnTarget: 0,
-      tackles: 0,
-      interceptions: 0,
-      passes: 0,
-      saves: 0,
-      cleanSheets: 0,
-      minutesPlayed: 0
-    }
+    careerStats: createEmptyPlayerCareerStats()
   };
 }
 

@@ -163,8 +163,9 @@ export class GameService {
 
   generateNewLeague() {
     const { teams, schedule } = this.generator.generateLeague();
+    const optimizedTeams = this.dressBestPlayers(this.withSyncedPlayerIdsForTeams(teams));
     const league: League = {
-      teams: this.withSyncedPlayerIdsForTeams(teams),
+      teams: optimizedTeams,
       schedule,
       currentWeek: 1
     };
@@ -447,6 +448,10 @@ export class GameService {
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
 
+      if (resolveTeamPlayers(team).length === 0) {
+        return team;
+      }
+
       const players = resolveTeamPlayers(team).map(p => ({ ...p, role: Role.RESERVE }));
 
       const gks = players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => b.overall - a.overall);
@@ -487,6 +492,55 @@ export class GameService {
 
       return this.withSyncedPlayerIds({ ...team, players, formationAssignments });
     });
+  }
+
+  private areFormationAssignmentsEqual(left: Record<string, string>, right: Record<string, string>): boolean {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+
+    if (leftKeys.length !== rightKeys.length) {
+      return false;
+    }
+
+    return leftKeys.every(key => left[key] === right[key]);
+  }
+
+  private arePlayerRolesEqual(currentTeam: Team, nextTeam: Team): boolean {
+    const currentPlayers = resolveTeamPlayers(currentTeam);
+    const nextPlayers = resolveTeamPlayers(nextTeam);
+
+    if (currentPlayers.length !== nextPlayers.length) {
+      return false;
+    }
+
+    const currentRoleById = new Map(currentPlayers.map(player => [player.id, player.role]));
+    return nextPlayers.every(player => currentRoleById.get(player.id) === player.role);
+  }
+
+  private persistRefreshedComputerControlledLineups(league: League): League {
+    const dressedTeams = this.dressBestPlayers(league.teams);
+
+    const mergedTeams = league.teams.map((team, index) => {
+      const nextTeam = dressedTeams[index];
+      const isUnchanged = this.arePlayerRolesEqual(team, nextTeam)
+        && this.areFormationAssignmentsEqual(team.formationAssignments, nextTeam.formationAssignments);
+
+      return isUnchanged ? team : nextTeam;
+    });
+
+    const hasChanges = mergedTeams.some((team, index) => team !== league.teams[index]);
+    if (!hasChanges) {
+      return league;
+    }
+
+    const updatedLeague: League = {
+      ...league,
+      teams: mergedTeams
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistChangedTeamsAndPlayers(league.teams, mergedTeams);
+    return updatedLeague;
   }
 
   public calculateTeamOverall(team: Team): number {
@@ -550,6 +604,15 @@ export class GameService {
       return null;
     }
 
+    const refreshedLeague = this.leagueState();
+    if (refreshedLeague) {
+      this.persistRefreshedComputerControlledLineups(refreshedLeague);
+    }
+
+    const currentLeague = this.leagueState();
+    const preparedHomeTeam = currentLeague?.teams.find(team => team.id === match.homeTeamId) ?? homeTeam;
+    const preparedAwayTeam = currentLeague?.teams.find(team => team.id === match.awayTeamId) ?? awayTeam;
+
     // Merge caller-supplied overrides on top of the simulation defaults.
     const simConfig: SimulationConfig = {
       enablePlayByPlay: true,
@@ -561,29 +624,29 @@ export class GameService {
       ...config
     };
 
-    const matchState = this.matchSimulationVariantBService.simulateMatch(match, homeTeam, awayTeam, simConfig);
+    const matchState = this.matchSimulationVariantBService.simulateMatch(match, preparedHomeTeam, preparedAwayTeam, simConfig);
     const endedByForfeit = (this.matchSimulationVariantBService as unknown as {
       didLastSimulationEndByForfeit?: () => boolean;
     }).didLastSimulationEndByForfeit?.() ?? false;
     
     // Generate statistics
-    const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
+    const matchStats = this.statisticsService.generateMatchStatistics(matchState, preparedHomeTeam, preparedAwayTeam);
     
     // Generate post-match analysis
-    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, homeTeam, awayTeam);
+    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam);
     
     // Extract key events from match state
     const keyEvents = this.extractKeyEvents(matchState.events);
     
     // Update league state with results
-    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
+    this.updateLeagueWithMatchResult(match, matchState, preparedHomeTeam, preparedAwayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
     
     return {
       matchState,
       matchStats,
       matchReport,
       keyEvents,
-      commentary: simConfig.skipCommentary ? [] : this.generateMatchCommentary(matchState, homeTeam, awayTeam, simConfig.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : simConfig.commentaryStyle)
+      commentary: simConfig.skipCommentary ? [] : this.generateMatchCommentary(matchState, preparedHomeTeam, preparedAwayTeam, simConfig.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : simConfig.commentaryStyle)
     };
   }
 
@@ -655,11 +718,13 @@ export class GameService {
       this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
     }
 
+    const finalizedTeams = this.dressBestPlayers(updatedTeams);
+
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.
     const updatedLeague: League = {
       ...l,
-      teams: updatedTeams,
+      teams: finalizedTeams,
       schedule: updatedSchedule
     };
 
@@ -752,13 +817,24 @@ export class GameService {
             }
             break;
           case EventType.TACKLE:
-            player.careerStats.tackles++;
+            if (player.position !== Position.GOALKEEPER) {
+              player.careerStats.tackles++;
+            }
             break;
           case EventType.INTERCEPTION:
-            player.careerStats.interceptions++;
+            if (player.position !== Position.GOALKEEPER) {
+              player.careerStats.interceptions++;
+            }
             break;
           case EventType.PASS:
             player.careerStats.passes++;
+            break;
+          case EventType.FOUL:
+            if (playerId === primaryPlayerId) {
+              player.careerStats.fouls = (player.careerStats.fouls ?? 0) + 1;
+            } else {
+              player.careerStats.foulsSuffered = (player.careerStats.foulsSuffered ?? 0) + 1;
+            }
             break;
           case EventType.YELLOW_CARD:
             if (playerId !== primaryPlayerId) return;

@@ -6,6 +6,7 @@ import { CommentaryService } from './commentary.service';
 import { Role, Position as PositionEnum, CommentaryStyle, EventType } from '../models/enums';
 import { Player, Team } from '../models/types';
 import { PlayByPlayEvent, SimulationConfig, VariantBTuningConfig } from '../models/simulation.types';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { SimulationABRunner, SimulationABVariant } from '../testing/simulation-ab.runner';
 
 describe('Match Simulation Variant B Calibration Benchmark', () => {
@@ -488,21 +489,7 @@ function createPlayer(
     },
     hidden: { luck: 50, injuryRate: 5 },
     overall,
-    careerStats: {
-      matchesPlayed: 0,
-      goals: 0,
-      assists: 0,
-      yellowCards: 0,
-      redCards: 0,
-      shots: 0,
-      shotsOnTarget: 0,
-      tackles: 0,
-      interceptions: 0,
-      passes: 0,
-      saves: 0,
-      cleanSheets: 0,
-      minutesPlayed: 0
-    }
+    careerStats: createEmptyPlayerCareerStats()
   };
 }
 

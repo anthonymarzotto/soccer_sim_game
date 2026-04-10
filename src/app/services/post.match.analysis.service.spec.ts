@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { EventImportance, EventType, MatchPhase, Position, Role } from '../models/enums';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { CommentaryService } from './commentary.service';
 import { PostMatchAnalysisService, SeasonMatchContext } from './post.match.analysis.service';
 import { StatisticsService, TeamSeasonStatistics } from './statistics.service';
@@ -240,21 +241,7 @@ describe('PostMatchAnalysisService', () => {
       },
       hidden: { luck: 50, injuryRate: 5 },
       overall: 70,
-      careerStats: {
-        matchesPlayed: 0,
-        goals: 0,
-        assists: 0,
-        yellowCards: 0,
-        redCards: 0,
-        shots: 0,
-        shotsOnTarget: 0,
-        tackles: 0,
-        interceptions: 0,
-        passes: 0,
-        saves: 0,
-        cleanSheets: 0,
-        minutesPlayed: 0
-      }
+      careerStats: createEmptyPlayerCareerStats()
     };
   }
 

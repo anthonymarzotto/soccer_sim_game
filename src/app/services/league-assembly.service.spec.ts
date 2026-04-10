@@ -38,8 +38,10 @@ describe('LeagueAssemblyService', () => {
               passes: 140,
               saves: 38,
               cleanSheets: 4,
-              minutesPlayed: 900
-            }
+              minutesPlayed: 0,
+              fouls: 0,
+              foulsSuffered: 0
+              }
           }
         ],
         playerIds: ['player-1'],

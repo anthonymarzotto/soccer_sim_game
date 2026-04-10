@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis, Player } from '../models/types';
+import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis, Player, PlayerStatistics } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
-import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
+import { StatisticsService, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
 import { EventType, PlayingStyle, EventImportance, TeamSide } from '../models/enums';
 

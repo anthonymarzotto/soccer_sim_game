@@ -3,6 +3,7 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { Team, Player } from '../models/types';
 import { Role, Position as PositionEnum, FieldZone } from '../models/enums';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
 describe('FieldService - Schema-Driven Formation Logic', () => {
   let fieldService: FieldService;
@@ -302,18 +303,16 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       hidden: { luck: 50, injuryRate: 5 },
       overall: 78,
       careerStats: {
+        ...createEmptyPlayerCareerStats(),
         matchesPlayed: 50,
         goals: 5,
         assists: 3,
         yellowCards: 2,
-        redCards: 0,
         shots: 40,
         shotsOnTarget: 20,
         tackles: 100,
         interceptions: 50,
         passes: 500,
-        saves: 0,
-        cleanSheets: 0,
         minutesPlayed: 4500
       }
     };

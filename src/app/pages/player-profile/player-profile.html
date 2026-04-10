@@ -504,7 +504,15 @@
 
           <div class="md:col-span-3 space-y-4">
             <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Disciplinary Record</h3>
-            <div class="flex gap-6">
+            <div class="flex gap-6 flex-wrap">
+              <div class="flex items-center gap-3">
+                <span class="text-zinc-500">Fouls Committed</span>
+                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.fouls || 0 }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-zinc-500">Fouls Suffered</span>
+                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.foulsSuffered || 0 }}</span>
+              </div>
               <div class="flex items-center gap-3">
                 <span class="text-zinc-500">Yellow Cards</span>
                 <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.yellowCards || 0 }}</span>

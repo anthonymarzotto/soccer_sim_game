@@ -11,6 +11,7 @@ import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { CommentaryStyle, EventType, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
 import { MatchStatistics, Team } from '../models/types';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
 describe('GameService persistence integration', () => {
   function setup(storedLeague: { teams: []; schedule: []; currentWeek: number } | null = null) {
@@ -137,21 +138,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p1'],
@@ -222,21 +209,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 78, shooting: 30, heading: 65, longPassing: 60, shortPassing: 66, goalkeeping: 5 },
               hidden: { luck: 45, injuryRate: 10 },
               overall: 72,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             },
             {
               id: 'p1',
@@ -250,21 +223,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 12, heading: 40, longPassing: 56, shortPassing: 60, goalkeeping: 86 },
               hidden: { luck: 52, injuryRate: 8 },
               overall: 77,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p1', 'p2'],
@@ -320,21 +279,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p1'],
@@ -367,21 +312,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87 },
               hidden: { luck: 52, injuryRate: 7 },
               overall: 77,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p2'],
@@ -500,21 +431,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p1'],
@@ -547,21 +464,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87 },
               hidden: { luck: 52, injuryRate: 7 },
               overall: 77,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p2'],
@@ -684,21 +587,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p1'],
@@ -722,21 +611,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 14, heading: 33, longPassing: 54, shortPassing: 61, goalkeeping: 86 },
               hidden: { luck: 49, injuryRate: 7 },
               overall: 77,
-              careerStats: {
-                matchesPlayed: 0,
-                goals: 0,
-                assists: 0,
-                yellowCards: 0,
-                redCards: 0,
-                shots: 0,
-                shotsOnTarget: 0,
-                tackles: 0,
-                interceptions: 0,
-                passes: 0,
-                saves: 0,
-                cleanSheets: 0,
-                minutesPlayed: 0
-              }
+              careerStats: createEmptyPlayerCareerStats()
             }
           ],
           playerIds: ['p2'],
@@ -830,11 +705,7 @@ describe('GameService persistence integration', () => {
       skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
       hidden: { luck: 50, injuryRate: 8 },
       overall: 72,
-      careerStats: {
-        matchesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0,
-        shots: 0, shotsOnTarget: 0, tackles: 0, interceptions: 0, passes: 0,
-        saves: 0, cleanSheets: 0, minutesPlayed: 0
-      }
+      careerStats: createEmptyPlayerCareerStats()
     });
 
     const storedLeague = {
@@ -939,11 +810,7 @@ describe('GameService persistence integration', () => {
       skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
       hidden: { luck: 50, injuryRate: 8 },
       overall: 72,
-      careerStats: {
-        matchesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0,
-        shots: 0, shotsOnTarget: 0, tackles: 0, interceptions: 0, passes: 0,
-        saves: 0, cleanSheets: 0, minutesPlayed: 0
-      }
+      careerStats: createEmptyPlayerCareerStats()
     });
 
     const storedLeague = {

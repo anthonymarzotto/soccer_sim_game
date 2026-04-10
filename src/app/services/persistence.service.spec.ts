@@ -7,6 +7,7 @@ import { NormalizedDbService } from './normalized-db.service';
 import { DataSchemaVersionService } from './data-schema-version.service';
 import { MatchResult, Position, Role } from '../models/enums';
 import { Match, Team } from '../models/types';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
 describe('PersistenceService', () => {
   let service: PersistenceService;
@@ -29,21 +30,7 @@ describe('PersistenceService', () => {
           skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
           hidden: { luck: 50, injuryRate: 8 },
           overall: 78,
-          careerStats: {
-            matchesPlayed: 0,
-            goals: 0,
-            assists: 0,
-            yellowCards: 0,
-            redCards: 0,
-            shots: 0,
-            shotsOnTarget: 0,
-            tackles: 0,
-            interceptions: 0,
-            passes: 0,
-            saves: 0,
-            cleanSheets: 0,
-            minutesPlayed: 0
-          }
+          careerStats: createEmptyPlayerCareerStats()
         }
       ],
       playerIds: [`${id}-p1`],

@@ -434,6 +434,17 @@ export class MatchSimulationVariantBService {
       shotWeight -= 0.08;
     }
 
+    if (carrier.position === PositionEnum.GOALKEEPER) {
+      // Keep keepers focused on build-up/recycle actions.
+      passWeight += 0.08;
+      carryWeight += 0.04;
+      shotWeight = 0;
+    } else {
+      // Recover shot volume lost by removing unrealistic goalkeeper attempts.
+      shotWeight += 0.018;
+      passWeight -= 0.006;
+    }
+
     if (teamFatigue && teamFatigue.fatigueLevel > 70) {
       passWeight += 0.06;
       carryWeight -= 0.02;
@@ -468,7 +479,7 @@ export class MatchSimulationVariantBService {
 
     passWeight = Math.max(0.2, passWeight);
     carryWeight = Math.max(0.04, carryWeight);
-    shotWeight = Math.max(0.005, shotWeight);
+    shotWeight = carrier.position === PositionEnum.GOALKEEPER ? 0 : Math.max(0.005, shotWeight);
     foulWeight = Math.max(0.01, foulWeight);
 
     const totalWeight = passWeight + carryWeight + shotWeight + foulWeight;
@@ -1816,6 +1827,11 @@ export class MatchSimulationVariantBService {
           score += Math.max(0, progression) * 0.35;
         }
 
+        if (target.position === PositionEnum.GOALKEEPER) {
+          const keeperRecycleAllowed = this.isGoalkeeperRecycleTargetAllowed(passer, currentLocation, currentTeam, passIntent);
+          score += keeperRecycleAllowed ? 2 : -6;
+        }
+
         return { target, score, distance };
       })
       .sort((left, right) => {
@@ -1849,6 +1865,28 @@ export class MatchSimulationVariantBService {
     });
 
     return this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target;
+  }
+
+  private isGoalkeeperRecycleTargetAllowed(
+    passer: Player,
+    currentLocation: Coordinates,
+    currentTeam: TeamSide,
+    passIntent: PassIntent
+  ): boolean {
+    if (passIntent !== PASS_INTENT.RECYCLE) {
+      return false;
+    }
+
+    if (passer.position !== PositionEnum.DEFENDER && passer.position !== PositionEnum.MIDFIELDER) {
+      return false;
+    }
+
+    const attackingY = currentTeam === TeamSide.HOME
+      ? currentLocation.y
+      : 100 - currentLocation.y;
+
+    // Build-from-back recycle only; never use keeper as a forward outlet.
+    return attackingY <= 58;
   }
 
   private pickWeightedTarget(candidates: { target: Player; weight: number }[]): Player | null {

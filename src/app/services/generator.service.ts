@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Player, Team, Match, Position, Role } from '../models/types';
 import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
 @Injectable({
   providedIn: 'root'
@@ -151,21 +152,7 @@ export class GeneratorService {
       skills,
       hidden,
       overall,
-      careerStats: {
-        matchesPlayed: 0,
-        goals: 0,
-        assists: 0,
-        yellowCards: 0,
-        redCards: 0,
-        shots: 0,
-        shotsOnTarget: 0,
-        tackles: 0,
-        interceptions: 0,
-        passes: 0,
-        saves: 0,
-        cleanSheets: 0,
-        minutesPlayed: 0
-      }
+      careerStats: createEmptyPlayerCareerStats()
     };
   }
 
