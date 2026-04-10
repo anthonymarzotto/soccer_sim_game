@@ -7,11 +7,15 @@ import { DataSchemaVersionService } from './data-schema-version.service';
 export interface PersistedSettings {
   version: string;
   badgeStyle: string;
+  simulationVariant?: 'B';
+  simulationSeed?: string;
 }
 
 export interface PersistedSettingsRecord {
   version?: string;
   badgeStyle?: string;
+  simulationVariant?: string;
+  simulationSeed?: string;
 }
 
 const SETTINGS_STATE_KEY = 'app-settings';

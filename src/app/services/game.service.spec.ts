@@ -2,14 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { GameService } from './game.service';
 import { GeneratorService } from './generator.service';
-import { MatchSimulationService } from './match.simulation.service';
+import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
-import { MatchResult, Position, Role } from '../models/enums';
+import { CommentaryStyle, EventType, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
 import { MatchStatistics, Team } from '../models/types';
 
 describe('GameService persistence integration', () => {
@@ -36,7 +36,7 @@ describe('GameService persistence integration', () => {
         GameService,
         { provide: GeneratorService, useValue: generatorSpy as GeneratorService },
         { provide: PersistenceService, useValue: persistenceSpy as PersistenceService },
-        { provide: MatchSimulationService, useValue: {} },
+        { provide: MatchSimulationVariantBService, useValue: {} },
         { provide: CommentaryService, useValue: {} },
         { provide: StatisticsService, useValue: {} },
         { provide: PostMatchAnalysisService, useValue: {} },
@@ -422,13 +422,13 @@ describe('GameService persistence integration', () => {
       finalScore: '1-0',
       keyMoments: [],
       tacticalAnalysis: {
-        homeTeam: { possession: 50, shots: 1, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 50 },
-        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: 'Balanced', effectiveness: 40 },
+        homeTeam: { possession: 50, shots: 1, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 40 },
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: 'GK', rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: 'GK', rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
       matchSummary: 'Summary'
     };
@@ -453,5 +453,618 @@ describe('GameService persistence integration', () => {
     );
     expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
     expect(persistenceSpy.saveMatch).not.toHaveBeenCalled();
+
+    const homeKeeper = homeTeam.players.find(player => player.id === 'p1');
+    const awayKeeper = awayTeam.players.find(player => player.id === 'p2');
+    expect(homeKeeper?.careerStats.cleanSheets).toBe(1);
+    expect(awayKeeper?.careerStats.cleanSheets).toBe(0);
+  });
+
+  it('should truncate minutes played when a starter is sent off', async () => {
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            {
+              id: 'p1',
+              name: 'Player One',
+              teamId: 'team-1',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
+              physical: { speed: 50, strength: 80, endurance: 75 },
+              mental: { flair: 40, vision: 70, determination: 80 },
+              skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+              hidden: { luck: 50, injuryRate: 8 },
+              overall: 78,
+              careerStats: {
+                matchesPlayed: 0,
+                goals: 0,
+                assists: 0,
+                yellowCards: 0,
+                redCards: 0,
+                shots: 0,
+                shotsOnTarget: 0,
+                tackles: 0,
+                interceptions: 0,
+                passes: 0,
+                saves: 0,
+                cleanSheets: 0,
+                minutesPlayed: 0
+              }
+            }
+          ],
+          playerIds: ['p1'],
+          stats: {
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            last5: [MatchResult.DRAW]
+          },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p1' }
+        },
+        {
+          id: 'team-2',
+          name: 'Team Two',
+          players: [
+            {
+              id: 'p2',
+              name: 'Player Two',
+              teamId: 'team-2',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 191, weight: 83, age: 30, nationality: 'ENG' },
+              physical: { speed: 48, strength: 81, endurance: 74 },
+              mental: { flair: 39, vision: 69, determination: 82 },
+              skills: { tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87 },
+              hidden: { luck: 52, injuryRate: 7 },
+              overall: 77,
+              careerStats: {
+                matchesPlayed: 0,
+                goals: 0,
+                assists: 0,
+                yellowCards: 0,
+                redCards: 0,
+                shots: 0,
+                shotsOnTarget: 0,
+                tackles: 0,
+                interceptions: 0,
+                passes: 0,
+                saves: 0,
+                cleanSheets: 0,
+                minutesPlayed: 0
+              }
+            }
+          ],
+          playerIds: ['p2'],
+          stats: {
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            last5: [MatchResult.DRAW]
+          },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p2' }
+        }
+      ],
+      schedule: [
+        {
+          id: 'match-1',
+          week: 1,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          played: false
+        }
+      ],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    const homeTeam = service.getTeam('team-1') as Team;
+    const awayTeam = service.getTeam('team-2') as Team;
+    const match = service.getMatchesForWeek(1)[0];
+
+    const matchState = {
+      homeScore: 0,
+      awayScore: 0,
+      currentMinute: 90,
+      events: [
+        {
+          id: 'red-1',
+          type: EventType.RED_CARD,
+          description: 'Player One sent off',
+          playerIds: ['p1'],
+          location: { x: 50, y: 50 },
+          time: 30,
+          success: true
+        }
+      ]
+    };
+
+    const matchStats = {
+      possession: { home: 45, away: 55 },
+      shots: { home: 0, away: 0 },
+      shotsOnTarget: { home: 0, away: 0 },
+      corners: { home: 0, away: 0 },
+      fouls: { home: 1, away: 0 },
+      cards: {
+        home: { yellow: 0, red: 1 },
+        away: { yellow: 0, red: 0 }
+      },
+      passes: { home: 0, away: 0 },
+      tackles: { home: 0, away: 0 },
+      saves: { home: 0, away: 0 }
+    } satisfies MatchStatistics;
+
+    const matchReport = {
+      matchId: 'match-1',
+      finalScore: '0-0',
+      keyMoments: [],
+      tacticalAnalysis: {
+        homeTeam: { possession: 45, shots: 0, corners: 0, fouls: 1, style: PlayingStyle.DEFENSIVE, effectiveness: 45 },
+        awayTeam: { possession: 55, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 55 },
+        tacticalBattle: 'Away control'
+      },
+      playerPerformances: {
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+      },
+      matchSummary: 'Player One was dismissed in the first half.'
+    };
+
+    (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
+      match,
+      matchState,
+      homeTeam,
+      awayTeam,
+      [],
+      matchStats,
+      matchReport
+    );
+
+    const homeKeeper = homeTeam.players.find(player => player.id === 'p1');
+    const awayKeeper = awayTeam.players.find(player => player.id === 'p2');
+
+    expect(homeKeeper?.careerStats.redCards).toBe(1);
+    expect(homeKeeper?.careerStats.minutesPlayed).toBe(30);
+    expect(homeKeeper?.careerStats.matchesPlayed).toBe(1);
+    expect(awayKeeper?.careerStats.minutesPlayed).toBe(90);
+  });
+
+  it('should skip player career stat updates for forfeited matches', async () => {
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            {
+              id: 'p1',
+              name: 'Player One',
+              teamId: 'team-1',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
+              physical: { speed: 50, strength: 80, endurance: 75 },
+              mental: { flair: 40, vision: 70, determination: 80 },
+              skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+              hidden: { luck: 50, injuryRate: 8 },
+              overall: 78,
+              careerStats: {
+                matchesPlayed: 0,
+                goals: 0,
+                assists: 0,
+                yellowCards: 0,
+                redCards: 0,
+                shots: 0,
+                shotsOnTarget: 0,
+                tackles: 0,
+                interceptions: 0,
+                passes: 0,
+                saves: 0,
+                cleanSheets: 0,
+                minutesPlayed: 0
+              }
+            }
+          ],
+          playerIds: ['p1'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p1' }
+        },
+        {
+          id: 'team-2',
+          name: 'Team Two',
+          players: [
+            {
+              id: 'p2',
+              name: 'Player Two',
+              teamId: 'team-2',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 188, weight: 82, age: 28, nationality: 'ESP' },
+              physical: { speed: 48, strength: 79, endurance: 74 },
+              mental: { flair: 38, vision: 68, determination: 79 },
+              skills: { tackling: 18, shooting: 14, heading: 33, longPassing: 54, shortPassing: 61, goalkeeping: 86 },
+              hidden: { luck: 49, injuryRate: 7 },
+              overall: 77,
+              careerStats: {
+                matchesPlayed: 0,
+                goals: 0,
+                assists: 0,
+                yellowCards: 0,
+                redCards: 0,
+                shots: 0,
+                shotsOnTarget: 0,
+                tackles: 0,
+                interceptions: 0,
+                passes: 0,
+                saves: 0,
+                cleanSheets: 0,
+                minutesPlayed: 0
+              }
+            }
+          ],
+          playerIds: ['p2'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p2' }
+        }
+      ],
+      schedule: [
+        {
+          id: 'match-1',
+          week: 1,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          played: false
+        }
+      ],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    const homeTeam = service.getTeam('team-1') as Team;
+    const awayTeam = service.getTeam('team-2') as Team;
+    const match = service.getMatchesForWeek(1)[0];
+
+    const matchState = {
+      homeScore: 1,
+      awayScore: 0,
+      events: [],
+      currentMinute: 37
+    };
+    const matchStats = {
+      possession: { home: 50, away: 50 },
+      shots: { home: 0, away: 0 },
+      shotsOnTarget: { home: 0, away: 0 },
+      corners: { home: 0, away: 0 },
+      fouls: { home: 0, away: 0 },
+      cards: {
+        home: { yellow: 0, red: 0 },
+        away: { yellow: 0, red: 0 }
+      },
+      passes: { home: 0, away: 0 },
+      tackles: { home: 0, away: 0 },
+      saves: { home: 0, away: 0 }
+    } satisfies MatchStatistics;
+    const matchReport = {
+      matchId: 'match-1',
+      finalScore: '1-0',
+      keyMoments: [],
+      tacticalAnalysis: {
+        homeTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 40 },
+        tacticalBattle: 'Even'
+      },
+      playerPerformances: {
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+      },
+      matchSummary: 'Forfeit'
+    };
+
+    (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
+      match,
+      matchState,
+      homeTeam,
+      awayTeam,
+      [],
+      matchStats,
+      matchReport,
+      true
+    );
+
+    expect(homeTeam.players[0].careerStats.cleanSheets).toBe(0);
+    expect(homeTeam.players[0].careerStats.matchesPlayed).toBe(0);
+    expect(homeTeam.players[0].careerStats.minutesPlayed).toBe(0);
+    expect(awayTeam.players[0].careerStats.matchesPlayed).toBe(0);
+  });
+
+  it('should credit only the interval on the pitch when a substitute is later sent off', async () => {
+    const makePlayer = (id: string, teamId: string, pos: Position, role: Role) => ({
+      id,
+      name: id,
+      teamId,
+      position: pos,
+      role,
+      personal: { height: 182, weight: 79, age: 25, nationality: 'ENG' },
+      physical: { speed: 72, strength: 70, endurance: 74 },
+      mental: { flair: 60, vision: 62, determination: 68 },
+      skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
+      hidden: { luck: 50, injuryRate: 8 },
+      overall: 72,
+      careerStats: {
+        matchesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0,
+        shots: 0, shotsOnTarget: 0, tackles: 0, interceptions: 0, passes: 0,
+        saves: 0, cleanSheets: 0, minutesPlayed: 0
+      }
+    });
+
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            makePlayer('p-starter', 'team-1', Position.MIDFIELDER, Role.STARTER),
+            makePlayer('p-sub', 'team-1', Position.MIDFIELDER, Role.BENCH)
+          ],
+          playerIds: ['p-starter', 'p-sub'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: '' }
+        },
+        {
+          id: 'team-2',
+          name: 'Team Two',
+          players: [makePlayer('p-opp', 'team-2', Position.GOALKEEPER, Role.STARTER)],
+          playerIds: ['p-opp'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p-opp' }
+        }
+      ],
+      schedule: [{ id: 'match-sub-red', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    const homeTeam = service.getTeam('team-1') as Team;
+    const awayTeam = service.getTeam('team-2') as Team;
+    const match = service.getMatchesForWeek(1)[0];
+
+    // p-starter comes off at 60, p-sub comes on at 60 and is sent off at 75.
+    const matchState = {
+      homeScore: 0, awayScore: 0, currentMinute: 90,
+      events: [
+        {
+          id: 'sub-1', type: EventType.SUBSTITUTION, description: 'Sub',
+          playerIds: ['p-starter', 'p-sub'], location: { x: 50, y: 50 }, time: 60, success: true
+        },
+        {
+          id: 'red-1', type: EventType.RED_CARD, description: 'Red card',
+          playerIds: ['p-sub'], location: { x: 50, y: 50 }, time: 75, success: true
+        }
+      ]
+    };
+
+    const emptyStats = {
+      possession: { home: 50, away: 50 }, shots: { home: 0, away: 0 },
+      shotsOnTarget: { home: 0, away: 0 }, corners: { home: 0, away: 0 },
+      fouls: { home: 1, away: 0 },
+      cards: { home: { yellow: 0, red: 1 }, away: { yellow: 0, red: 0 } },
+      passes: { home: 0, away: 0 }, tackles: { home: 0, away: 0 }, saves: { home: 0, away: 0 }
+    } satisfies MatchStatistics;
+
+    const matchReport = {
+      matchId: 'match-sub-red', finalScore: '0-0', keyMoments: [],
+      tacticalAnalysis: {
+        homeTeam: { possession: 50, shots: 0, corners: 0, fouls: 1, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 50 },
+        tacticalBattle: 'Even'
+      },
+      playerPerformances: {
+        homeTeam: { mvp: { playerId: 'p-sub', playerName: 'p-sub', position: Position.MIDFIELDER, rating: 5, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
+        awayTeam: { mvp: { playerId: 'p-opp', playerName: 'p-opp', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 }
+      },
+      matchSummary: 'p-sub sent off after coming on.'
+    };
+
+    (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
+      match, matchState, homeTeam, awayTeam, [], emptyStats, matchReport
+    );
+
+    const starter = homeTeam.players.find(p => p.id === 'p-starter');
+    const sub = homeTeam.players.find(p => p.id === 'p-sub');
+
+    // Starter played minutes 0-60.
+    expect(starter?.careerStats.minutesPlayed).toBe(60);
+    expect(starter?.careerStats.matchesPlayed).toBe(1);
+
+    // Substitute played minutes 60-75 (15 minutes) then was dismissed.
+    expect(sub?.careerStats.minutesPlayed).toBe(15);
+    expect(sub?.careerStats.matchesPlayed).toBe(1);
+    expect(sub?.careerStats.redCards).toBe(1);
+  });
+
+  it('should not double count shots when SHOT and GOAL are emitted for the same attempt', async () => {
+    const makePlayer = (id: string, teamId: string, pos: Position, role: Role) => ({
+      id,
+      name: id,
+      teamId,
+      position: pos,
+      role,
+      personal: { height: 182, weight: 79, age: 25, nationality: 'ENG' },
+      physical: { speed: 72, strength: 70, endurance: 74 },
+      mental: { flair: 60, vision: 62, determination: 68 },
+      skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
+      hidden: { luck: 50, injuryRate: 8 },
+      overall: 72,
+      careerStats: {
+        matchesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0,
+        shots: 0, shotsOnTarget: 0, tackles: 0, interceptions: 0, passes: 0,
+        saves: 0, cleanSheets: 0, minutesPlayed: 0
+      }
+    });
+
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            makePlayer('p-home', 'team-1', Position.FORWARD, Role.STARTER),
+            makePlayer('p-home-gk', 'team-1', Position.GOALKEEPER, Role.STARTER)
+          ],
+          playerIds: ['p-home', 'p-home-gk'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p-home-gk' }
+        },
+        {
+          id: 'team-2',
+          name: 'Team Two',
+          players: [makePlayer('p-away-gk', 'team-2', Position.GOALKEEPER, Role.STARTER)],
+          playerIds: ['p-away-gk'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p-away-gk' }
+        }
+      ],
+      schedule: [{ id: 'match-shot-goal', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    const homeTeam = service.getTeam('team-1') as Team;
+    const awayTeam = service.getTeam('team-2') as Team;
+    const match = service.getMatchesForWeek(1)[0];
+
+    const matchState = {
+      homeScore: 1,
+      awayScore: 0,
+      currentMinute: 90,
+      events: [
+        {
+          id: 'shot-1', type: EventType.SHOT, description: 'Shot',
+          playerIds: ['p-home'], location: { x: 50, y: 20 }, time: 12, success: true
+        },
+        {
+          id: 'goal-1', type: EventType.GOAL, description: 'Goal',
+          playerIds: ['p-home'], location: { x: 50, y: 15 }, time: 12, success: true
+        }
+      ]
+    };
+
+    const emptyStats = {
+      possession: { home: 50, away: 50 }, shots: { home: 1, away: 0 },
+      shotsOnTarget: { home: 1, away: 0 }, corners: { home: 0, away: 0 },
+      fouls: { home: 0, away: 0 },
+      cards: { home: { yellow: 0, red: 0 }, away: { yellow: 0, red: 0 } },
+      passes: { home: 0, away: 0 }, tackles: { home: 0, away: 0 }, saves: { home: 0, away: 0 }
+    } satisfies MatchStatistics;
+
+    const matchReport = {
+      matchId: 'match-shot-goal', finalScore: '1-0', keyMoments: [],
+      tacticalAnalysis: {
+        homeTeam: { possession: 50, shots: 1, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 55 },
+        awayTeam: { possession: 50, shots: 0, corners: 0, fouls: 0, style: PlayingStyle.DEFENSIVE, effectiveness: 45 },
+        tacticalBattle: 'Even'
+      },
+      playerPerformances: {
+        homeTeam: { mvp: { playerId: 'p-home', playerName: 'p-home', position: Position.FORWARD, rating: 8, goals: 1, assists: 0, shots: 1, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p-away-gk', playerName: 'p-away-gk', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+      },
+      matchSummary: 'Single finished shot event path.'
+    };
+
+    (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
+      match,
+      matchState,
+      homeTeam,
+      awayTeam,
+      [],
+      emptyStats,
+      matchReport
+    );
+
+    const scorer = homeTeam.players.find((player) => player.id === 'p-home');
+    expect(scorer?.careerStats.shots).toBe(1);
+    expect(scorer?.careerStats.shotsOnTarget).toBe(1);
+    expect(scorer?.careerStats.goals).toBe(1);
+  });
+});
+
+describe('GameService simulation engine', () => {
+  it('should use MatchSimulationVariantBService for match simulation', () => {
+    TestBed.resetTestingModule();
+
+    const variantBMatchState = {
+      currentMinute: 90,
+      events: [],
+      homeScore: 0,
+      awayScore: 0,
+      homeShots: 0,
+      awayShots: 0,
+      homeShotsOnTarget: 0,
+      awayShotsOnTarget: 0
+    };
+    const variantBSpy = { simulateMatch: vi.fn().mockReturnValue(variantBMatchState) };
+    const statisticsSpy = { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) };
+    const reportSpy = { generateMatchReport: vi.fn().mockReturnValue({}) };
+    const commentarySpy = { generateCommentary: vi.fn().mockReturnValue([]) };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: commentarySpy },
+        { provide: StatisticsService, useValue: statisticsSpy },
+        { provide: PostMatchAnalysisService, useValue: reportSpy },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: {} }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+
+    service.simulateMatchWithDetails({ id: 'match-1' } as never, { id: 'home' } as never, { id: 'away' } as never, {
+      enablePlayByPlay: true,
+      enableSpatialTracking: true,
+      enableTactics: true,
+      enableFatigue: true,
+      commentaryStyle: CommentaryStyle.DETAILED,
+      skipCommentary: true
+    });
+
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(1);
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'match-1' }),
+      expect.objectContaining({ id: 'home' }),
+      expect.objectContaining({ id: 'away' }),
+      expect.objectContaining({ simulationVariant: 'B' })
+    );
   });
 });

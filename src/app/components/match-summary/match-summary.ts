@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
 import { TeamBadgeComponent } from '../team-badge/team-badge';
-import { Match } from '../../models/types';
+import { Match, MatchEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
 
 const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
@@ -30,6 +30,57 @@ export class MatchSummaryComponent {
 
   // Expose enum for template
   EventImportance = EventImportance;
+  showExpandedMoments = signal(false);
+
+  private baseKeyEvents = computed(() => {
+    const events = this.match().keyEvents ?? [];
+    if (!this.isLive()) {
+      return events;
+    }
+
+    const minute = this.currentMinute();
+    return events.filter(event => event.time <= minute);
+  });
+
+  expandedKeyMoments = computed(() => {
+    const allMoments = this.match().matchReport?.keyMoments ?? [];
+
+    if (!this.isLive()) {
+      return allMoments;
+    }
+
+    const minute = this.currentMinute();
+    return allMoments.filter(moment => moment.time <= minute);
+  });
+
+  additionalExpandedMoments = computed(() => {
+    const baseIds = new Set(this.baseKeyEvents().map(event => event.id));
+    return this.expandedKeyMoments().filter(moment => !baseIds.has(moment.id));
+  });
+
+  hasAnyMoments = computed(() => this.baseKeyEvents().length > 0 || this.additionalExpandedMoments().length > 0);
+
+  hasAdditionalMoments = computed(() => this.additionalExpandedMoments().length > 0);
+
+  visibleMoments = computed((): { event: MatchEvent; isExpanded: boolean }[] => {
+    const base = this.baseKeyEvents().map(event => ({ event, isExpanded: false }));
+    if (!this.showExpandedMoments()) {
+      return base;
+    }
+
+    const expanded = this.additionalExpandedMoments().map(event => ({ event, isExpanded: true }));
+    return [...base, ...expanded]
+      .map((entry, index) => ({ entry, index }))
+      .sort((left, right) => {
+        const timeDelta = left.entry.event.time - right.entry.event.time;
+        return timeDelta !== 0 ? timeDelta : left.index - right.index;
+      })
+      .map(item => item.entry);
+  });
+
+  toggleExpandedMoments(): void {
+    this.showExpandedMoments.update(current => !current);
+  }
 
   getTeamName(id: string): string {
     return this.gameService.getTeam(id)?.name || 'Unknown';

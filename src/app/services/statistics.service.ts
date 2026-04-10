@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchStatistics, Team, Player } from '../models/types';
-import { EventType } from '../models/enums';
+import { EventType, Position } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
 
 @Injectable({
@@ -65,6 +65,7 @@ export class StatisticsService {
 
     teamPlayers.forEach(player => {
       const playerEvents = matchState.events.filter(e => e.playerIds.includes(player.id));
+      const primaryPlayerEvents = playerEvents.filter(e => e.playerIds[0] === player.id);
       
       const stats: PlayerStatistics = {
         playerId: player.id,
@@ -80,11 +81,11 @@ export class StatisticsService {
         tackles: playerEvents.filter(e => e.type === EventType.TACKLE).length,
         tacklesSuccessful: playerEvents.filter(e => e.type === EventType.TACKLE && e.success).length,
         interceptions: playerEvents.filter(e => e.type === EventType.INTERCEPTION).length,
-        fouls: playerEvents.filter(e => e.type === EventType.FOUL || e.type === EventType.YELLOW_CARD || e.type === EventType.RED_CARD).length,
-        yellowCards: playerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
-        redCards: playerEvents.filter(e => e.type === EventType.RED_CARD).length,
-        saves: playerEvents.filter(e => e.type === EventType.SAVE).length,
-        rating: this.calculatePlayerRating(player, playerEvents)
+        fouls: primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length,
+        yellowCards: primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
+        redCards: primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length,
+        saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
+        rating: this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents)
       };
 
       playerStats.push(stats);
@@ -223,7 +224,7 @@ export class StatisticsService {
     return assists;
   }
 
-  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[]): number {
+  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[]): number {
     let rating = player.overall;
 
     // Positive contributions
@@ -233,9 +234,9 @@ export class StatisticsService {
     const tackles = events.filter(e => e.type === EventType.TACKLE && e.success).length;
 
     // Negative contributions
-    const fouls = events.filter(e => e.type === EventType.FOUL).length;
-    const yellowCards = events.filter(e => e.type === EventType.YELLOW_CARD).length;
-    const redCards = events.filter(e => e.type === EventType.RED_CARD).length;
+    const fouls = primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length;
+    const yellowCards = primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length;
+    const redCards = primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length;
 
     // Rating calculation
     rating += (goals * 10) + (assists * 5) + (successfulPasses * 0.1) + (tackles * 2);
@@ -258,7 +259,7 @@ export class StatisticsService {
 export interface PlayerStatistics {
   playerId: string;
   playerName: string;
-  position: string;
+  position: Position;
   minutesPlayed: number;
   passes: number;
   passesSuccessful: number;

@@ -3,11 +3,11 @@ import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { SettingsService } from './settings.service';
 import { PersistenceService } from './persistence.service';
-import { APP_DATA_SCHEMA_VERSION } from '../constants';
+import { APP_DATA_SCHEMA_VERSION, SIMULATION_SEED_MAX_LENGTH } from '../constants';
 import { DataSchemaVersionService } from './data-schema-version.service';
 
 describe('SettingsService', () => {
-  function setup(loadSettingsValue: { badgeStyle?: string; version?: string } | null) {
+  function setup(loadSettingsValue: { badgeStyle?: string; simulationVariant?: string; simulationSeed?: string; version?: string } | null) {
     TestBed.resetTestingModule();
 
     const persistenceSpy: Pick<PersistenceService, 'loadSettings' | 'saveSettings' | 'clearSettings'> = {
@@ -78,6 +78,8 @@ describe('SettingsService', () => {
 
     expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
       badgeStyle: 'jersey',
+      simulationVariant: 'B',
+      simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
   });
@@ -155,6 +157,48 @@ describe('SettingsService', () => {
     expect(service.badgeStyle()).toBe('jersey');
     expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
       badgeStyle: 'jersey',
+      simulationVariant: 'B',
+      simulationSeed: '',
+      version: APP_DATA_SCHEMA_VERSION
+    });
+  });
+
+  it('should sanitize persisted simulation seed by trimming and enforcing max length', async () => {
+    const persistedSeed = `   ${'x'.repeat(SIMULATION_SEED_MAX_LENGTH + 12)}   `;
+    const expectedSeed = 'x'.repeat(SIMULATION_SEED_MAX_LENGTH);
+    const { service } = setup({
+      badgeStyle: 'shield',
+      simulationVariant: 'B',
+      simulationSeed: persistedSeed,
+      version: APP_DATA_SCHEMA_VERSION
+    });
+
+    await service.ensureHydrated();
+    TestBed.flushEffects();
+
+    expect(service.simulationSeed()).toBe(expectedSeed);
+  });
+
+  it('should normalize simulation seed on update before persisting', async () => {
+    const { service, persistenceSpy } = setup({
+      badgeStyle: 'shield',
+      simulationVariant: 'B',
+      simulationSeed: '',
+      version: APP_DATA_SCHEMA_VERSION
+    });
+    await service.ensureHydrated();
+    TestBed.flushEffects();
+
+    const updatedSeed = `  ${'seed'.repeat(40)}  `;
+    const expectedSeed = ('seed'.repeat(40)).slice(0, SIMULATION_SEED_MAX_LENGTH);
+    service.setSimulationSeed(updatedSeed);
+    TestBed.flushEffects();
+
+    expect(service.simulationSeed()).toBe(expectedSeed);
+    expect(persistenceSpy.saveSettings).toHaveBeenLastCalledWith({
+      badgeStyle: 'shield',
+      simulationVariant: 'B',
+      simulationSeed: expectedSeed,
       version: APP_DATA_SCHEMA_VERSION
     });
   });

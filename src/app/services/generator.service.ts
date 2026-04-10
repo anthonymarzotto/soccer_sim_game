@@ -36,9 +36,9 @@ export class GeneratorService {
     for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER));
     for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER));
 
-    // 10 Bench: 1 GK, 3 DEF, 4 MID, 2 FWD
+    // 9 Bench: 1 GK, 2 DEF, 4 MID, 2 FWD
     players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH));
-    for (let i = 0; i < 3; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH));
     for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH));
     for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH));
 

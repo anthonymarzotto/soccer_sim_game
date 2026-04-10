@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { PlayByPlayEvent, FieldZone } from '../models/simulation.types';
+import { PlayByPlayEvent, FieldZone, Coordinates } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
 import { CommentaryStyle, EventType, Role } from '../models/enums';
@@ -36,11 +36,11 @@ export class CommentaryService {
         "Excellent technique from {player} in the box!"
       ],
       save: [
-        "Outstanding save from {player}!",
-        "{player} makes a fantastic stop!",
+        "Outstanding save from {player} to deny {target}!",
+        "{player} makes a fantastic stop from {target}!",
         "Brilliant reaction save from {player}!",
-        "{player} denies the shot with a strong hand!",
-        "Superb positioning from {player}!"
+        "{player} gets down well to keep out {target}!",
+        "Superb positioning from {player} keeps {target} out!"
       ],
       goal: [
         "GOAL! {player} scores! What a finish!",
@@ -52,7 +52,7 @@ export class CommentaryService {
       miss: [
         "Close! {player} just wide of the target!",
         "{player} should have done better there!",
-        "Excellent save keeps {player} out!",
+        "{player} flashes the attempt wide!",
         "{player} hits the post!",
         "Just over the bar from {player}!"
       ],
@@ -98,42 +98,71 @@ export class CommentaryService {
     const homePlayers = this.getTeamPlayers(homeTeam, rosters?.homePlayers);
     const awayPlayers = this.getTeamPlayers(awayTeam, rosters?.awayPlayers);
 
-    if (event.playerIds.length > 0) {
-      const player = this.findPlayerById(event.playerIds[0], homePlayers, awayPlayers);
+    const primaryPlayerId = this.getPrimaryPlayerId(event);
+    const secondaryPlayerId = this.getSecondaryPlayerId(event);
+
+    if (primaryPlayerId) {
+      const player = this.findPlayerById(primaryPlayerId, homePlayers, awayPlayers);
       playerName = player ? player.name : 'Player';
     }
 
-    if (event.playerIds.length > 1) {
-      const target = this.findPlayerById(event.playerIds[1], homePlayers, awayPlayers);
+    if (secondaryPlayerId) {
+      const target = this.findPlayerById(secondaryPlayerId, homePlayers, awayPlayers);
       targetName = target ? target.name : 'Player';
     }
 
     switch (event.type) {
       case EventType.PASS:
-        template = this.getRandomCommentary(commentaryStyle.pass);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.generatePassCommentary(event, style, commentaryStyle.pass, playerName, targetName);
       
       case EventType.TACKLE:
       case EventType.INTERCEPTION:
-        template = this.getRandomCommentary(commentaryStyle.tackle);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.generateTurnoverCommentary(event, style, commentaryStyle.tackle, playerName, targetName);
       
       case EventType.SHOT:
         template = this.getRandomCommentary(commentaryStyle.shot);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
+
+      case EventType.MISS:
+        template = this.getRandomCommentary(commentaryStyle.miss);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
       
       case EventType.SAVE:
         template = this.getRandomCommentary(commentaryStyle.save);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
       
       case EventType.GOAL: {
         template = this.getRandomCommentary(commentaryStyle.goal);
-        return this.formatCommentary(template, playerName, targetName);
+        return this.appendChanceLocationContext(
+          this.formatCommentary(template, playerName, targetName),
+          event
+        );
       }
+
+      case EventType.FOUL:
+        template = this.getRandomCommentary(commentaryStyle.foul);
+        return this.formatCommentary(template, playerName, targetName);
       
       case EventType.YELLOW_CARD:
-      case EventType.RED_CARD:
-        return `${playerName} receives a ${event.type === EventType.YELLOW_CARD ? 'yellow' : 'red'} card!`;
+        return `${playerName} receives a yellow card!`;
+
+      case EventType.RED_CARD: {
+        const cardReason = event.additionalData?.['cardReason'];
+        if (cardReason === 'SECOND_YELLOW') {
+          return `${playerName} is sent off for a second yellow!`;
+        }
+
+        return `${playerName} receives a red card!`;
+      }
       
       case EventType.SUBSTITUTION: {
         const subIn = this.findPlayerById(event.playerIds[1], homePlayers, awayPlayers);
@@ -171,7 +200,7 @@ export class CommentaryService {
     const goals = events.filter(e => e.type === EventType.GOAL);
     const shots = events.filter(e => e.type === EventType.SHOT);
     const saves = events.filter(e => e.type === EventType.SAVE);
-    const fouls = events.filter(e => e.type === EventType.FOUL || e.type === EventType.YELLOW_CARD || e.type === EventType.RED_CARD);
+    const fouls = events.filter(e => e.type === EventType.FOUL);
 
     if (goals.length > 0) {
       summary.push(`Match ended with ${goals.length} goal(s) scored.`);
@@ -216,8 +245,155 @@ export class CommentaryService {
     return this.getRandomCommentary(tactics);
   }
 
+  describeChanceLocation(location?: Coordinates): string | null {
+    if (!location) {
+      return null;
+    }
+
+    const goalDistance = Math.min(location.y, 100 - location.y);
+    const lateralLabel =
+      location.x < 33 ? 'the left channel' : location.x > 67 ? 'the right channel' : 'a central area';
+
+    if (goalDistance <= 10) {
+      return `${lateralLabel} in the six-yard box`;
+    }
+
+    if (goalDistance <= 22) {
+      return `${lateralLabel} inside the box`;
+    }
+
+    if (goalDistance <= 32) {
+      return `${lateralLabel} at the edge of the box`;
+    }
+
+    return `${lateralLabel} from long range`;
+  }
+
   private getRandomCommentary(templates: string[]): string {
     return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  private generatePassCommentary(
+    event: PlayByPlayEvent,
+    style: CommentaryStyle,
+    defaultTemplates: string[],
+    playerName: string,
+    targetName: string
+  ): string {
+    const passIntent = this.getStringMetadata(event, 'passIntent');
+
+    if (style === CommentaryStyle.DETAILED && passIntent) {
+      const intentTemplate = this.getDetailedPassIntentTemplate(passIntent);
+      if (intentTemplate) {
+        return this.formatCommentary(intentTemplate, playerName, targetName);
+      }
+    }
+
+    const template = this.getRandomCommentary(defaultTemplates);
+    return this.formatCommentary(template, playerName, targetName);
+  }
+
+  private generateTurnoverCommentary(
+    event: PlayByPlayEvent,
+    style: CommentaryStyle,
+    defaultTemplates: string[],
+    playerName: string,
+    targetName: string
+  ): string {
+    const carryResult = this.getStringMetadata(event, 'carryResult');
+
+    if (style === CommentaryStyle.DETAILED && carryResult === 'DISPOSSESSED') {
+      const carryDispossessionPhrases = [
+        `${playerName} loses the ball fighting for space.`,
+        `${playerName} is dispossessed in a contested challenge.`,
+        `${playerName} gives away possession trying to carry the ball forward.`,
+        `${playerName} loses the ball trying to break through.`,
+        `${playerName} is caught out of possession.`
+      ];
+      return carryDispossessionPhrases[Math.floor(Math.random() * carryDispossessionPhrases.length)];
+    }
+
+    const passFailure = this.getStringMetadata(event, 'passFailure');
+
+    if (style === CommentaryStyle.DETAILED && passFailure) {
+      const passIntent = this.getStringMetadata(event, 'passIntent');
+      const intentLabel = this.describePassIntent(passIntent);
+
+      if (passFailure === 'TACKLED') {
+        return `${playerName} loses out after an attempted ${intentLabel}. Possession turns over.`;
+      }
+
+      if (passFailure === 'LANE_CUT_OUT') {
+        return `${playerName} tries an ${intentLabel}, but the lane is cut out.`;
+      }
+
+      if (passFailure === 'OVERHIT') {
+        return `${playerName} overhits the ${intentLabel} and it runs through.`;
+      }
+    }
+
+    const template = this.getRandomCommentary(defaultTemplates);
+    return this.formatCommentary(template, playerName, targetName);
+  }
+
+  private getDetailedPassIntentTemplate(passIntent: string): string | null {
+    switch (passIntent) {
+      case 'RECYCLE':
+        return '{player} recycles possession calmly to {target}.';
+      case 'PROGRESSION':
+        return '{player} plays a progressive ball into {target}.';
+      case 'THROUGH_BALL':
+        return '{player} slips a through ball in behind for {target}!';
+      case 'CROSS':
+        return '{player} swings a cross toward {target}.';
+      default:
+        return null;
+    }
+  }
+
+  private describePassIntent(passIntent: string | null): string {
+    switch (passIntent) {
+      case 'RECYCLE':
+        return 'recycle pass';
+      case 'PROGRESSION':
+        return 'progressive pass';
+      case 'THROUGH_BALL':
+        return 'through ball';
+      case 'CROSS':
+        return 'cross';
+      default:
+        return 'pass';
+    }
+  }
+
+  private getStringMetadata(event: PlayByPlayEvent, key: string): string | null {
+    const value = event.additionalData?.[key];
+    return typeof value === 'string' ? value : null;
+  }
+
+  private appendChanceLocationContext(commentary: string, event: PlayByPlayEvent): string {
+    const locationDescription = this.describeChanceLocation(event.location);
+    if (!locationDescription) {
+      return commentary;
+    }
+
+    return `${commentary} It came from ${locationDescription}.`;
+  }
+
+  private getPrimaryPlayerId(event: PlayByPlayEvent): string | undefined {
+    if (event.type === EventType.SAVE) {
+      return event.playerIds[1] ?? event.playerIds[0];
+    }
+
+    return event.playerIds[0];
+  }
+
+  private getSecondaryPlayerId(event: PlayByPlayEvent): string | undefined {
+    if (event.type === EventType.SAVE) {
+      return event.playerIds[0];
+    }
+
+    return event.playerIds[1];
   }
 
   private formatCommentary(template: string, player: string, target: string): string {

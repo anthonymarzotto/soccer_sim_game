@@ -1,26 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
-import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
 import { ScheduleStateService } from '../../services/schedule-state.service';
-import { EventImportance } from '../../models/enums';
-import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
-
-const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
+import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
 
 @Component({
   selector: 'app-schedule',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent],
+  imports: [RouterLink, MatchSummaryComponent],
   templateUrl: './schedule.html',
 })
 export class ScheduleComponent {
   gameService = inject(GameService);
-  settingsService = inject(SettingsService);
   scheduleStateService = inject(ScheduleStateService);
-
-  // Expose enum values for template access
-  EventImportance = EventImportance;
 
   selectedWeek = this.scheduleStateService.selectedWeek;
 
@@ -54,53 +46,6 @@ export class ScheduleComponent {
     }
   }
 
-  getTeamName(id: string): string {
-    return this.gameService.getTeam(id)?.name || 'Unknown';
-  }
-
-  getTeamOverall(id: string): number {
-    return this.gameService.getTeamOverall(id);
-  }
-
-  getProbabilities(homeId: string, awayId: string) {
-    return this.gameService.getMatchProbabilities(homeId, awayId);
-  }
-
-  getPlayerNames(playerIds: string[]): string[] {
-    return playerIds.map(id => {
-      const player = this.gameService.getPlayer(id);
-      return player ? player.name : 'Unknown Player';
-    });
-  }
-
-  getPlayerLinks(playerIds: string[]): { name: string; playerId: string }[] {
-    return playerIds.map(id => {
-      const player = this.gameService.getPlayer(id);
-      return {
-        name: player ? player.name : 'Unknown Player',
-        playerId: id
-      };
-    });
-  }
-
-  formatEventDescription(description: string, playerIds: string[]): string {
-    // Replace player IDs in the description with player names
-    let formattedDescription = description;
-    
-    playerIds.forEach(playerId => {
-      const player = this.gameService.getPlayer(playerId);
-      const playerName = player ? player.name : 'Unknown Player';
-      // Replace the player ID with the player name
-      formattedDescription = formattedDescription.replace(playerId, playerName);
-    });
-    
-    return formattedDescription;
-  }
-
-  getPlayerTeamId(playerId: string): string {
-    const player = this.gameService.getPlayer(playerId);
-    return player?.teamId || '';
-  }
 
   simulateMatch(matchId: string) {
     const l = this.gameService.league();
@@ -124,10 +69,6 @@ export class ScheduleComponent {
     }
     
     this.selectedWeek.set(this.gameService.league()?.currentWeek || 1);
-  }
-
-  isIconBadgeStyle(): boolean {
-    return ICON_BADGE_STYLE_SET.has(this.settingsService.badgeStyle());
   }
 
 }

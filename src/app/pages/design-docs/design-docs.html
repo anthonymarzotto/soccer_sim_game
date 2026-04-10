@@ -1,0 +1,48 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+
+  <!-- Header -->
+  <div class="border-b border-zinc-800 p-6">
+    <div class="flex items-center gap-4">
+      <a routerLink="/settings" class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </a>
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-white">Design Docs</h1>
+        <p class="text-zinc-400 mt-1">Architecture and flow diagrams</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body: sidebar + viewer -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Doc list sidebar -->
+    <aside class="w-64 shrink-0 border-r border-zinc-800 bg-zinc-900 p-4 space-y-1 overflow-y-auto">
+      @for (doc of docs; track doc.path) {
+        <button
+          type="button"
+          (click)="selectDoc(doc)"
+          class="w-full text-left rounded-lg px-4 py-3 transition-colors"
+          [class.bg-zinc-800]="selectedDoc().path === doc.path"
+          [class.text-white]="selectedDoc().path === doc.path"
+          [class.text-zinc-400]="selectedDoc().path !== doc.path"
+          [class.hover:bg-zinc-800]="selectedDoc().path !== doc.path"
+          [class.hover:text-white]="selectedDoc().path !== doc.path"
+        >
+          <p class="font-medium text-sm">{{ doc.label }}</p>
+          <p class="text-xs text-zinc-500 mt-0.5">{{ doc.description }}</p>
+        </button>
+      }
+    </aside>
+
+    <!-- Iframe viewer -->
+    <main class="flex-1 overflow-hidden">
+      <iframe
+        [src]="iframeSrc()"
+        class="w-full h-full border-0"
+        title="{{ selectedDoc().label }}"
+      ></iframe>
+    </main>
+
+  </div>
+</div>

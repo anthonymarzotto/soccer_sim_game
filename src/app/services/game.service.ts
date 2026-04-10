@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { League, Match, Team, Player, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { GeneratorService } from './generator.service';
-import { MatchSimulationService } from './match.simulation.service';
+import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
 import { StatisticsService } from './statistics.service';
 import { PostMatchAnalysisService } from './post.match.analysis.service';
@@ -202,7 +202,7 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
-  simulateCurrentWeek() {
+  simulateCurrentWeek(config?: Partial<SimulationConfig>) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -222,7 +222,9 @@ export class GameService {
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
-        commentaryStyle: CommentaryStyle.DETAILED
+        commentaryStyle: CommentaryStyle.DETAILED,
+        simulationVariant: 'B',
+        ...config
       });
 
       // The match result is already updated in the league state by simulateMatchWithDetails
@@ -415,7 +417,7 @@ export class GameService {
       for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = Role.STARTER;
 
       if (gks.length > 1) gks[1].role = Role.BENCH;
-      for (let i = 4; i < Math.min(7, defs.length); i++) defs[i].role = Role.BENCH;
+      for (let i = 4; i < Math.min(6, defs.length); i++) defs[i].role = Role.BENCH;
       for (let i = 4; i < Math.min(8, mids.length); i++) mids[i].role = Role.BENCH;
       for (let i = 2; i < Math.min(4, fwds.length); i++) fwds[i].role = Role.BENCH;
 
@@ -484,7 +486,7 @@ export class GameService {
   }
 
   // Enhanced simulation methods
-  private matchSimulationService = inject(MatchSimulationService);
+  private matchSimulationVariantBService = inject(MatchSimulationVariantBService);
   private commentaryService = inject(CommentaryService);
   private statisticsService = inject(StatisticsService);
   private postMatchAnalysisService = inject(PostMatchAnalysisService);
@@ -498,11 +500,14 @@ export class GameService {
       enableTactics: true,
       enableFatigue: true,
       commentaryStyle: CommentaryStyle.DETAILED,
+      simulationVariant: 'B',
       ...config
     };
 
-    // Use the enhanced simulation service
-    const matchState = this.matchSimulationService.simulateMatch(match, homeTeam, awayTeam, simConfig);
+    const matchState = this.matchSimulationVariantBService.simulateMatch(match, homeTeam, awayTeam, simConfig);
+    const endedByForfeit = (this.matchSimulationVariantBService as unknown as {
+      didLastSimulationEndByForfeit?: () => boolean;
+    }).didLastSimulationEndByForfeit?.() ?? false;
     
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
@@ -514,7 +519,7 @@ export class GameService {
     const keyEvents = this.extractKeyEvents(matchState.events);
     
     // Update league state with results
-    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport);
+    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
     
     return {
       matchState,
@@ -525,7 +530,16 @@ export class GameService {
     };
   }
 
-  private updateLeagueWithMatchResult(match: Match, matchState: MatchState, homeTeam: Team, awayTeam: Team, keyEvents: MatchEvent[], matchStats: MatchStatistics, matchReport: MatchReport) {
+  private updateLeagueWithMatchResult(
+    match: Match,
+    matchState: MatchState,
+    homeTeam: Team,
+    awayTeam: Team,
+    keyEvents: MatchEvent[],
+    matchStats: MatchStatistics,
+    matchReport: MatchReport,
+    skipPlayerCareerStats = false
+  ) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -580,8 +594,9 @@ export class GameService {
       return team;
     });
 
-    // Update player career stats
-    this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
+    if (!skipPlayerCareerStats) {
+      this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
+    }
 
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.
@@ -619,18 +634,61 @@ export class GameService {
       allPlayers.set(player.id, player);
     });
 
+    // When both SHOT and terminal outcome events exist for the same attempt,
+    // count the attempt once from the terminal outcome and skip the paired SHOT.
+    const shotOutcomeByMinuteAndShooter = new Set<string>();
+    events.forEach((event) => {
+      if ((event.type === EventType.GOAL || event.type === EventType.SAVE || event.type === EventType.MISS) && event.playerIds[0]) {
+        shotOutcomeByMinuteAndShooter.add(`${event.time}:${event.playerIds[0]}`);
+      }
+    });
+
     // Update player stats based on events
     events.forEach(event => {
+      if (event.type === EventType.GOAL) {
+        const scorer = allPlayers.get(event.playerIds[0]);
+        if (scorer) {
+          scorer.careerStats.shots++;
+          scorer.careerStats.shotsOnTarget++;
+          scorer.careerStats.goals++;
+        }
+        return;
+      }
+
+      if (event.type === EventType.SAVE) {
+        const shooter = allPlayers.get(event.playerIds[0]);
+        if (shooter) {
+          shooter.careerStats.shots++;
+          shooter.careerStats.shotsOnTarget++;
+        }
+        const keeperId = event.playerIds[1] ?? event.playerIds[0];
+        const keeper = allPlayers.get(keeperId);
+        if (keeper) {
+          keeper.careerStats.saves++;
+        }
+        return;
+      }
+
+      if (event.type === EventType.MISS) {
+        const shooter = allPlayers.get(event.playerIds[0]);
+        if (shooter) {
+          shooter.careerStats.shots++;
+        }
+        return;
+      }
+
+      const primaryPlayerId = event.playerIds[0];
+
       event.playerIds.forEach((playerId: string) => {
         const player = allPlayers.get(playerId);
         if (!player) return;
 
         // Update career stats based on event type
         switch (event.type) {
-          case EventType.GOAL:
-            player.careerStats.goals++;
-            break;
           case EventType.SHOT:
+            if (shotOutcomeByMinuteAndShooter.has(`${event.time}:${playerId}`)) {
+              return;
+            }
             player.careerStats.shots++;
             if (event.success) {
               player.careerStats.shotsOnTarget++;
@@ -645,30 +703,88 @@ export class GameService {
           case EventType.PASS:
             player.careerStats.passes++;
             break;
-          case EventType.SAVE:
-            player.careerStats.saves++;
-            break;
           case EventType.YELLOW_CARD:
+            if (playerId !== primaryPlayerId) return;
             player.careerStats.yellowCards++;
             break;
           case EventType.RED_CARD:
+            if (playerId !== primaryPlayerId) return;
             player.careerStats.redCards++;
             break;
         }
       });
     });
 
-    // Update minutes played for all players who participated
+    // Compute exact minutes played using on/off intervals.
+    // Starters begin on the pitch at minute 0; players can leave via substitution or red card.
+    const matchLength = 90;
+    const substitutionsAndDismissals = events
+      .filter(e => e.type === EventType.SUBSTITUTION || e.type === EventType.RED_CARD)
+      .sort((left, right) => left.time - right.time);
+    const minutesOnPitch = new Map<string, number>();
+    const activeSince = new Map<string, number | null>();
+
     const allTeamPlayers = [...homePlayers, ...awayPlayers];
+    for (const player of allTeamPlayers) {
+      if (player.role === Role.RESERVE) continue;
+      minutesOnPitch.set(player.id, 0);
+      activeSince.set(player.id, player.role === Role.STARTER ? 0 : null);
+    }
+
+    for (const event of substitutionsAndDismissals) {
+      const minute = Math.max(0, Math.min(event.time, matchLength));
+
+      if (event.type === EventType.SUBSTITUTION) {
+        const outId = event.playerIds[0];
+        const inId = event.playerIds[1];
+
+        if (outId && activeSince.has(outId)) {
+          const startedAt = activeSince.get(outId);
+          if (typeof startedAt === 'number') {
+            minutesOnPitch.set(outId, (minutesOnPitch.get(outId) ?? 0) + (minute - startedAt));
+            activeSince.set(outId, null);
+          }
+        }
+
+        if (inId && activeSince.has(inId) && activeSince.get(inId) === null) {
+          activeSince.set(inId, minute);
+        }
+        continue;
+      }
+
+      const dismissedPlayerId = event.playerIds[0];
+      if (dismissedPlayerId && activeSince.has(dismissedPlayerId)) {
+        const startedAt = activeSince.get(dismissedPlayerId);
+        if (typeof startedAt === 'number') {
+          minutesOnPitch.set(
+            dismissedPlayerId,
+            (minutesOnPitch.get(dismissedPlayerId) ?? 0) + (minute - startedAt)
+          );
+          activeSince.set(dismissedPlayerId, null);
+        }
+      }
+    }
+
+    activeSince.forEach((startedAt, playerId) => {
+      if (typeof startedAt !== 'number') {
+        return;
+      }
+
+      minutesOnPitch.set(playerId, (minutesOnPitch.get(playerId) ?? 0) + (matchLength - startedAt));
+    });
+
+    // Update minutes played for all players who participated
     allTeamPlayers.forEach(player => {
-      if (player.role !== Role.RESERVE) {
-        player.careerStats.minutesPlayed += 90; // Full match
+      const minutes = minutesOnPitch.get(player.id) ?? 0;
+      if (minutes > 0) {
+        player.careerStats.minutesPlayed += minutes;
       }
     });
 
-    // Update matches played for all players who participated
+    // Update matches played for players with any pitch time
     allTeamPlayers.forEach(player => {
-      if (player.role !== Role.RESERVE) {
+      const minutes = minutesOnPitch.get(player.id) ?? 0;
+      if (minutes > 0) {
         player.careerStats.matchesPlayed++;
       }
     });
@@ -677,10 +793,10 @@ export class GameService {
     const homeGoalkeeper = homePlayers.find(p => p.id === homeTeam.formationAssignments['gk_1']);
     const awayGoalkeeper = awayPlayers.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
-    if (homeGoalkeeper && homeScore === 0) {
+    if (homeGoalkeeper && awayScore === 0) {
       homeGoalkeeper.careerStats.cleanSheets++;
     }
-    if (awayGoalkeeper && awayScore === 0) {
+    if (awayGoalkeeper && homeScore === 0) {
       awayGoalkeeper.careerStats.cleanSheets++;
     }
   }
@@ -702,12 +818,12 @@ export class GameService {
         case EventType.RED_CARD:
           importance = EventImportance.HIGH;
           icon = '🟥';
-          description = `Red card for ${event.playerIds.join(', ')} at ${event.time}'`;
+          description = `Red card for ${event.playerIds[0]} at ${event.time}'`;
           break;
         case EventType.YELLOW_CARD:
           importance = EventImportance.MEDIUM;
           icon = '🟨';
-          description = `Yellow card for ${event.playerIds.join(', ')} at ${event.time}'`;
+          description = `Yellow card for ${event.playerIds[0]} at ${event.time}'`;
           break;
         case EventType.PENALTY:
           importance = EventImportance.HIGH;
@@ -720,11 +836,6 @@ export class GameService {
             icon = '📐';
             description = `Dangerous corner at ${event.time}'`;
           }
-          break;
-        case EventType.SUBSTITUTION:
-          importance = EventImportance.MEDIUM;
-          icon = '🔄';
-          description = `Substitution at ${event.time}'`;
           break;
       }
 

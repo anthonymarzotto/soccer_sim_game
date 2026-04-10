@@ -1,4 +1,4 @@
-import { Position, Role, MatchResult, EventImportance, EventType } from './enums';
+import { Position, Role, MatchResult, EventImportance, EventType, PlayingStyle } from './enums';
 import { Coordinates } from './simulation.types';
 
 // Re-export the enums for backward compatibility
@@ -143,7 +143,7 @@ export interface TacticalAnalysis {
     shots: number;
     corners: number;
     fouls: number;
-    style: string;
+    style: PlayingStyle;
     effectiveness: number;
   };
   awayTeam: {
@@ -151,7 +151,7 @@ export interface TacticalAnalysis {
     shots: number;
     corners: number;
     fouls: number;
-    style: string;
+    style: PlayingStyle;
     effectiveness: number;
   };
   tacticalBattle: string;
@@ -175,7 +175,7 @@ export interface PlayerAnalysis {
 export interface PlayerStatistics {
   playerId: string;
   playerName: string;
-  position: string;
+  position: Position;
   rating: number;
   goals: number;
   assists: number;

@@ -14,7 +14,8 @@ export enum EventType {
   INJURY = 'INJURY',
   YELLOW_CARD = 'YELLOW_CARD',
   RED_CARD = 'RED_CARD',
-  FOUL = 'FOUL'
+  FOUL = 'FOUL',
+  CARRY = 'CARRY'
 }
 
 // Position Types
@@ -29,7 +30,9 @@ export enum Position {
 export enum Role {
   STARTER = 'Starter',
   BENCH = 'Bench',
-  RESERVE = 'Reserve'
+  RESERVE = 'Reserve',
+  SUBSTITUTED_OUT = 'SubstitutedOut',
+  DISMISSED = 'Dismissed'
 }
 
 // Tactical Types
@@ -85,4 +88,10 @@ export enum EventImportance {
 export enum TeamDetailsViewMode {
   BIO = 'bio',
   STATS = 'stats'
+}
+
+// Match Side Types
+export enum TeamSide {
+  HOME = 'home',
+  AWAY = 'away'
 }

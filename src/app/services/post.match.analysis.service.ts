@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis } from '../models/types';
+import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis, Player } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
 import { StatisticsService, PlayerStatistics, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
-import { EventType, PlayingStyle, EventImportance } from '../models/enums';
+import { EventType, PlayingStyle, EventImportance, TeamSide } from '../models/enums';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +20,7 @@ export class PostMatchAnalysisService {
     const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
     const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
     
-    const keyMoments = this.extractKeyMoments(matchState.events);
+    const keyMoments = this.extractKeyMoments(matchState.events, homeTeam, awayTeam, homePlayers, awayPlayers);
     const tacticalAnalysis = this.analyzeTactics(matchState, homeTeam, awayTeam);
     const playerPerformances = this.analyzePlayerPerformances(homePlayerStats, awayPlayerStats);
     const matchSummary = this.generateMatchSummary(matchState, homeTeam, awayTeam, matchStats);
@@ -57,7 +57,13 @@ export class PostMatchAnalysisService {
     };
   }
 
-  private extractKeyMoments(events: PlayByPlayEvent[]): MatchEvent[] {
+  private extractKeyMoments(
+    events: PlayByPlayEvent[],
+    homeTeam: Team,
+    awayTeam: Team,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): MatchEvent[] {
     const keyMoments: MatchEvent[] = [];
 
     events.forEach(event => {
@@ -66,7 +72,7 @@ export class PostMatchAnalysisService {
           id: event.id,
           time: event.time,
           type: EventType.GOAL,
-          description: `Goal scored at ${event.time}'`,
+          description: this.describeGoalMoment(event, homePlayers, awayPlayers),
           playerIds: event.playerIds,
           location: event.location,
           icon: '⚽',
@@ -77,7 +83,7 @@ export class PostMatchAnalysisService {
           id: event.id,
           time: event.time,
           type: EventType.RED_CARD,
-          description: `Red card at ${event.time}'`,
+          description: this.describeCardMoment(event, homePlayers, awayPlayers),
           playerIds: event.playerIds,
           location: event.location,
           icon: '🟥',
@@ -88,11 +94,33 @@ export class PostMatchAnalysisService {
           id: event.id,
           time: event.time,
           type: EventType.PENALTY,
-          description: `Penalty awarded at ${event.time}'`,
+          description: this.describePenaltyMoment(event),
           playerIds: event.playerIds,
           location: event.location,
           icon: '🎯',
           importance: EventImportance.HIGH
+        });
+      } else if (event.type === EventType.SAVE && this.isNotableChance(event)) {
+        keyMoments.push({
+          id: event.id,
+          time: event.time,
+          type: EventType.SAVE,
+          description: this.describeSaveMoment(event, homeTeam, awayTeam, homePlayers, awayPlayers),
+          playerIds: event.playerIds,
+          location: event.location,
+          icon: '🧤',
+          importance: EventImportance.MEDIUM
+        });
+      } else if ((event.type === EventType.MISS || event.type === EventType.SHOT) && this.isNotableChance(event)) {
+        keyMoments.push({
+          id: event.id,
+          time: event.time,
+          type: event.type,
+          description: this.describeShotMoment(event, homeTeam, awayTeam, homePlayers, awayPlayers),
+          playerIds: event.playerIds,
+          location: event.location,
+          icon: '🎯',
+          importance: EventImportance.MEDIUM
         });
       } else if (event.type === EventType.CORNER && event.success) {
         keyMoments.push({
@@ -105,10 +133,113 @@ export class PostMatchAnalysisService {
           icon: '📐',
           importance: EventImportance.MEDIUM
         });
+      } else if (event.type === EventType.SUBSTITUTION) {
+        keyMoments.push({
+          id: event.id,
+          time: event.time,
+          type: EventType.SUBSTITUTION,
+          description: `${this.commentaryService.generateEventCommentary(
+            event,
+            homeTeam,
+            awayTeam,
+            undefined,
+            { homePlayers, awayPlayers }
+          )} (${event.time}')`,
+          playerIds: event.playerIds,
+          location: event.location,
+          icon: '🔄',
+          importance: EventImportance.LOW
+        });
       }
     });
 
     return keyMoments.sort((a, b) => a.time - b.time);
+  }
+
+  private isNotableChance(event: PlayByPlayEvent): boolean {
+    if (event.type === EventType.SAVE) {
+      return true;
+    }
+
+    if (event.type === EventType.SHOT && event.success) {
+      return true;
+    }
+
+    return this.isProminentChanceLocation(event.location) || this.hasVariantBReplay(event);
+  }
+
+  private isProminentChanceLocation(location?: { x: number; y: number }): boolean {
+    if (!location) {
+      return false;
+    }
+
+    const goalDistance = Math.min(location.y, 100 - location.y);
+    return goalDistance <= 32;
+  }
+
+  private hasVariantBReplay(event: PlayByPlayEvent): boolean {
+    return typeof event.additionalData === 'object' && event.additionalData !== null && 'variantBReplay' in event.additionalData;
+  }
+
+  private describeGoalMoment(event: PlayByPlayEvent, homePlayers: Player[], awayPlayers: Player[]): string {
+    const scorerName = this.findPlayerName(event.playerIds[0], homePlayers, awayPlayers);
+    return `${scorerName} scored at ${event.time}'${this.buildChanceLocationSuffix(event)}.`;
+  }
+
+  private describeSaveMoment(
+    event: PlayByPlayEvent,
+    homeTeam: Team,
+    awayTeam: Team,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): string {
+    return `${this.commentaryService.generateEventCommentary(
+      event,
+      homeTeam,
+      awayTeam,
+      undefined,
+      { homePlayers, awayPlayers }
+    )} (${event.time}')`;
+  }
+
+  private describeShotMoment(
+    event: PlayByPlayEvent,
+    homeTeam: Team,
+    awayTeam: Team,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ): string {
+    return `${this.commentaryService.generateEventCommentary(
+      event,
+      homeTeam,
+      awayTeam,
+      undefined,
+      { homePlayers, awayPlayers }
+    )} (${event.time}')`;
+  }
+
+  private describeCardMoment(event: PlayByPlayEvent, homePlayers: Player[], awayPlayers: Player[]): string {
+    const playerName = this.findPlayerName(event.playerIds[0], homePlayers, awayPlayers);
+    return `${playerName} was sent off at ${event.time}'.`;
+  }
+
+  private describePenaltyMoment(event: PlayByPlayEvent): string {
+    return `Penalty awarded at ${event.time}'${this.buildChanceLocationSuffix(event)}.`;
+  }
+
+  private buildChanceLocationSuffix(event: PlayByPlayEvent): string {
+    const locationDescription = this.commentaryService.describeChanceLocation(event.location);
+    return locationDescription ? ` from ${locationDescription}` : '';
+  }
+
+  private findPlayerName(playerId: string | undefined, homePlayers: Player[], awayPlayers: Player[]): string {
+    if (!playerId) {
+      return 'Player';
+    }
+
+    return homePlayers.find(player => player.id === playerId)?.name ||
+      awayPlayers.find(player => player.id === playerId)?.name ||
+      'Player';
   }
 
   private analyzeTactics(matchState: MatchState, _homeTeam: Team, _awayTeam: Team): TacticalAnalysis {
@@ -228,8 +359,8 @@ export class PostMatchAnalysisService {
       const result = this.getMatchResult(match, side);
       results.push(result);
 
-      goalsScored += side === 'home' ? match.homeScore : match.awayScore;
-      goalsConceded += side === 'home' ? match.awayScore : match.homeScore;
+      goalsScored += side === TeamSide.HOME ? match.homeScore : match.awayScore;
+      goalsConceded += side === TeamSide.HOME ? match.awayScore : match.homeScore;
     });
 
     const points = results.reduce((sum, result) => {
@@ -341,17 +472,17 @@ export class PostMatchAnalysisService {
     return improvements;
   }
 
-  private resolveTeamSide(teamId: string, matchContext?: SeasonMatchContext): 'home' | 'away' | null {
+  private resolveTeamSide(teamId: string, matchContext?: SeasonMatchContext): TeamSide | null {
     if (!matchContext) {
       return null;
     }
 
     if (matchContext.homeTeamId === teamId) {
-      return 'home';
+      return TeamSide.HOME;
     }
 
     if (matchContext.awayTeamId === teamId) {
-      return 'away';
+      return TeamSide.AWAY;
     }
 
     return null;
@@ -411,9 +542,9 @@ export class PostMatchAnalysisService {
     return Math.round(totalRating / playerStats.length);
   }
 
-  private getMatchResult(matchState: MatchState, side: 'home' | 'away'): 'W' | 'D' | 'L' {
-    const teamScore = side === 'home' ? matchState.homeScore : matchState.awayScore;
-    const opponentScore = side === 'home' ? matchState.awayScore : matchState.homeScore;
+  private getMatchResult(matchState: MatchState, side: TeamSide): 'W' | 'D' | 'L' {
+    const teamScore = side === TeamSide.HOME ? matchState.homeScore : matchState.awayScore;
+    const opponentScore = side === TeamSide.HOME ? matchState.awayScore : matchState.homeScore;
 
     if (teamScore > opponentScore) return 'W';
     if (teamScore < opponentScore) return 'L';

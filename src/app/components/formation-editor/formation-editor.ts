@@ -6,9 +6,9 @@ import { FormationSchema } from '../../models/formation.types';
 interface SlotForm {
   slotId: string;
   label: string;
-  preferredPosition: string;
+  preferredPosition: PositionEnum;
   coordinates: { x: number; y: number };
-  zone: string;
+  zone: FieldZone;
 }
 
 @Component({

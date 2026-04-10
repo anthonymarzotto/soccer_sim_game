@@ -1,4 +1,4 @@
-import { Position } from './enums';
+import { FieldZone, Position } from './enums';
 import { Coordinates } from './simulation.types';
 
 /**
@@ -10,7 +10,7 @@ export interface FormationSlotDefinition {
   label: string;           // Human-readable name (e.g., 'Left Back', 'Center Midfielder')
   preferredPosition: Position;  // Tactical position for role validation
   coordinates: Coordinates; // Field position (x: 0-100 width, y: 0-100 length)
-  zone: string;            // FieldZone identifier for tactical grouping
+  zone: FieldZone;       // FieldZone identifier for tactical grouping
 }
 
 /**

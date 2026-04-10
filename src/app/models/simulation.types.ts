@@ -48,6 +48,53 @@ export interface PlayByPlayEvent {
   additionalData?: Record<string, unknown>;
 }
 
+export interface ReplayKeyframe {
+  timestampMs: number;
+  ballLocation: Coordinates;
+}
+
+export interface VariantBReplayMetadata {
+  actorPlayerId: string;
+  actionType: EventType;
+  durationMs: number;
+  keyframes: ReplayKeyframe[];
+}
+
+export interface VariantBTuningConfig {
+  baseTickMin: number;
+  baseTickMax: number;
+  midfieldTickMin: number;
+  midfieldTickMax: number;
+  attackTickMin: number;
+  attackTickMax: number;
+  lateCloseBoostTicks: number;
+
+  movementStepBase: number;
+  movementStepRandom: number;
+  lateUrgencyMultiplier: number;
+
+  passWeightBase: number;
+  carryWeightBase: number;
+  shotWeightBase: number;
+  foulWeightBase: number;
+  outOfWindowShotMultiplier: number;
+
+  onTargetBase: number;
+  onTargetSkillScale: number;
+  onTargetWidePenalty: number;
+  onTargetFatiguePenalty: number;
+  onTargetMin: number;
+  onTargetMax: number;
+
+  goalChanceBase: number;
+  goalChanceSkillVsKeeperScale: number;
+  goalChanceWidePenalty: number;
+  goalChanceMin: number;
+  goalChanceMax: number;
+
+  homeAdvantageGoalBonus: number;
+}
+
 export interface MatchState {
   ballPossession: Possession;
   events: PlayByPlayEvent[];
@@ -70,13 +117,18 @@ export interface MatchState {
   awayRedCards: number;
 }
 
+export type SimulationVariant = 'B';
+
 export interface SimulationConfig {
   enablePlayByPlay: boolean;
   enableSpatialTracking: boolean;
   enableTactics: boolean;
   enableFatigue: boolean;
   commentaryStyle: CommentaryStyle;
+  simulationVariant?: SimulationVariant;
+  seed?: string;
   skipCommentary?: boolean;
+  variantBTuning?: Partial<VariantBTuningConfig>;
 }
 
 export interface TacticalSetup {

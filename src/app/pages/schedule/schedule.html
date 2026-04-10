@@ -42,44 +42,14 @@
       <div class="space-y-3">
         @for (match of matches(); track match.id) {
           <div class="flex flex-col p-4 rounded-xl bg-zinc-950 border border-zinc-800/50">
-            <div class="flex items-center justify-between">
-              <div class="flex-1 text-right">
-                <a [routerLink]="['/team', match.homeTeamId]" class="font-medium hover:text-emerald-400 transition-colors inline-flex items-center gap-2">
-                  @if (isIconBadgeStyle()) {
-                    <app-team-badge [teamId]="match.homeTeamId" size="sm"></app-team-badge>
-                  }
-                  {{ getTeamName(match.homeTeamId) }} <span class="text-zinc-500 text-xs ml-1">({{ getTeamOverall(match.homeTeamId) }})</span>
-                </a>
-              </div>
-              
-              <div class="w-32 flex justify-center items-center px-4">
-                @if (match.played) {
-                  <div class="px-4 py-1.5 bg-zinc-800 rounded-lg font-bold font-mono text-lg tracking-widest text-white shadow-inner">
-                    {{ match.homeScore }} - {{ match.awayScore }}
-                  </div>
-                } @else {
-                  <div class="px-4 py-1.5 bg-zinc-800/50 text-zinc-500 rounded-lg font-medium text-sm">
-                    VS
-                  </div>
-                }
-              </div>
+            <app-match-summary
+              [match]="match"
+              [showProbabilities]="!match.played"
+              [showStats]="match.played"
+              [showEvents]="match.played">
+            </app-match-summary>
 
-              <div class="flex-1 text-left">
-                <a [routerLink]="['/team', match.awayTeamId]" class="font-medium hover:text-emerald-400 transition-colors inline-flex items-center gap-2">
-                  <span class="text-zinc-500 text-xs mr-1">({{ getTeamOverall(match.awayTeamId) }})</span> {{ getTeamName(match.awayTeamId) }}
-                  @if (isIconBadgeStyle()) {
-                    <app-team-badge [teamId]="match.awayTeamId" size="sm"></app-team-badge>
-                  }
-                </a>
-              </div>
-            </div>
-            
             @if (!match.played) {
-              <div class="mt-3 flex justify-center gap-4 text-xs text-zinc-500 font-mono">
-                <span class="text-emerald-500/70">W: {{ getProbabilities(match.homeTeamId, match.awayTeamId).home }}%</span>
-                <span class="text-zinc-500">D: {{ getProbabilities(match.homeTeamId, match.awayTeamId).draw }}%</span>
-                <span class="text-red-500/70">L: {{ getProbabilities(match.homeTeamId, match.awayTeamId).away }}%</span>
-              </div>
               <div class="mt-3 flex justify-end gap-2">
                 <button 
                   (click)="simulateMatch(match.id)"
@@ -94,81 +64,6 @@
                   </svg>
                   Watch Game
                 </a>
-              </div>
-            }
-            
-            @if (match.played && match.keyEvents && match.keyEvents.length > 0) {
-              <div class="mt-4 pt-4 border-t border-zinc-800">
-                <h4 class="text-sm font-semibold text-zinc-300 mb-3">Key Events</h4>
-                
-                <div class="space-y-2">
-                  @for (event of match.keyEvents; track event.id) {
-                  <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
-                      <div class="text-xs text-zinc-400 font-mono w-8 text-right">{{ event.time }}'</div>
-                      <span class="text-lg">{{ event.icon }}</span>
-                      <div class="flex-1">
-                        <div class="text-sm font-medium text-white">
-                          @if (event.playerIds && event.playerIds.length > 0) {
-                            @for (player of getPlayerLinks(event.playerIds); track player.playerId) {
-                              <span class="inline-flex items-center gap-1">
-                                <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm" [link]="true"></app-team-badge>
-                                <a [routerLink]="['/player', player.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
-                                  {{ player.name }}
-                                </a>
-                              </span>
-                              @if (!$last) {, }
-                            }
-                          } @else {
-                            {{ event.description }}
-                          }
-                        </div>
-                      </div>
-                      @if (event.importance === EventImportance.HIGH) {
-                        <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">Important</span>
-                      } @else if (event.importance === EventImportance.MEDIUM) {
-                        <span class="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">Key</span>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-            
-            @if (match.played && match.matchStats) {
-              <div class="mt-4 pt-4 border-t border-zinc-800">
-                <div class="p-3 bg-zinc-900 rounded-lg">
-                  <h5 class="text-sm font-semibold text-zinc-300 mb-2">Match Statistics</h5>
-                  <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div class="flex justify-between">
-                        <span class="text-zinc-400">Possession</span>
-                        <span class="font-medium">{{ match.matchStats.possession.home }}% - {{ match.matchStats.possession.away }}%</span>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <span class="text-zinc-400">Shots</span>
-                        <span class="font-medium">{{ match.matchStats.shots.home }} - {{ match.matchStats.shots.away }}</span>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <span class="text-zinc-400">Shots on Target</span>
-                        <span class="font-medium">{{ match.matchStats.shotsOnTarget.home }} - {{ match.matchStats.shotsOnTarget.away }}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div class="flex justify-between">
-                        <span class="text-zinc-400">Corners</span>
-                        <span class="font-medium">{{ match.matchStats.corners.home }} - {{ match.matchStats.corners.away }}</span>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <span class="text-zinc-400">Fouls</span>
-                        <span class="font-medium">{{ match.matchStats.fouls.home }} - {{ match.matchStats.fouls.away }}</span>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <span class="text-zinc-400">Cards</span>
-                        <span class="font-medium">{{ match.matchStats.cards.home.yellow + match.matchStats.cards.home.red }} - {{ match.matchStats.cards.away.yellow + match.matchStats.cards.away.red }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             }
           </div>
