@@ -86,6 +86,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.stopCommentaryFeed();
+
+    if (this.isSimulating()) {
+      this.gameService.endSingleMatchSimulationSession();
+    }
   }
 
   private loadMatchData(id: string) {
@@ -127,8 +131,25 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const home = this.homeTeam();
     const away = this.awayTeam();
 
-    if (!match || !home || !away || match.played) return;
+    if (!match) {
+      this.validationError.set('Match data is not available yet.');
+      return;
+    }
 
+    if (!home || !away) {
+      this.validationError.set('Team data is not available yet.');
+      return;
+    }
+
+    if (match.played) {
+      this.validationError.set('This match has already been played.');
+      return;
+    }
+
+    if (this.gameService.isSimulatingMatchWeek()) {
+      this.validationError.set('Cannot start match simulation while a match week is being simulated.');
+      return;
+    }
     const userTeamId = this.gameService.league()?.userTeamId;
     const userTeam = home.id === userTeamId ? home : away.id === userTeamId ? away : null;
     if (userTeam) {
@@ -140,6 +161,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }
 
     this.validationError.set(null);
+    this.gameService.beginSingleMatchSimulationSession();
 
     // Reset UI state to guarantee stats remain hidden until finishMatch().
     this.stopCommentaryFeed();
@@ -169,27 +191,46 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       keyEvents: [],
       matchStats: undefined
     });
+    let handoffSessionToReplay = false;
 
-    // Simulate the entire match instantly
-    const result = this.gameService.simulateMatchWithDetails(match, home, away, {
-      enablePlayByPlay: true,
-      enableSpatialTracking: true,
-      enableTactics: true,
-      enableFatigue: true,
-      commentaryStyle: CommentaryStyle.DETAILED
-    });
+    try {
+      // Simulate the entire match instantly
+      const result = this.gameService.simulateMatchWithDetails(match, home, away, {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED
+      }, { bypassSingleMatchSimulationLock: true });
 
-    // Store the match state (stats will be set after commentary completes)
-    this.matchState.set(result.matchState);
-    this.finalKeyEvents = result.keyEvents;
-    this.finalMatchStats = result.matchStats;
-    this.keyEvents.set(result.keyEvents);
+      if (!result) {
+        this.isSimulating.set(false);
+        return;
+      }
 
-    // Generate commentary items from the match
-    this.generateCommentaryFromMatch(result.matchState, home, away);
+      // Store the match state (stats will be set after commentary completes)
+      this.matchState.set(result.matchState);
+      this.finalKeyEvents = result.keyEvents;
+      this.finalMatchStats = result.matchStats;
+      this.keyEvents.set(result.keyEvents);
 
-    // Start displaying commentary one at a time
-    this.startCommentaryFeed();
+      // Generate commentary items from the match
+      this.generateCommentaryFromMatch(result.matchState, home, away);
+
+      // Start displaying commentary one at a time
+      this.startCommentaryFeed();
+      handoffSessionToReplay = true;
+    } catch (error) {
+      this.stopCommentaryFeed();
+      this.isSimulating.set(false);
+      this.isHalfTime.set(false);
+      this.validationError.set('Match simulation failed. Please try again.');
+      console.error('Watch game simulation failed', error);
+    } finally {
+      if (!handoffSessionToReplay) {
+        this.gameService.endSingleMatchSimulationSession();
+      }
+    }
   }
 
   private generateCommentaryFromMatch(matchState: MatchState, homeTeam: Team, awayTeam: Team) {
@@ -386,6 +427,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   private finishMatch() {
     this.stopCommentaryFeed();
+    this.gameService.endSingleMatchSimulationSession();
     this.isSimulating.set(false);
     this.isFinished.set(true);
     this.showStats.set(true);

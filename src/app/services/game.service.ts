@@ -13,15 +13,31 @@ import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players'
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
+interface SimulateMatchWithDetailsResult {
+  matchState: MatchState;
+  matchStats: MatchStatistics;
+  matchReport: MatchReport;
+  keyEvents: MatchEvent[];
+  commentary: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class GameService {
+  private static readonly WEEK_SIMULATION_LOCK_MS = 350;
+
   private leagueState = signal<League | null>(null);
   private hydrationPromise: Promise<void> | null = null;
   private isHydrating = signal(true);
+  private isSimulatingWeekState = signal(false);
+  private singleMatchSimulationSessionCount = signal(0);
+  private weekSimulationUnlockTimer: ReturnType<typeof setTimeout> | null = null;
 
   public league = this.leagueState.asReadonly();
+  public isSimulatingMatchWeek = this.isSimulatingWeekState.asReadonly();
+  public isSimulatingSingleMatch = computed(() => this.singleMatchSimulationSessionCount() > 0);
+  public isAnySimulationInProgress = computed(() => this.isSimulatingMatchWeek() || this.isSimulatingSingleMatch());
   
   public hasLeague = computed(() => this.leagueState() !== null);
   
@@ -147,8 +163,9 @@ export class GameService {
 
   generateNewLeague() {
     const { teams, schedule } = this.generator.generateLeague();
+    const optimizedTeams = this.dressBestPlayers(this.withSyncedPlayerIdsForTeams(teams));
     const league: League = {
-      teams: this.withSyncedPlayerIdsForTeams(teams),
+      teams: optimizedTeams,
       schedule,
       currentWeek: 1
     };
@@ -204,37 +221,64 @@ export class GameService {
 
   simulateCurrentWeek(config?: Partial<SimulationConfig>) {
     const l = this.leagueState();
-    if (!l) return;
+    if (!l || this.isSimulatingWeekState() || this.isSimulatingSingleMatch()) return;
 
-    const matches = l.schedule.filter(m => m.week === l.currentWeek);
+    if (this.weekSimulationUnlockTimer) {
+      clearTimeout(this.weekSimulationUnlockTimer);
+      this.weekSimulationUnlockTimer = null;
+    }
 
-    matches.forEach(match => {
-      if (match.played) return;
+    this.isSimulatingWeekState.set(true);
 
-      const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
-      const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+    try {
+      const matches = l.schedule.filter(m => m.week === l.currentWeek);
 
-      if (!homeTeam || !awayTeam) return;
+      matches.forEach(match => {
+        if (match.played) return;
 
-      // Use enhanced simulation with full features enabled
-      const result = this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
-        enablePlayByPlay: true,
-        enableSpatialTracking: true,
-        enableTactics: true,
-        enableFatigue: true,
-        commentaryStyle: CommentaryStyle.DETAILED,
-        simulationVariant: 'B',
-        ...config
+        const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
+        const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+
+        if (!homeTeam || !awayTeam) return;
+
+        // Use enhanced simulation with full features enabled.
+        // Bypass the single-match lock because this path owns the week-level lock.
+        const result = this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
+          enablePlayByPlay: true,
+          enableSpatialTracking: true,
+          enableTactics: true,
+          enableFatigue: true,
+          commentaryStyle: CommentaryStyle.DETAILED,
+          simulationVariant: 'B',
+          ...config
+        }, { bypassWeekSimulationLock: true });
+
+        if (!result) {
+          return;
+        }
+
+        // The match result is already updated in the league state by simulateMatchWithDetails
+        console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
+        console.log('Key Events:', result.matchState.events.length);
+        console.log('Commentary Sample:', result.commentary.slice(0, 3));
       });
 
-      // The match result is already updated in the league state by simulateMatchWithDetails
-      console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
-      console.log('Key Events:', result.matchState.events.length);
-      console.log('Commentary Sample:', result.commentary.slice(0, 3));
-    });
+      // Advance to next week
+      this.advanceWeek();
+    } finally {
+      this.weekSimulationUnlockTimer = setTimeout(() => {
+        this.isSimulatingWeekState.set(false);
+        this.weekSimulationUnlockTimer = null;
+      }, GameService.WEEK_SIMULATION_LOCK_MS);
+    }
+  }
 
-    // Advance to next week
-    this.advanceWeek();
+  beginSingleMatchSimulationSession() {
+    this.singleMatchSimulationSessionCount.update(count => count + 1);
+  }
+
+  endSingleMatchSimulationSession() {
+    this.singleMatchSimulationSessionCount.update(count => Math.max(0, count - 1));
   }
 
   setUserTeam(teamId: string) {
@@ -404,6 +448,10 @@ export class GameService {
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
 
+      if (resolveTeamPlayers(team).length === 0) {
+        return team;
+      }
+
       const players = resolveTeamPlayers(team).map(p => ({ ...p, role: Role.RESERVE }));
 
       const gks = players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => b.overall - a.overall);
@@ -444,6 +492,55 @@ export class GameService {
 
       return this.withSyncedPlayerIds({ ...team, players, formationAssignments });
     });
+  }
+
+  private areFormationAssignmentsEqual(left: Record<string, string>, right: Record<string, string>): boolean {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+
+    if (leftKeys.length !== rightKeys.length) {
+      return false;
+    }
+
+    return leftKeys.every(key => left[key] === right[key]);
+  }
+
+  private arePlayerRolesEqual(currentTeam: Team, nextTeam: Team): boolean {
+    const currentPlayers = resolveTeamPlayers(currentTeam);
+    const nextPlayers = resolveTeamPlayers(nextTeam);
+
+    if (currentPlayers.length !== nextPlayers.length) {
+      return false;
+    }
+
+    const currentRoleById = new Map(currentPlayers.map(player => [player.id, player.role]));
+    return nextPlayers.every(player => currentRoleById.get(player.id) === player.role);
+  }
+
+  private persistRefreshedComputerControlledLineups(league: League): League {
+    const dressedTeams = this.dressBestPlayers(league.teams);
+
+    const mergedTeams = league.teams.map((team, index) => {
+      const nextTeam = dressedTeams[index];
+      const isUnchanged = this.arePlayerRolesEqual(team, nextTeam)
+        && this.areFormationAssignmentsEqual(team.formationAssignments, nextTeam.formationAssignments);
+
+      return isUnchanged ? team : nextTeam;
+    });
+
+    const hasChanges = mergedTeams.some((team, index) => team !== league.teams[index]);
+    if (!hasChanges) {
+      return league;
+    }
+
+    const updatedLeague: League = {
+      ...league,
+      teams: mergedTeams
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistChangedTeamsAndPlayers(league.teams, mergedTeams);
+    return updatedLeague;
   }
 
   public calculateTeamOverall(team: Team): number {
@@ -492,7 +589,30 @@ export class GameService {
   private postMatchAnalysisService = inject(PostMatchAnalysisService);
   private fieldService = inject(FieldService);
 
-  simulateMatchWithDetails(match: Match, homeTeam: Team, awayTeam: Team, config?: Partial<SimulationConfig>) {
+  simulateMatchWithDetails(
+    match: Match,
+    homeTeam: Team,
+    awayTeam: Team,
+    config?: Partial<SimulationConfig>,
+    options?: { bypassWeekSimulationLock?: boolean; bypassSingleMatchSimulationLock?: boolean }
+  ): SimulateMatchWithDetailsResult | null {
+    if (this.isSimulatingWeekState() && !options?.bypassWeekSimulationLock) {
+      return null;
+    }
+
+    if (this.isSimulatingSingleMatch() && !options?.bypassSingleMatchSimulationLock) {
+      return null;
+    }
+
+    const refreshedLeague = this.leagueState();
+    if (refreshedLeague) {
+      this.persistRefreshedComputerControlledLineups(refreshedLeague);
+    }
+
+    const currentLeague = this.leagueState();
+    const preparedHomeTeam = currentLeague?.teams.find(team => team.id === match.homeTeamId) ?? homeTeam;
+    const preparedAwayTeam = currentLeague?.teams.find(team => team.id === match.awayTeamId) ?? awayTeam;
+
     // Merge caller-supplied overrides on top of the simulation defaults.
     const simConfig: SimulationConfig = {
       enablePlayByPlay: true,
@@ -504,29 +624,29 @@ export class GameService {
       ...config
     };
 
-    const matchState = this.matchSimulationVariantBService.simulateMatch(match, homeTeam, awayTeam, simConfig);
+    const matchState = this.matchSimulationVariantBService.simulateMatch(match, preparedHomeTeam, preparedAwayTeam, simConfig);
     const endedByForfeit = (this.matchSimulationVariantBService as unknown as {
       didLastSimulationEndByForfeit?: () => boolean;
     }).didLastSimulationEndByForfeit?.() ?? false;
     
     // Generate statistics
-    const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
+    const matchStats = this.statisticsService.generateMatchStatistics(matchState, preparedHomeTeam, preparedAwayTeam);
     
     // Generate post-match analysis
-    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, homeTeam, awayTeam);
+    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam);
     
     // Extract key events from match state
     const keyEvents = this.extractKeyEvents(matchState.events);
     
     // Update league state with results
-    this.updateLeagueWithMatchResult(match, matchState, homeTeam, awayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
+    this.updateLeagueWithMatchResult(match, matchState, preparedHomeTeam, preparedAwayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
     
     return {
       matchState,
       matchStats,
       matchReport,
       keyEvents,
-      commentary: simConfig.skipCommentary ? [] : this.generateMatchCommentary(matchState, homeTeam, awayTeam, simConfig.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : simConfig.commentaryStyle)
+      commentary: simConfig.skipCommentary ? [] : this.generateMatchCommentary(matchState, preparedHomeTeam, preparedAwayTeam, simConfig.commentaryStyle === CommentaryStyle.STATS_ONLY ? CommentaryStyle.DETAILED : simConfig.commentaryStyle)
     };
   }
 
@@ -598,11 +718,13 @@ export class GameService {
       this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
     }
 
+    const finalizedTeams = this.dressBestPlayers(updatedTeams);
+
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.
     const updatedLeague: League = {
       ...l,
-      teams: updatedTeams,
+      teams: finalizedTeams,
       schedule: updatedSchedule
     };
 
@@ -695,13 +817,24 @@ export class GameService {
             }
             break;
           case EventType.TACKLE:
-            player.careerStats.tackles++;
+            if (player.position !== Position.GOALKEEPER) {
+              player.careerStats.tackles++;
+            }
             break;
           case EventType.INTERCEPTION:
-            player.careerStats.interceptions++;
+            if (player.position !== Position.GOALKEEPER) {
+              player.careerStats.interceptions++;
+            }
             break;
           case EventType.PASS:
             player.careerStats.passes++;
+            break;
+          case EventType.FOUL:
+            if (playerId === primaryPlayerId) {
+              player.careerStats.fouls = (player.careerStats.fouls ?? 0) + 1;
+            } else {
+              player.careerStats.foulsSuffered = (player.careerStats.foulsSuffered ?? 0) + 1;
+            }
             break;
           case EventType.YELLOW_CARD:
             if (playerId !== primaryPlayerId) return;

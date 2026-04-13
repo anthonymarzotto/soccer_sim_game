@@ -66,6 +66,8 @@ export interface PlayerCareerStats {
   saves: number;
   cleanSheets: number;
   minutesPlayed: number;
+  fouls?: number;
+  foulsSuffered?: number;
 }
 
 export interface TeamStats {
@@ -177,13 +179,19 @@ export interface PlayerStatistics {
   playerName: string;
   position: Position;
   rating: number;
+  minutesPlayed: number;
+  passes: number;
+  passesSuccessful: number;
+  shots: number;
+  shotsOnTarget: number;
   goals: number;
   assists: number;
-  shots: number;
-  passes: number;
   tackles: number;
+  tacklesSuccessful: number;
+  interceptions: number;
   saves: number;
   fouls: number;
+  foulsSuffered: number;
   yellowCards: number;
   redCards: number;
 }

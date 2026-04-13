@@ -13,6 +13,7 @@
         </a>
         <button 
           (click)="gameService.simulateCurrentWeek()"
+          [disabled]="gameService.isSimulatingMatchWeek()"
           class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20">
           Simulate Week
         </button>
@@ -40,7 +41,13 @@
           </thead>
           <tbody class="divide-y divide-zinc-800">
             @for (team of gameService.standings(); track team.id; let i = $index) {
-              <tr class="hover:bg-zinc-800/50 transition-colors group">
+              <tr
+                class="hover:bg-zinc-800/50 transition-colors group"
+                [class.bg-emerald-950]="team.id === gameService.league()?.userTeamId"
+                [class.ring-1]="team.id === gameService.league()?.userTeamId"
+                [class.ring-inset]="team.id === gameService.league()?.userTeamId"
+                [class.ring-emerald-500]="team.id === gameService.league()?.userTeamId"
+                [style.box-shadow]="team.id === gameService.league()?.userTeamId ? 'inset 0 -1px 0 0 rgb(16 185 129)' : null">
                 <td class="px-6 py-4 whitespace-nowrap text-zinc-400">
                   {{ i + 1 }}
                 </td>

@@ -47,6 +47,18 @@ export class SettingsComponent {
     return this.gameService.getTeam(teamId)?.name || 'Team';
   });
 
+  private isBadgeStyle(value: string): value is BadgeStyle {
+    return this.badgeStyles.includes(value as BadgeStyle);
+  }
+
+  onBadgeStyleChange(value: string): void {
+    if (!this.isBadgeStyle(value)) {
+      return;
+    }
+
+    this.setBadgeStyle(value);
+  }
+
   setBadgeStyle(style: BadgeStyle): void {
     this.settingsService.setBadgeStyle(style);
   }

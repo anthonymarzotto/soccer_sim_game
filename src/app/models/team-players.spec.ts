@@ -1,6 +1,7 @@
 import { MatchResult, Position, Role } from './enums';
 import { Player, Team } from './types';
 import { getTeamPlayerInvariantIssues, normalizeTeamRoster, resolveTeamPlayers } from './team-players';
+import { createEmptyPlayerCareerStats } from './player-career-stats';
 
 describe('team-players', () => {
   function createPlayer(id: string, teamId = 'team-1'): Player {
@@ -16,21 +17,7 @@ describe('team-players', () => {
       skills: { tackling: 55, shooting: 60, heading: 52, longPassing: 67, shortPassing: 72, goalkeeping: 1 },
       hidden: { luck: 50, injuryRate: 8 },
       overall: 70,
-      careerStats: {
-        matchesPlayed: 0,
-        goals: 0,
-        assists: 0,
-        yellowCards: 0,
-        redCards: 0,
-        shots: 0,
-        shotsOnTarget: 0,
-        tackles: 0,
-        interceptions: 0,
-        passes: 0,
-        saves: 0,
-        cleanSheets: 0,
-        minutesPlayed: 0
-      }
+      careerStats: createEmptyPlayerCareerStats()
     };
   }
 
