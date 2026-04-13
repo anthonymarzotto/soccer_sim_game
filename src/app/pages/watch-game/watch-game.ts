@@ -191,33 +191,46 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       keyEvents: [],
       matchStats: undefined
     });
+    let handoffSessionToReplay = false;
 
-    // Simulate the entire match instantly
-    const result = this.gameService.simulateMatchWithDetails(match, home, away, {
-      enablePlayByPlay: true,
-      enableSpatialTracking: true,
-      enableTactics: true,
-      enableFatigue: true,
-      commentaryStyle: CommentaryStyle.DETAILED
-    }, { bypassSingleMatchSimulationLock: true });
+    try {
+      // Simulate the entire match instantly
+      const result = this.gameService.simulateMatchWithDetails(match, home, away, {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED
+      }, { bypassSingleMatchSimulationLock: true });
 
-    if (!result) {
+      if (!result) {
+        this.isSimulating.set(false);
+        return;
+      }
+
+      // Store the match state (stats will be set after commentary completes)
+      this.matchState.set(result.matchState);
+      this.finalKeyEvents = result.keyEvents;
+      this.finalMatchStats = result.matchStats;
+      this.keyEvents.set(result.keyEvents);
+
+      // Generate commentary items from the match
+      this.generateCommentaryFromMatch(result.matchState, home, away);
+
+      // Start displaying commentary one at a time
+      this.startCommentaryFeed();
+      handoffSessionToReplay = true;
+    } catch (error) {
+      this.stopCommentaryFeed();
       this.isSimulating.set(false);
-      this.gameService.endSingleMatchSimulationSession();
-      return;
+      this.isHalfTime.set(false);
+      this.validationError.set('Match simulation failed. Please try again.');
+      console.error('Watch game simulation failed', error);
+    } finally {
+      if (!handoffSessionToReplay) {
+        this.gameService.endSingleMatchSimulationSession();
+      }
     }
-
-    // Store the match state (stats will be set after commentary completes)
-    this.matchState.set(result.matchState);
-    this.finalKeyEvents = result.keyEvents;
-    this.finalMatchStats = result.matchStats;
-    this.keyEvents.set(result.keyEvents);
-
-    // Generate commentary items from the match
-    this.generateCommentaryFromMatch(result.matchState, home, away);
-
-    // Start displaying commentary one at a time
-    this.startCommentaryFeed();
   }
 
   private generateCommentaryFromMatch(matchState: MatchState, homeTeam: Team, awayTeam: Team) {

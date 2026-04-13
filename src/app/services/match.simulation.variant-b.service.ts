@@ -90,11 +90,11 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.21,
+  goalChanceBase: 0.25,
   goalChanceSkillVsKeeperScale: 0.0033,
   goalChanceWidePenalty: 0.035,
   goalChanceMin: 0.1,
-  goalChanceMax: 0.50,
+  goalChanceMax: 0.55,
 
   homeAdvantageGoalBonus: 0.04
 };
@@ -440,8 +440,9 @@ export class MatchSimulationVariantBService {
       carryWeight += 0.04;
       shotWeight = 0;
     } else {
-      // Recover shot volume lost by removing unrealistic goalkeeper attempts.
-      shotWeight += 0.018;
+      // Recover shot volume lost by removing goalies from pass actions and scoring.
+      // Increased from 0.018 to compensate for reduced pass network connectivity.
+      shotWeight += 0.035;
       passWeight -= 0.006;
     }
 
@@ -605,7 +606,7 @@ export class MatchSimulationVariantBService {
         [action.player.id],
         { ...state.ballPossession.location },
         minute,
-        false,
+        true,
         config,
         { carryResult: 'DISPOSSESSED' }
       );
@@ -826,7 +827,7 @@ export class MatchSimulationVariantBService {
         [passerId],
         state.ballPossession.location,
         minute,
-        false,
+        true,
         config,
         { passFailure: mode, passIntent }
       );

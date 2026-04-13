@@ -37,7 +37,7 @@
     TICK_LOOP --> FATIGUE[Update fatigue]
     FATIGUE --> CARRIER[Identify ball carrier]
     CARRIER --> MOVE[Apply carrier movement\\non the pitch]
-    MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality)"}
+    MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality\\nGK constraint: no SHOT roll)"}
 
     ACTION -->|CARRY| CARRY_ATTEMPT[Carry attempt]
     CARRY_ATTEMPT --> CARRY_SUCCESS{"Carry succeeds?\\ncarrier quality vs pressure and fatigue\\nplus defensive shape coverage"}
