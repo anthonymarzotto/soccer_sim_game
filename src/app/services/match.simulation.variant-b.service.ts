@@ -8,7 +8,11 @@ import {
   Coordinates,
   VariantBReplayMetadata,
   VariantBTuningConfig,
-  TeamFormation
+  TeamFormation,
+  PlayByPlayEventAdditionalData,
+  VariantBMatchShapeSnapshot,
+  MinuteFatigueSnapshot,
+  PlayerFatigueSnapshot
 } from '../models/simulation.types';
 import { FieldService } from './field.service';
 import { RngService } from './rng.service';
@@ -147,6 +151,7 @@ export class MatchSimulationVariantBService {
     );
 
     let currentState = this.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
+    this.recordFatigueSnapshot(currentState, 0, fatigue);
     const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
     this.activeMatchShape = this.initializeMatchShape(simulatedHomeTeam, simulatedAwayTeam);
     this.pendingTacticalSubstitutions = { home: 0, away: 0 };
@@ -199,6 +204,7 @@ export class MatchSimulationVariantBService {
       );
 
       this.normalizeFatigueForTickCount(fatigue, ticks, rosters);
+      this.recordFatigueSnapshot(currentState, minute, fatigue);
     }
 
     this.activeMatchShape = null;
@@ -268,6 +274,7 @@ export class MatchSimulationVariantBService {
         timeElapsed: 0
       },
       events: [],
+      fatigueTimeline: [],
       currentMinute: 0,
       homeScore: 0,
       awayScore: 0,
@@ -319,6 +326,37 @@ export class MatchSimulationVariantBService {
       home: createFatigue(homePlayers),
       away: createFatigue(awayPlayers)
     };
+  }
+
+  private recordFatigueSnapshot(
+    state: MatchState,
+    minute: number,
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }
+  ): void {
+    const players: PlayerFatigueSnapshot[] = [];
+    const append = (entries: PlayerFatigue[]) => {
+      entries.forEach((entry) => {
+        players.push({
+          playerId: entry.playerId,
+          stamina: Math.round(this.clamp(entry.currentStamina, 0, 100))
+        });
+      });
+    };
+
+    append(fatigue.home);
+    append(fatigue.away);
+
+    const timelineEntry: MinuteFatigueSnapshot = {
+      minute,
+      players
+    };
+    const existingIndex = state.fatigueTimeline.findIndex((entry) => entry.minute === minute);
+    if (existingIndex >= 0) {
+      state.fatigueTimeline[existingIndex] = timelineEntry;
+      return;
+    }
+
+    state.fatigueTimeline.push(timelineEntry);
   }
 
   private determineTicksForMinute(state: MatchState, minute: number): number {
@@ -729,6 +767,9 @@ export class MatchSimulationVariantBService {
       this.createEvent(state, EventType.TACKLE, [passer.id], state.ballPossession.location, minute, false, config);
       state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
       state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentPlayers);
+      state.ballPossession.passes = 0;
+      const newPossessionTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
+      state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, newPossessionTeam);
       return;
     }
 
@@ -1357,7 +1398,10 @@ export class MatchSimulationVariantBService {
       { ...state.ballPossession.location },
       minute,
       true,
-      config
+      config,
+      {
+        formationSnapshot: this.createFormationSnapshot()
+      }
     );
 
     return true;
@@ -1417,7 +1461,10 @@ export class MatchSimulationVariantBService {
       { ...state.ballPossession.location },
       minute,
       true,
-      config
+      config,
+      {
+        formationSnapshot: this.createFormationSnapshot()
+      }
     );
   }
 
@@ -1524,7 +1571,7 @@ export class MatchSimulationVariantBService {
     time: number,
     success: boolean,
     _config: SimulationConfig,
-    additionalData?: Record<string, unknown>
+    additionalData?: PlayByPlayEventAdditionalData
   ): void {
     state.events.push({
       id: this.createRandomId(),
@@ -2370,6 +2417,29 @@ export class MatchSimulationVariantBService {
           role: shapeSlot?.role ?? position.role
         };
       })
+    };
+  }
+
+  private createFormationSnapshot(): VariantBMatchShapeSnapshot | undefined {
+    if (!this.activeMatchShape) {
+      return undefined;
+    }
+
+    return {
+      home: this.activeMatchShape.home.map(slot => ({
+        slotId: slot.slotId,
+        playerId: slot.playerId,
+        coordinates: { ...slot.coordinates },
+        zone: slot.zone,
+        role: slot.role
+      })),
+      away: this.activeMatchShape.away.map(slot => ({
+        slotId: slot.slotId,
+        playerId: slot.playerId,
+        coordinates: { ...slot.coordinates },
+        zone: slot.zone,
+        role: slot.role
+      }))
     };
   }
 

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { CommentaryService } from './commentary.service';
 import { CommentaryStyle, EventType, Position as PositionEnum, Role } from '../models/enums';
-import { PlayByPlayEvent } from '../models/simulation.types';
+import { PlayByPlayEvent, PlayByPlayEventAdditionalData } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
@@ -130,7 +130,7 @@ function createEvent(
   type: EventType,
   playerIds: string[],
   success: boolean,
-  additionalData?: Record<string, unknown>
+  additionalData?: PlayByPlayEventAdditionalData
 ): PlayByPlayEvent {
   return {
     id: `${type}-event`,

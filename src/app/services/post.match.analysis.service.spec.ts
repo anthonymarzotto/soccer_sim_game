@@ -256,6 +256,7 @@ describe('PostMatchAnalysisService', () => {
         timeElapsed: 0
       },
       events,
+      fatigueTimeline: [],
       currentMinute: 90,
       homeScore,
       awayScore,
@@ -285,6 +286,7 @@ describe('PostMatchAnalysisService', () => {
     success: boolean,
     includeReplayMetadata = false
   ): PlayByPlayEvent {
+    const actorPlayerId = playerIds[0] ?? '';
     return {
       id,
       type,
@@ -293,7 +295,16 @@ describe('PostMatchAnalysisService', () => {
       location,
       time,
       success,
-      additionalData: includeReplayMetadata ? { variantBReplay: { durationMs: 1400 } } : undefined
+      additionalData: includeReplayMetadata
+        ? {
+          variantBReplay: {
+            actorPlayerId,
+            actionType: type,
+            durationMs: 1400,
+            keyframes: [{ timestampMs: 0, ballLocation: location }]
+          }
+        }
+        : undefined
     };
   }
 });

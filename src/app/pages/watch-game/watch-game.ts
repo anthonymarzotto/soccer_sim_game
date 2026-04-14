@@ -7,7 +7,7 @@ import { TeamColorsService } from '../../services/team-colors.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
 import { Match, MatchEvent, MatchStatistics, Team, Player } from '../../models/types';
 import { EventType, EventImportance, CommentaryStyle, TeamSide, Role } from '../../models/enums';
-import { PlayByPlayEvent, MatchState, Coordinates } from '../../models/simulation.types';
+import { PlayByPlayEvent, MatchState, Coordinates, PlayByPlayEventAdditionalData, VariantBMatchShapeSnapshot, VariantBShapeSlotSnapshot, MinuteFatigueSnapshot } from '../../models/simulation.types';
 
 interface CommentaryItem {
   id: string;
@@ -18,6 +18,7 @@ interface CommentaryItem {
   location: Coordinates | null;
   teamSide: TeamSide | null;
   playerIds: string[];
+  additionalData?: PlayByPlayEventAdditionalData;
   isNew: boolean;
 }
 
@@ -378,6 +379,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         location: { ...event.location },
         teamSide: this.getEventTeamSide(event, homeTeam, awayTeam),
         playerIds: [...event.playerIds],
+        additionalData: event.additionalData,
         isNew: false
       });
     };
@@ -700,6 +702,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         location: event.location ?? null,
         teamSide,
         playerIds: [...event.playerIds],
+        additionalData: event.additionalData,
         isNew: false
       });
     }
@@ -775,18 +778,51 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   getDotFatigue(dot: FormationDot): number {
+    const trackedFatigue = this.getTrackedFatigue(dot.playerId);
+    if (trackedFatigue !== null) {
+      return trackedFatigue;
+    }
+
     const player = this.gameService.getPlayer(dot.playerId);
     if (!player) {
       return 100;
     }
 
+    // Fallback for legacy states without fatigue snapshots.
     const minutesOnPitch = Math.max(0, this.currentMinute() - dot.minuteEntered);
-    const endurancePenalty = (100 - player.physical.endurance) / 100;
-    const fatigueRatePerMinute =
-      WatchGameComponent.BASE_FATIGUE_RATE_PER_MINUTE
-      + (endurancePenalty * WatchGameComponent.ENDURANCE_PENALTY_FATIGUE_MULTIPLIER);
-    const fatigueLoad = this.clampNumber(Math.round(minutesOnPitch * fatigueRatePerMinute), 0, 100);
-    return 100 - fatigueLoad;
+    const fallbackRatePerMinute = player.position === 'GK' ? 0.003 : 0.5;
+    const fatigueLoad = this.clampNumber(Math.round(minutesOnPitch * fallbackRatePerMinute), 0, 100);
+    return this.clampNumber(100 - fatigueLoad, 0, 100);
+  }
+
+  private getTrackedFatigue(playerId: string): number | null {
+    const timeline = this.matchState()?.fatigueTimeline;
+    if (!timeline) {
+      return null;
+    }
+
+    const currentMinute = Math.max(0, Math.floor(this.currentMinute()));
+    const relevantSnapshots = timeline
+      .filter((snapshot) => snapshot.minute <= currentMinute)
+      .sort((left, right) => right.minute - left.minute);
+
+    for (const snapshot of relevantSnapshots) {
+      const playerSnapshot = this.findPlayerFatigueSnapshot(snapshot, playerId);
+      if (playerSnapshot !== null) {
+        return playerSnapshot;
+      }
+    }
+
+    return null;
+  }
+
+  private findPlayerFatigueSnapshot(snapshot: MinuteFatigueSnapshot, playerId: string): number | null {
+    const playerEntry = snapshot.players.find((entry) => entry.playerId === playerId);
+    if (!playerEntry) {
+      return null;
+    }
+
+    return this.clampNumber(Math.round(playerEntry.stamina), 0, 100);
   }
 
   getCardBadge(dot: FormationDot): string | null {
@@ -912,7 +948,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   private applyCommentaryPitchState(item: CommentaryItem) {
     if (item.type === EventType.SUBSTITUTION && item.playerIds.length >= 2 && item.teamSide) {
-      this.replaceFormationDot(item.teamSide, item.playerIds[0], item.playerIds[1], item.minute);
+      const snapshot = this.getFormationSnapshot(item);
+      if (snapshot) {
+        this.applyFormationSnapshot(snapshot, item.teamSide, item.minute);
+        return;
+      }
+
+      console.error('Missing formation snapshot for substitution event', item.id);
       return;
     }
 
@@ -963,34 +1005,85 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     });
   }
 
-  private replaceFormationDot(teamSide: TeamSide, outgoingPlayerId: string, incomingPlayerId: string, minute: number) {
-    const incomingPlayer = this.gameService.getPlayer(incomingPlayerId);
+  private getFormationSnapshot(item: CommentaryItem): VariantBMatchShapeSnapshot | null {
+    return item.additionalData?.formationSnapshot ?? null;
+  }
 
-    const currentDots = teamSide === TeamSide.HOME ? this.homeFormationDots() : this.awayFormationDots();
-    const outgoingDot = currentDots.find((d) => d.playerId === outgoingPlayerId);
-    if (outgoingDot) {
-      const fatigue = this.getDotFatigue(outgoingDot);
-      const removedSignal = teamSide === TeamSide.HOME ? this.homeRemovedPlayers : this.awayRemovedPlayers;
-      removedSignal.update((m) => new Map([...m, [outgoingPlayerId, { status: Role.SUBSTITUTED_OUT, fatigue }]]));
+  private applyFormationSnapshot(snapshot: VariantBMatchShapeSnapshot, teamSide: TeamSide, minute: number) {
+    const team = teamSide === TeamSide.HOME ? this.homeTeam() : this.awayTeam();
+    if (!team) {
+      return;
     }
 
-    this.updateDotsForTeam(teamSide, (dot) => {
-      if (dot.playerId !== outgoingPlayerId) {
-        return dot;
+    const mirrorYAxis = teamSide === TeamSide.AWAY;
+    const templateDots = this.buildDotsForTeam(team, teamSide, mirrorYAxis);
+    const templateBySlotId = new Map(templateDots.map((dot) => [dot.slotId, dot]));
+    const previousDots = teamSide === TeamSide.HOME ? this.homeFormationDots() : this.awayFormationDots();
+    const previousByPlayerId = new Map(previousDots.map((dot) => [dot.playerId, dot]));
+    const removedSignal = teamSide === TeamSide.HOME ? this.homeRemovedPlayers : this.awayRemovedPlayers;
+
+    const slots = teamSide === TeamSide.HOME ? snapshot.home : snapshot.away;
+
+    const nextDots: FormationDot[] = [];
+    slots.forEach((slot: VariantBShapeSlotSnapshot) => {
+      if (!slot.playerId) {
+        return;
       }
 
-      const fullName = incomingPlayer?.name ?? 'Substitute';
-      return {
-        ...dot,
-        playerId: incomingPlayerId,
+      const templateDot = templateBySlotId.get(slot.slotId);
+      if (!templateDot) {
+        return;
+      }
+
+      const player = this.gameService.getPlayer(slot.playerId);
+      const previousDot = previousByPlayerId.get(slot.playerId);
+      const fullName = player?.name ?? templateDot.fullName;
+
+      nextDots.push({
+        ...templateDot,
+        x: slot.coordinates.x,
+        y: mirrorYAxis ? 100 - slot.coordinates.y : slot.coordinates.y,
+        slotLabel: slot.role,
+        playerId: slot.playerId,
         label: this.toInitials(fullName),
         fullName,
-        minuteEntered: minute,
-        goals: 0,
-        yellowCards: 0,
-        redCards: 0,
-      };
+        minuteEntered: previousDot?.minuteEntered ?? minute,
+        goals: previousDot?.goals ?? 0,
+        yellowCards: previousDot?.yellowCards ?? 0,
+        redCards: previousDot?.redCards ?? 0,
+      });
     });
+
+    const activePlayerIds = new Set(nextDots.map((dot) => dot.playerId));
+    removedSignal.update((removed) => {
+      const nextRemoved = new Map(removed);
+
+      previousDots.forEach((dot) => {
+        if (activePlayerIds.has(dot.playerId)) {
+          return;
+        }
+
+        const existing = nextRemoved.get(dot.playerId);
+        if (existing?.status === Role.DISMISSED) {
+          return;
+        }
+
+        nextRemoved.set(dot.playerId, {
+          status: Role.SUBSTITUTED_OUT,
+          fatigue: this.getDotFatigue(dot)
+        });
+      });
+
+      activePlayerIds.forEach((playerId) => {
+        if (nextRemoved.has(playerId)) {
+          nextRemoved.delete(playerId);
+        }
+      });
+      return nextRemoved;
+    });
+
+    const targetSignal = teamSide === TeamSide.HOME ? this.homeFormationDots : this.awayFormationDots;
+    targetSignal.set(nextDots.sort((left, right) => left.y - right.y));
   }
 
   private updateDotsForTeam(teamSide: TeamSide, updater: (dot: FormationDot) => FormationDot) {

@@ -28,6 +28,48 @@ export interface TeamFormation {
   positions: PlayerPosition[];
 }
 
+export interface ReplayKeyframe {
+  timestampMs: number;
+  ballLocation: Coordinates;
+}
+
+export interface VariantBReplayMetadata {
+  actorPlayerId: string;
+  actionType: EventType;
+  durationMs: number;
+  keyframes: ReplayKeyframe[];
+}
+
+export interface VariantBShapeSlotSnapshot {
+  slotId: string;
+  playerId: string | null;
+  coordinates: Coordinates;
+  zone: FieldZone;
+  role: string;
+}
+
+export interface VariantBMatchShapeSnapshot {
+  home: VariantBShapeSlotSnapshot[];
+  away: VariantBShapeSlotSnapshot[];
+}
+
+export type CardReason = 'DIRECT_RED' | 'SECOND_YELLOW';
+
+export type PassIntentMetadata = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS';
+
+export type PassFailureMetadata = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
+
+export type CarryResultMetadata = 'DISPOSSESSED';
+
+export interface PlayByPlayEventAdditionalData {
+  variantBReplay?: VariantBReplayMetadata;
+  formationSnapshot?: VariantBMatchShapeSnapshot;
+  cardReason?: CardReason;
+  passIntent?: PassIntentMetadata;
+  passFailure?: PassFailureMetadata;
+  carryResult?: CarryResultMetadata;
+}
+
 export interface Possession {
   teamId: string;
   playerWithBall: string;
@@ -45,20 +87,20 @@ export interface PlayByPlayEvent {
   location: Coordinates;
   time: number; // minutes
   success: boolean;
-  additionalData?: Record<string, unknown>;
+  additionalData?: PlayByPlayEventAdditionalData;
 }
 
-export interface ReplayKeyframe {
-  timestampMs: number;
-  ballLocation: Coordinates;
+export interface PlayerFatigueSnapshot {
+  playerId: string;
+  stamina: number;
 }
 
-export interface VariantBReplayMetadata {
-  actorPlayerId: string;
-  actionType: EventType;
-  durationMs: number;
-  keyframes: ReplayKeyframe[];
+export interface MinuteFatigueSnapshot {
+  minute: number;
+  players: PlayerFatigueSnapshot[];
 }
+
+export type MatchFatigueTimeline = MinuteFatigueSnapshot[];
 
 export interface VariantBTuningConfig {
   baseTickMin: number;
@@ -98,6 +140,7 @@ export interface VariantBTuningConfig {
 export interface MatchState {
   ballPossession: Possession;
   events: PlayByPlayEvent[];
+  fatigueTimeline: MatchFatigueTimeline;
   currentMinute: number;
   homeScore: number;
   awayScore: number;

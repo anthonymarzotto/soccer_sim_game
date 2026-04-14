@@ -495,23 +495,23 @@ function calculateLateGameBehaviorMetrics(events: PlayByPlayEvent[]): CombinedLa
     const team = inferTeamFromEvent(event);
 
     if (event.type === EventType.PASS) {
-      const passIntent = event.additionalData?.['passIntent'];
-      if (typeof passIntent === 'string') {
+      const passIntent = event.additionalData?.passIntent;
+      if (passIntent) {
         metrics.metadata.passWithIntent += 1;
       }
     }
 
     if ((event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION)
-      && typeof event.additionalData?.['passFailure'] === 'string') {
+      && !!event.additionalData?.passFailure) {
       metrics.metadata.failedPassTurnovers += 1;
     }
 
-    if (event.type === EventType.TACKLE && event.additionalData?.['carryResult'] === 'DISPOSSESSED') {
+    if (event.type === EventType.TACKLE && event.additionalData?.carryResult === 'DISPOSSESSED') {
       metrics.metadata.carryDispossessed += 1;
     }
 
     const isPassTurnover = (event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION)
-      && typeof event.additionalData?.['passFailure'] === 'string';
+      && !!event.additionalData?.passFailure;
 
     if (team && (event.type === EventType.PASS || event.type === EventType.SHOT || isPassTurnover)) {
       const scorelineState = getScorelineStateForTeam(team, homeScore, awayScore);
@@ -550,14 +550,14 @@ function registerBehaviorEvent(window: BehaviorWindowMetrics, event: PlayByPlayE
 
   const isPassEvent = event.type === EventType.PASS;
   const isPassTurnover = (event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION)
-    && typeof event.additionalData?.['passFailure'] === 'string';
+    && !!event.additionalData?.passFailure;
 
   if (!isPassEvent && !isPassTurnover) {
     return;
   }
 
   window.passAttempts += 1;
-  const passIntent = event.additionalData?.['passIntent'];
+  const passIntent = event.additionalData?.passIntent;
   if (passIntent === 'RECYCLE') {
     window.recyclePasses += 1;
   }
@@ -713,11 +713,11 @@ function calculatePassQuality(events: PlayByPlayEvent[]): {
       return false;
     }
 
-    return typeof event.additionalData?.['passFailure'] === 'string';
+    return !!event.additionalData?.passFailure;
   });
 
   const progressionCompleted = completedPasses.filter(event => {
-    const passIntent = event.additionalData?.['passIntent'];
+    const passIntent = event.additionalData?.passIntent;
     return passIntent === 'PROGRESSION' || passIntent === 'THROUGH_BALL' || passIntent === 'CROSS';
   }).length;
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { PlayByPlayEvent, FieldZone, Coordinates } from '../models/simulation.types';
+import { PlayByPlayEvent, FieldZone, Coordinates, PlayByPlayEventAdditionalData } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
 import { CommentaryStyle, EventType, Role } from '../models/enums';
@@ -156,7 +156,7 @@ export class CommentaryService {
         return `${playerName} receives a yellow card!`;
 
       case EventType.RED_CARD: {
-        const cardReason = event.additionalData?.['cardReason'];
+        const cardReason = event.additionalData?.cardReason;
         if (cardReason === 'SECOND_YELLOW') {
           return `${playerName} is sent off for a second yellow!`;
         }
@@ -280,7 +280,7 @@ export class CommentaryService {
     playerName: string,
     targetName: string
   ): string {
-    const passIntent = this.getStringMetadata(event, 'passIntent');
+    const passIntent = this.getPassIntent(event);
 
     if (style === CommentaryStyle.DETAILED && passIntent) {
       const intentTemplate = this.getDetailedPassIntentTemplate(passIntent);
@@ -300,7 +300,7 @@ export class CommentaryService {
     playerName: string,
     targetName: string
   ): string {
-    const carryResult = this.getStringMetadata(event, 'carryResult');
+    const carryResult = this.getCarryResult(event);
 
     if (style === CommentaryStyle.DETAILED && carryResult === 'DISPOSSESSED') {
       const carryDispossessionPhrases = [
@@ -313,10 +313,10 @@ export class CommentaryService {
       return carryDispossessionPhrases[Math.floor(Math.random() * carryDispossessionPhrases.length)];
     }
 
-    const passFailure = this.getStringMetadata(event, 'passFailure');
+    const passFailure = this.getPassFailure(event);
 
     if (style === CommentaryStyle.DETAILED && passFailure) {
-      const passIntent = this.getStringMetadata(event, 'passIntent');
+      const passIntent = this.getPassIntent(event);
       const intentLabel = this.describePassIntent(passIntent);
 
       if (passFailure === 'TACKLED') {
@@ -336,7 +336,7 @@ export class CommentaryService {
     return this.formatCommentary(template, playerName, targetName);
   }
 
-  private getDetailedPassIntentTemplate(passIntent: string): string | null {
+  private getDetailedPassIntentTemplate(passIntent: PlayByPlayEventAdditionalData['passIntent']): string | null {
     switch (passIntent) {
       case 'RECYCLE':
         return '{player} recycles possession calmly to {target}.';
@@ -351,7 +351,7 @@ export class CommentaryService {
     }
   }
 
-  private describePassIntent(passIntent: string | null): string {
+  private describePassIntent(passIntent: PlayByPlayEventAdditionalData['passIntent'] | null): string {
     switch (passIntent) {
       case 'RECYCLE':
         return 'recycle pass';
@@ -366,9 +366,16 @@ export class CommentaryService {
     }
   }
 
-  private getStringMetadata(event: PlayByPlayEvent, key: string): string | null {
-    const value = event.additionalData?.[key];
-    return typeof value === 'string' ? value : null;
+  private getPassIntent(event: PlayByPlayEvent): PlayByPlayEventAdditionalData['passIntent'] | null {
+    return event.additionalData?.passIntent ?? null;
+  }
+
+  private getCarryResult(event: PlayByPlayEvent): PlayByPlayEventAdditionalData['carryResult'] | null {
+    return event.additionalData?.carryResult ?? null;
+  }
+
+  private getPassFailure(event: PlayByPlayEvent): PlayByPlayEventAdditionalData['passFailure'] | null {
+    return event.additionalData?.passFailure ?? null;
   }
 
   private appendChanceLocationContext(commentary: string, event: PlayByPlayEvent): string {

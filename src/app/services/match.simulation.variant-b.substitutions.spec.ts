@@ -13,6 +13,18 @@ type TeamSubstitutionUsage = Record<TeamSide, number>;
 
 interface VariantBSubstitutionInternals {
   rng: { random: () => number };
+  handlePass: (
+    state: MatchState,
+    action: { type: EventType.PASS; player: Player; passIntent: 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS' },
+    homeTeam: Team,
+    awayTeam: Team,
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    minute: number,
+    config: SimulationConfig,
+    homePlayers: Player[],
+    awayPlayers: Player[]
+  ) => void;
   tryTeamSubstitution: (
     teamKey: TeamSide,
     state: MatchState,
@@ -115,6 +127,48 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     expect(state.events.map(event => event.type)).toEqual([EventType.SUBSTITUTION]);
     expect(state.events[0].playerIds).toEqual(['home-mid1', 'home-midb1']);
+  });
+
+  it('should reset passes and phase when a pass has no valid target', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-mid1');
+    state.ballPossession.location = { x: 50, y: 20 };
+    state.ballPossession.phase = MatchPhase.BUILD_UP;
+    state.ballPossession.passes = 4;
+
+    homePlayers.forEach((player) => {
+      if (player.id !== 'home-mid1') {
+        player.role = Role.SUBSTITUTED_OUT;
+      }
+    });
+
+    const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
+
+    vi.spyOn(internals.rng, 'random').mockReturnValue(0);
+
+    internals.handlePass(
+      state,
+      { type: EventType.PASS, player: homePlayers.find(player => player.id === 'home-mid1') as Player, passIntent: 'RECYCLE' },
+      homeTeam,
+      awayTeam,
+      tactics,
+      fatigue,
+      40,
+      config,
+      homePlayers,
+      awayPlayers
+    );
+
+    expect(state.events.at(-1)?.type).toBe(EventType.TACKLE);
+    expect(state.ballPossession.teamId).toBe(awayTeam.id);
+    expect(state.ballPossession.playerWithBall).toBe('away-gk1');
+    expect(state.ballPossession.passes).toBe(0);
+    expect(state.ballPossession.phase).toBe(MatchPhase.ATTACKING);
   });
 
   it('should not reintroduce dismissed players and should honor substitution limits', () => {
@@ -340,6 +394,7 @@ function createMatchState(teamId: string, playerId: string): MatchState {
       timeElapsed: 0
     },
     events: [],
+    fatigueTimeline: [],
     currentMinute: 0,
     homeScore: 0,
     awayScore: 0,

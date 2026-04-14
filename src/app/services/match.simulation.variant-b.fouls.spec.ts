@@ -158,6 +158,7 @@ function createMatchState(teamId: string, playerId: string): MatchState {
       timeElapsed: 0
     },
     events: [],
+    fatigueTimeline: [],
     currentMinute: 1,
     homeScore: 0,
     awayScore: 0,
