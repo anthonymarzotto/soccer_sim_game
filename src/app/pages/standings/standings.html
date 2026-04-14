@@ -13,7 +13,7 @@
         </a>
         <button 
           (click)="gameService.simulateCurrentWeek()"
-          [disabled]="gameService.isSimulatingMatchWeek()"
+          [disabled]="gameService.isAnySimulationInProgress()"
           class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20">
           Simulate Week
         </button>

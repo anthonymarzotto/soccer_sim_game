@@ -28,53 +28,214 @@
       </app-match-summary>
     }
 
-    <!-- Start Simulation Button -->
-    @if (!isSimulating() && !isFinished()) {
-      @if (validationError()) {
-        <div class="mx-auto max-w-2xl rounded-lg border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-          {{ validationError() }}
-        </div>
-      }
-      <div class="flex justify-center pt-6">
-        <button 
-          (click)="startSimulation()"
-          [disabled]="!match() || match()?.played"
-          class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-xl text-lg font-bold transition-colors shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-          Start Simulation
-        </button>
-      </div>
-    }
+    <!-- Pitch View -->
+    @if (homeFormationDots().length > 0 || awayFormationDots().length > 0) {
+      <div class="mt-6 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="p-4 border-b border-zinc-800 flex items-start justify-between gap-3">
+          <div class="flex flex-col gap-2">
+            @if (!isSimulating() && !isFinished()) {
+              <button
+                (click)="startSimulation()"
+                [disabled]="!match() || match()?.played"
+                class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                Start Simulation
+              </button>
+            }
 
-    <!-- Half-Time Break -->
-    @if (isHalfTime()) {
-      <div class="flex flex-col items-center gap-4 pt-6">
-        <div class="flex items-center gap-3 px-6 py-3 bg-yellow-500/20 border border-yellow-500/30 rounded-xl">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <span class="text-yellow-400 font-semibold">Half-Time</span>
-        </div>
-        <button 
-          (click)="continueAfterHalfTime()"
-          class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg font-semibold transition-colors flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-          Continue to Second Half
-        </button>
-      </div>
-    }
+            @if (isHalfTime()) {
+              <button
+                (click)="continueAfterHalfTime()"
+                class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                Continue to Second Half
+              </button>
+            }
 
-    <!-- Live Indicator -->
-    @if (isSimulating()) {
-      <div class="flex justify-center mt-8">
-        <div class="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full">
-          <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          <span class="text-red-400 text-sm font-medium">LIVE - {{ currentMinute() }}'</span>
+            @if (validationError() && !isSimulating() && !isFinished()) {
+              <div class="rounded-lg border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-200 max-w-sm">
+                {{ validationError() }}
+              </div>
+            }
+          </div>
+
+          @if (isSimulating()) {
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full">
+              <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              <span class="text-red-400 text-sm font-medium">LIVE - {{ currentMinute() }}'</span>
+            </div>
+          }
+        </div>
+
+        <div class="flex flex-col h-full">
+          <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_220px] flex-1 overflow-hidden">
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col">
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ homeTeam()?.name ?? 'Home' }}</h3>
+              <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
+                @for (entry of getOnFieldLineup(TeamSide.HOME); track entry.playerId) {
+                  <div class="rounded bg-zinc-900/70 px-2 py-1.5">
+                    <div class="flex items-center justify-between gap-2 text-[11px]">
+                      <span class="truncate text-zinc-100"><span class="text-zinc-400">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
+                      <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                        <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                @if (getBenchLineup(TeamSide.HOME).length > 0) {
+                  <div class="my-2 border-t border-zinc-700/70"></div>
+                }
+
+                @for (entry of getBenchLineup(TeamSide.HOME); track entry.playerId) {
+                  <div class="rounded bg-zinc-900/50 px-2 py-1.5" [class.opacity-55]="entry.playerStatus === Role.BENCH">
+                    <div class="flex items-center justify-between gap-2 text-[11px]">
+                      <span class="truncate text-zinc-300">
+                        @if (entry.playerStatus === Role.SUBSTITUTED_OUT) {
+                          <span class="text-amber-500">↓</span>
+                        } @else if (entry.playerStatus === Role.DISMISSED) {
+                          <span class="text-red-500">🟥</span>
+                        } @else {
+                          <span class="text-zinc-500">{{ entry.role }}</span>
+                        }
+                        {{ entry.name }}
+                      </span>
+                      @if (entry.playerStatus !== Role.BENCH) {
+                        <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                          <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="relative w-full h-full rounded-xl border border-emerald-500/35 bg-linear-to-b from-emerald-900 via-emerald-800 to-emerald-900 overflow-hidden">
+              <div class="absolute inset-0 bg-[repeating-linear-gradient(to_right,rgba(16,185,129,0.08)_0,rgba(16,185,129,0.08)_10%,transparent_10%,transparent_20%)]"></div>
+              <div class="absolute left-0 right-0 top-1/2 h-px bg-emerald-200/70"></div>
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border border-emerald-200/70"></div>
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-100"></div>
+              <!-- Top 18-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 0%; height: 15.7%; left: 20.4%; right: 20.4%; width: 59.2%;"></div>
+              <!-- Bottom 18-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 84.3%; height: 15.7%; left: 20.4%; right: 20.4%; width: 59.2%;"></div>
+              <!-- Top 6-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 0%; height: 5.2%; left: 36.5%; right: 36.5%; width: 27%;"></div>
+              <!-- Bottom 6-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 94.8%; height: 5.2%; left: 36.5%; right: 36.5%; width: 27%;"></div>
+
+              @for (dot of homeFormationDots(); track dot.id) {
+                <div
+                  class="absolute -translate-x-1/2 -translate-y-1/2"
+                  [style.left.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.HOME).left"
+                  [style.top.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.HOME).top"
+                  [title]="dot.fullName">
+                  <div
+                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-default"
+                    [style.background-color]="homeTeamColor()"
+                    [style.border-color]="homeTeamColor()">
+                    {{ dot.label }}
+                    @if (getCardBadge(dot)) {
+                      <span
+                        class="absolute -left-2 -top-2 min-w-4 h-4 px-1 rounded-full border text-[8px] font-bold leading-none flex items-center justify-center"
+                        [class.bg-red-600]="dot.redCards > 0"
+                        [class.border-red-300]="dot.redCards > 0"
+                        [class.text-white]="dot.redCards > 0"
+                        [class.bg-yellow-400]="dot.redCards === 0"
+                        [class.border-yellow-200]="dot.redCards === 0"
+                        [class.text-zinc-950]="dot.redCards === 0">
+                        {{ getCardBadge(dot) }}
+                      </span>
+                    }
+                    @if (dot.goals > 0) {
+                      <span class="absolute -right-2 -top-2 min-w-4 h-4 px-1 rounded-full border border-emerald-300 bg-emerald-600 text-[8px] font-bold text-white leading-none flex items-center justify-center">
+                        {{ dot.goals }}G
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @for (dot of awayFormationDots(); track dot.id) {
+                <div
+                  class="absolute -translate-x-1/2 -translate-y-1/2"
+                  [style.left.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.AWAY).left"
+                  [style.top.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.AWAY).top"
+                  [title]="dot.fullName">
+                  <div
+                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-pointer"
+                    [style.background-color]="awayTeamColor()"
+                    [style.border-color]="awayTeamColor()">
+                    {{ dot.label }}
+                    @if (getCardBadge(dot)) {
+                      <span
+                        class="absolute -left-2 -top-2 min-w-4 h-4 px-1 rounded-full border text-[8px] font-bold leading-none flex items-center justify-center"
+                        [class.bg-red-600]="dot.redCards > 0"
+                        [class.border-red-300]="dot.redCards > 0"
+                        [class.text-white]="dot.redCards > 0"
+                        [class.bg-yellow-400]="dot.redCards === 0"
+                        [class.border-yellow-200]="dot.redCards === 0"
+                        [class.text-zinc-950]="dot.redCards === 0">
+                        {{ getCardBadge(dot) }}
+                      </span>
+                    }
+                    @if (dot.goals > 0) {
+                      <span class="absolute -right-2 -top-2 min-w-4 h-4 px-1 rounded-full border border-emerald-300 bg-emerald-600 text-[8px] font-bold text-white leading-none flex items-center justify-center">
+                        {{ dot.goals }}G
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col">
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ awayTeam()?.name ?? 'Away' }}</h3>
+              <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
+                @for (entry of getOnFieldLineup(TeamSide.AWAY); track entry.playerId) {
+                  <div class="rounded bg-zinc-900/70 px-2 py-1.5">
+                    <div class="flex items-center justify-between gap-2 text-[11px]">
+                      <span class="truncate text-zinc-100"><span class="text-zinc-400">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
+                      <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                        <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                @if (getBenchLineup(TeamSide.AWAY).length > 0) {
+                  <div class="my-2 border-t border-zinc-700/70"></div>
+                }
+
+                @for (entry of getBenchLineup(TeamSide.AWAY); track entry.playerId) {
+                  <div class="rounded bg-zinc-900/50 px-2 py-1.5" [class.opacity-55]="entry.playerStatus === Role.BENCH">
+                    <div class="flex items-center justify-between gap-2 text-[11px]">
+                      <span class="truncate text-zinc-300">
+                        @if (entry.playerStatus === Role.SUBSTITUTED_OUT) {
+                          <span class="text-amber-500">↓</span>
+                        } @else if (entry.playerStatus === Role.DISMISSED) {
+                          <span class="text-red-500">🟥</span>
+                        } @else {
+                          <span class="text-zinc-500">{{ entry.role }}</span>
+                        }
+                        {{ entry.name }}
+                      </span>
+                      @if (entry.playerStatus !== Role.BENCH) {
+                        <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                          <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     }

@@ -25,6 +25,22 @@ interface VariantBSubstitutionInternals {
     rosters: { homePlayers: Player[]; awayPlayers: Player[] },
     substitutionsUsed: TeamSubstitutionUsage
   ) => void;
+  updateFatigue: (
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    minute: number,
+    rosters: { homePlayers: Player[]; awayPlayers: Player[] }
+  ) => void;
+  executeVariantBShot: (
+    state: MatchState,
+    action: { type: EventType.SHOT; player: Player },
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: { homePlayers: Player[]; awayPlayers: Player[] }
+  ) => void;
 }
 
 describe('Match Simulation Variant B Substitutions', () => {
@@ -223,6 +239,82 @@ describe('Match Simulation Variant B Substitutions', () => {
     expect(state.events[1].type).toBe(EventType.SUBSTITUTION);
     expect(state.events[1].playerIds[1]).not.toBe('home-mid1');
     expect(homePlayers.find(player => player.id === 'home-mid1')?.role).toBe(Role.SUBSTITUTED_OUT);
+  });
+
+  it('should apply goalkeeper stamina drain at 1% of outfield players', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const fatigue = createFatigueState(homePlayers, awayPlayers, 0);
+    const homeGoalkeeper = homePlayers.find(player => player.id === 'home-gk1') as Player;
+    const homeOutfield = homePlayers.find(player => player.id === 'home-mid1') as Player;
+
+    internals.updateFatigue(
+      fatigue,
+      12,
+      { homePlayers, awayPlayers }
+    );
+
+    const goalkeeperFatigue = fatigue.home.find(entry => entry.playerId === homeGoalkeeper.id) as PlayerFatigue;
+    const outfieldFatigue = fatigue.home.find(entry => entry.playerId === homeOutfield.id) as PlayerFatigue;
+
+    expect(goalkeeperFatigue.fatigueLevel).toBeCloseTo(0.5, 6);
+    expect(goalkeeperFatigue.currentStamina).toBeCloseTo(99.997, 6);
+    expect(outfieldFatigue.fatigueLevel).toBeCloseTo(0.5, 6);
+    expect(outfieldFatigue.currentStamina).toBeCloseTo(99.7, 6);
+  });
+
+  it('should not accumulate fatigue for bench players', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const fatigue = createFatigueState(homePlayers, awayPlayers, 0);
+    const benchPlayer = homePlayers.find(player => player.id === 'home-midb1') as Player;
+
+    internals.updateFatigue(
+      fatigue,
+      12,
+      { homePlayers, awayPlayers }
+    );
+
+    const benchFatigue = fatigue.home.find(entry => entry.playerId === benchPlayer.id) as PlayerFatigue;
+    expect(benchFatigue.fatigueLevel).toBeCloseTo(0, 6);
+    expect(benchFatigue.currentStamina).toBeCloseTo(100, 6);
+    expect(benchFatigue.performanceModifier).toBeCloseTo(0.8, 6);
+  });
+
+  it('should credit saves only to on-field goalkeepers', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-fwd1');
+    state.ballPossession.location = { x: 50, y: 84 };
+    const fatigue = createFatigueState(homePlayers, awayPlayers, 20);
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+    };
+
+    const benchGoalkeeper = createPlayer('away-gk-bench', 'away', PositionEnum.GOALKEEPER, Role.BENCH, 70);
+    awayPlayers.unshift(benchGoalkeeper);
+
+    vi.spyOn(internals.rng, 'random')
+      .mockReturnValueOnce(0.01)
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0.2)
+      .mockReturnValueOnce(0.1);
+
+    internals.executeVariantBShot(
+      state,
+      { type: EventType.SHOT, player: homePlayers.find(player => player.id === 'home-fwd1') as Player },
+      tactics,
+      fatigue,
+      homeTeam,
+      awayTeam,
+      30,
+      config,
+      { homePlayers, awayPlayers }
+    );
+
+    const saveEvent = state.events.find(event => event.type === EventType.SAVE);
+    expect(saveEvent).toBeDefined();
+    expect(saveEvent?.playerIds[1]).toBe('away-gk1');
+    expect(saveEvent?.playerIds[1]).not.toBe('away-gk-bench');
   });
 });
 

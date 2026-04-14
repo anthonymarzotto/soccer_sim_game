@@ -2,10 +2,12 @@ import { ChangeDetectionStrategy, Component, inject, signal, OnInit, OnDestroy, 
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
+import { FieldService } from '../../services/field.service';
+import { TeamColorsService } from '../../services/team-colors.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
-import { Match, MatchEvent, MatchStatistics, Team } from '../../models/types';
-import { EventType, EventImportance, CommentaryStyle, TeamSide } from '../../models/enums';
-import { PlayByPlayEvent, MatchState } from '../../models/simulation.types';
+import { Match, MatchEvent, MatchStatistics, Team, Player } from '../../models/types';
+import { EventType, EventImportance, CommentaryStyle, TeamSide, Role } from '../../models/enums';
+import { PlayByPlayEvent, MatchState, Coordinates } from '../../models/simulation.types';
 
 interface CommentaryItem {
   id: string;
@@ -13,7 +15,43 @@ interface CommentaryItem {
   text: string;
   type: EventType;
   importance: EventImportance;
+  location: Coordinates | null;
+  teamSide: TeamSide | null;
+  playerIds: string[];
   isNew: boolean;
+}
+
+interface FormationDot {
+  id: string;
+  slotId: string;
+  slotLabel: string;
+  tacticOrder: number;
+  teamSide: TeamSide;
+  playerId: string;
+  label: string;
+  fullName: string;
+  x: number;
+  y: number;
+  minuteEntered: number;
+  goals: number;
+  yellowCards: number;
+  redCards: number;
+}
+
+interface PitchPoint {
+  left: number;
+  top: number;
+}
+
+interface TeamLineupEntry {
+  playerId: string;
+  slotLabel: string | null;
+  tacticOrder: number;
+  role: string;
+  name: string;
+  onField: boolean;
+  fatigue: number;
+  playerStatus: Role;
 }
 
 @Component({
@@ -28,10 +66,23 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private static readonly HIGH_IMPORTANCE_DELAY_MS = 1800;
   private static readonly RESUME_DELAY_MS = 900;
   private static readonly NEW_COMMENTARY_ANIMATION_MS = 500;
+  private static readonly BASE_FATIGUE_RATE_PER_MINUTE = 0.42;
+  private static readonly ENDURANCE_PENALTY_FATIGUE_MULTIPLIER = 0.35;
+
+  private readonly HIGH_FATIGUE_THRESHOLD = 75;
+  private readonly MEDIUM_FATIGUE_THRESHOLD = 50;
+  private readonly HIGH_FATIGUE_BAR_COLOR = '#22c55e';
+  private readonly MEDIUM_FATIGUE_BAR_COLOR = '#f59e0b';
+  private readonly LOW_FATIGUE_BAR_COLOR = '#dc2626';
+
 
   private route = inject(ActivatedRoute);
   gameService = inject(GameService);
   commentaryService = inject(CommentaryService);
+  fieldService = inject(FieldService);
+  teamColorsService = inject(TeamColorsService);
+  TeamSide = TeamSide;
+  Role = Role;
 
   // Match data
   matchId = signal<string>('');
@@ -48,6 +99,14 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   homeScore = signal<number>(0);
   awayScore = signal<number>(0);
   commentary = signal<CommentaryItem[]>([]);
+  homeFormationDots = signal<FormationDot[]>([]);
+  awayFormationDots = signal<FormationDot[]>([]);
+  activeEventLocation = signal<Coordinates | null>(null);
+  activeEventTeamSide = signal<TeamSide | null>(null);
+  activeEventPlayerIds = signal<string[]>([]);
+  activeEventInitiatorPlayerId = signal<string | null>(null);
+  homeTeamColor = signal<string>('#0ea5e9');
+  awayTeamColor = signal<string>('#f43f5e');
   
   // Match state from simulation
   matchState = signal<MatchState | null>(null);
@@ -66,6 +125,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private finalKeyEvents: MatchEvent[] = [];
   private finalMatchStats: MatchStatistics | null = null;
   private playerTeamLookup = new Map<string, TeamSide>();
+  private finalFormationSnapshotKey = '';
+  private homeRemovedPlayers = signal<Map<string, { status: Role; fatigue: number }>>(new Map());
+  private awayRemovedPlayers = signal<Map<string, { status: Role; fatigue: number }>>(new Map());
 
   constructor() {
     // Effect to load match data when matchId changes
@@ -100,8 +162,29 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     if (!match) return;
 
     this.match.set(match);
-    this.homeTeam.set(this.gameService.getTeam(match.homeTeamId) ?? null);
-    this.awayTeam.set(this.gameService.getTeam(match.awayTeamId) ?? null);
+    const home = this.gameService.getTeam(match.homeTeamId) ?? null;
+    const away = this.gameService.getTeam(match.awayTeamId) ?? null;
+    this.homeTeam.set(home);
+    this.awayTeam.set(away);
+
+    const playedFormationKey = `${match.id}:${match.keyEvents?.length ?? 0}`;
+    if (home && away) {
+      if (match.played && !this.isSimulating()) {
+        if (this.finalFormationSnapshotKey !== playedFormationKey) {
+          this.buildFormationDots(home, away);
+          this.applyFinalFormationFromEvents(match, home, away);
+          this.finalFormationSnapshotKey = playedFormationKey;
+        }
+      } else {
+        this.buildFormationDots(home, away);
+        this.clearFinalFormationSnapshotKey();
+      }
+    } else {
+      this.homeFormationDots.set([]);
+      this.awayFormationDots.set([]);
+      this.clearFinalFormationSnapshotKey();
+    }
+    this.clearActiveEventState();
 
     // If match already played, show results immediately unless a live replay is in progress.
     if (match.played) {
@@ -179,8 +262,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.keyEvents.set([]);
     this.matchStats.set(null);
     this.commentary.set([]);
+    this.clearActiveEventState();
+    this.clearFinalFormationSnapshotKey();
 
     this.buildPlayerTeamLookup(home.id, away.id);
+    this.buildFormationDots(home, away);
 
     // Keep summary visible while replay state streams in.
     this.displayMatch.set({
@@ -250,6 +336,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         text,
         type: EventType.PASS, // Generic type for non-event commentary
         importance: EventImportance.LOW,
+        location: null,
+        teamSide: null,
+        playerIds: [],
         isNew: false
       });
     });
@@ -286,6 +375,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         text: `${event.time}': ${text}`,
         type: event.type,
         importance,
+        location: { ...event.location },
+        teamSide: this.getEventTeamSide(event, homeTeam, awayTeam),
+        playerIds: [...event.playerIds],
         isNew: false
       });
     };
@@ -315,6 +407,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         text: this.commentaryService.generateHalfTimeCommentary(halfTimeHomeScore, halfTimeAwayScore, firstHalfEvents),
         type: EventType.PASS,
         importance: EventImportance.MEDIUM,
+        location: null,
+        teamSide: null,
+        playerIds: [],
         isNew: false
       });
     }
@@ -329,6 +424,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       text: this.commentaryService.generateFullTimeCommentary(matchState.homeScore, matchState.awayScore, matchState.events),
       type: EventType.PASS,
       importance: EventImportance.HIGH,
+      location: null,
+      teamSide: null,
+      playerIds: [],
       isNew: false
     });
     this.halfTimeIndex = this.allCommentary.findIndex(item => item.id === 'halftime');
@@ -368,6 +466,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       const item = this.allCommentary[this.commentaryIndex];
       item.isNew = true;
       this.currentMinute.set(item.minute);
+      this.clearActiveEventState();
       this.commentary.update(items => [item, ...items]);
       
       setTimeout(() => {
@@ -387,6 +486,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     // Update current minute and score based on the commentary
     this.currentMinute.set(item.minute);
+    this.activeEventLocation.set(item.location ? { ...item.location } : null);
+    this.activeEventTeamSide.set(item.teamSide ?? null);
+    this.activeEventPlayerIds.set([...item.playerIds]);
+    this.activeEventInitiatorPlayerId.set(item.playerIds[0] ?? null);
+    this.applyCommentaryPitchState(item);
 
     this.updateDisplayMatchAtMinute(item.minute);
 
@@ -431,6 +535,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.isSimulating.set(false);
     this.isFinished.set(true);
     this.showStats.set(true);
+    this.clearActiveEventState();
 
     const match = this.match();
     const matchState = this.matchState();
@@ -448,6 +553,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         keyEvents: this.finalKeyEvents,
         matchStats: this.finalMatchStats ?? undefined
       });
+
+      // Keep the final on-pitch shape stable after completion without replaying key events repeatedly.
+      this.finalFormationSnapshotKey = `${match.id}:${this.finalKeyEvents.length}`;
     }
   }
 
@@ -527,6 +635,400 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }
 
     return null;
+  }
+
+  private getEventTeamSide(event: Pick<PlayByPlayEvent, 'playerIds'>, homeTeam: Team, awayTeam: Team): TeamSide | null {
+    const actorId = event.playerIds[0];
+    return this.getTeamSideForPlayerId(actorId, homeTeam, awayTeam);
+  }
+
+  private getTeamSideForPlayerId(actorId: string | undefined, homeTeam: Team, awayTeam: Team): TeamSide | null {
+    if (!actorId) {
+      return null;
+    }
+
+    const cachedTeam = this.playerTeamLookup.get(actorId);
+    if (cachedTeam) {
+      return cachedTeam;
+    }
+
+    const actor = this.gameService.getPlayer(actorId);
+    if (!actor) {
+      return null;
+    }
+
+    if (actor.teamId === homeTeam.id) {
+      this.playerTeamLookup.set(actorId, TeamSide.HOME);
+      return TeamSide.HOME;
+    }
+
+    if (actor.teamId === awayTeam.id) {
+      this.playerTeamLookup.set(actorId, TeamSide.AWAY);
+      return TeamSide.AWAY;
+    }
+
+    return null;
+  }
+
+  private applyFinalFormationFromEvents(match: Match, homeTeam: Team, awayTeam: Team): void {
+    const formationRelevantTypes = new Set<EventType>([
+      EventType.SUBSTITUTION,
+      EventType.GOAL,
+      EventType.YELLOW_CARD,
+      EventType.RED_CARD
+    ]);
+    const events = [...(match.keyEvents ?? [])]
+      .filter((event) => formationRelevantTypes.has(event.type))
+      .sort((left, right) => left.time - right.time);
+
+    for (const event of events) {
+      if (!event.playerIds?.length) {
+        continue;
+      }
+
+      const teamSide = this.getTeamSideForPlayerId(event.playerIds[0], homeTeam, awayTeam);
+      if (!teamSide) {
+        continue;
+      }
+
+      this.applyCommentaryPitchState({
+        id: event.id,
+        minute: event.time,
+        text: '',
+        type: event.type,
+        importance: event.importance,
+        location: event.location ?? null,
+        teamSide,
+        playerIds: [...event.playerIds],
+        isNew: false
+      });
+    }
+  }
+
+  private buildFormationDots(homeTeam: Team, awayTeam: Team) {
+    this.homeTeamColor.set(this.getTeamColor(homeTeam));
+    this.awayTeamColor.set(this.getTeamColor(awayTeam));
+    this.homeFormationDots.set(this.buildDotsForTeam(homeTeam, TeamSide.HOME, false));
+    this.awayFormationDots.set(this.buildDotsForTeam(awayTeam, TeamSide.AWAY, true));
+    this.homeRemovedPlayers.set(new Map());
+    this.awayRemovedPlayers.set(new Map());
+  }
+
+  getPitchPoint(coords: Coordinates, teamSide?: TeamSide): PitchPoint {
+    const left = 100 - coords.x;
+    let top: number;
+
+    if (teamSide === TeamSide.AWAY) {
+      top = 50 + coords.y / 2;
+    } else {
+      top = coords.y / 2;
+    }
+
+    return { left, top };
+  }
+
+  private buildDotsForTeam(team: Team, teamSide: TeamSide, mirrorYAxis: boolean): FormationDot[] {
+    const formation = this.fieldService.assignPlayersToFormation(team);
+    if (!formation) {
+      return [];
+    }
+
+    const playersById = new Map(this.gameService.getPlayersForTeam(team.id).map((player) => [player.id, player]));
+
+    return formation.positions
+      .map((position, index) => {
+        const player = playersById.get(position.playerId);
+        const label = player?.name ?? position.role;
+        const y = mirrorYAxis ? 100 - position.coordinates.y : position.coordinates.y;
+
+        return {
+          id: `${team.id}-${position.slotId}`,
+          slotId: position.slotId,
+          slotLabel: position.role,
+          tacticOrder: index,
+          teamSide,
+          playerId: position.playerId,
+          label: this.toInitials(label),
+          fullName: label,
+          x: position.coordinates.x,
+          y,
+          minuteEntered: 0,
+          goals: 0,
+          yellowCards: 0,
+          redCards: 0,
+        };
+      })
+      .sort((left, right) => left.y - right.y);
+  }
+
+  isDotInvolved(dot: FormationDot): boolean {
+    return this.activeEventPlayerIds().includes(dot.playerId);
+  }
+
+  isDotInitiator(dot: FormationDot): boolean {
+    const initiatorId = this.activeEventInitiatorPlayerId();
+    return !!initiatorId && dot.playerId === initiatorId;
+  }
+
+  isDotSupportingParticipant(dot: FormationDot): boolean {
+    return this.isDotInvolved(dot) && !this.isDotInitiator(dot);
+  }
+
+  getDotFatigue(dot: FormationDot): number {
+    const player = this.gameService.getPlayer(dot.playerId);
+    if (!player) {
+      return 100;
+    }
+
+    const minutesOnPitch = Math.max(0, this.currentMinute() - dot.minuteEntered);
+    const endurancePenalty = (100 - player.physical.endurance) / 100;
+    const fatigueRatePerMinute =
+      WatchGameComponent.BASE_FATIGUE_RATE_PER_MINUTE
+      + (endurancePenalty * WatchGameComponent.ENDURANCE_PENALTY_FATIGUE_MULTIPLIER);
+    const fatigueLoad = this.clampNumber(Math.round(minutesOnPitch * fatigueRatePerMinute), 0, 100);
+    return 100 - fatigueLoad;
+  }
+
+  getCardBadge(dot: FormationDot): string | null {
+    if (dot.redCards > 0) {
+      return dot.redCards > 1 ? `R${dot.redCards}` : 'R';
+    }
+
+    if (dot.yellowCards > 0) {
+      return dot.yellowCards > 1 ? `Y${dot.yellowCards}` : 'Y';
+    }
+
+    return null;
+  }
+
+  getTeamLineup(side: TeamSide): TeamLineupEntry[] {
+    const team = side === TeamSide.HOME ? this.homeTeam() : this.awayTeam();
+    if (!team) {
+      return [];
+    }
+
+    const onFieldDots = side === TeamSide.HOME ? this.homeFormationDots() : this.awayFormationDots();
+    const onFieldByPlayerId = new Map(onFieldDots.map((dot) => [dot.playerId, dot]));
+    const removedPlayers = side === TeamSide.HOME ? this.homeRemovedPlayers() : this.awayRemovedPlayers();
+
+    return this.gameService
+      .getPlayersForTeam(team.id)
+      .filter((player) => player.role !== Role.RESERVE)
+      .map((player: Player) => {
+        const dot = onFieldByPlayerId.get(player.id);
+        const removed = removedPlayers.get(player.id);
+        let playerStatus: Role;
+        let fatigue: number;
+
+        if (dot) {
+          playerStatus = Role.STARTER;
+          fatigue = this.getDotFatigue(dot);
+        } else if (removed) {
+          playerStatus = removed.status;
+          fatigue = removed.fatigue;
+        } else {
+          playerStatus = Role.BENCH;
+          fatigue = 100;
+        }
+
+        return {
+          playerId: player.id,
+          slotLabel: dot?.slotLabel ?? null,
+          tacticOrder: dot?.tacticOrder ?? 999,
+          role: player.position,
+          name: player.name,
+          onField: !!dot,
+          fatigue,
+          playerStatus,
+        };
+      })
+      .sort((left, right) => {
+        if (left.onField !== right.onField) {
+          return left.onField ? -1 : 1;
+        }
+
+        if (left.onField && right.onField) {
+          const tacticOrderDiff = left.tacticOrder - right.tacticOrder;
+          if (tacticOrderDiff !== 0) {
+            return tacticOrderDiff;
+          }
+        }
+
+        const roleOrderDiff = this.getRoleSortOrder(left.role) - this.getRoleSortOrder(right.role);
+        if (roleOrderDiff !== 0) {
+          return roleOrderDiff;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+  }
+
+  getOnFieldLineup(side: TeamSide): TeamLineupEntry[] {
+    return this.getTeamLineup(side).filter((entry) => entry.onField);
+  }
+
+  getBenchLineup(side: TeamSide): TeamLineupEntry[] {
+    return this.getTeamLineup(side).filter((entry) => !entry.onField);
+  }
+
+  getLineupBarColor(fatigue: number): string {
+    if (fatigue >= this.HIGH_FATIGUE_THRESHOLD) {
+      return this.HIGH_FATIGUE_BAR_COLOR;
+    }
+
+    if (fatigue >= this.MEDIUM_FATIGUE_THRESHOLD) {
+      return this.MEDIUM_FATIGUE_BAR_COLOR;
+    }
+
+    return this.LOW_FATIGUE_BAR_COLOR;
+  }
+
+  getSlotLabelInitials(label: string | null): string {
+    if (!label) {
+      return '';
+    }
+
+    const words = label.match(/[A-Za-z]+/g) ?? [];
+    return words
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase();
+  }
+
+  private getTeamColor(team: Team): string {
+    return this.teamColorsService.getPalette(team.name).solidHex;
+  }
+
+  private clearFinalFormationSnapshotKey() {
+    this.finalFormationSnapshotKey = '';
+  }
+
+  private clearActiveEventState() {
+    this.activeEventLocation.set(null);
+    this.activeEventTeamSide.set(null);
+    this.activeEventPlayerIds.set([]);
+    this.activeEventInitiatorPlayerId.set(null);
+  }
+
+  private applyCommentaryPitchState(item: CommentaryItem) {
+    if (item.type === EventType.SUBSTITUTION && item.playerIds.length >= 2 && item.teamSide) {
+      this.replaceFormationDot(item.teamSide, item.playerIds[0], item.playerIds[1], item.minute);
+      return;
+    }
+
+    const primaryPlayerId = item.playerIds[0];
+    if (!primaryPlayerId || !item.teamSide) {
+      return;
+    }
+
+    switch (item.type) {
+      case EventType.GOAL:
+        this.incrementDotCounter(item.teamSide, primaryPlayerId, 'goals');
+        break;
+      case EventType.YELLOW_CARD:
+        this.incrementDotCounter(item.teamSide, primaryPlayerId, 'yellowCards');
+        break;
+      case EventType.RED_CARD:
+        this.incrementDotCounter(item.teamSide, primaryPlayerId, 'redCards');
+        this.dismissPlayerFromPitch(item.teamSide, primaryPlayerId);
+        break;
+    }
+  }
+
+  private dismissPlayerFromPitch(teamSide: TeamSide, playerId: string) {
+    const currentDots = teamSide === TeamSide.HOME ? this.homeFormationDots() : this.awayFormationDots();
+    const dot = currentDots.find((d) => d.playerId === playerId);
+    if (!dot) {
+      return;
+    }
+
+    const fatigue = this.getDotFatigue(dot);
+    const removedSignal = teamSide === TeamSide.HOME ? this.homeRemovedPlayers : this.awayRemovedPlayers;
+    removedSignal.update((m) => new Map([...m, [playerId, { status: Role.DISMISSED, fatigue }]]));
+
+    const targetSignal = teamSide === TeamSide.HOME ? this.homeFormationDots : this.awayFormationDots;
+    targetSignal.update((dots) => dots.filter((d) => d.playerId !== playerId));
+  }
+
+  private incrementDotCounter(teamSide: TeamSide, playerId: string, field: 'goals' | 'yellowCards' | 'redCards') {
+    this.updateDotsForTeam(teamSide, (dot) => {
+      if (dot.playerId !== playerId) {
+        return dot;
+      }
+
+      return {
+        ...dot,
+        [field]: dot[field] + 1
+      };
+    });
+  }
+
+  private replaceFormationDot(teamSide: TeamSide, outgoingPlayerId: string, incomingPlayerId: string, minute: number) {
+    const incomingPlayer = this.gameService.getPlayer(incomingPlayerId);
+
+    const currentDots = teamSide === TeamSide.HOME ? this.homeFormationDots() : this.awayFormationDots();
+    const outgoingDot = currentDots.find((d) => d.playerId === outgoingPlayerId);
+    if (outgoingDot) {
+      const fatigue = this.getDotFatigue(outgoingDot);
+      const removedSignal = teamSide === TeamSide.HOME ? this.homeRemovedPlayers : this.awayRemovedPlayers;
+      removedSignal.update((m) => new Map([...m, [outgoingPlayerId, { status: Role.SUBSTITUTED_OUT, fatigue }]]));
+    }
+
+    this.updateDotsForTeam(teamSide, (dot) => {
+      if (dot.playerId !== outgoingPlayerId) {
+        return dot;
+      }
+
+      const fullName = incomingPlayer?.name ?? 'Substitute';
+      return {
+        ...dot,
+        playerId: incomingPlayerId,
+        label: this.toInitials(fullName),
+        fullName,
+        minuteEntered: minute,
+        goals: 0,
+        yellowCards: 0,
+        redCards: 0,
+      };
+    });
+  }
+
+  private updateDotsForTeam(teamSide: TeamSide, updater: (dot: FormationDot) => FormationDot) {
+    const targetSignal = teamSide === TeamSide.HOME ? this.homeFormationDots : this.awayFormationDots;
+    targetSignal.update((dots) => dots.map(updater));
+  }
+
+  private toInitials(name: string): string {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return '?';
+    }
+
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+
+  private clampNumber(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  private getRoleSortOrder(role: string): number {
+    switch (role) {
+      case 'GK':
+        return 0;
+      case 'DEF':
+        return 1;
+      case 'MID':
+        return 2;
+      case 'FWD':
+        return 3;
+      default:
+        return 99;
+    }
   }
 
   getEventIcon(type: EventType): string {

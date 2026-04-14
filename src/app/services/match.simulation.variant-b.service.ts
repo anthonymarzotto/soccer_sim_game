@@ -106,6 +106,7 @@ export class MatchSimulationVariantBService {
   private fieldService = inject(FieldService);
   private rng = inject(RngService);
   private readonly maxSubstitutionsPerTeam = 5;
+  private readonly goalkeeperStaminaDrainMultiplier = 0.01;
 
   private activeTuning: VariantBTuningConfig = DEFAULT_VARIANT_B_TUNING;
   private activeMatchShape: MatchShapeState | null = null;
@@ -197,7 +198,7 @@ export class MatchSimulationVariantBService {
         substitutionsUsed
       );
 
-      this.normalizeFatigueForTickCount(fatigue, ticks);
+      this.normalizeFatigueForTickCount(fatigue, ticks, rosters);
     }
 
     this.activeMatchShape = null;
@@ -219,7 +220,7 @@ export class MatchSimulationVariantBService {
     const newState = { ...state };
     newState.currentMinute = minute;
 
-    this.updateFatigue(fatigue, minute);
+    this.updateFatigue(fatigue, minute, rosters);
 
     const currentTeam = newState.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
     const teamPlayers = currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
@@ -668,7 +669,8 @@ export class MatchSimulationVariantBService {
 
   private normalizeFatigueForTickCount(
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
-    ticks: number
+    ticks: number,
+    rosters: ResolvedRosters
   ): void {
     if (ticks <= 1) {
       return;
@@ -678,16 +680,25 @@ export class MatchSimulationVariantBService {
     const fatiguePerTick = 0.5;
     const staminaPerTick = 0.3;
 
-    const normalize = (entries: PlayerFatigue[]) => {
+    const homeById = new Map(rosters.homePlayers.map(player => [player.id, player]));
+    const awayById = new Map(rosters.awayPlayers.map(player => [player.id, player]));
+
+    const normalize = (entries: PlayerFatigue[], playersById: Map<string, Player>) => {
       for (const entry of entries) {
+        const player = playersById.get(entry.playerId);
+        if (!player || player.role !== Role.STARTER) {
+          continue;
+        }
+
+        const staminaMultiplier = player.position === PositionEnum.GOALKEEPER ? this.goalkeeperStaminaDrainMultiplier : 1;
         entry.fatigueLevel = Math.max(0, entry.fatigueLevel - (fatiguePerTick * excessTicks));
-        entry.currentStamina = Math.min(100, entry.currentStamina + (staminaPerTick * excessTicks));
+        entry.currentStamina = Math.min(100, entry.currentStamina + (staminaPerTick * staminaMultiplier * excessTicks));
         entry.performanceModifier = Math.max(0.5, 1.0 - (entry.fatigueLevel / 200));
       }
     };
 
-    normalize(fatigue.home);
-    normalize(fatigue.away);
+    normalize(fatigue.home, homeById);
+    normalize(fatigue.away, awayById);
   }
 
   private handlePass(
@@ -1464,14 +1475,30 @@ export class MatchSimulationVariantBService {
     return sortedByQuality[0] ?? null;
   }
 
-  private updateFatigue(fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }, _minute: number): void {
-    Object.values(fatigue).forEach(teamFatigue => {
+  private updateFatigue(
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    _minute: number,
+    rosters: ResolvedRosters
+  ): void {
+    const homeById = new Map(rosters.homePlayers.map(player => [player.id, player]));
+    const awayById = new Map(rosters.awayPlayers.map(player => [player.id, player]));
+
+    const applyFatigue = (teamFatigue: PlayerFatigue[], playersById: Map<string, Player>) => {
       teamFatigue.forEach(entry => {
+        const player = playersById.get(entry.playerId);
+        if (!player || player.role !== Role.STARTER) {
+          return;
+        }
+
+        const staminaMultiplier = player.position === PositionEnum.GOALKEEPER ? this.goalkeeperStaminaDrainMultiplier : 1;
         entry.fatigueLevel = Math.min(100, entry.fatigueLevel + 0.5);
-        entry.currentStamina = Math.max(0, entry.currentStamina - 0.3);
+        entry.currentStamina = Math.max(0, entry.currentStamina - (0.3 * staminaMultiplier));
         entry.performanceModifier = Math.max(0.5, 1 - (entry.fatigueLevel / 200));
       });
-    });
+    };
+
+    applyFatigue(fatigue.home, homeById);
+    applyFatigue(fatigue.away, awayById);
   }
 
   private updatePossessionStats(state: MatchState, homePlayers: Player[]): void {
@@ -1535,7 +1562,8 @@ export class MatchSimulationVariantBService {
     const attackingY = isHomeInPossession ? state.ballPossession.location.y : 100 - state.ballPossession.location.y;
     const lateralDistance = Math.abs(state.ballPossession.location.x - 50);
     const opponentPlayers = isHomeInPossession ? rosters.awayPlayers : rosters.homePlayers;
-    const goalkeeper = opponentPlayers.find(player => player.position === PositionEnum.GOALKEEPER);
+    const onFieldOpponentPlayers = opponentPlayers.filter(player => player.role === Role.STARTER);
+    const goalkeeper = onFieldOpponentPlayers.find(player => player.position === PositionEnum.GOALKEEPER);
     const fatigueBucket = isHomeInPossession ? fatigue.home : fatigue.away;
     const shooterFatigue = fatigueBucket.find(entry => entry.playerId === shooter.id);
     const currentTeam: TeamSide = isHomeInPossession ? TeamSide.HOME : TeamSide.AWAY;
@@ -1637,7 +1665,8 @@ export class MatchSimulationVariantBService {
     state.ballPossession.teamId = isHomeInPossession ? awayTeam.id : homeTeam.id;
     const newOwnerPool = state.ballPossession.teamId === homeTeam.id ? rosters.homePlayers : rosters.awayPlayers;
     const starters = newOwnerPool.filter(player => player.role === Role.STARTER);
-    const newOwner = starters[Math.floor(this.rng.random() * Math.max(starters.length, 1))] ?? newOwnerPool[0];
+    const selectablePlayers = starters.length > 0 ? starters : newOwnerPool;
+    const newOwner = selectablePlayers[Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))] ?? newOwnerPool[0];
     state.ballPossession.playerWithBall = newOwner.id;
     state.ballPossession.passes = 0;
   }
