@@ -243,13 +243,36 @@
     <!-- Commentary Feed -->
     @if (commentary().length > 0) {
       <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl mt-4">
-        <div class="p-4 border-b border-zinc-800">
+        <div class="p-4 border-b border-zinc-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-lg font-semibold text-white flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             Match Commentary
           </h2>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-zinc-400">{{ commentaryPlaybackSpeed() | number: '1.1-1' }}x</span>
+              <input
+                #commentarySpeedInput
+                type="range"
+                min="0.1"
+                max="5"
+                step="0.1"
+                [value]="commentaryPlaybackSpeed()"
+                (input)="setCommentaryPlaybackSpeed(+commentarySpeedInput.value)"
+                class="h-2 min-w-32 rounded-lg bg-zinc-700 accent-emerald-500 appearance-none cursor-pointer">
+            </div>
+
+            <button
+              type="button"
+              class="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition-colors enabled:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+              [disabled]="!canToggleCommentaryPlayback()"
+              (click)="toggleCommentaryPlayback()">
+              {{ commentaryPlaybackSpeed() === 0 ? 'Resume' : 'Pause' }}
+            </button>
+          </div>
         </div>
         
         <div class="max-h-96 overflow-y-auto p-4 space-y-3">

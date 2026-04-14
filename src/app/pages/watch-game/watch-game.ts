@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, OnInit, OnDestroy, effect } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
@@ -58,7 +59,7 @@ interface TeamLineupEntry {
 @Component({
   selector: 'app-watch-game',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, MatchSummaryComponent],
+  imports: [RouterLink, MatchSummaryComponent, DecimalPipe],
   templateUrl: './watch-game.html',
 })
 export class WatchGameComponent implements OnInit, OnDestroy {
@@ -66,6 +67,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private static readonly DEFAULT_COMMENTARY_DELAY_MS = 1000;
   private static readonly HIGH_IMPORTANCE_DELAY_MS = 1800;
   private static readonly RESUME_DELAY_MS = 900;
+  private static readonly MIN_COMMENTARY_DELAY_MS = 120;
+  private static readonly MIN_SPEED = 0.1;
+  private static readonly MAX_SPEED = 5;
   private static readonly NEW_COMMENTARY_ANIMATION_MS = 500;
   private static readonly BASE_FATIGUE_RATE_PER_MINUTE = 0.42;
   private static readonly ENDURANCE_PENALTY_FATIGUE_MULTIPLIER = 0.35;
@@ -117,9 +121,16 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   // Display state - only show stats after commentary completes
   showStats = signal<boolean>(false);
   validationError = signal<string | null>(null);
+  commentaryPlaybackSpeed = signal<number>(1);
+  private pausedSpeed: number | null = null;
   
   // Replay scheduling
   private commentaryTimer: ReturnType<typeof setTimeout> | null = null;
+  private commentaryTimerStartedAt: number | null = null;
+  private commentaryTimerDelayMs: number | null = null;
+  private commentaryTimerBaseDelayMs: number | null = null;
+  private pausedCommentaryDelayMs: number | null = null;
+  private pausedCommentaryBaseDelayMs: number | null = null;
   private allCommentary: CommentaryItem[] = [];
   private commentaryIndex = 0;
   private halfTimeIndex = -1;
@@ -263,6 +274,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.keyEvents.set([]);
     this.matchStats.set(null);
     this.commentary.set([]);
+    this.commentaryPlaybackSpeed.set(1);
+    this.pausedSpeed = null;
+    this.pausedCommentaryDelayMs = null;
+    this.pausedCommentaryBaseDelayMs = null;
     this.clearActiveEventState();
     this.clearFinalFormationSnapshotKey();
 
@@ -443,18 +458,24 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       this.commentaryIndex = 0;
     }
 
-    this.scheduleNextCommentary(resetIndex ? 0 : WatchGameComponent.RESUME_DELAY_MS);
+    this.scheduleNextCommentary(
+      resetIndex ? 0 : this.scaleCommentaryDelay(WatchGameComponent.RESUME_DELAY_MS),
+      resetIndex ? 0 : WatchGameComponent.RESUME_DELAY_MS
+    );
   }
 
-  private scheduleNextCommentary(delayMs: number) {
+  private scheduleNextCommentary(delayMs: number, baseDelayMs: number = delayMs) {
     if (this.commentaryTimer) {
       return;
     }
 
+    this.commentaryTimerStartedAt = Date.now();
+    this.commentaryTimerDelayMs = Math.max(0, Math.round(delayMs));
+    this.commentaryTimerBaseDelayMs = Math.max(0, Math.round(baseDelayMs));
     this.commentaryTimer = setTimeout(() => {
-      this.commentaryTimer = null;
+      this.clearCommentaryTimerState();
       this.addNextCommentary();
-    }, delayMs);
+    }, this.commentaryTimerDelayMs);
   }
 
   private addNextCommentary() {
@@ -479,6 +500,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       
       this.commentaryIndex++;
       this.stopCommentaryFeed();
+      this.commentaryPlaybackSpeed.set(this.pausedSpeed ?? 1);
+      this.pausedSpeed = null;
+      this.pausedCommentaryDelayMs = null;
+      this.pausedCommentaryBaseDelayMs = null;
       this.isHalfTime.set(true);
       return;
     }
@@ -507,23 +532,61 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }, WatchGameComponent.NEW_COMMENTARY_ANIMATION_MS);
 
     this.commentaryIndex++;
-    this.scheduleNextCommentary(this.getCommentaryDelay(item));
+    const baseDelay = this.getBaseCommentaryDelay(item);
+    this.scheduleNextCommentary(this.scaleCommentaryDelay(baseDelay), baseDelay);
   }
 
   continueAfterHalfTime() {
     this.isHalfTime.set(false);
+    this.commentaryPlaybackSpeed.set(this.pausedSpeed ?? 1);
+    this.pausedSpeed = null;
+    this.pausedCommentaryDelayMs = null;
+    this.pausedCommentaryBaseDelayMs = null;
     // Continue from where we left off (don't reset index)
     this.startCommentaryFeed(false);
+  }
+
+  setCommentaryPlaybackSpeed(speed: number) {
+    const clampedSpeed = Math.max(
+      WatchGameComponent.MIN_SPEED,
+      Math.min(speed, WatchGameComponent.MAX_SPEED)
+    );
+
+    const previousSpeed = this.commentaryPlaybackSpeed();
+    if (Math.abs(previousSpeed - clampedSpeed) < 0.01) {
+      return;
+    }
+
+    this.commentaryPlaybackSpeed.set(clampedSpeed);
+    this.rescheduleCommentaryDelayAfterSpeedChange(previousSpeed, clampedSpeed);
+  }
+
+  toggleCommentaryPlayback() {
+    if (this.isFinished() || this.isHalfTime() || !this.isSimulating()) {
+      return;
+    }
+
+    if (this.commentaryPlaybackSpeed() === 0) {
+      this.resumeCommentaryPlayback();
+      return;
+    }
+
+    this.pauseCommentaryPlayback();
+  }
+
+  canToggleCommentaryPlayback(): boolean {
+    return this.isSimulating() && !this.isFinished() && !this.isHalfTime();
   }
 
   private stopCommentaryFeed() {
     if (this.commentaryTimer) {
       clearTimeout(this.commentaryTimer);
-      this.commentaryTimer = null;
     }
+
+    this.clearCommentaryTimerState();
   }
 
-  private getCommentaryDelay(item: CommentaryItem): number {
+  private getBaseCommentaryDelay(item: CommentaryItem): number {
     if (item.importance === EventImportance.HIGH || item.importance === EventImportance.MEDIUM) {
       return WatchGameComponent.HIGH_IMPORTANCE_DELAY_MS;
     }
@@ -531,11 +594,99 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     return WatchGameComponent.DEFAULT_COMMENTARY_DELAY_MS;
   }
 
+  private scaleCommentaryDelay(baseDelayMs: number): number {
+    const speed = Math.max(this.commentaryPlaybackSpeed(), 0.1);
+    const scaledDelay = Math.round(baseDelayMs / speed);
+    return Math.max(WatchGameComponent.MIN_COMMENTARY_DELAY_MS, scaledDelay);
+  }
+
+  private pauseCommentaryPlayback() {
+    if (this.commentaryPlaybackSpeed() === 0) {
+      return;
+    }
+
+    this.pausedSpeed = this.commentaryPlaybackSpeed();
+    this.commentaryPlaybackSpeed.set(0);
+
+    if (!this.commentaryTimer || this.commentaryTimerDelayMs === null || this.commentaryTimerStartedAt === null) {
+      return;
+    }
+
+    const elapsedMs = Math.max(0, Date.now() - this.commentaryTimerStartedAt);
+    const remainingMs = Math.max(0, this.commentaryTimerDelayMs - elapsedMs);
+    this.pausedCommentaryDelayMs = remainingMs;
+    this.pausedCommentaryBaseDelayMs = this.commentaryTimerBaseDelayMs;
+    clearTimeout(this.commentaryTimer);
+    this.clearCommentaryTimerState();
+  }
+
+  private resumeCommentaryPlayback() {
+    if (this.commentaryPlaybackSpeed() > 0) {
+      return;
+    }
+
+    this.commentaryPlaybackSpeed.set(this.pausedSpeed ?? 1);
+    this.pausedSpeed = null;
+
+    if (this.commentaryTimer || this.isHalfTime() || this.isFinished()) {
+      return;
+    }
+
+    const delayMs = this.pausedCommentaryDelayMs ?? this.scaleCommentaryDelay(WatchGameComponent.RESUME_DELAY_MS);
+    const baseDelayMs = this.pausedCommentaryBaseDelayMs ?? WatchGameComponent.RESUME_DELAY_MS;
+    this.pausedCommentaryDelayMs = null;
+    this.pausedCommentaryBaseDelayMs = null;
+    this.scheduleNextCommentary(delayMs, baseDelayMs);
+  }
+
+  private rescheduleCommentaryDelayAfterSpeedChange(previousSpeed: number, nextSpeed: number) {
+    if (this.commentaryPlaybackSpeed() === 0) {
+      if (this.pausedCommentaryBaseDelayMs === null || this.pausedCommentaryDelayMs === null) {
+        return;
+      }
+
+      const previousTotalDelay = Math.max(
+        WatchGameComponent.MIN_COMMENTARY_DELAY_MS,
+        Math.round(this.pausedCommentaryBaseDelayMs / Math.max(previousSpeed, 0.1))
+      );
+      const elapsedBeforePause = Math.max(0, previousTotalDelay - this.pausedCommentaryDelayMs);
+      const nextTotalDelay = this.scaleCommentaryDelay(this.pausedCommentaryBaseDelayMs);
+      this.pausedCommentaryDelayMs = Math.max(0, nextTotalDelay - elapsedBeforePause);
+      return;
+    }
+
+    if (!this.commentaryTimer || this.commentaryTimerStartedAt === null || this.commentaryTimerBaseDelayMs === null) {
+      return;
+    }
+
+    const elapsedMs = Math.max(0, Date.now() - this.commentaryTimerStartedAt);
+    const nextTotalDelay = Math.max(
+      WatchGameComponent.MIN_COMMENTARY_DELAY_MS,
+      Math.round(this.commentaryTimerBaseDelayMs / Math.max(nextSpeed, 0.1))
+    );
+    const remainingMs = Math.max(0, nextTotalDelay - elapsedMs);
+    const baseDelayMs = this.commentaryTimerBaseDelayMs;
+    clearTimeout(this.commentaryTimer);
+    this.clearCommentaryTimerState();
+    this.scheduleNextCommentary(remainingMs, baseDelayMs);
+  }
+
+  private clearCommentaryTimerState() {
+    this.commentaryTimer = null;
+    this.commentaryTimerStartedAt = null;
+    this.commentaryTimerDelayMs = null;
+    this.commentaryTimerBaseDelayMs = null;
+  }
+
   private finishMatch() {
     this.stopCommentaryFeed();
     this.gameService.endSingleMatchSimulationSession();
     this.isSimulating.set(false);
     this.isFinished.set(true);
+    this.commentaryPlaybackSpeed.set(1);
+    this.pausedSpeed = null;
+    this.pausedCommentaryDelayMs = null;
+    this.pausedCommentaryBaseDelayMs = null;
     this.showStats.set(true);
     this.clearActiveEventState();
 
