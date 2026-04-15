@@ -30,49 +30,120 @@
 
     <!-- Pitch View -->
     @if (homeFormationDots().length > 0 || awayFormationDots().length > 0) {
-      <div class="mt-6 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-        <div class="p-4 border-b border-zinc-800 flex items-start justify-between gap-3">
-          <div class="flex flex-col gap-2">
-            @if (!isSimulating() && !isFinished()) {
-              <button
-                (click)="startSimulation()"
-                [disabled]="!match() || match()?.played"
-                class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-                Start Simulation
-              </button>
-            }
+      <div class="mt-4 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="flex flex-col h-full">
+          <div class="p-4 pb-3">
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-wrap items-center gap-3">
+                @if (!isSimulating() && !isFinished()) {
+                  <button
+                    (click)="startSimulation()"
+                    [disabled]="!match() || match()?.played"
+                    class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Start Simulation
+                  </button>
+                } @else if (isHalfTime()) {
+                  <button
+                    (click)="continueAfterHalfTime()"
+                    class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Continue to Second Half
+                  </button>
+                } @else if (isSimulating()) {
+                  <button
+                    type="button"
+                    class="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    [disabled]="!canToggleCommentaryPlayback()"
+                    [title]="commentaryPlaybackSpeed() === 0 ? 'Resume' : 'Pause'"
+                    [attr.aria-label]="commentaryPlaybackSpeed() === 0 ? 'Resume' : 'Pause'"
+                    (click)="toggleCommentaryPlayback()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      @if (commentaryPlaybackSpeed() === 0) {
+                        <path d="M8 5v14l11-7z"/>
+                      } @else {
+                        <path d="M6 5h4v14H6zM14 5h4v14h-4z"/>
+                      }
+                    </svg>
+                  </button>
+                }
 
-            @if (isHalfTime()) {
-              <button
-                (click)="continueAfterHalfTime()"
-                class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-                Continue to Second Half
-              </button>
-            }
-
-            @if (validationError() && !isSimulating() && !isFinished()) {
-              <div class="rounded-lg border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-200 max-w-sm">
-                {{ validationError() }}
+                @if (isSimulating()) {
+                  <div class="ml-auto flex items-center gap-2">
+                    <span class="text-xs font-medium text-zinc-400">{{ commentaryPlaybackSpeed() | number: '1.1-1' }}x</span>
+                    <input
+                      #commentarySpeedInput
+                      type="range"
+                      min="0.1"
+                      max="5"
+                      step="0.1"
+                      [value]="commentaryPlaybackSpeed()"
+                      (input)="setCommentaryPlaybackSpeed(+commentarySpeedInput.value)"
+                      class="h-2 w-32 rounded-lg bg-zinc-700 accent-emerald-500 appearance-none cursor-pointer">
+                  </div>
+                }
               </div>
-            }
+
+              <div class="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0 flex items-center gap-2 overflow-hidden">
+                    @if (currentCommentaryItem(); as item) {
+                      @if (getEventIcon(item.type)) {
+                        <span class="shrink-0 text-sm leading-none">{{ getEventIcon(item.type) }}</span>
+                      }
+                      <p class="text-xs text-zinc-200 whitespace-nowrap overflow-hidden text-ellipsis">{{ item.text }}</p>
+                    } @else {
+                      <p class="text-xs text-zinc-500">Commentary will appear here during simulation.</p>
+                    }
+                  </div>
+
+                  <button
+                    type="button"
+                    class="shrink-0 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-300 transition-colors hover:bg-zinc-700"
+                    [title]="isCommentaryExpanded() ? 'Collapse commentary history' : 'Expand commentary history'"
+                    [attr.aria-label]="isCommentaryExpanded() ? 'Collapse commentary history' : 'Expand commentary history'"
+                    (click)="toggleCommentaryExpanded()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      @if (isCommentaryExpanded()) {
+                        <path d="m18 15-6-6-6 6"/>
+                      } @else {
+                        <path d="m6 9 6 6 6-6"/>
+                      }
+                    </svg>
+                  </button>
+                </div>
+
+                @if (isCommentaryExpanded()) {
+                  <div
+                    #commentaryLog
+                    class="mt-2 h-16 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-900/70 p-2 space-y-1"
+                    (scroll)="onCommentaryLogScroll(commentaryLog)">
+                    @for (item of commentary(); track item.id) {
+                      <div class="flex items-start gap-2 text-xs text-zinc-300">
+                        @if (getEventIcon(item.type)) {
+                          <span class="shrink-0 leading-none">{{ getEventIcon(item.type) }}</span>
+                        }
+                        <p class="leading-snug">{{ item.text }}</p>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (validationError() && !isSimulating() && !isFinished()) {
+                <div class="rounded-lg border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-200">
+                  {{ validationError() }}
+                </div>
+              }
+            </div>
           </div>
 
-          @if (isSimulating()) {
-            <div class="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full">
-              <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-              <span class="text-red-400 text-sm font-medium">LIVE - {{ currentMinute() }}'</span>
-            </div>
-          }
-        </div>
-
-        <div class="flex flex-col h-full">
-          <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_220px] flex-1 overflow-hidden">
+          <div class="px-4 pb-4">
+            <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_220px] flex-1 overflow-hidden">
             <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ homeTeam()?.name ?? 'Home' }}</h3>
               <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
@@ -115,7 +186,7 @@
               </div>
             </div>
 
-            <div class="relative w-full h-full rounded-xl border border-emerald-500/35 bg-linear-to-b from-emerald-900 via-emerald-800 to-emerald-900 overflow-hidden">
+            <div class="relative w-full h-full min-h-105 rounded-xl border border-emerald-500/35 bg-linear-to-b from-emerald-900 via-emerald-800 to-emerald-900 overflow-hidden">
               <div class="absolute inset-0 bg-[repeating-linear-gradient(to_right,rgba(16,185,129,0.08)_0,rgba(16,185,129,0.08)_10%,transparent_10%,transparent_20%)]"></div>
               <div class="absolute left-0 right-0 top-1/2 h-px bg-emerald-200/70"></div>
               <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border border-emerald-200/70"></div>
@@ -192,6 +263,7 @@
                   </div>
                 </div>
               }
+
             </div>
 
             <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col">
@@ -238,65 +310,6 @@
           </div>
         </div>
       </div>
-    }
-
-    <!-- Commentary Feed -->
-    @if (commentary().length > 0) {
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl mt-4">
-        <div class="p-4 border-b border-zinc-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Match Commentary
-          </h2>
-
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-medium text-zinc-400">{{ commentaryPlaybackSpeed() | number: '1.1-1' }}x</span>
-              <input
-                #commentarySpeedInput
-                type="range"
-                min="0.1"
-                max="5"
-                step="0.1"
-                [value]="commentaryPlaybackSpeed()"
-                (input)="setCommentaryPlaybackSpeed(+commentarySpeedInput.value)"
-                class="h-2 min-w-32 rounded-lg bg-zinc-700 accent-emerald-500 appearance-none cursor-pointer">
-            </div>
-
-            <button
-              type="button"
-              class="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition-colors enabled:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
-              [disabled]="!canToggleCommentaryPlayback()"
-              (click)="toggleCommentaryPlayback()">
-              {{ commentaryPlaybackSpeed() === 0 ? 'Resume' : 'Pause' }}
-            </button>
-          </div>
-        </div>
-        
-        <div class="max-h-96 overflow-y-auto p-4 space-y-3">
-          @for (item of commentary(); track item.id) {
-            <div 
-              class="p-3 rounded-lg transition-all duration-300"
-              [class.bg-red-500/20]="item.importance === 'high'"
-              [class.border-red-500/30]="item.importance === 'high'"
-              [class.bg-yellow-500/10]="item.importance === 'medium'"
-              [class.border-yellow-500/20]="item.importance === 'medium'"
-              [class.border]="item.importance === 'high' || item.importance === 'medium'"
-              [class.bg-zinc-800]="item.importance === 'low'"
-              [class.animate-pulse]="item.isNew"
-              [class.scale-105]="item.isNew"
-              [class.opacity-70]="!item.isNew">
-              <div class="flex items-start gap-3">
-                @if (getEventIcon(item.type)) {
-                  <span class="text-xl shrink-0">{{ getEventIcon(item.type) }}</span>
-                }
-                <p class="text-sm text-zinc-200 leading-relaxed">{{ item.text }}</p>
-              </div>
-            </div>
-          }
-        </div>
       </div>
     }
   </div>

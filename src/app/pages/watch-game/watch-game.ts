@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, OnInit, OnDestroy, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, OnInit, OnDestroy, effect, ElementRef, ViewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
@@ -63,6 +63,7 @@ interface TeamLineupEntry {
   templateUrl: './watch-game.html',
 })
 export class WatchGameComponent implements OnInit, OnDestroy {
+  @ViewChild('commentaryLog') commentaryLog?: ElementRef<HTMLElement>;
   private static readonly FIRST_HALF_END_MINUTE = 45;
   private static readonly DEFAULT_COMMENTARY_DELAY_MS = 1000;
   private static readonly HIGH_IMPORTANCE_DELAY_MS = 1800;
@@ -122,6 +123,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   showStats = signal<boolean>(false);
   validationError = signal<string | null>(null);
   commentaryPlaybackSpeed = signal<number>(1);
+  currentCommentaryItem = signal<CommentaryItem | null>(null);
+  isCommentaryExpanded = signal<boolean>(false);
+  commentaryAutoFollow = signal<boolean>(true);
   private pausedSpeed: number | null = null;
   
   // Replay scheduling
@@ -274,6 +278,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.keyEvents.set([]);
     this.matchStats.set(null);
     this.commentary.set([]);
+    this.commentaryAutoFollow.set(true);
     this.commentaryPlaybackSpeed.set(1);
     this.pausedSpeed = null;
     this.pausedCommentaryDelayMs = null;
@@ -491,6 +496,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       this.currentMinute.set(item.minute);
       this.clearActiveEventState();
       this.commentary.update(items => [item, ...items]);
+      this.scrollCommentaryLogToLatest();
       
       setTimeout(() => {
         this.commentary.update(items => 
@@ -517,12 +523,14 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.activeEventTeamSide.set(item.teamSide ?? null);
     this.activeEventPlayerIds.set([...item.playerIds]);
     this.activeEventInitiatorPlayerId.set(item.playerIds[0] ?? null);
+    this.currentCommentaryItem.set(item);
     this.applyCommentaryPitchState(item);
 
     this.updateDisplayMatchAtMinute(item.minute);
 
     // Add to commentary list (newest at top)
     this.commentary.update(items => [item, ...items]);
+    this.scrollCommentaryLogToLatest();
 
     // Remove isNew flag after animation
     setTimeout(() => {
@@ -576,6 +584,34 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   canToggleCommentaryPlayback(): boolean {
     return this.isSimulating() && !this.isFinished() && !this.isHalfTime();
+  }
+
+  toggleCommentaryExpanded() {
+    this.isCommentaryExpanded.update((expanded) => {
+      const nextExpanded = !expanded;
+      if (nextExpanded) {
+        this.commentaryAutoFollow.set(true);
+        this.scrollCommentaryLogToLatest();
+      }
+      return nextExpanded;
+    });
+  }
+
+  onCommentaryLogScroll(container: HTMLElement) {
+    // Newest commentary is rendered at the top. Near-top means "follow live".
+    this.commentaryAutoFollow.set(container.scrollTop <= 8);
+  }
+
+  private scrollCommentaryLogToLatest() {
+    if (!this.isCommentaryExpanded() || !this.commentaryAutoFollow()) {
+      return;
+    }
+
+    setTimeout(() => {
+      if (this.commentaryLog) {
+        this.commentaryLog.nativeElement.scrollTop = 0;
+      }
+    }, 0);
   }
 
   private stopCommentaryFeed() {
@@ -1095,6 +1131,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.activeEventTeamSide.set(null);
     this.activeEventPlayerIds.set([]);
     this.activeEventInitiatorPlayerId.set(null);
+    this.currentCommentaryItem.set(null);
   }
 
   private applyCommentaryPitchState(item: CommentaryItem) {
