@@ -96,9 +96,22 @@ describe('ALL_PREDEFINED_FORMATIONS', () => {
     expect(ALL_PREDEFINED_FORMATIONS.length).toBeGreaterThan(0);
   });
 
-  it('should include the classic 4-4-2', () => {
-    const has442 = ALL_PREDEFINED_FORMATIONS.some(f => f.id === 'formation_4_4_2');
-    expect(has442).toBe(true);
+  it('should include all expected predefined formations', () => {
+    const expectedFormationIds = [
+      'formation_4_4_2',
+      'formation_4_4_2_narrow_diamond',
+      'formation_4_4_2_wide_diamond',
+      'formation_4_3_3',
+      'formation_3_5_2',
+      'formation_5_3_2',
+      'formation_4_5_1',
+      'formation_3_6_1'
+    ];
+
+    expectedFormationIds.forEach((formationId) => {
+      const found = ALL_PREDEFINED_FORMATIONS.some(formation => formation.id === formationId);
+      expect(found).toBe(true);
+    });
   });
 
   it('should contain FORMATION_4_4_2 by reference', () => {
