@@ -407,31 +407,33 @@
         </div>
       </div>
 
-      <!-- Hidden Stats - spanning the page -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-        <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
-          Hidden Stats
-        </h2>
-        <div class="space-y-4">
-          <div class="flex items-center gap-4">
-            <span class="text-zinc-500 w-24">Luck</span>
-            <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <div class="h-full bg-orange-500 rounded-full" [style.width.%]="player()?.hidden?.luck"></div>
+      <!-- Hidden Stats - spanning the page (localhost only) -->
+      @if (isLocalhost()) {
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
+            Hidden Stats
+          </h2>
+          <div class="space-y-4">
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-24">Luck</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="player()?.hidden?.luck"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.luck }}</span>
             </div>
-            <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.luck }}</span>
-          </div>
-          <div class="flex items-center gap-4">
-            <span class="text-zinc-500 w-24">Injury Rate</span>
-            <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <div class="h-full rounded-full" 
-                   [class]="(player()?.hidden?.injuryRate ?? 50) <= 30 ? 'bg-green-500' : (player()?.hidden?.injuryRate ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
-                   [style.width.%]="player()?.hidden?.injuryRate ?? 50"></div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-24">Injury Rate</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full rounded-full" 
+                     [class]="(player()?.hidden?.injuryRate ?? 50) <= 30 ? 'bg-green-500' : (player()?.hidden?.injuryRate ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
+                     [style.width.%]="player()?.hidden?.injuryRate ?? 50"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.injuryRate ?? 'N/A' }}</span>
             </div>
-            <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.injuryRate ?? 'N/A' }}</span>
           </div>
         </div>
-      </div>
+      }
 
       <!-- Career Statistics - spanning the page -->
       <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">

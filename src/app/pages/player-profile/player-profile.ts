@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
+import { LocalhostService } from '../../services/localhost.service';
 import { Position } from '../../models/enums';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
@@ -15,10 +16,12 @@ export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
   private settingsService = inject(SettingsService);
+  private localhostService = inject(LocalhostService);
 
   // Expose enums for template
   Position = Position;
   badgeStyle = this.settingsService.badgeStyle;
+  isLocalhost = computed(() => this.localhostService.isLocalhost());
 
   private playerId = computed(() => this.route.snapshot.paramMap.get('id'));
 

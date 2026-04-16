@@ -25,101 +25,110 @@
     const mermaidConfig = JSON.parse('\u007b"startOnLoad":false,"theme":"dark"\u007d');
     mermaid.initialize(mermaidConfig);
 
-    const diagramSource = `flowchart TD
-    START([simulateMatch]) --> INIT[Clone teams & rosters\\nDerive tactics\\nInitialise fatigue\\nInitialise active match shape]
-    INIT --> LOOP["For each minute 1-95"]
+    const joinLabel = (...parts) => parts.join(' - ');
+    const quote = (text) => `"${text.replace(/"/g, '\\"')}"`;
+    const rect = (id, ...parts) => `${id}[${quote(joinLabel(...parts))}]`;
+    const decision = (id, ...parts) => `${id}{${quote(joinLabel(...parts))}}`;
 
-    LOOP --> FORFEIT_CHECK{"Any team below 7\\nactive players?"}
-    FORFEIT_CHECK -->|Yes| FORFEIT_END[Apply fixed 1-0 forfeit loss\\nClear match events and player stats impact\\nReturn MatchState]
-    FORFEIT_CHECK -->|No| TICKS["Determine tick count\\n(zone + late-game urgency)"]
-    TICKS --> TICK_LOOP["For each tick"]
+    const diagramLines = [
+      'flowchart TD',
+      `START["simulateMatch"] --> ${rect('INIT', 'Clone teams & rosters', 'Derive tactics', 'Initialise fatigue', 'Initialise active match shape')}`,
+      `INIT --> LOOP["For each minute 1-95"]`,
+      '',
+      `LOOP --> ${decision('FORFEIT_CHECK', 'Any team below 7 active players?')}`,
+      `FORFEIT_CHECK -->|Yes| ${rect('FORFEIT_END', 'Apply fixed 1-0 forfeit loss', 'Clear match events and player stats impact', 'Return MatchState')}`,
+      `FORFEIT_CHECK -->|No| ${rect('TICKS', 'Determine tick count', 'zone + late-game urgency')}`,
+      `TICKS --> TICK_LOOP["For each tick"]`,
+      '',
+      `TICK_LOOP --> ${rect('FATIGUE', 'Update fatigue (starters only)', 'GK stamina drain reduced')}`,
+      `FATIGUE --> ${rect('CARRIER', 'Identify ball carrier')}`,
+      `CARRIER --> ${rect('MOVE', 'Apply carrier movement on the pitch')}`,
+      `MOVE --> ${decision('ACTION', 'Weighted action roll', 'zone role tactics fatigue scoreline', 'plus possession-chain quality', 'GK constraint: no SHOT roll')}`,
+      '',
+      `ACTION -->|CARRY| ${rect('CARRY_ATTEMPT', 'Carry attempt')}`,
+      `CARRY_ATTEMPT --> ${decision('CARRY_SUCCESS', 'Carry succeeds?', 'carrier quality vs pressure and fatigue', 'plus defensive shape coverage')}`,
+      `CARRY_SUCCESS -->|No| ${rect('CARRY_LOST', 'TACKLE event', 'Dispossessed turnover')}`,
+      `CARRY_SUCCESS -->|Yes| ${rect('CARRY_ADVANCE', 'Extra dribble progress', 'optional same-role handoff', 'increment possession chain')}`,
+      `ACTION -->|PASS| ${rect('PASS_START', 'Pass attempt')}`,
+      `ACTION -->|SHOT| ${rect('SHOT_START', 'Shot attempt', 'Increment team shots')}`,
+      `ACTION -->|FOUL| ${rect('FOUL_START', 'Defending player fouls carrier', 'Increment defending team fouls', 'Emit FOUL event')}`,
+      '',
+      `PASS_START --> ${rect('PASS_INTENT', 'Select pass intent', 'RECYCLE / PROGRESSION / THROUGH_BALL / CROSS')}`,
+      `PASS_INTENT --> ${decision('PASS_TARGET', 'Pass target found?', 'intent scoring plus weighted draw across top candidates')}`,
+      `PASS_TARGET -->|No| ${rect('TACKLE', 'TACKLE event', 'Turnover')}`,
+      `PASS_TARGET -->|Yes| ${decision('PASS_SUCCESS', 'Pass success?', 'skill fatigue pressure intent style', 'pressure plus direct defensive shape lane coverage')}`,
+      `PASS_SUCCESS -->|Yes| ${rect('PASS_COMPLETE', 'PASS event', 'Receiver takes ball', 'Ball position advances')}`,
+      `PASS_SUCCESS -->|No| ${decision('PASS_FAIL', 'Failure type', 'shape-aware lane vs overhit pressure')}`,
+      `PASS_FAIL -->|Tackled| ${rect('TACKLE_FAIL', 'TACKLE event', 'Turnover')}`,
+      `PASS_FAIL -->|Lane cut out| ${rect('INTERCEPTION', 'INTERCEPTION event', 'Turnover')}`,
+      `PASS_FAIL -->|Overhit| ${rect('OVERHIT', 'INTERCEPTION event overhit', 'Turnover')}`,
+      '',
+      `SHOT_START --> ${decision('ON_TARGET', 'On target?', 'shooting skill depth angle fatigue pressure', 'plus possession-chain quality', 'plus defensive shape coverage')}`,
+      `ON_TARGET -->|No| ${rect('MISS', 'MISS event')}`,
+      `ON_TARGET -->|Yes| ${rect('SOT', 'Increment shots on target')}`,
+      `SOT --> ${decision('GOAL_CHANCE', 'Goal?', 'skill vs keeper depth angle pressure', 'plus possession-chain quality plus home advantage bonus', 'plus defensive shape coverage')}`,
+      `GOAL_CHANCE -->|Yes| ${rect('GOAL', 'GOAL event', 'Update score', 'Reset to kickoff')}`,
+      `GOAL_CHANCE -->|No| ${rect('SAVE', 'SAVE event', 'On-field keeper only', 'Possession switches')}`,
+      '',
+      `FOUL_START --> ${decision('CARD_CHANCE', 'Card triggered?', '10% chance')}`,
+      `CARD_CHANCE -->|No| ${rect('FOUL_RESTART', 'Fouled side keeps possession', 'Zone-aware restart', 'advanced fouls stay dangerous', 'deep fouls reset further away')}`,
+      `CARD_CHANCE -->|Yes| ${decision('CARD_TYPE', 'Which card?')}`,
+      `CARD_TYPE -->|Yellow| ${rect('YELLOW', 'YELLOW_CARD event', 'Increment yellow count')}`,
+      `CARD_TYPE -->|Red| ${rect('RED', 'RED_CARD event', 'Direct red', 'Dismiss offender')}`,
+      `YELLOW --> ${decision('SECOND_YELLOW', 'Second yellow?')}`,
+      `SECOND_YELLOW -->|No| FOUL_RESTART`,
+      `SECOND_YELLOW -->|Yes| ${rect('SECOND_RED', 'RED_CARD event', 'Second yellow send-off', 'Dismiss offender')}`,
+      `RED --> ${rect('REBALANCE', 'Rebalance active shape immediately', 'Rebuild formation from staffed slots', 'Mark optional tactical sub for next sub phase')}`,
+      `SECOND_RED --> REBALANCE`,
+      `REBALANCE --> FOUL_RESTART`,
+      '',
+      `CARRY_ADVANCE --> ${rect('NEXT_TICK', 'Next tick')}`,
+      `CARRY_LOST --> NEXT_TICK`,
+      `TACKLE --> NEXT_TICK`,
+      `PASS_COMPLETE --> NEXT_TICK`,
+      `INTERCEPTION --> NEXT_TICK`,
+      `TACKLE_FAIL --> NEXT_TICK`,
+      `OVERHIT --> NEXT_TICK`,
+      `FOUL_RESTART --> NEXT_TICK`,
+      `MISS --> NEXT_TICK`,
+      `GOAL --> NEXT_TICK`,
+      `SAVE --> NEXT_TICK`,
+      '',
+      `NEXT_TICK --> TICK_LOOP`,
+      '',
+      `TICK_LOOP -->|All ticks done| ${decision('SUB_CHECK', 'Substitution phase?', 'fatigue window or pending tactical rebalance')}`,
+      `SUB_CHECK -->|No| ${rect('NORM', 'Normalise fatigue', 'for tick count', 'GK stamina recovery reduced')}`,
+      `SUB_CHECK -->|Yes| ${rect('SUB_EVENT', 'SUBSTITUTION event', 'Role-safe starter-bench swap or tactical rebalance', 'Optional after dismissal', 'Max 5 per team')}`,
+      `SUB_EVENT --> NORM`,
+      `NORM --> LOOP`,
+      `LOOP -->|Minute 95| RESULT["Return MatchState"]`,
+      '',
+      'style CARRY_ATTEMPT fill:#3f3f46,color:#ccc',
+      'style CARRY_ADVANCE fill:#3f3f46,color:#ccc',
+      'style CARRY_SUCCESS fill:#1c1917,color:#fff,stroke:#a8a29e',
+      'style CARRY_LOST fill:#7c2d12,color:#fff',
+      'style PASS_COMPLETE fill:#14532d,color:#fff',
+      'style INTERCEPTION fill:#1e3a5f,color:#fff',
+      'style OVERHIT fill:#1e3a5f,color:#fff',
+      'style TACKLE fill:#7c2d12,color:#fff',
+      'style TACKLE_FAIL fill:#7c2d12,color:#fff',
+      'style YELLOW fill:#854d0e,color:#fff',
+      'style RED fill:#991b1b,color:#fff',
+      'style SECOND_RED fill:#991b1b,color:#fff',
+      'style REBALANCE fill:#0f766e,color:#fff',
+      'style FOUL_RESTART fill:#1e3a5f,color:#fff',
+      'style GOAL fill:#166534,color:#fff',
+      'style SAVE fill:#1e3a5f,color:#fff',
+      'style MISS fill:#7f1d1d,color:#fff',
+      'style SUB_EVENT fill:#0c4a6e,color:#fff',
+      'style SUB_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e',
+      'style FORFEIT_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e',
+      'style FORFEIT_END fill:#7f1d1d,color:#fff',
+      'style SOT fill:#3f3f46,color:#ccc',
+      'style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e'
+    ];
 
-    TICK_LOOP --> FATIGUE[Update fatigue (starters only)\nGK stamina drain reduced]
-    FATIGUE --> CARRIER[Identify ball carrier]
-    CARRIER --> MOVE[Apply carrier movement\\non the pitch]
-    MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality\\nGK constraint: no SHOT roll)"}
-
-    ACTION -->|CARRY| CARRY_ATTEMPT[Carry attempt]
-    CARRY_ATTEMPT --> CARRY_SUCCESS{"Carry succeeds?\\ncarrier quality vs pressure and fatigue\\nplus defensive shape coverage"}
-    CARRY_SUCCESS -->|No| CARRY_LOST[TACKLE event\\nDispossessed turnover]
-    CARRY_SUCCESS -->|Yes| CARRY_ADVANCE[Extra dribble progress\\noptional same-role handoff\\nincrement possession chain]
-    ACTION -->|PASS| PASS_START[Pass attempt]
-    ACTION -->|SHOT| SHOT_START[Shot attempt\\nIncrement team shots]
-    ACTION -->|FOUL| FOUL_START[Defending player fouls carrier\\nIncrement defending team fouls\\nEmit FOUL event]
-
-    PASS_START --> PASS_INTENT[Select pass intent\\nRECYCLE / PROGRESSION / THROUGH_BALL / CROSS]
-    PASS_INTENT --> PASS_TARGET{"Pass target found?\\nintent scoring plus weighted draw across top candidates"}
-    PASS_TARGET -->|No| TACKLE[TACKLE event\\nTurnover]
-    PASS_TARGET -->|Yes| PASS_SUCCESS{"Pass success?\\nskill fatigue pressure intent style\\npressure plus direct defensive shape lane coverage"}
-    PASS_SUCCESS -->|Yes| PASS_COMPLETE[PASS event\\nReceiver takes ball\\nBall position advances]
-    PASS_SUCCESS -->|No| PASS_FAIL{"Failure type\nshape-aware lane vs overhit pressure"}
-    PASS_FAIL -->|Tackled| TACKLE_FAIL[TACKLE event\\nTurnover]
-    PASS_FAIL -->|Lane cut out| INTERCEPTION[INTERCEPTION event\\nTurnover]
-    PASS_FAIL -->|Overhit| OVERHIT["INTERCEPTION event overhit\\nTurnover"]
-
-    SHOT_START --> ON_TARGET{"On target?\\nshooting skill depth angle fatigue pressure\\n+ possession-chain quality\\nplus defensive shape coverage"}
-    ON_TARGET -->|No| MISS[MISS event]
-    ON_TARGET -->|Yes| SOT[Increment shots on target]
-    SOT --> GOAL_CHANCE{"Goal?\\nskill vs keeper depth angle pressure\\n+ possession-chain quality + home advantage bonus\\nplus defensive shape coverage"}
-    GOAL_CHANCE -->|Yes| GOAL[GOAL event\\nUpdate score\\nReset to kickoff]
-    GOAL_CHANCE -->|No| SAVE[SAVE event\\nOn-field keeper only\\nPossession switches]
-
-    FOUL_START --> CARD_CHANCE{"Card triggered?\\n10% chance"}
-    CARD_CHANCE -->|No| FOUL_RESTART["Fouled side keeps possession\\nZone-aware restart\\nadvanced fouls stay dangerous\\ndeep fouls reset further away"]
-    CARD_CHANCE -->|Yes| CARD_TYPE{"Which card?"}
-    CARD_TYPE -->|Yellow| YELLOW[YELLOW_CARD event\\nIncrement yellow count]
-    CARD_TYPE -->|Red| RED[RED_CARD event\\nDirect red\\nDismiss offender]
-    YELLOW --> SECOND_YELLOW{"Second yellow?"}
-    SECOND_YELLOW -->|No| FOUL_RESTART
-    SECOND_YELLOW -->|Yes| SECOND_RED[RED_CARD event\\nSecond yellow send-off\\nDismiss offender]
-    RED --> REBALANCE[Rebalance active shape immediately\\nRebuild formation from staffed slots\\nMark optional tactical sub for next sub phase]
-    SECOND_RED --> REBALANCE
-    REBALANCE --> FOUL_RESTART
-
-    CARRY_ADVANCE --> NEXT_TICK[Next tick]
-    CARRY_LOST --> NEXT_TICK
-    TACKLE --> NEXT_TICK
-    PASS_COMPLETE --> NEXT_TICK
-    INTERCEPTION --> NEXT_TICK
-    TACKLE_FAIL --> NEXT_TICK
-    OVERHIT --> NEXT_TICK
-    FOUL_RESTART --> NEXT_TICK
-    MISS --> NEXT_TICK
-    GOAL --> NEXT_TICK
-    SAVE --> NEXT_TICK
-
-    NEXT_TICK --> TICK_LOOP
-
-    TICK_LOOP -->|All ticks done| SUB_CHECK{"Substitution phase?\nfatigue window or pending tactical rebalance"}
-    SUB_CHECK -->|No| NORM[Normalise fatigue\nfor tick count\nGK stamina recovery reduced]
-    SUB_CHECK -->|Yes| SUB_EVENT[SUBSTITUTION event\nRole-safe starter-bench swap or tactical rebalance\nOptional after dismissal\nMax 5 per team]
-    SUB_EVENT --> NORM
-    NORM --> LOOP
-    LOOP -->|Minute 95| RESULT([Return MatchState])
-
-    style CARRY_ATTEMPT fill:#3f3f46,color:#ccc
-    style CARRY_ADVANCE fill:#3f3f46,color:#ccc
-    style CARRY_SUCCESS fill:#1c1917,color:#fff,stroke:#a8a29e
-    style CARRY_LOST fill:#7c2d12,color:#fff
-    style PASS_COMPLETE fill:#14532d,color:#fff
-    style INTERCEPTION fill:#1e3a5f,color:#fff
-    style OVERHIT fill:#1e3a5f,color:#fff
-    style TACKLE fill:#7c2d12,color:#fff
-    style TACKLE_FAIL fill:#7c2d12,color:#fff
-    style YELLOW fill:#854d0e,color:#fff
-    style RED fill:#991b1b,color:#fff
-    style SECOND_RED fill:#991b1b,color:#fff
-    style REBALANCE fill:#0f766e,color:#fff
-    style FOUL_RESTART fill:#1e3a5f,color:#fff
-    style GOAL fill:#166534,color:#fff
-    style SAVE fill:#1e3a5f,color:#fff
-    style MISS fill:#7f1d1d,color:#fff
-    style SUB_EVENT fill:#0c4a6e,color:#fff
-    style SUB_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e
-    style FORFEIT_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e
-    style FORFEIT_END fill:#7f1d1d,color:#fff
-    style SOT fill:#3f3f46,color:#ccc
-    style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e`;
+    const diagramSource = diagramLines.join('\n');
 
     mermaid
       .render('variantBFlowSvg', diagramSource)

@@ -11,6 +11,7 @@ import { SimulationDebugComponent } from './pages/simulation-debug/simulation-de
 import { DesignDocsComponent } from './pages/design-docs/design-docs';
 import { ChangelogComponent } from './pages/changelog/changelog';
 import { GameService } from './services/game.service';
+import { localhostGuardFn } from './services/localhost.guard';
 
 const redirectToUserTeam = () => {
   const gameService = inject(GameService);
@@ -31,8 +32,8 @@ export const routes: Routes = [
   { path: 'player/:id', component: PlayerProfileComponent },
   { path: 'schedule', component: ScheduleComponent },
   { path: 'watch/:id', component: WatchGameComponent },
-  { path: 'debug/simulation', component: SimulationDebugComponent },
-  { path: 'design-docs', component: DesignDocsComponent },
+  { path: 'debug/simulation', canActivate: [localhostGuardFn], component: SimulationDebugComponent },
+  { path: 'design-docs', canActivate: [localhostGuardFn], component: DesignDocsComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'changelog', component: ChangelogComponent },
   { path: '**', redirectTo: '' }
