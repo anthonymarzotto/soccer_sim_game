@@ -3,14 +3,46 @@ import { ElementRef } from '@angular/core';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { WatchGameComponent } from './watch-game';
-import { EventImportance, EventType, TeamSide } from '../../models/enums';
+import { EventImportance, EventType, TeamSide, MatchPhase } from '../../models/enums';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
 import { TeamColorsService } from '../../services/team-colors.service';
+import { MatchState } from '../../models/simulation.types';
+import { Player } from '../../models/types';
 import { vi } from 'vitest';
 
 describe('WatchGameComponent', () => {
+  const createMatchState = (fatigueTimeline: MatchState['fatigueTimeline']): MatchState => ({
+    ballPossession: {
+      teamId: 'home',
+      playerWithBall: 'player-1',
+      location: { x: 50, y: 50 },
+      phase: MatchPhase.BUILD_UP,
+      passes: 0,
+      timeElapsed: 0
+    },
+    events: [],
+    fatigueTimeline,
+    currentMinute: 0,
+    homeScore: 0,
+    awayScore: 0,
+    homeShots: 0,
+    awayShots: 0,
+    homeShotsOnTarget: 0,
+    awayShotsOnTarget: 0,
+    homePossession: 50,
+    awayPossession: 50,
+    homeCorners: 0,
+    awayCorners: 0,
+    homeFouls: 0,
+    awayFouls: 0,
+    homeYellowCards: 0,
+    awayYellowCards: 0,
+    homeRedCards: 0,
+    awayRedCards: 0
+  });
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [WatchGameComponent],
@@ -265,5 +297,164 @@ describe('WatchGameComponent', () => {
 
     // Verify that scrollTop was set to 0
     expect(mockLogElement.scrollTop).toBe(0);
+  });
+
+  it('keeps playback paused and updates pausedSpeed when speed changes while paused', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.commentaryPlaybackSpeed.set(0);
+    component['pausedSpeed'] = 1.4;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rescheduleSpy = vi.spyOn(component as any, 'rescheduleCommentaryDelayAfterSpeedChange').mockImplementation(() => undefined);
+
+    component.setCommentaryPlaybackSpeed(2.2);
+
+    expect(component.commentaryPlaybackSpeed()).toBe(0);
+    expect(component['pausedSpeed']).toBe(2.2);
+    expect(rescheduleSpy).toHaveBeenCalledOnce();
+    expect(rescheduleSpy).toHaveBeenCalledWith(1.4, 2.2);
+
+    rescheduleSpy.mockRestore();
+  });
+
+  it('rescales paused remaining delay without scheduling a timer when paused speed changes', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.commentaryPlaybackSpeed.set(0);
+    component['pausedSpeed'] = 1;
+    component['pausedCommentaryBaseDelayMs'] = 1000;
+    component['pausedCommentaryDelayMs'] = 700;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const scheduleSpy = vi.spyOn(component as any, 'scheduleNextCommentary').mockImplementation(() => undefined);
+
+    component.setCommentaryPlaybackSpeed(2);
+
+    expect(component.commentaryPlaybackSpeed()).toBe(0);
+    expect(component['pausedSpeed']).toBe(2);
+    expect(component['pausedCommentaryDelayMs']).toBe(200);
+    expect(component['commentaryTimer']).toBeNull();
+    expect(scheduleSpy).not.toHaveBeenCalled();
+
+    scheduleSpy.mockRestore();
+  });
+
+  it('preserves selected playback speed when continuing after halftime', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.isHalfTime.set(true);
+    component.commentaryPlaybackSpeed.set(2.6);
+    component['pausedSpeed'] = null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const startFeedSpy = vi.spyOn(component as any, 'startCommentaryFeed').mockImplementation(() => undefined);
+
+    component.continueAfterHalfTime();
+
+    expect(component.isHalfTime()).toBe(false);
+    expect(component.commentaryPlaybackSpeed()).toBe(2.6);
+    expect(startFeedSpy).toHaveBeenCalledOnce();
+    expect(startFeedSpy).toHaveBeenCalledWith(false);
+
+    startFeedSpy.mockRestore();
+  });
+
+  it('returns latest tracked fatigue snapshot at or before current minute', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.matchState.set(createMatchState([
+      {
+        minute: 10,
+        players: [{ playerId: 'player-1', stamina: 91 }]
+      },
+      {
+        minute: 20,
+        players: [{ playerId: 'player-1', stamina: 84 }]
+      },
+      {
+        minute: 30,
+        players: [{ playerId: 'player-1', stamina: 77 }]
+      }
+    ]));
+    component.currentMinute.set(27);
+
+    const fatigue = component['getTrackedFatigue']('player-1');
+
+    expect(fatigue).toBe(84);
+  });
+
+  it('floors current minute when reading tracked fatigue snapshots', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.matchState.set(createMatchState([
+      {
+        minute: 45,
+        players: [{ playerId: 'player-1', stamina: 70 }]
+      },
+      {
+        minute: 46,
+        players: [{ playerId: 'player-1', stamina: 64 }]
+      }
+    ]));
+    component.currentMinute.set(45.9);
+
+    const fatigue = component['getTrackedFatigue']('player-1');
+
+    expect(fatigue).toBe(70);
+  });
+
+  it('keeps scanning older snapshots when latest eligible minute lacks player entry', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.matchState.set(createMatchState([
+      {
+        minute: 40,
+        players: [{ playerId: 'player-1', stamina: 73 }]
+      },
+      {
+        minute: 50,
+        players: [{ playerId: 'other-player', stamina: 68 }]
+      }
+    ]));
+    component.currentMinute.set(50);
+
+    const fatigue = component['getTrackedFatigue']('player-1');
+
+    expect(fatigue).toBe(73);
+  });
+
+  it('uses dot fatigue fallback formula when timeline has no player snapshot', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    component.matchState.set(createMatchState([]));
+    component.currentMinute.set(30);
+    vi.spyOn(component.gameService, 'getPlayer').mockReturnValue({ position: 'MID' } as unknown as Player);
+
+    const fatigue = component.getDotFatigue({
+      id: 'home-slot-1',
+      slotId: 'slot-1',
+      slotLabel: 'CM',
+      tacticOrder: 1,
+      teamSide: TeamSide.HOME,
+      playerId: 'player-1',
+      label: 'P1',
+      fullName: 'Player One',
+      x: 50,
+      y: 50,
+      minuteEntered: 10,
+      goalMinutes: [],
+      yellowCardMinutes: [],
+      redCards: 0
+    });
+
+    expect(fatigue).toBe(90);
   });
 });

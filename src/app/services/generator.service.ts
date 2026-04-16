@@ -161,9 +161,9 @@ export class GeneratorService {
 
   private randomStat(min = 20, max = 90, teamQuality = 1.0): number {
     const baseValue = Math.floor(Math.random() * (max - min + 1)) + min;
-    // Apply team quality multiplier and clamp to valid range
+    // Apply team quality multiplier and keep values inside the caller's requested range.
     const adjustedValue = Math.floor(baseValue * teamQuality);
-    return Math.max(Math.min(adjustedValue, max), 1); // Clamp between 1 and max
+    return Math.max(Math.min(adjustedValue, max), min);
   }
 
   private generateSchedule(teams: Team[]): Match[] {

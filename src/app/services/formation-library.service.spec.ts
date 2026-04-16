@@ -207,7 +207,7 @@ describe('FormationLibraryService', () => {
       });
 
       const all = service.getAllFormations();
-      expect(all.length).toBe(2);
+      expect(all.length).toBe(ALL_PREDEFINED_FORMATIONS.length + 1);
       expect(all.some(f => f.id === 'formation_4_4_2')).toBe(true);
       expect(all.some(f => f.id === 'user_query_test')).toBe(true);
     });

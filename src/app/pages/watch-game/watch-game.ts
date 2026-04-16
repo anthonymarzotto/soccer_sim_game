@@ -504,7 +504,6 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       
       this.commentaryIndex++;
       this.stopCommentaryFeed();
-      this.commentaryPlaybackSpeed.set(this.pausedSpeed ?? 1);
       this.pausedSpeed = null;
       this.pausedCommentaryDelayMs = null;
       this.pausedCommentaryBaseDelayMs = null;
@@ -544,7 +543,6 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   continueAfterHalfTime() {
     this.isHalfTime.set(false);
-    this.commentaryPlaybackSpeed.set(this.pausedSpeed ?? 1);
     this.pausedSpeed = null;
     this.pausedCommentaryDelayMs = null;
     this.pausedCommentaryBaseDelayMs = null;
@@ -559,6 +557,18 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     );
 
     const previousSpeed = this.commentaryPlaybackSpeed();
+
+    if (previousSpeed === 0) {
+      const previousPausedSpeed = this.pausedSpeed ?? 1;
+      if (Math.abs(previousPausedSpeed - clampedSpeed) < 0.01) {
+        return;
+      }
+
+      this.pausedSpeed = clampedSpeed;
+      this.rescheduleCommentaryDelayAfterSpeedChange(previousPausedSpeed, clampedSpeed);
+      return;
+    }
+
     if (Math.abs(previousSpeed - clampedSpeed) < 0.01) {
       return;
     }
@@ -684,7 +694,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         Math.round(this.pausedCommentaryBaseDelayMs / Math.max(previousSpeed, 0.1))
       );
       const elapsedBeforePause = Math.max(0, previousTotalDelay - this.pausedCommentaryDelayMs);
-      const nextTotalDelay = this.scaleCommentaryDelay(this.pausedCommentaryBaseDelayMs);
+      const nextTotalDelay = Math.max(
+        WatchGameComponent.MIN_COMMENTARY_DELAY_MS,
+        Math.round(this.pausedCommentaryBaseDelayMs / Math.max(nextSpeed, 0.1))
+      );
       this.pausedCommentaryDelayMs = Math.max(0, nextTotalDelay - elapsedBeforePause);
       return;
     }
@@ -987,11 +1000,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     }
 
     const currentMinute = Math.max(0, Math.floor(this.currentMinute()));
-    const relevantSnapshots = timeline
-      .filter((snapshot) => snapshot.minute <= currentMinute)
-      .sort((left, right) => right.minute - left.minute);
+    // Timeline snapshots are appended by minute; reverse scan gets latest <= current minute.
+    for (let index = timeline.length - 1; index >= 0; index--) {
+      const snapshot = timeline[index];
+      if (snapshot.minute > currentMinute) {
+        continue;
+      }
 
-    for (const snapshot of relevantSnapshots) {
       const playerSnapshot = this.findPlayerFatigueSnapshot(snapshot, playerId);
       if (playerSnapshot !== null) {
         return playerSnapshot;
