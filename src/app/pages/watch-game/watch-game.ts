@@ -72,8 +72,6 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private static readonly MIN_SPEED = 0.1;
   private static readonly MAX_SPEED = 5;
   private static readonly NEW_COMMENTARY_ANIMATION_MS = 500;
-  private static readonly BASE_FATIGUE_RATE_PER_MINUTE = 0.42;
-  private static readonly ENDURANCE_PENALTY_FATIGUE_MULTIPLIER = 0.35;
 
   private readonly HIGH_FATIGUE_THRESHOLD = 75;
   private readonly MEDIUM_FATIGUE_THRESHOLD = 50;
