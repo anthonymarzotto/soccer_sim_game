@@ -3,9 +3,12 @@ import { RouterLink } from '@angular/router';
 import { SIMULATION_SEED_MAX_LENGTH } from '../../constants';
 import { GameService } from '../../services/game.service';
 import { MatchSimulationVariantBService } from '../../services/match.simulation.variant-b.service';
-import { CommentaryStyle } from '../../models/enums';
-import { Match, Team } from '../../models/types';
+import { FormationLibraryService } from '../../services/formation-library.service';
+import { CommentaryStyle, Position, Role } from '../../models/enums';
+import { Match, Player, Team } from '../../models/types';
 import { MatchState, SimulationConfig, VariantBTuningConfig } from '../../models/simulation.types';
+import { normalizeTeamFormation } from '../../models/team-migration';
+import { resolveTeamPlayers } from '../../models/team-players';
 
 interface VariantMetrics {
   homeScore: number;
@@ -30,6 +33,17 @@ interface SimulationSummary {
   homeWins: number;
   draws: number;
   awayWins: number;
+}
+
+interface TeamOption {
+  id: string;
+  team: Team;
+  label: string;
+}
+
+interface FormationOption {
+  id: string;
+  label: string;
 }
 
 @Component({
@@ -71,8 +85,8 @@ interface SimulationSummary {
                   (change)="setHomeTeam($any($event.target).value)"
                   class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
                 >
-                  @for (team of teams(); track team.id) {
-                    <option [value]="team.id">{{ team.name }}</option>
+                  @for (option of sortedTeamOptions(); track option.id) {
+                    <option [value]="option.id">{{ option.label }}</option>
                   }
                 </select>
               </div>
@@ -85,8 +99,38 @@ interface SimulationSummary {
                   (change)="setAwayTeam($any($event.target).value)"
                   class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
                 >
-                  @for (team of teams(); track team.id) {
-                    <option [value]="team.id">{{ team.name }}</option>
+                  @for (option of sortedTeamOptions(); track option.id) {
+                    <option [value]="option.id">{{ option.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="homeFormation" class="block text-sm font-medium text-zinc-300 mb-2">Home Formation</label>
+                <select
+                  id="homeFormation"
+                  [value]="homeFormationId()"
+                  (change)="setHomeFormation($any($event.target).value)"
+                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                >
+                  @for (option of formationOptions(); track option.id) {
+                    <option [value]="option.id">{{ option.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <div>
+                <label for="awayFormation" class="block text-sm font-medium text-zinc-300 mb-2">Away Formation</label>
+                <select
+                  id="awayFormation"
+                  [value]="awayFormationId()"
+                  (change)="setAwayFormation($any($event.target).value)"
+                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                >
+                  @for (option of formationOptions(); track option.id) {
+                    <option [value]="option.id">{{ option.label }}</option>
                   }
                 </select>
               </div>
@@ -348,12 +392,33 @@ interface SimulationSummary {
 export class SimulationDebugComponent {
   private gameService = inject(GameService);
   private simulationB = inject(MatchSimulationVariantBService);
+  private formationLibrary = inject(FormationLibraryService);
 
   readonly teams = computed(() => this.gameService.league()?.teams ?? []);
+  readonly sortedTeamOptions = computed<TeamOption[]>(() => {
+    return [...this.teams()]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map(team => ({
+        id: team.id,
+        team,
+        label: `${team.name} [${this.gameService.calculateTeamOverall(team)}]`
+      }));
+  });
+  readonly formationOptions = computed<FormationOption[]>(() => {
+    return this.formationLibrary
+      .getAllFormations()
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map(formation => ({
+        id: formation.id,
+        label: `${formation.name} (${formation.shortCode})`
+      }));
+  });
   readonly runCount = signal(20);
   readonly seedPrefix = signal('');
   readonly homeTeamId = signal('');
   readonly awayTeamId = signal('');
+  readonly homeFormationId = signal('');
+  readonly awayFormationId = signal('');
   readonly isRunning = signal(false);
   readonly rows = signal<SimulationRunRow[]>([]);
   readonly showTuning = signal(false);
@@ -404,7 +469,8 @@ export class SimulationDebugComponent {
 
   constructor() {
     effect(() => {
-      const teams = this.teams();
+      const teamOptions = this.sortedTeamOptions();
+      const teams = teamOptions.map(option => option.team);
       if (teams.length < 2) {
         this.homeTeamId.set('');
         this.awayTeamId.set('');
@@ -419,11 +485,43 @@ export class SimulationDebugComponent {
         const awayFallback = teams.find(team => team.id !== this.homeTeamId());
         this.awayTeamId.set(awayFallback ? awayFallback.id : '');
       }
+
+      const homeTeam = teams.find(team => team.id === this.homeTeamId());
+      if (homeTeam && !this.homeFormationId()) {
+        this.homeFormationId.set(homeTeam.selectedFormationId);
+      }
+
+      const awayTeam = teams.find(team => team.id === this.awayTeamId());
+      if (awayTeam && !this.awayFormationId()) {
+        this.awayFormationId.set(awayTeam.selectedFormationId);
+      }
+    });
+
+    effect(() => {
+      const formationOptions = this.formationOptions();
+      if (formationOptions.length === 0) {
+        this.homeFormationId.set('');
+        this.awayFormationId.set('');
+        return;
+      }
+
+      if (!formationOptions.some(option => option.id === this.homeFormationId())) {
+        this.homeFormationId.set(formationOptions[0].id);
+      }
+
+      if (!formationOptions.some(option => option.id === this.awayFormationId())) {
+        this.awayFormationId.set(formationOptions[0].id);
+      }
     });
   }
 
   setHomeTeam(teamId: string): void {
     this.homeTeamId.set(teamId);
+    const selectedTeam = this.teams().find(team => team.id === teamId);
+    if (selectedTeam) {
+      this.homeFormationId.set(selectedTeam.selectedFormationId);
+    }
+
     if (teamId === this.awayTeamId()) {
       const fallback = this.teams().find(team => team.id !== teamId);
       this.awayTeamId.set(fallback ? fallback.id : '');
@@ -432,6 +530,18 @@ export class SimulationDebugComponent {
 
   setAwayTeam(teamId: string): void {
     this.awayTeamId.set(teamId);
+    const selectedTeam = this.teams().find(team => team.id === teamId);
+    if (selectedTeam) {
+      this.awayFormationId.set(selectedTeam.selectedFormationId);
+    }
+  }
+
+  setHomeFormation(formationId: string): void {
+    this.homeFormationId.set(formationId);
+  }
+
+  setAwayFormation(formationId: string): void {
+    this.awayFormationId.set(formationId);
   }
 
   setRunCount(value: string): void {
@@ -515,6 +625,9 @@ export class SimulationDebugComponent {
       return;
     }
 
+    const configuredHomeTeam = this.withSandboxFormation(homeTeam, this.homeFormationId());
+    const configuredAwayTeam = this.withSandboxFormation(awayTeam, this.awayFormationId());
+
     this.isRunning.set(true);
 
     try {
@@ -531,12 +644,17 @@ export class SimulationDebugComponent {
         const matchBase: Match = {
           id: `sandbox-${Date.now()}-${runIndex + 1}`,
           week: 1,
-          homeTeamId: homeTeam.id,
-          awayTeamId: awayTeam.id,
+          homeTeamId: configuredHomeTeam.id,
+          awayTeamId: configuredAwayTeam.id,
           played: false
         };
 
-        const stateB = this.simulateMatch({ ...matchBase, id: `${matchBase.id}-B` }, homeTeam, awayTeam, seed);
+        const stateB = this.simulateMatch(
+          { ...matchBase, id: `${matchBase.id}-B` },
+          configuredHomeTeam,
+          configuredAwayTeam,
+          seed
+        );
         const metricsB = this.toMetrics(stateB);
 
         rows.push({
@@ -593,5 +711,65 @@ export class SimulationDebugComponent {
     };
 
     return this.simulationB.simulateMatch(match, homeTeam, awayTeam, config);
+  }
+
+  private withSandboxFormation(team: Team, formationId: string): Team {
+    const slots = this.formationLibrary.getFormationSlots(formationId);
+    if (!slots) {
+      return structuredClone(team);
+    }
+
+    const clonedTeam = structuredClone(team);
+    const normalized = normalizeTeamFormation(
+      {
+        ...clonedTeam,
+        selectedFormationId: formationId
+      },
+      formationId,
+      slots
+    );
+
+    const starters = resolveTeamPlayers(normalized)
+      .filter(player => player.role === Role.STARTER)
+      .sort((left, right) => right.overall - left.overall);
+    const startersById = new Map(starters.map(player => [player.id, player]));
+    const usedPlayers = new Set<string>();
+    const formationAssignments: Record<string, string> = { ...normalized.formationAssignments };
+
+    for (const slot of slots) {
+      const currentPlayerId = formationAssignments[slot.slotId];
+      if (currentPlayerId && startersById.has(currentPlayerId) && !usedPlayers.has(currentPlayerId)) {
+        usedPlayers.add(currentPlayerId);
+        continue;
+      }
+
+      const replacement = this.pickStarterForSlot(starters, slot.preferredPosition, usedPlayers);
+      formationAssignments[slot.slotId] = replacement?.id ?? '';
+      if (replacement) {
+        usedPlayers.add(replacement.id);
+      }
+    }
+
+    return {
+      ...normalized,
+      formationAssignments
+    };
+  }
+
+  private pickStarterForSlot(starters: Player[], preferredPosition: Position, usedPlayers: Set<string>): Player | undefined {
+    const availableStarters = starters.filter(player => !usedPlayers.has(player.id));
+    const exactPositionMatch = availableStarters
+      .filter(player => player.position === preferredPosition)
+      .sort((left, right) => right.overall - left.overall)[0];
+
+    if (exactPositionMatch) {
+      return exactPositionMatch;
+    }
+
+    if (preferredPosition === Position.GOALKEEPER) {
+      return availableStarters[0];
+    }
+
+    return availableStarters.find(player => player.position !== Position.GOALKEEPER) ?? availableStarters[0];
   }
 }

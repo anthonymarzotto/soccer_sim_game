@@ -31,23 +31,26 @@ export class GeneratorService {
   private generateTeam(id: string, name: string): Team {
     const players: Player[] = [];
     
+    // Team quality multiplier: ranges from 0.6 to 1.4 to create stronger and weaker teams
+    const teamQuality = Math.random() * 0.8 + 0.6; // 0.6 to 1.4
+    
     // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER, teamQuality));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER, teamQuality));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER, teamQuality));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER, teamQuality));
 
     // 9 Bench: 1 GK, 2 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH, teamQuality));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH, teamQuality));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH, teamQuality));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH, teamQuality));
 
     // 5 Not Dressed: Random positions
     const positions: Position[] = [PositionEnum.GOALKEEPER, PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
     for (let i = 0; i < 5; i++) {
       const pos = positions[Math.floor(Math.random() * positions.length)];
-      players.push(this.generatePlayer(id, pos, RoleEnum.RESERVE));
+      players.push(this.generatePlayer(id, pos, RoleEnum.RESERVE, teamQuality));
     }
 
     const startersByPosition = {
@@ -84,7 +87,7 @@ export class GeneratorService {
     };
   }
 
-  private generatePlayer(teamId: string, position: Position, role: Role): Player {
+  private generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0): Player {
     const id = Math.random().toString(36).substring(2, 9);
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
@@ -96,43 +99,43 @@ export class GeneratorService {
     const nationality = this.nationalities[Math.floor(Math.random() * this.nationalities.length)];
 
     const physical = {
-      speed: this.randomStat(),
-      strength: this.randomStat(),
-      endurance: this.randomStat()
+      speed: this.randomStat(20, 90, teamQuality),
+      strength: this.randomStat(20, 90, teamQuality),
+      endurance: this.randomStat(20, 90, teamQuality)
     };
 
     const mental = {
-      flair: this.randomStat(),
-      vision: this.randomStat(),
-      determination: this.randomStat()
+      flair: this.randomStat(20, 90, teamQuality),
+      vision: this.randomStat(20, 90, teamQuality),
+      determination: this.randomStat(20, 90, teamQuality)
     };
 
     const skills = {
-      tackling: this.randomStat(),
-      shooting: this.randomStat(),
-      heading: this.randomStat(),
-      longPassing: this.randomStat(),
-      shortPassing: this.randomStat(),
-      goalkeeping: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99) : this.randomStat(1, 40)
+      tackling: this.randomStat(20, 90, teamQuality),
+      shooting: this.randomStat(20, 90, teamQuality),
+      heading: this.randomStat(20, 90, teamQuality),
+      longPassing: this.randomStat(20, 90, teamQuality),
+      shortPassing: this.randomStat(20, 90, teamQuality),
+      goalkeeping: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality)
     };
 
     const hidden = {
-      luck: this.randomStat(1, 100),
-      injuryRate: this.randomStat(1, 100)
+      luck: this.randomStat(1, 100, teamQuality),
+      injuryRate: this.randomStat(1, 100, teamQuality)
     };
 
     // Boost stats based on position
     if (position === PositionEnum.DEFENDER) {
-      skills.tackling = this.randomStat(60, 99);
-      skills.heading = this.randomStat(50, 90);
+      skills.tackling = this.randomStat(60, 99, teamQuality);
+      skills.heading = this.randomStat(50, 90, teamQuality);
     } else if (position === PositionEnum.MIDFIELDER) {
-      skills.shortPassing = this.randomStat(60, 99);
-      skills.longPassing = this.randomStat(60, 99);
-      mental.vision = this.randomStat(60, 99);
+      skills.shortPassing = this.randomStat(60, 99, teamQuality);
+      skills.longPassing = this.randomStat(60, 99, teamQuality);
+      mental.vision = this.randomStat(60, 99, teamQuality);
     } else if (position === PositionEnum.FORWARD) {
-      skills.shooting = this.randomStat(60, 99);
-      physical.speed = this.randomStat(60, 99);
-      mental.flair = this.randomStat(60, 99);
+      skills.shooting = this.randomStat(60, 99, teamQuality);
+      physical.speed = this.randomStat(60, 99, teamQuality);
+      mental.flair = this.randomStat(60, 99, teamQuality);
     }
 
     const overall = Math.floor((
@@ -156,8 +159,11 @@ export class GeneratorService {
     };
   }
 
-  private randomStat(min = 20, max = 90): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  private randomStat(min = 20, max = 90, teamQuality = 1.0): number {
+    const baseValue = Math.floor(Math.random() * (max - min + 1)) + min;
+    // Apply team quality multiplier and keep values inside the caller's requested range.
+    const adjustedValue = Math.floor(baseValue * teamQuality);
+    return Math.max(Math.min(adjustedValue, max), min);
   }
 
   private generateSchedule(teams: Team[]): Match[] {

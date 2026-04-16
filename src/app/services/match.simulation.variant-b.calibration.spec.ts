@@ -505,11 +505,11 @@ function calculatePassQuality(events: PlayByPlayEvent[]): {
       return false;
     }
 
-    return typeof event.additionalData?.['passFailure'] === 'string';
+    return !!event.additionalData?.passFailure;
   });
 
   const progressionCompleted = completedPasses.filter(event => {
-    const passIntent = event.additionalData?.['passIntent'];
+    const passIntent = event.additionalData?.passIntent;
     return passIntent === 'PROGRESSION' || passIntent === 'THROUGH_BALL' || passIntent === 'CROSS';
   }).length;
 

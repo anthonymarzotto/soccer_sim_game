@@ -12,6 +12,11 @@ interface StarterRow {
   player: Player | null;
 }
 
+interface BenchRow {
+  slotNumber: number;
+  player: Player | null;
+}
+
 @Component({
   selector: 'app-team-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,6 +24,8 @@ interface StarterRow {
   templateUrl: './team-details.html',
 })
 export class TeamDetailsComponent {
+  private static readonly BENCH_SLOT_COUNT = 9;
+
   private route = inject(ActivatedRoute);
   private gameService = inject(GameService);
   private fieldService = inject(FieldService);
@@ -85,6 +92,14 @@ export class TeamDetailsComponent {
     if (!t) return [];
     return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
+  });
+
+  benchRows = computed<BenchRow[]>(() => {
+    const players = this.bench();
+    return Array.from({ length: TeamDetailsComponent.BENCH_SLOT_COUNT }, (_, index) => ({
+      slotNumber: index + 1,
+      player: players[index] ?? null
+    }));
   });
 
   reserves = computed(() => {
@@ -157,6 +172,23 @@ export class TeamDetailsComponent {
     this.dragOverTargetId.set(null);
   }
 
+  onDropOnBenchSlot(event: DragEvent) {
+    event.preventDefault();
+    const draggedId = this.draggedPlayerId();
+    const team = this.team();
+
+    if (!draggedId || !team) {
+      this.draggedPlayerId.set(null);
+      this.dragOverTargetId.set(null);
+      return;
+    }
+
+    this.gameService.movePlayerToBench(team.id, draggedId);
+
+    this.draggedPlayerId.set(null);
+    this.dragOverTargetId.set(null);
+  }
+
   onDragEnd() {
     this.draggedPlayerId.set(null);
     this.dragOverTargetId.set(null);
@@ -172,6 +204,10 @@ export class TeamDetailsComponent {
 
   starterRowTargetId(slotId: string): string {
     return `slot:${slotId}`;
+  }
+
+  benchSlotTargetId(slotNumber: number): string {
+    return `bench:${slotNumber}`;
   }
 
   slotBadgeClass(slot: FormationSlot): string {

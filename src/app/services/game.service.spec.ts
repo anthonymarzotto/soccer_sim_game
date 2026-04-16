@@ -9,7 +9,7 @@ import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
-import { CommentaryStyle, EventType, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
+import { CommentaryStyle, EventType, FieldZone, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
 import { MatchStatistics, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
@@ -32,6 +32,10 @@ describe('GameService persistence integration', () => {
       saveMatchResult: vi.fn().mockResolvedValue(undefined)
     };
 
+    const formationLibrarySpy: Pick<FormationLibraryService, 'getFormationSlots'> = {
+      getFormationSlots: vi.fn().mockReturnValue(undefined)
+    };
+
     TestBed.configureTestingModule({
       providers: [
         GameService,
@@ -42,12 +46,12 @@ describe('GameService persistence integration', () => {
         { provide: StatisticsService, useValue: {} },
         { provide: PostMatchAnalysisService, useValue: {} },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: {} }
+        { provide: FormationLibraryService, useValue: formationLibrarySpy as FormationLibraryService }
       ]
     });
 
     const service = TestBed.inject(GameService);
-    return { service, generatorSpy, persistenceSpy };
+    return { service, generatorSpy, persistenceSpy, formationLibrarySpy };
   }
 
   afterEach(() => TestBed.resetTestingModule());
@@ -188,6 +192,163 @@ describe('GameService persistence integration', () => {
     expect(persistenceSpy.saveTeamDefinition).toHaveBeenCalledTimes(1);
     expect(persistenceSpy.saveTeamDefinition).toHaveBeenCalledWith(expect.objectContaining({ id: 'team-1' }));
     expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
+  });
+
+  it('should clear starter assignment when moving a player to bench', async () => {
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            {
+              id: 'p1',
+              name: 'Player One',
+              teamId: 'team-1',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
+              physical: { speed: 50, strength: 80, endurance: 75 },
+              mental: { flair: 40, vision: 70, determination: 80 },
+              skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+              hidden: { luck: 50, injuryRate: 8 },
+              overall: 78,
+              careerStats: createEmptyPlayerCareerStats()
+            },
+            {
+              id: 'p2',
+              name: 'Player Two',
+              teamId: 'team-1',
+              position: Position.MIDFIELDER,
+              role: Role.BENCH,
+              personal: { height: 180, weight: 78, age: 24, nationality: 'ENG' },
+              physical: { speed: 61, strength: 70, endurance: 78 },
+              mental: { flair: 55, vision: 66, determination: 71 },
+              skills: { tackling: 52, shooting: 61, heading: 48, longPassing: 67, shortPassing: 72, goalkeeping: 6 },
+              hidden: { luck: 52, injuryRate: 10 },
+              overall: 73,
+              careerStats: createEmptyPlayerCareerStats()
+            }
+          ],
+          playerIds: ['p1', 'p2'],
+          stats: {
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            last5: [MatchResult.DRAW]
+          },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: {
+            gk_1: 'p1'
+          }
+        }
+      ],
+      schedule: [],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    service.movePlayerToBench('team-1', 'p1');
+
+    const updatedTeam = service.getTeam('team-1') as Team;
+    const movedPlayer = service.getPlayersForTeam('team-1').find(player => player.id === 'p1');
+
+    expect(updatedTeam.formationAssignments['gk_1']).toBe('');
+    expect(movedPlayer?.role).toBe(Role.BENCH);
+  });
+
+  it('should move starters with dropped slots to reserves when changing formation', async () => {
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            {
+              id: 'p1',
+              name: 'Player One',
+              teamId: 'team-1',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
+              physical: { speed: 50, strength: 80, endurance: 75 },
+              mental: { flair: 40, vision: 70, determination: 80 },
+              skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+              hidden: { luck: 50, injuryRate: 8 },
+              overall: 78,
+              careerStats: createEmptyPlayerCareerStats()
+            },
+            {
+              id: 'p2',
+              name: 'Player Two',
+              teamId: 'team-1',
+              position: Position.DEFENDER,
+              role: Role.STARTER,
+              personal: { height: 184, weight: 79, age: 25, nationality: 'ENG' },
+              physical: { speed: 62, strength: 74, endurance: 77 },
+              mental: { flair: 44, vision: 60, determination: 73 },
+              skills: { tackling: 79, shooting: 22, heading: 70, longPassing: 63, shortPassing: 67, goalkeeping: 4 },
+              hidden: { luck: 46, injuryRate: 9 },
+              overall: 74,
+              careerStats: createEmptyPlayerCareerStats()
+            }
+          ],
+          playerIds: ['p1', 'p2'],
+          stats: {
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            last5: [MatchResult.DRAW]
+          },
+          selectedFormationId: 'formation_old',
+          formationAssignments: {
+            gk_1: 'p1',
+            def_1: 'p2'
+          }
+        }
+      ],
+      schedule: [],
+      currentWeek: 1
+    };
+
+    const { service, formationLibrarySpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    vi.mocked(formationLibrarySpy.getFormationSlots).mockImplementation((formationId: string) => {
+      if (formationId === 'formation_new') {
+        return [
+          {
+            slotId: 'gk_1',
+            label: 'GK',
+            preferredPosition: Position.GOALKEEPER,
+            coordinates: { x: 50, y: 90 },
+            zone: FieldZone.DEFENSE
+          }
+        ];
+      }
+      return undefined;
+    });
+
+    await service.ensureHydrated();
+    service.changeTeamFormation('team-1', 'formation_new');
+
+    const updatedTeam = service.getTeam('team-1') as Team;
+    const updatedPlayers = service.getPlayersForTeam('team-1');
+    const playerOne = updatedPlayers.find(player => player.id === 'p1');
+    const playerTwo = updatedPlayers.find(player => player.id === 'p2');
+
+    expect(updatedTeam.selectedFormationId).toBe('formation_new');
+    expect(updatedTeam.formationAssignments).toEqual({ gk_1: 'p1' });
+    expect(playerOne?.role).toBe(Role.STARTER);
+    expect(playerTwo?.role).toBe(Role.RESERVE);
   });
 
   it('should resolve team players using playerIds order', async () => {

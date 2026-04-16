@@ -34,7 +34,7 @@
     FORFEIT_CHECK -->|No| TICKS["Determine tick count\\n(zone + late-game urgency)"]
     TICKS --> TICK_LOOP["For each tick"]
 
-    TICK_LOOP --> FATIGUE[Update fatigue]
+    TICK_LOOP --> FATIGUE[Update fatigue (starters only)\nGK stamina drain reduced]
     FATIGUE --> CARRIER[Identify ball carrier]
     CARRIER --> MOVE[Apply carrier movement\\non the pitch]
     MOVE --> ACTION{"Weighted action roll\\n(zone role tactics fatigue scoreline\\n+ possession-chain quality\\nGK constraint: no SHOT roll)"}
@@ -62,7 +62,7 @@
     ON_TARGET -->|Yes| SOT[Increment shots on target]
     SOT --> GOAL_CHANCE{"Goal?\\nskill vs keeper depth angle pressure\\n+ possession-chain quality + home advantage bonus\\nplus defensive shape coverage"}
     GOAL_CHANCE -->|Yes| GOAL[GOAL event\\nUpdate score\\nReset to kickoff]
-    GOAL_CHANCE -->|No| SAVE[SAVE event\\nKeeper claims ball\\nPossession switches]
+    GOAL_CHANCE -->|No| SAVE[SAVE event\\nOn-field keeper only\\nPossession switches]
 
     FOUL_START --> CARD_CHANCE{"Card triggered?\\n10% chance"}
     CARD_CHANCE -->|No| FOUL_RESTART["Fouled side keeps possession\\nZone-aware restart\\nadvanced fouls stay dangerous\\ndeep fouls reset further away"]
@@ -91,7 +91,7 @@
     NEXT_TICK --> TICK_LOOP
 
     TICK_LOOP -->|All ticks done| SUB_CHECK{"Substitution phase?\nfatigue window or pending tactical rebalance"}
-    SUB_CHECK -->|No| NORM[Normalise fatigue\nfor tick count]
+    SUB_CHECK -->|No| NORM[Normalise fatigue\nfor tick count\nGK stamina recovery reduced]
     SUB_CHECK -->|Yes| SUB_EVENT[SUBSTITUTION event\nRole-safe starter-bench swap or tactical rebalance\nOptional after dismissal\nMax 5 per team]
     SUB_EVENT --> NORM
     NORM --> LOOP

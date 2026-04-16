@@ -346,6 +346,40 @@ export class GameService {
     this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
   }
 
+  movePlayerToBench(teamId: string, playerId: string) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    const updatedTeams = l.teams.map(team => {
+      if (team.id !== teamId) return team;
+
+      const teamPlayers = resolveTeamPlayers(team);
+      const player = teamPlayers.find(p => p.id === playerId);
+      if (!player) return team;
+
+      const updatedPlayers = teamPlayers.map(p =>
+        p.id === playerId ? { ...p, role: Role.BENCH } : p
+      );
+
+      const updatedAssignments = { ...team.formationAssignments };
+      Object.keys(updatedAssignments).forEach(slotId => {
+        if (updatedAssignments[slotId] === playerId) {
+          updatedAssignments[slotId] = '';
+        }
+      });
+
+      return {
+        ...team,
+        players: updatedPlayers,
+        formationAssignments: updatedAssignments
+      };
+    });
+
+    const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
+    this.leagueState.set(updatedLeague);
+    this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
+  }
+
   clearFormationAssignment(teamId: string, slotId: string) {
     const l = this.leagueState();
     if (!l) return;
@@ -379,14 +413,35 @@ export class GameService {
 
     const updatedTeams = l.teams.map(team => {
       if (team.id !== teamId) return team;
-      return this.withSyncedPlayerIds(
-        normalizeTeamFormation({ ...team, selectedFormationId: formationId }, formationId, schema)
-      );
+      const normalizedTeam = normalizeTeamFormation({ ...team, selectedFormationId: formationId }, formationId, schema);
+      return this.syncStarterRolesWithAssignments(normalizedTeam);
     });
 
     const updatedLeague: League = { ...l, teams: updatedTeams };
     this.leagueState.set(updatedLeague);
     this.persistChangedTeams(l.teams, updatedLeague.teams);
+  }
+
+  private syncStarterRolesWithAssignments(team: Team): Team {
+    const assignedPlayerIds = new Set(
+      Object.values(team.formationAssignments).filter((playerId): playerId is string => playerId.length > 0)
+    );
+    const updatedPlayers = resolveTeamPlayers(team).map(player => {
+      if (assignedPlayerIds.has(player.id)) {
+        return player.role === Role.STARTER ? player : { ...player, role: Role.STARTER };
+      }
+
+      if (player.role === Role.STARTER) {
+        return { ...player, role: Role.RESERVE };
+      }
+
+      return player;
+    });
+
+    return this.withSyncedPlayerIds({
+      ...team,
+      players: updatedPlayers
+    });
   }
 
   swapPlayerRoles(playerId1: string, playerId2: string) {
@@ -980,6 +1035,7 @@ export class GameService {
           playerIds: event.playerIds,
           time: event.time,
           location: event.location,
+          additionalData: event.additionalData,
           icon,
           importance
         });
