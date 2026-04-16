@@ -38,6 +38,10 @@ export class GameService {
   public isSimulatingMatchWeek = this.isSimulatingWeekState.asReadonly();
   public isSimulatingSingleMatch = computed(() => this.singleMatchSimulationSessionCount() > 0);
   public isAnySimulationInProgress = computed(() => this.isSimulatingMatchWeek() || this.isSimulatingSingleMatch());
+  public isSeasonComplete = computed(() => {
+    const league = this.leagueState();
+    return Boolean(league && league.schedule.length > 0 && league.schedule.every(match => match.played));
+  });
   
   public hasLeague = computed(() => this.leagueState() !== null);
   
@@ -221,7 +225,7 @@ export class GameService {
 
   simulateCurrentWeek(config?: Partial<SimulationConfig>) {
     const l = this.leagueState();
-    if (!l || this.isSimulatingWeekState() || this.isSimulatingSingleMatch()) return;
+    if (!l || this.isSeasonComplete() || this.isSimulatingWeekState() || this.isSimulatingSingleMatch()) return;
 
     if (this.weekSimulationUnlockTimer) {
       clearTimeout(this.weekSimulationUnlockTimer);

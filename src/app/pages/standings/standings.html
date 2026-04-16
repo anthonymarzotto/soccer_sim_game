@@ -13,8 +13,8 @@
         </a>
         <button 
           (click)="gameService.simulateCurrentWeek()"
-          [disabled]="gameService.isAnySimulationInProgress()"
-          class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20">
+          [disabled]="gameService.isSeasonComplete() || gameService.isAnySimulationInProgress()"
+          class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
           Simulate Week
         </button>
       </div>

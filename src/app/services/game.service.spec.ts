@@ -10,11 +10,11 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { CommentaryStyle, EventType, FieldZone, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
-import { MatchStatistics, Team } from '../models/types';
+import { League, MatchStatistics, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
 describe('GameService persistence integration', () => {
-  function setup(storedLeague: { teams: []; schedule: []; currentWeek: number } | null = null) {
+  function setup(storedLeague: League | null = null) {
     TestBed.resetTestingModule();
 
     const generatorSpy: Pick<GeneratorService, 'generateLeague'> = {
@@ -121,6 +121,24 @@ describe('GameService persistence integration', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('should mark the season complete and block week simulation once all scheduled matches are played', async () => {
+    const { service, persistenceSpy } = setup({
+      teams: [],
+      schedule: [
+        { id: 'final-match', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: true, homeScore: 2, awayScore: 1 }
+      ],
+      currentWeek: 1
+    });
+    await service.ensureHydrated();
+
+    expect(service.isSeasonComplete()).toBe(true);
+
+    service.simulateCurrentWeek();
+
+    expect(service.league()?.currentWeek).toBe(1);
+    expect(persistenceSpy.saveLeagueMetadata).not.toHaveBeenCalled();
   });
 
   it('should persist only changed team on formation assignment clear', async () => {
