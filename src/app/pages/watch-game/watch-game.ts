@@ -35,8 +35,8 @@ interface FormationDot {
   x: number;
   y: number;
   minuteEntered: number;
-  goals: number;
-  yellowCards: number;
+  goalMinutes: number[];
+  yellowCardMinutes: number[];
   redCards: number;
 }
 
@@ -943,8 +943,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
           x: position.coordinates.x,
           y,
           minuteEntered: 0,
-          goals: 0,
-          yellowCards: 0,
+          goalMinutes: [],
+          yellowCardMinutes: [],
           redCards: 0,
         };
       })
@@ -1012,16 +1012,36 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     return this.clampNumber(Math.round(playerEntry.stamina), 0, 100);
   }
 
-  getCardBadge(dot: FormationDot): string | null {
-    if (dot.redCards > 0) {
-      return dot.redCards > 1 ? `R${dot.redCards}` : 'R';
+  getRedCardBadge(dot: FormationDot): string | null {
+    if (dot.redCards <= 0) {
+      return null;
     }
 
-    if (dot.yellowCards > 0) {
-      return dot.yellowCards > 1 ? `Y${dot.yellowCards}` : 'Y';
+    return dot.redCards > 1 ? `R${dot.redCards}` : 'R';
+  }
+
+  getGoalBadgeTitle(minute: number): string {
+    if (typeof minute === 'number' && Number.isFinite(minute)) {
+      return `${minute}'`;
     }
 
-    return null;
+    return 'Goal scored';
+  }
+
+  getYellowCardBadgeTitle(minute: number): string {
+    if (typeof minute === 'number' && Number.isFinite(minute)) {
+      return `${minute}'`;
+    }
+
+    return 'Yellow card issued';
+  }
+
+  getSubstitutedOnBadgeTitle(minute: number): string {
+    if (typeof minute === 'number' && Number.isFinite(minute) && minute > 0) {
+      return `${minute}'`;
+    }
+
+    return 'Substituted on';
   }
 
   getTeamLineup(side: TeamSide): TeamLineupEntry[] {
@@ -1153,10 +1173,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     switch (item.type) {
       case EventType.GOAL:
-        this.incrementDotCounter(item.teamSide, primaryPlayerId, 'goals');
+        this.recordGoalForDot(item.teamSide, primaryPlayerId, item.minute);
         break;
       case EventType.YELLOW_CARD:
-        this.incrementDotCounter(item.teamSide, primaryPlayerId, 'yellowCards');
+        this.recordYellowCardForDot(item.teamSide, primaryPlayerId, item.minute);
         break;
       case EventType.RED_CARD:
         this.incrementDotCounter(item.teamSide, primaryPlayerId, 'redCards');
@@ -1180,7 +1200,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     targetSignal.update((dots) => dots.filter((d) => d.playerId !== playerId));
   }
 
-  private incrementDotCounter(teamSide: TeamSide, playerId: string, field: 'goals' | 'yellowCards' | 'redCards') {
+  private incrementDotCounter(teamSide: TeamSide, playerId: string, field: 'redCards') {
     this.updateDotsForTeam(teamSide, (dot) => {
       if (dot.playerId !== playerId) {
         return dot;
@@ -1189,6 +1209,32 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       return {
         ...dot,
         [field]: dot[field] + 1
+      };
+    });
+  }
+
+  private recordGoalForDot(teamSide: TeamSide, playerId: string, minute: number) {
+    this.updateDotsForTeam(teamSide, (dot) => {
+      if (dot.playerId !== playerId) {
+        return dot;
+      }
+
+      return {
+        ...dot,
+        goalMinutes: [...dot.goalMinutes, minute],
+      };
+    });
+  }
+
+  private recordYellowCardForDot(teamSide: TeamSide, playerId: string, minute: number) {
+    this.updateDotsForTeam(teamSide, (dot) => {
+      if (dot.playerId !== playerId) {
+        return dot;
+      }
+
+      return {
+        ...dot,
+        yellowCardMinutes: [...dot.yellowCardMinutes, minute],
       };
     });
   }
@@ -1236,8 +1282,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         label: this.toInitials(fullName),
         fullName,
         minuteEntered: previousDot?.minuteEntered ?? minute,
-        goals: previousDot?.goals ?? 0,
-        yellowCards: previousDot?.yellowCards ?? 0,
+        goalMinutes: previousDot?.goalMinutes ?? [],
+        yellowCardMinutes: previousDot?.yellowCardMinutes ?? [],
         redCards: previousDot?.redCards ?? 0,
       });
     });

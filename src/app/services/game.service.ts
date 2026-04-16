@@ -346,6 +346,40 @@ export class GameService {
     this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
   }
 
+  movePlayerToBench(teamId: string, playerId: string) {
+    const l = this.leagueState();
+    if (!l) return;
+
+    const updatedTeams = l.teams.map(team => {
+      if (team.id !== teamId) return team;
+
+      const teamPlayers = resolveTeamPlayers(team);
+      const player = teamPlayers.find(p => p.id === playerId);
+      if (!player) return team;
+
+      const updatedPlayers = teamPlayers.map(p =>
+        p.id === playerId ? { ...p, role: Role.BENCH } : p
+      );
+
+      const updatedAssignments = { ...team.formationAssignments };
+      Object.keys(updatedAssignments).forEach(slotId => {
+        if (updatedAssignments[slotId] === playerId) {
+          updatedAssignments[slotId] = '';
+        }
+      });
+
+      return {
+        ...team,
+        players: updatedPlayers,
+        formationAssignments: updatedAssignments
+      };
+    });
+
+    const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
+    this.leagueState.set(updatedLeague);
+    this.persistChangedTeamsAndPlayers(l.teams, updatedLeague.teams);
+  }
+
   clearFormationAssignment(teamId: string, slotId: string) {
     const l = this.leagueState();
     if (!l) return;

@@ -167,7 +167,7 @@
                     <div class="flex items-center justify-between gap-2 text-[11px]">
                       <span class="truncate text-zinc-300">
                         @if (entry.playerStatus === Role.SUBSTITUTED_OUT) {
-                          <span class="text-amber-500">↓</span>
+                          <span class="text-amber-500">⬇</span>
                         } @else if (entry.playerStatus === Role.DISMISSED) {
                           <span class="text-red-500">🟥</span>
                         } @else {
@@ -207,25 +207,32 @@
                   [style.top.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.HOME).top"
                   [title]="dot.fullName">
                   <div
-                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-default"
+                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-pointer"
                     [style.background-color]="homeTeamColor()"
                     [style.border-color]="homeTeamColor()">
                     {{ dot.label }}
-                    @if (getCardBadge(dot)) {
-                      <span
-                        class="absolute -left-2 -top-2 min-w-4 h-4 px-1 rounded-full border text-[8px] font-bold leading-none flex items-center justify-center"
-                        [class.bg-red-600]="dot.redCards > 0"
-                        [class.border-red-300]="dot.redCards > 0"
-                        [class.text-white]="dot.redCards > 0"
-                        [class.bg-yellow-400]="dot.redCards === 0"
-                        [class.border-yellow-200]="dot.redCards === 0"
-                        [class.text-zinc-950]="dot.redCards === 0">
-                        {{ getCardBadge(dot) }}
+                    @if (dot.yellowCardMinutes.length > 0) {
+                      <span class="absolute -left-2 -top-2 text-[10px] font-bold leading-none flex items-center justify-center gap-0.5 whitespace-nowrap">
+                        @for (yellowCardMinute of dot.yellowCardMinutes; track $index) {
+                          <span [title]="getYellowCardBadgeTitle(yellowCardMinute)">🟨</span>
+                        }
                       </span>
                     }
-                    @if (dot.goals > 0) {
-                      <span class="absolute -right-2 -top-2 min-w-4 h-4 px-1 rounded-full border border-emerald-300 bg-emerald-600 text-[8px] font-bold text-white leading-none flex items-center justify-center">
-                        {{ dot.goals }}G
+                    @if (getRedCardBadge(dot)) {
+                      <span class="absolute -left-2 top-3 min-w-4 h-4 px-1 rounded-full border border-red-300 bg-red-600 text-[10px] font-bold text-white leading-none flex items-center justify-center">
+                        {{ getRedCardBadge(dot) }}
+                      </span>
+                    }
+                    @if (dot.minuteEntered > 0) {
+                      <span
+                        class="absolute -left-2 -bottom-2 text-[10px] font-bold leading-none flex items-center justify-center text-sky-300"
+                        [title]="getSubstitutedOnBadgeTitle(dot.minuteEntered)">⬆</span>
+                    }
+                    @if (dot.goalMinutes.length > 0) {
+                      <span class="absolute -right-2 -top-2 text-[10px] font-bold leading-none flex items-center justify-center gap-0.5 whitespace-nowrap">
+                        @for (goalMinute of dot.goalMinutes; track $index) {
+                          <span [title]="getGoalBadgeTitle(goalMinute)">⚽</span>
+                        }
                       </span>
                     }
                   </div>
@@ -243,21 +250,28 @@
                     [style.background-color]="awayTeamColor()"
                     [style.border-color]="awayTeamColor()">
                     {{ dot.label }}
-                    @if (getCardBadge(dot)) {
-                      <span
-                        class="absolute -left-2 -top-2 min-w-4 h-4 px-1 rounded-full border text-[8px] font-bold leading-none flex items-center justify-center"
-                        [class.bg-red-600]="dot.redCards > 0"
-                        [class.border-red-300]="dot.redCards > 0"
-                        [class.text-white]="dot.redCards > 0"
-                        [class.bg-yellow-400]="dot.redCards === 0"
-                        [class.border-yellow-200]="dot.redCards === 0"
-                        [class.text-zinc-950]="dot.redCards === 0">
-                        {{ getCardBadge(dot) }}
+                    @if (dot.yellowCardMinutes.length > 0) {
+                      <span class="absolute -left-2 -top-2 text-[10px] font-bold leading-none flex items-center justify-center gap-0.5 whitespace-nowrap">
+                        @for (yellowCardMinute of dot.yellowCardMinutes; track $index) {
+                          <span [title]="getYellowCardBadgeTitle(yellowCardMinute)">🟨</span>
+                        }
                       </span>
                     }
-                    @if (dot.goals > 0) {
-                      <span class="absolute -right-2 -top-2 min-w-4 h-4 px-1 rounded-full border border-emerald-300 bg-emerald-600 text-[8px] font-bold text-white leading-none flex items-center justify-center">
-                        {{ dot.goals }}G
+                    @if (getRedCardBadge(dot)) {
+                      <span class="absolute -left-2 top-3 min-w-4 h-4 px-1 rounded-full border border-red-300 bg-red-600 text-[10px] font-bold text-white leading-none flex items-center justify-center">
+                        {{ getRedCardBadge(dot) }}
+                      </span>
+                    }
+                    @if (dot.minuteEntered > 0) {
+                      <span
+                        class="absolute -left-2 -bottom-2 text-[10px] font-bold leading-none flex items-center justify-center text-sky-300"
+                        [title]="getSubstitutedOnBadgeTitle(dot.minuteEntered)">⬆</span>
+                    }
+                    @if (dot.goalMinutes.length > 0) {
+                      <span class="absolute -right-2 -top-2 text-[10px] font-bold leading-none flex items-center justify-center gap-0.5 whitespace-nowrap">
+                        @for (goalMinute of dot.goalMinutes; track $index) {
+                          <span [title]="getGoalBadgeTitle(goalMinute)">⚽</span>
+                        }
                       </span>
                     }
                   </div>
@@ -289,7 +303,7 @@
                     <div class="flex items-center justify-between gap-2 text-[11px]">
                       <span class="truncate text-zinc-300">
                         @if (entry.playerStatus === Role.SUBSTITUTED_OUT) {
-                          <span class="text-amber-500">↓</span>
+                          <span class="text-amber-500">⬇</span>
                         } @else if (entry.playerStatus === Role.DISMISSED) {
                           <span class="text-red-500">🟥</span>
                         } @else {

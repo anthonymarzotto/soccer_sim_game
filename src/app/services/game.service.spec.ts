@@ -194,6 +194,75 @@ describe('GameService persistence integration', () => {
     expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
   });
 
+  it('should clear starter assignment when moving a player to bench', async () => {
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            {
+              id: 'p1',
+              name: 'Player One',
+              teamId: 'team-1',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
+              physical: { speed: 50, strength: 80, endurance: 75 },
+              mental: { flair: 40, vision: 70, determination: 80 },
+              skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+              hidden: { luck: 50, injuryRate: 8 },
+              overall: 78,
+              careerStats: createEmptyPlayerCareerStats()
+            },
+            {
+              id: 'p2',
+              name: 'Player Two',
+              teamId: 'team-1',
+              position: Position.MIDFIELDER,
+              role: Role.BENCH,
+              personal: { height: 180, weight: 78, age: 24, nationality: 'ENG' },
+              physical: { speed: 61, strength: 70, endurance: 78 },
+              mental: { flair: 55, vision: 66, determination: 71 },
+              skills: { tackling: 52, shooting: 61, heading: 48, longPassing: 67, shortPassing: 72, goalkeeping: 6 },
+              hidden: { luck: 52, injuryRate: 10 },
+              overall: 73,
+              careerStats: createEmptyPlayerCareerStats()
+            }
+          ],
+          playerIds: ['p1', 'p2'],
+          stats: {
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            last5: [MatchResult.DRAW]
+          },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: {
+            gk_1: 'p1'
+          }
+        }
+      ],
+      schedule: [],
+      currentWeek: 1
+    };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    await service.ensureHydrated();
+
+    service.movePlayerToBench('team-1', 'p1');
+
+    const updatedTeam = service.getTeam('team-1') as Team;
+    const movedPlayer = service.getPlayersForTeam('team-1').find(player => player.id === 'p1');
+
+    expect(updatedTeam.formationAssignments['gk_1']).toBe('');
+    expect(movedPlayer?.role).toBe(Role.BENCH);
+  });
+
   it('should move starters with dropped slots to reserves when changing formation', async () => {
     const storedLeague = {
       teams: [

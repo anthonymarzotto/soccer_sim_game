@@ -193,23 +193,23 @@
                   </tr>
                 }
                 <!-- Bench -->
-                @for (player of bench(); track player.id; let i = $index) {
+                @for (row of benchRows(); track row.slotNumber; let i = $index) {
                   <tr 
                     class="hover:bg-zinc-800/50 transition-colors" 
                     [class.border-t-[2px]]="i === 0" 
                     [class.border-t-yellow-500]="i === 0"
-                    [class.dragging]="isDragging(player.id)"
-                    [class.drag-over]="isDragOver(player.id)"
+                    [class.dragging]="row.player && isDragging(row.player.id)"
+                    [class.drag-over]="isDragOver(row.player?.id || benchSlotTargetId(row.slotNumber))"
                     [class.cursor-grab]="isUserTeam()"
-                    [class.cursor-grabbing]="isDragging(player.id)"
-                    [attr.draggable]="isUserTeam()"
-                    (dragstart)="onDragStart($event, player.id)"
-                    (dragover)="onDragOver($event, player.id)"
+                    [class.cursor-grabbing]="row.player && isDragging(row.player.id)"
+                    [attr.draggable]="isUserTeam() && row.player ? 'true' : null"
+                    (dragstart)="row.player && onDragStart($event, row.player.id)"
+                    (dragover)="onDragOver($event, row.player?.id || benchSlotTargetId(row.slotNumber))"
                     (dragleave)="onDragLeave($event)"
-                    (drop)="onDropOnPlayer($event, player.id)"
+                    (drop)="row.player ? onDropOnPlayer($event, row.player.id) : onDropOnBenchSlot($event)"
                     (dragend)="onDragEnd()">
                     @if (i === 0) {
-                      <td [attr.rowspan]="bench().length" class="px-2 py-4 border-l-[5px] border-yellow-500 align-middle relative row-label">
+                      <td [attr.rowspan]="benchRows().length" class="px-2 py-4 border-l-[5px] border-yellow-500 align-middle relative row-label">
                         <div class="flex flex-col items-center justify-center h-full">
                           <span class="w-2 h-2 rounded-full bg-yellow-500 mb-2"></span>
                           <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Bench</span>
@@ -217,31 +217,36 @@
                       </td>
                     }
                     <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
-                    <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                        [class.text-yellow-400]="player.position === Position.GOALKEEPER"
-                        [class.text-blue-400]="player.position === Position.DEFENDER"
-                        [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                        [class.text-red-400]="player.position === Position.FORWARD">
-                      {{ player.position }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                      <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
-                        {{ player.name }}
-                      </a>
-                    </td>
-                    @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
+                    @if (row.player) {
+                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                          [class.text-yellow-400]="row.player.position === Position.GOALKEEPER"
+                          [class.text-blue-400]="row.player.position === Position.DEFENDER"
+                          [class.text-emerald-400]="row.player.position === Position.MIDFIELDER"
+                          [class.text-red-400]="row.player.position === Position.FORWARD">
+                        {{ row.player.position }}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                        <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
+                          {{ row.player.name }}
+                        </a>
+                      </td>
                     } @else {
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ player.careerStats.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ player.careerStats.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ player.careerStats.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ player.careerStats.assists || 0 }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16 text-zinc-500">---</td>
+                      <td class="px-6 py-4 whitespace-nowrap font-medium text-zinc-500 italic">Empty bench slot</td>
+                    }
+                    @if (viewMode() === ViewMode.BIO) {
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ row.player?.overall ?? '--' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ row.player?.personal?.age ?? '--' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
+                    } @else {
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ row.player?.careerStats?.matchesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ row.player?.careerStats?.minutesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ row.player?.careerStats?.goals || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ row.player?.careerStats?.assists || 0 }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                         <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ player.careerStats.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ player.careerStats.redCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ row.player?.careerStats?.yellowCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ row.player?.careerStats?.redCards || 0 }}</span>
                         </span>
                       </td>
                     }
