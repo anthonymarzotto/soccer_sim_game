@@ -12,6 +12,7 @@
     "dev": "cross-env ng serve --port=3000 --host=0.0.0.0 --allowed-hosts",
     "prebuild": "npm run sync:data-schema-version",
     "build": "ng build",
+    "build:gh-pages": "ng build --base-href ./",
     "prewatch": "npm run sync:data-schema-version",
     "watch": "ng build --watch --configuration development",
     "version:data": "node -e \"console.log(require('./package.json').dataSchemaVersion)\"",
@@ -22,7 +23,10 @@
     "prelint": "npm run sync:data-schema-version",
     "lint": "ng lint",
     "serve:ssr:app": "node dist/app/server/server.mjs",
-    "prepare": "npm run sync:data-schema-version && husky install"
+    "prepare": "npm run sync:data-schema-version && husky install",
+    "predeploy": "npm run build:gh-pages",
+    "prepare:gh-pages": "node -e \"const fs=require('fs');const p='dist/app/browser';const html=fs.readFileSync(p+'/index.csr.html','utf8').replace('<base href=\\\"/\\\">','<base href=\\\"./\\\">');fs.writeFileSync(p+'/index.html',html);\"",
+    "deploy": "npm run prepare:gh-pages && gh-pages -d dist/app/browser"
   },
   "private": true,
   "lint-staged": {
@@ -58,6 +62,7 @@
     "angular-eslint": "21.1.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
+    "gh-pages": "^6.3.0",
     "husky": "^9.1.7",
     "jsdom": "^27.0.0",
     "lint-staged": "^16.4.0",
