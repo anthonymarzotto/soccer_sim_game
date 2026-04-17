@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Variant B Simulation – High-Level Flow</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      background: #0c0a09;
+      color: #e7e5e4;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 { margin-bottom: 1.5rem; font-size: 1.25rem; color: #a8a29e; }
+    .mermaid { max-width: 960px; width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>Variant B Simulation – High-Level Flow</h1>
+  <div id="variant-b-flow" class="mermaid"></div>
+  <script>
+    const mermaidConfig = JSON.parse('\u007b"startOnLoad":false,"theme":"dark"\u007d');
+    mermaid.initialize(mermaidConfig);
+
+    const joinLabel = (...parts) => parts.join(' - ');
+    const quote = (text) => `"${text.replace(/"/g, '\\"')}"`;
+    const rect = (id, ...parts) => `${id}[${quote(joinLabel(...parts))}]`;
+    const decision = (id, ...parts) => `${id}{${quote(joinLabel(...parts))}}`;
+
+    const diagramLines = [
+      'flowchart TD',
+      `START["simulateMatch"] --> ${rect('INIT', 'Clone teams & rosters', 'Derive tactics', 'Initialise fatigue', 'Initialise active match shape')}`,
+      `INIT --> LOOP["For each minute 1-95"]`,
+      '',
+      `LOOP --> ${decision('FORFEIT_CHECK', 'Any team below 7 active players?')}`,
+      `FORFEIT_CHECK -->|Yes| ${rect('FORFEIT_END', 'Apply fixed 1-0 forfeit loss', 'Clear match events and player stats impact', 'Return MatchState')}`,
+      `FORFEIT_CHECK -->|No| ${rect('TICKS', 'Determine tick count', 'zone + late-game urgency')}`,
+      `TICKS --> TICK_LOOP["For each tick"]`,
+      '',
+      `TICK_LOOP --> ${rect('FATIGUE', 'Update fatigue (starters only)', 'GK stamina drain reduced')}`,
+      `FATIGUE --> ${rect('CARRIER', 'Identify ball carrier')}`,
+      `CARRIER --> ${rect('MOVE', 'Apply carrier movement on the pitch')}`,
+      `MOVE --> ${decision('ACTION', 'Weighted action roll', 'zone role tactics fatigue scoreline', 'plus possession-chain quality', 'GK constraint: no SHOT roll')}`,
+      '',
+      `ACTION -->|CARRY| ${rect('CARRY_ATTEMPT', 'Carry attempt')}`,
+      `CARRY_ATTEMPT --> ${decision('CARRY_SUCCESS', 'Carry succeeds?', 'carrier quality vs pressure and fatigue', 'plus defensive shape coverage')}`,
+      `CARRY_SUCCESS -->|No| ${rect('CARRY_LOST', 'TACKLE event', 'Dispossessed turnover')}`,
+      `CARRY_SUCCESS -->|Yes| ${rect('CARRY_ADVANCE', 'Extra dribble progress', 'optional same-role handoff', 'increment possession chain')}`,
+      `ACTION -->|PASS| ${rect('PASS_START', 'Pass attempt')}`,
+      `ACTION -->|SHOT| ${rect('SHOT_START', 'Shot attempt', 'Increment team shots')}`,
+      `ACTION -->|FOUL| ${rect('FOUL_START', 'Defending player fouls carrier', 'Increment defending team fouls', 'Emit FOUL event')}`,
+      '',
+      `PASS_START --> ${rect('PASS_INTENT', 'Select pass intent', 'RECYCLE / PROGRESSION / THROUGH_BALL / CROSS')}`,
+      `PASS_INTENT --> ${decision('PASS_TARGET', 'Pass target found?', 'intent scoring plus weighted draw across top candidates')}`,
+      `PASS_TARGET -->|No| ${rect('TACKLE', 'TACKLE event', 'Turnover')}`,
+      `PASS_TARGET -->|Yes| ${decision('PASS_SUCCESS', 'Pass success?', 'skill fatigue pressure intent style', 'pressure plus direct defensive shape lane coverage')}`,
+      `PASS_SUCCESS -->|Yes| ${rect('PASS_COMPLETE', 'PASS event', 'Receiver takes ball', 'Ball position advances')}`,
+      `PASS_SUCCESS -->|No| ${decision('PASS_FAIL', 'Failure type', 'shape-aware lane vs overhit pressure')}`,
+      `PASS_FAIL -->|Tackled| ${rect('TACKLE_FAIL', 'TACKLE event', 'Turnover')}`,
+      `PASS_FAIL -->|Lane cut out| ${rect('INTERCEPTION', 'INTERCEPTION event', 'Turnover')}`,
+      `PASS_FAIL -->|Overhit| ${rect('OVERHIT', 'INTERCEPTION event overhit', 'Turnover')}`,
+      '',
+      `SHOT_START --> ${decision('ON_TARGET', 'On target?', 'shooting skill depth angle fatigue pressure', 'plus possession-chain quality', 'plus defensive shape coverage')}`,
+      `ON_TARGET -->|No| ${rect('MISS', 'MISS event')}`,
+      `ON_TARGET -->|Yes| ${rect('SOT', 'Increment shots on target')}`,
+      `SOT --> ${decision('GOAL_CHANCE', 'Goal?', 'skill vs keeper depth angle pressure', 'plus possession-chain quality plus home advantage bonus', 'plus defensive shape coverage')}`,
+      `GOAL_CHANCE -->|Yes| ${rect('GOAL', 'GOAL event', 'Update score', 'Reset to kickoff')}`,
+      `GOAL_CHANCE -->|No| ${rect('SAVE', 'SAVE event', 'On-field keeper only', 'Possession switches')}`,
+      '',
+      `FOUL_START --> ${decision('CARD_CHANCE', 'Card triggered?', '10% chance')}`,
+      `CARD_CHANCE -->|No| ${rect('FOUL_RESTART', 'Fouled side keeps possession', 'Zone-aware restart', 'advanced fouls stay dangerous', 'deep fouls reset further away')}`,
+      `CARD_CHANCE -->|Yes| ${decision('CARD_TYPE', 'Which card?')}`,
+      `CARD_TYPE -->|Yellow| ${rect('YELLOW', 'YELLOW_CARD event', 'Increment yellow count')}`,
+      `CARD_TYPE -->|Red| ${rect('RED', 'RED_CARD event', 'Direct red', 'Dismiss offender')}`,
+      `YELLOW --> ${decision('SECOND_YELLOW', 'Second yellow?')}`,
+      `SECOND_YELLOW -->|No| FOUL_RESTART`,
+      `SECOND_YELLOW -->|Yes| ${rect('SECOND_RED', 'RED_CARD event', 'Second yellow send-off', 'Dismiss offender')}`,
+      `RED --> ${rect('REBALANCE', 'Rebalance active shape immediately', 'Rebuild formation from staffed slots', 'Mark optional tactical sub for next sub phase')}`,
+      `SECOND_RED --> REBALANCE`,
+      `REBALANCE --> FOUL_RESTART`,
+      '',
+      `CARRY_ADVANCE --> ${rect('NEXT_TICK', 'Next tick')}`,
+      `CARRY_LOST --> NEXT_TICK`,
+      `TACKLE --> NEXT_TICK`,
+      `PASS_COMPLETE --> NEXT_TICK`,
+      `INTERCEPTION --> NEXT_TICK`,
+      `TACKLE_FAIL --> NEXT_TICK`,
+      `OVERHIT --> NEXT_TICK`,
+      `FOUL_RESTART --> NEXT_TICK`,
+      `MISS --> NEXT_TICK`,
+      `GOAL --> NEXT_TICK`,
+      `SAVE --> NEXT_TICK`,
+      '',
+      `NEXT_TICK --> TICK_LOOP`,
+      '',
+      `TICK_LOOP -->|All ticks done| ${decision('SUB_CHECK', 'Substitution phase?', 'fatigue window or pending tactical rebalance')}`,
+      `SUB_CHECK -->|No| ${rect('NORM', 'Normalise fatigue', 'for tick count', 'GK stamina recovery reduced')}`,
+      `SUB_CHECK -->|Yes| ${rect('SUB_EVENT', 'SUBSTITUTION event', 'Role-safe starter-bench swap or tactical rebalance', 'Optional after dismissal', 'Max 5 per team')}`,
+      `SUB_EVENT --> NORM`,
+      `NORM --> LOOP`,
+      `LOOP -->|Minute 95| RESULT["Return MatchState"]`,
+      '',
+      'style CARRY_ATTEMPT fill:#3f3f46,color:#ccc',
+      'style CARRY_ADVANCE fill:#3f3f46,color:#ccc',
+      'style CARRY_SUCCESS fill:#1c1917,color:#fff,stroke:#a8a29e',
+      'style CARRY_LOST fill:#7c2d12,color:#fff',
+      'style PASS_COMPLETE fill:#14532d,color:#fff',
+      'style INTERCEPTION fill:#1e3a5f,color:#fff',
+      'style OVERHIT fill:#1e3a5f,color:#fff',
+      'style TACKLE fill:#7c2d12,color:#fff',
+      'style TACKLE_FAIL fill:#7c2d12,color:#fff',
+      'style YELLOW fill:#854d0e,color:#fff',
+      'style RED fill:#991b1b,color:#fff',
+      'style SECOND_RED fill:#991b1b,color:#fff',
+      'style REBALANCE fill:#0f766e,color:#fff',
+      'style FOUL_RESTART fill:#1e3a5f,color:#fff',
+      'style GOAL fill:#166534,color:#fff',
+      'style SAVE fill:#1e3a5f,color:#fff',
+      'style MISS fill:#7f1d1d,color:#fff',
+      'style SUB_EVENT fill:#0c4a6e,color:#fff',
+      'style SUB_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e',
+      'style FORFEIT_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e',
+      'style FORFEIT_END fill:#7f1d1d,color:#fff',
+      'style SOT fill:#3f3f46,color:#ccc',
+      'style ACTION fill:#1c1917,color:#fff,stroke:#a8a29e'
+    ];
+
+    const diagramSource = diagramLines.join('\n');
+
+    mermaid
+      .render('variantBFlowSvg', diagramSource)
+      .then(({ svg }) => {
+        const container = document.getElementById('variant-b-flow');
+        if (container) {
+          container.innerHTML = svg;
+        }
+      })
+      .catch((error) => {
+        const container = document.getElementById('variant-b-flow');
+        if (container) {
+          container.textContent = `Mermaid render error: ${String(error)}`;
+        }
+      });
+  </script>
+</body>
+</html>
