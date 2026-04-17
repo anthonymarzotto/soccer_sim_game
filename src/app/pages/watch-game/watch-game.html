@@ -144,7 +144,7 @@
 
           <div class="px-4 pb-4">
             <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_220px] flex-1 overflow-hidden">
-            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col">
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4" [style.border-top-color]="homeTeamColor()">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ homeTeam()?.name ?? 'Home' }}</h3>
               <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
                 @for (entry of getOnFieldLineup(TeamSide.HOME); track entry.playerId) {
@@ -280,7 +280,7 @@
 
             </div>
 
-            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col">
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4" [style.border-top-color]="awayTeamColor()">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ awayTeam()?.name ?? 'Away' }}</h3>
               <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
                 @for (entry of getOnFieldLineup(TeamSide.AWAY); track entry.playerId) {
