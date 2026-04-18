@@ -11,14 +11,14 @@
           <label for="season-filter" class="filter-label">Season</label>
           <select id="season-filter" class="filter-control" [ngModel]="selectedYear() || currentSeasonYear()" (ngModelChange)="selectedYear.set($event); pageIndex.set(0)">
             @for (season of availableSeasons(); track season) {
-              <option [value]="season">{{ season }}</option>
+              <option [ngValue]="season">{{ season }}</option>
             }
           </select>
         </div>
 
         <div class="filter-group">
           <label for="team-filter" class="filter-label">Team</label>
-          <select id="team-filter" class="filter-control" [(ngModel)]="selectedTeam" (change)="pageIndex.set(0)">
+          <select id="team-filter" class="filter-control" [ngModel]="selectedTeam()" (ngModelChange)="selectedTeam.set($event); pageIndex.set(0)">
             <option value="">All Teams</option>
             @for (team of availableTeams(); track team.id) {
               <option [value]="team.id">{{ team.name }}</option>
@@ -28,7 +28,7 @@
 
         <div class="filter-group">
           <label for="position-filter" class="filter-label">Position</label>
-          <select id="position-filter" class="filter-control" [(ngModel)]="selectedPosition" (change)="pageIndex.set(0)">
+          <select id="position-filter" class="filter-control" [ngModel]="selectedPosition()" (ngModelChange)="selectedPosition.set($event); pageIndex.set(0)">
             <option value="">All Positions</option>
             @for (pos of availablePositions(); track pos) {
               <option [value]="pos">{{ pos }}</option>
@@ -43,8 +43,8 @@
             class="filter-control"
             type="text"
             placeholder="Player name..."
-            [(ngModel)]="searchQuery"
-            (change)="pageIndex.set(0)"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event); pageIndex.set(0)"
           />
         </div>
       </div>

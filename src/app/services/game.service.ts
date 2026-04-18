@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { League, Match, Team, Player, PlayerCareerStats, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
@@ -884,26 +885,8 @@ export class GameService {
     let statsEntry = player.careerStats.find(stats => stats.seasonYear === currentSeasonYear);
     
     if (!statsEntry) {
-      // Create new entry for current season
-      statsEntry = {
-        seasonYear: currentSeasonYear,
-        teamId: teamId,
-        matchesPlayed: 0,
-        goals: 0,
-        assists: 0,
-        yellowCards: 0,
-        redCards: 0,
-        shots: 0,
-        shotsOnTarget: 0,
-        tackles: 0,
-        interceptions: 0,
-        passes: 0,
-        saves: 0,
-        cleanSheets: 0,
-        minutesPlayed: 0,
-        fouls: 0,
-        foulsSuffered: 0
-      };
+      // Create new entry for current season using factory
+      statsEntry = createEmptyPlayerCareerStats(currentSeasonYear, teamId);
       player.careerStats.push(statsEntry);
     }
     
