@@ -1,7 +1,7 @@
 {
   "name": "soccer-simulator",
-  "version": "0.2.0",
-  "dataSchemaVersion": "A",
+  "version": "0.3.0",
+  "dataSchemaVersion": "B",
   "scripts": {
     "check:data-schema-version": "node scripts/sync-data-schema-version.mjs --check",
     "sync:data-schema-version": "node scripts/sync-data-schema-version.mjs",
@@ -30,7 +30,7 @@
   },
   "private": true,
   "lint-staged": {
-    "*.{ts,html,css,scss}": [
+    "*.{ts,html}": [
       "eslint --fix --format=stylish",
       "eslint --format=stylish --max-warnings=0"
     ]

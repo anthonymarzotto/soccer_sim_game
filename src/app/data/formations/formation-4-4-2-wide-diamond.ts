@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_4_4_2_WIDE_DIAMOND: FormationSchema = {
   id: 'formation_4_4_2_wide_diamond',
-  name: '4-4-2 (Wide Diamond)',
+  name: 'The Sparkling Formation',
   shortCode: '4-4-2 WD',
   description: 'Diamond-style midfield that stretches wider with natural width from midfield and full-backs.',
   isUserDefined: false,

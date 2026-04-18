@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_4_5_1: FormationSchema = {
   id: 'formation_4_5_1',
-  name: '4-5-1',
+  name: 'The Midfield Wave',
   shortCode: '4-5-1',
   description: 'Solid four-man defence with a wide five-man midfield and a lone central striker.',
   isUserDefined: false,

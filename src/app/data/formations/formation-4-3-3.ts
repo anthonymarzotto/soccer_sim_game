@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_4_3_3: FormationSchema = {
   id: 'formation_4_3_3',
-  name: '4-3-3',
+  name: 'The Attacking Triangle',
   shortCode: '4-3-3',
   description: 'Front-three system with three central midfielders and overlapping full-backs.',
   isUserDefined: false,

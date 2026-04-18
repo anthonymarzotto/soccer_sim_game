@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { League, Match, Team, Player, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
+import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
@@ -20,6 +21,10 @@ interface SimulateMatchWithDetailsResult {
   keyEvents: MatchEvent[];
   commentary: string[];
 }
+
+type CareerStatsAggregate = Omit<PlayerCareerStats, 'seasonYear'> & {
+  seasonYear: 'Career';
+};
 
 @Injectable({
   providedIn: 'root'
@@ -123,7 +128,7 @@ export class GameService {
     });
   }
 
-  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'userTeamId'>): void {
+  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): void {
     if (this.isHydrating()) {
       return;
     }
@@ -166,16 +171,21 @@ export class GameService {
   }
 
   generateNewLeague() {
-    const { teams, schedule } = this.generator.generateLeague();
+    const { teams, schedule, currentSeasonYear } = this.generator.generateLeague();
     const optimizedTeams = this.dressBestPlayers(this.withSyncedPlayerIdsForTeams(teams));
     const league: League = {
       teams: optimizedTeams,
       schedule,
-      currentWeek: 1
+      currentWeek: 1,
+      currentSeasonYear
     };
 
     this.leagueState.set(league);
     this.persistLeague(league);
+  }
+
+  private getCurrentLeagueSeasonYear(): number {
+    return this.leagueState()?.currentSeasonYear ?? new Date().getFullYear();
   }
 
   async clearLeague(): Promise<void> {
@@ -641,6 +651,74 @@ export class GameService {
     return { home: adjustedHome, draw: finalDraw, away: adjustedAway };
   }
 
+  /**
+   * Gets the current season's stats entry for a player.
+   * Returns the stats object, or null if no current season stats exist.
+   */
+  getCurrentSeasonStats(player: Player): PlayerCareerStats | null {
+    const currentSeasonYear = this.getCurrentLeagueSeasonYear();
+    return player.careerStats.find(stats => stats.seasonYear === currentSeasonYear) || null;
+  }
+
+  /**
+   * Gets all available seasons for a player.
+   */
+  getAvailableSeasons(player: Player): number[] {
+    return [...new Set(player.careerStats.map(stats => stats.seasonYear))].sort((a, b) => a - b);
+  }
+
+  /**
+   * Gets stats for a specific season year.
+   */
+  getSeasonStats(player: Player, seasonYear: number): PlayerCareerStats | null {
+    return player.careerStats.find(stats => stats.seasonYear === seasonYear) || null;
+  }
+
+  /**
+   * Gets aggregated career stats across all seasons.
+   */
+  getAggregatedCareerStats(player: Player): CareerStatsAggregate {
+    const aggregated: CareerStatsAggregate = {
+      seasonYear: 'Career',
+      teamId: player.teamId,
+      matchesPlayed: 0,
+      goals: 0,
+      assists: 0,
+      yellowCards: 0,
+      redCards: 0,
+      shots: 0,
+      shotsOnTarget: 0,
+      tackles: 0,
+      interceptions: 0,
+      passes: 0,
+      saves: 0,
+      cleanSheets: 0,
+      minutesPlayed: 0,
+      fouls: 0,
+      foulsSuffered: 0
+    };
+
+    player.careerStats.forEach(season => {
+      aggregated.matchesPlayed += season.matchesPlayed;
+      aggregated.goals += season.goals;
+      aggregated.assists += season.assists;
+      aggregated.yellowCards += season.yellowCards;
+      aggregated.redCards += season.redCards;
+      aggregated.shots += season.shots;
+      aggregated.shotsOnTarget += season.shotsOnTarget;
+      aggregated.tackles += season.tackles;
+      aggregated.interceptions += season.interceptions;
+      aggregated.passes += season.passes;
+      aggregated.saves += season.saves;
+      aggregated.cleanSheets += season.cleanSheets;
+      aggregated.minutesPlayed += season.minutesPlayed;
+      aggregated.fouls += (season.fouls ?? 0);
+      aggregated.foulsSuffered += (season.foulsSuffered ?? 0);
+    });
+
+    return aggregated;
+  }
+
   // Enhanced simulation methods
   private matchSimulationVariantBService = inject(MatchSimulationVariantBService);
   private commentaryService = inject(CommentaryService);
@@ -802,6 +880,19 @@ export class GameService {
     }
   }
 
+  private getOrCreateCurrentSeasonStats(player: Player, teamId: string): PlayerCareerStats {
+    const currentSeasonYear = this.getCurrentLeagueSeasonYear();
+    let statsEntry = player.careerStats.find(stats => stats.seasonYear === currentSeasonYear);
+    
+    if (!statsEntry) {
+      // Create new entry for current season using factory
+      statsEntry = createEmptyPlayerCareerStats(currentSeasonYear, teamId);
+      player.careerStats.push(statsEntry);
+    }
+    
+    return statsEntry;
+  }
+
   private updatePlayerCareerStats(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {
     const l = this.leagueState();
     if (!l) return;
@@ -829,9 +920,10 @@ export class GameService {
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
         if (scorer) {
-          scorer.careerStats.shots++;
-          scorer.careerStats.shotsOnTarget++;
-          scorer.careerStats.goals++;
+          const stats = this.getOrCreateCurrentSeasonStats(scorer, scorer.teamId);
+          stats.shots++;
+          stats.shotsOnTarget++;
+          stats.goals++;
         }
         return;
       }
@@ -839,13 +931,15 @@ export class GameService {
       if (event.type === EventType.SAVE) {
         const shooter = allPlayers.get(event.playerIds[0]);
         if (shooter) {
-          shooter.careerStats.shots++;
-          shooter.careerStats.shotsOnTarget++;
+          const stats = this.getOrCreateCurrentSeasonStats(shooter, shooter.teamId);
+          stats.shots++;
+          stats.shotsOnTarget++;
         }
         const keeperId = event.playerIds[1] ?? event.playerIds[0];
         const keeper = allPlayers.get(keeperId);
         if (keeper) {
-          keeper.careerStats.saves++;
+          const stats = this.getOrCreateCurrentSeasonStats(keeper, keeper.teamId);
+          stats.saves++;
         }
         return;
       }
@@ -853,7 +947,8 @@ export class GameService {
       if (event.type === EventType.MISS) {
         const shooter = allPlayers.get(event.playerIds[0]);
         if (shooter) {
-          shooter.careerStats.shots++;
+          const stats = this.getOrCreateCurrentSeasonStats(shooter, shooter.teamId);
+          stats.shots++;
         }
         return;
       }
@@ -864,44 +959,46 @@ export class GameService {
         const player = allPlayers.get(playerId);
         if (!player) return;
 
+        const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+
         // Update career stats based on event type
         switch (event.type) {
           case EventType.SHOT:
             if (shotOutcomeByMinuteAndShooter.has(`${event.time}:${playerId}`)) {
               return;
             }
-            player.careerStats.shots++;
+            stats.shots++;
             if (event.success) {
-              player.careerStats.shotsOnTarget++;
+              stats.shotsOnTarget++;
             }
             break;
           case EventType.TACKLE:
             if (player.position !== Position.GOALKEEPER) {
-              player.careerStats.tackles++;
+              stats.tackles++;
             }
             break;
           case EventType.INTERCEPTION:
             if (player.position !== Position.GOALKEEPER) {
-              player.careerStats.interceptions++;
+              stats.interceptions++;
             }
             break;
           case EventType.PASS:
-            player.careerStats.passes++;
+            stats.passes++;
             break;
           case EventType.FOUL:
             if (playerId === primaryPlayerId) {
-              player.careerStats.fouls = (player.careerStats.fouls ?? 0) + 1;
+              stats.fouls = (stats.fouls ?? 0) + 1;
             } else {
-              player.careerStats.foulsSuffered = (player.careerStats.foulsSuffered ?? 0) + 1;
+              stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
             }
             break;
           case EventType.YELLOW_CARD:
             if (playerId !== primaryPlayerId) return;
-            player.careerStats.yellowCards++;
+            stats.yellowCards++;
             break;
           case EventType.RED_CARD:
             if (playerId !== primaryPlayerId) return;
-            player.careerStats.redCards++;
+            stats.redCards++;
             break;
         }
       });
@@ -969,7 +1066,8 @@ export class GameService {
     allTeamPlayers.forEach(player => {
       const minutes = minutesOnPitch.get(player.id) ?? 0;
       if (minutes > 0) {
-        player.careerStats.minutesPlayed += minutes;
+        const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        stats.minutesPlayed += minutes;
       }
     });
 
@@ -977,7 +1075,8 @@ export class GameService {
     allTeamPlayers.forEach(player => {
       const minutes = minutesOnPitch.get(player.id) ?? 0;
       if (minutes > 0) {
-        player.careerStats.matchesPlayed++;
+        const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        stats.matchesPlayed++;
       }
     });
 
@@ -986,10 +1085,12 @@ export class GameService {
     const awayGoalkeeper = awayPlayers.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
     if (homeGoalkeeper && awayScore === 0) {
-      homeGoalkeeper.careerStats.cleanSheets++;
+      const stats = this.getOrCreateCurrentSeasonStats(homeGoalkeeper, homeGoalkeeper.teamId);
+      stats.cleanSheets++;
     }
     if (awayGoalkeeper && homeScore === 0) {
-      awayGoalkeeper.careerStats.cleanSheets++;
+      const stats = this.getOrCreateCurrentSeasonStats(awayGoalkeeper, awayGoalkeeper.teamId);
+      stats.cleanSheets++;
     }
   }
 

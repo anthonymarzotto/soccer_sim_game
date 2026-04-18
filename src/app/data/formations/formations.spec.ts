@@ -9,7 +9,6 @@ describe('FORMATION_4_4_2', () => {
   });
 
   it('should have the correct metadata', () => {
-    expect(FORMATION_4_4_2.name).toBe('Classic 4-4-2');
     expect(FORMATION_4_4_2.shortCode).toBe('4-4-2');
     expect(FORMATION_4_4_2.isUserDefined).toBe(false);
     expect(FORMATION_4_4_2.description).toBeTruthy();

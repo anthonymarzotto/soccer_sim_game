@@ -179,14 +179,15 @@
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ row.player?.personal?.age ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ row.player?.careerStats?.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ row.player?.careerStats?.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ row.player?.careerStats?.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ row.player?.careerStats?.assists || 0 }}</td>
+                      @let stats = getRowStats(row.player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                         <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ row.player?.careerStats?.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ row.player?.careerStats?.redCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ stats.yellowCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards || 0 }}</span>
                         </span>
                       </td>
                     }
@@ -239,14 +240,15 @@
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ row.player?.personal?.age ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ row.player?.careerStats?.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ row.player?.careerStats?.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ row.player?.careerStats?.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ row.player?.careerStats?.assists || 0 }}</td>
+                      @let stats = getRowStats(row.player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                         <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ row.player?.careerStats?.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ row.player?.careerStats?.redCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ stats.yellowCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards || 0 }}</span>
                         </span>
                       </td>
                     }
@@ -294,14 +296,15 @@
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                     } @else {
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ player.careerStats.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ player.careerStats.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ player.careerStats.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ player.careerStats.assists || 0 }}</td>
+                      @let stats = getCurrentSeasonStats(player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals || 0 }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                         <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ player.careerStats.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ player.careerStats.redCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ stats.yellowCards || 0 }}</span>
+                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards || 0 }}</span>
                         </span>
                       </td>
                     }

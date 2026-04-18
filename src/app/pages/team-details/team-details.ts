@@ -3,9 +3,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { FieldService } from '../../services/field.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
-import { Player, Role } from '../../models/types';
+import { Player, PlayerCareerStats, Role } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
+
+type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards'>;
 
 interface StarterRow {
   slot: FormationSlot;
@@ -108,6 +110,29 @@ export class TeamDetailsComponent {
     return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE)
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
+
+  getCurrentSeasonStats(player: Player): TeamDetailsRowStats {
+    return this.gameService.getCurrentSeasonStats(player) || {
+      matchesPlayed: 0,
+      minutesPlayed: 0,
+      goals: 0,
+      assists: 0,
+      yellowCards: 0,
+      redCards: 0
+    };
+  }
+
+  getRowStats(player: Player | null): TeamDetailsRowStats {
+    if (!player) return {
+      matchesPlayed: 0,
+      minutesPlayed: 0,
+      goals: 0,
+      assists: 0,
+      yellowCards: 0,
+      redCards: 0
+    };
+    return this.getCurrentSeasonStats(player);
+  }
 
   private positionWeight(pos: string): number {
     switch(pos) {

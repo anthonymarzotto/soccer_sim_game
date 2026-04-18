@@ -92,6 +92,12 @@ export class PlayerProfileComponent {
     ];
   });
 
+  currentSeasonStats = computed(() => {
+    const player = this.player();
+    if (!player) return null;
+    return this.gameService.getCurrentSeasonStats(player);
+  });
+
   // Chart calculation helpers
   createChartPoints(data: {label: string, value: number}[], size = 120): string {
     if (data.length === 0) return '';

@@ -30,7 +30,7 @@ describe('PersistenceService', () => {
           skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
           hidden: { luck: 50, injuryRate: 8 },
           overall: 78,
-          careerStats: createEmptyPlayerCareerStats()
+          careerStats: [createEmptyPlayerCareerStats(2026, id)]
         }
       ],
       playerIds: [`${id}-p1`],
@@ -106,7 +106,7 @@ describe('PersistenceService', () => {
   });
 
   it('should load and save league using normalized persistence', async () => {
-    const league = { teams: [], schedule: [], currentWeek: 1 };
+    const league = { teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 };
     vi.mocked(normalizedDbSpy.loadLeague).mockResolvedValue(league);
 
     const loaded = await service.loadLeague();
@@ -194,7 +194,7 @@ describe('PersistenceService', () => {
 
     await service.saveSettings({ version: '0.1.0-alpha.data.1', badgeStyle: 'shield' });
     await service.saveSelectedWeek(4);
-    await service.saveLeague({ teams: [], schedule: [], currentWeek: 1 });
+    await service.saveLeague({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
 
     expect(dataSchemaVersionSpy.ensureHydrated).toHaveBeenCalled();
     expect(appDbSpy.putState).not.toHaveBeenCalled();

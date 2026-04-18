@@ -447,15 +447,15 @@
             <div class="space-y-3">
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Matches Played</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.matchesPlayed || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.matchesPlayed || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Minutes Played</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.minutesPlayed || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.minutesPlayed || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Clean Sheets</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.cleanSheets || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.cleanSheets || 0 }}</span>
               </div>
             </div>
           </div>
@@ -465,19 +465,19 @@
             <div class="space-y-3">
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Goals</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.goals || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.goals || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Assists</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.assists || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.assists || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Shots</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.shots || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.shots || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Shots on Target</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.shotsOnTarget || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.shotsOnTarget || 0 }}</span>
               </div>
             </div>
           </div>
@@ -487,19 +487,19 @@
             <div class="space-y-3">
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Tackles</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.tackles || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.tackles || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Interceptions</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.interceptions || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.interceptions || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Passes</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.passes || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.passes || 0 }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-zinc-500">Saves</span>
-                <span class="font-mono font-medium text-white">{{ player()?.careerStats?.saves || 0 }}</span>
+                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.saves || 0 }}</span>
               </div>
             </div>
           </div>
@@ -509,19 +509,19 @@
             <div class="flex gap-6 flex-wrap">
               <div class="flex items-center gap-3">
                 <span class="text-zinc-500">Fouls Committed</span>
-                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.fouls || 0 }}</span>
+                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.fouls || 0 }}</span>
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-zinc-500">Fouls Suffered</span>
-                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.foulsSuffered || 0 }}</span>
+                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.foulsSuffered || 0 }}</span>
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-zinc-500">Yellow Cards</span>
-                <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.yellowCards || 0 }}</span>
+                <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.yellowCards || 0 }}</span>
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-zinc-500">Red Cards</span>
-                <span class="px-2 py-1 bg-red-500/20 text-red-400 rounded-full font-mono font-medium">{{ player()?.careerStats?.redCards || 0 }}</span>
+                <span class="px-2 py-1 bg-red-500/20 text-red-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.redCards || 0 }}</span>
               </div>
             </div>
           </div>

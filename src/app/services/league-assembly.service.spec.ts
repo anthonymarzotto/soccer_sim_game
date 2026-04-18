@@ -7,6 +7,7 @@ describe('LeagueAssemblyService', () => {
 
   const leagueFixture: League = {
     currentWeek: 3,
+    currentSeasonYear: 2026,
     userTeamId: 'team-1',
     teams: [
       {
@@ -25,23 +26,27 @@ describe('LeagueAssemblyService', () => {
             skills: { tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85 },
             hidden: { luck: 60, injuryRate: 10 },
             overall: 79,
-            careerStats: {
-              matchesPlayed: 10,
-              goals: 0,
-              assists: 0,
-              yellowCards: 1,
-              redCards: 0,
-              shots: 0,
-              shotsOnTarget: 0,
-              tackles: 2,
-              interceptions: 3,
-              passes: 140,
-              saves: 38,
-              cleanSheets: 4,
-              minutesPlayed: 900,
-              fouls: 0,
-              foulsSuffered: 0
+            careerStats: [
+              {
+                seasonYear: 2026,
+                teamId: 'team-1',
+                matchesPlayed: 10,
+                goals: 0,
+                assists: 0,
+                yellowCards: 1,
+                redCards: 0,
+                shots: 0,
+                shotsOnTarget: 0,
+                tackles: 2,
+                interceptions: 3,
+                passes: 140,
+                saves: 38,
+                cleanSheets: 4,
+                minutesPlayed: 900,
+                fouls: 0,
+                foulsSuffered: 0
               }
+            ]
           }
         ],
         playerIds: ['player-1'],

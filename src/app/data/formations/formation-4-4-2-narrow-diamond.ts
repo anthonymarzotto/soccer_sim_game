@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_4_4_2_NARROW_DIAMOND: FormationSchema = {
   id: 'formation_4_4_2_narrow_diamond',
-  name: '4-4-2 (Narrow Diamond)',
+  name: 'The Precision Gem',
   shortCode: '4-4-2 ND',
   description: 'Compact midfield diamond with a single pivot and advanced playmaker behind two strikers.',
   isUserDefined: false,

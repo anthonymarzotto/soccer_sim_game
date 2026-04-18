@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_3_6_1: FormationSchema = {
   id: 'formation_3_6_1',
-  name: '3-6-1',
+  name: 'Midfield Maestro',
   shortCode: '3-6-1',
   description: 'Three center-backs, a six-man midfield with wing-backs and advanced runners, and a lone striker.',
   isUserDefined: false,

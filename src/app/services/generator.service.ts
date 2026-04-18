@@ -22,35 +22,36 @@ export class GeneratorService {
     'Nottingham Forest', 'Sheffield United', 'Tottenham Hotspur', 'West Ham United', 'Wolverhampton'
   ];
 
-  generateLeague(): { teams: Team[], schedule: Match[] } {
-    const teams: Team[] = this.teamNames.map((name, index) => this.generateTeam(index.toString(), name));
+  generateLeague(): { teams: Team[], schedule: Match[], currentSeasonYear: number } {
+    const currentSeasonYear = new Date().getFullYear();
+    const teams: Team[] = this.teamNames.map((name, index) => this.generateTeam(index.toString(), name, currentSeasonYear));
     const schedule = this.generateSchedule(teams);
-    return { teams, schedule };
+    return { teams, schedule, currentSeasonYear };
   }
 
-  private generateTeam(id: string, name: string): Team {
+  private generateTeam(id: string, name: string, currentSeasonYear: number): Team {
     const players: Player[] = [];
     
     // Team quality multiplier: ranges from 0.6 to 1.4 to create stronger and weaker teams
     const teamQuality = Math.random() * 0.8 + 0.6; // 0.6 to 1.4
     
     // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER, teamQuality));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER, teamQuality));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER, teamQuality));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER, teamQuality));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER, teamQuality, currentSeasonYear));
 
     // 9 Bench: 1 GK, 2 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH, teamQuality));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH, teamQuality));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH, teamQuality));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH, teamQuality));
+    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH, teamQuality, currentSeasonYear));
 
     // 5 Not Dressed: Random positions
     const positions: Position[] = [PositionEnum.GOALKEEPER, PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
     for (let i = 0; i < 5; i++) {
       const pos = positions[Math.floor(Math.random() * positions.length)];
-      players.push(this.generatePlayer(id, pos, RoleEnum.RESERVE, teamQuality));
+      players.push(this.generatePlayer(id, pos, RoleEnum.RESERVE, teamQuality, currentSeasonYear));
     }
 
     const startersByPosition = {
@@ -87,7 +88,7 @@ export class GeneratorService {
     };
   }
 
-  private generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0): Player {
+  private generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear()): Player {
     const id = Math.random().toString(36).substring(2, 9);
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
@@ -155,7 +156,7 @@ export class GeneratorService {
       skills,
       hidden,
       overall,
-      careerStats: createEmptyPlayerCareerStats()
+      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)]
     };
   }
 

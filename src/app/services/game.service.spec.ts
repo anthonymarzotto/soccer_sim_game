@@ -18,7 +18,7 @@ describe('GameService persistence integration', () => {
     TestBed.resetTestingModule();
 
     const generatorSpy: Pick<GeneratorService, 'generateLeague'> = {
-      generateLeague: vi.fn().mockReturnValue({ teams: [], schedule: [] })
+      generateLeague: vi.fn().mockReturnValue({ teams: [], schedule: [], currentSeasonYear: 2026 })
     };
 
     const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult'> = {
@@ -57,7 +57,7 @@ describe('GameService persistence integration', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('should hydrate league from persistence', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 4 });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
     await service.ensureHydrated();
 
     expect(service.league()?.currentWeek).toBe(4);
@@ -73,8 +73,7 @@ describe('GameService persistence integration', () => {
     expect(persistenceSpy.saveLeague).toHaveBeenCalledWith({
       teams: [],
       schedule: [],
-      currentWeek: 1
-    });
+      currentWeek: 1, currentSeasonYear: 2026 });
   });
 
   it('should clear state and persisted league', async () => {
@@ -89,24 +88,25 @@ describe('GameService persistence integration', () => {
   });
 
   it('should persist metadata only when advancing week', async () => {
-    const { service, persistenceSpy } = setup({ teams: [], schedule: [], currentWeek: 4 });
+    const { service, persistenceSpy } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
     await service.ensureHydrated();
 
     service.advanceWeek();
 
     expect(service.league()?.currentWeek).toBe(5);
-    expect(persistenceSpy.saveLeagueMetadata).toHaveBeenCalledWith({
-      teams: [],
-      schedule: [],
-      currentWeek: 5
-    });
+    expect(persistenceSpy.saveLeagueMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentWeek: 5,
+        currentSeasonYear: 2026
+      })
+    );
   });
 
   it('should ignore rapid repeated week simulation calls until lock cooldown ends', async () => {
     vi.useFakeTimers();
 
     try {
-      const { service } = setup({ teams: [], schedule: [], currentWeek: 1 });
+      const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
       await service.ensureHydrated();
 
       service.simulateCurrentWeek();
@@ -129,8 +129,7 @@ describe('GameService persistence integration', () => {
       schedule: [
         { id: 'final-match', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: true, homeScore: 2, awayScore: 1 }
       ],
-      currentWeek: 1
-    });
+      currentWeek: 1, currentSeasonYear: 2026 });
     await service.ensureHydrated();
 
     expect(service.isSeasonComplete()).toBe(true);
@@ -160,7 +159,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1'],
@@ -199,10 +198,9 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     service.clearFormationAssignment('team-1', 'gk_1');
@@ -231,7 +229,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             },
             {
               id: 'p2',
@@ -245,7 +243,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 52, shooting: 61, heading: 48, longPassing: 67, shortPassing: 72, goalkeeping: 6 },
               hidden: { luck: 52, injuryRate: 10 },
               overall: 73,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1', 'p2'],
@@ -266,10 +264,9 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     service.movePlayerToBench('team-1', 'p1');
@@ -300,7 +297,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             },
             {
               id: 'p2',
@@ -314,7 +311,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 79, shooting: 22, heading: 70, longPassing: 63, shortPassing: 67, goalkeeping: 4 },
               hidden: { luck: 46, injuryRate: 9 },
               overall: 74,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1', 'p2'],
@@ -336,10 +333,9 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service, formationLibrarySpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service, formationLibrarySpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     vi.mocked(formationLibrarySpy.getFormationSlots).mockImplementation((formationId: string) => {
       if (formationId === 'formation_new') {
         return [
@@ -388,7 +384,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 78, shooting: 30, heading: 65, longPassing: 60, shortPassing: 66, goalkeeping: 5 },
               hidden: { luck: 45, injuryRate: 10 },
               overall: 72,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             },
             {
               id: 'p1',
@@ -402,7 +398,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 12, heading: 40, longPassing: 56, shortPassing: 60, goalkeeping: 86 },
               hidden: { luck: 52, injuryRate: 8 },
               overall: 77,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1', 'p2'],
@@ -421,10 +417,9 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     const players = service.getPlayersForTeam('team-1');
@@ -432,7 +427,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should return balanced probabilities for unknown teams', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1 });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
     await service.ensureHydrated();
 
     const probabilities = service.getMatchProbabilities('missing-home', 'missing-away');
@@ -458,7 +453,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1'],
@@ -491,7 +486,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87 },
               hidden: { luck: 52, injuryRate: 7 },
               overall: 77,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
             }
           ],
           playerIds: ['p2'],
@@ -518,10 +513,9 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -587,8 +581,8 @@ describe('GameService persistence integration', () => {
 
     const homeKeeper = homeTeam.players.find(player => player.id === 'p1');
     const awayKeeper = awayTeam.players.find(player => player.id === 'p2');
-    expect(homeKeeper?.careerStats.cleanSheets).toBe(1);
-    expect(awayKeeper?.careerStats.cleanSheets).toBe(0);
+    expect(homeKeeper?.careerStats[0]?.cleanSheets).toBe(1);
+    expect(awayKeeper?.careerStats[0]?.cleanSheets).toBe(0);
   });
 
   it('should truncate minutes played when a starter is sent off', async () => {
@@ -610,7 +604,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1'],
@@ -643,7 +637,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87 },
               hidden: { luck: 52, injuryRate: 7 },
               overall: 77,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
             }
           ],
           playerIds: ['p2'],
@@ -670,10 +664,9 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -741,10 +734,10 @@ describe('GameService persistence integration', () => {
     const homeKeeper = homeTeam.players.find(player => player.id === 'p1');
     const awayKeeper = awayTeam.players.find(player => player.id === 'p2');
 
-    expect(homeKeeper?.careerStats.redCards).toBe(1);
-    expect(homeKeeper?.careerStats.minutesPlayed).toBe(30);
-    expect(homeKeeper?.careerStats.matchesPlayed).toBe(1);
-    expect(awayKeeper?.careerStats.minutesPlayed).toBe(90);
+    expect(homeKeeper?.careerStats[0]?.redCards).toBe(1);
+    expect(homeKeeper?.careerStats[0]?.minutesPlayed).toBe(30);
+    expect(homeKeeper?.careerStats[0]?.matchesPlayed).toBe(1);
+    expect(awayKeeper?.careerStats[0]?.minutesPlayed).toBe(90);
   });
 
   it('should skip player career stat updates for forfeited matches', async () => {
@@ -766,7 +759,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
               hidden: { luck: 50, injuryRate: 8 },
               overall: 78,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
           playerIds: ['p1'],
@@ -790,7 +783,7 @@ describe('GameService persistence integration', () => {
               skills: { tackling: 18, shooting: 14, heading: 33, longPassing: 54, shortPassing: 61, goalkeeping: 86 },
               hidden: { luck: 49, injuryRate: 7 },
               overall: 77,
-              careerStats: createEmptyPlayerCareerStats()
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
             }
           ],
           playerIds: ['p2'],
@@ -808,10 +801,9 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -865,10 +857,10 @@ describe('GameService persistence integration', () => {
       true
     );
 
-    expect(homeTeam.players[0].careerStats.cleanSheets).toBe(0);
-    expect(homeTeam.players[0].careerStats.matchesPlayed).toBe(0);
-    expect(homeTeam.players[0].careerStats.minutesPlayed).toBe(0);
-    expect(awayTeam.players[0].careerStats.matchesPlayed).toBe(0);
+    expect(homeTeam.players[0].careerStats[0]?.cleanSheets).toBe(0);
+    expect(homeTeam.players[0].careerStats[0]?.matchesPlayed).toBe(0);
+    expect(homeTeam.players[0].careerStats[0]?.minutesPlayed).toBe(0);
+    expect(awayTeam.players[0].careerStats[0]?.matchesPlayed).toBe(0);
   });
 
   it('should credit only the interval on the pitch when a substitute is later sent off', async () => {
@@ -884,7 +876,7 @@ describe('GameService persistence integration', () => {
       skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
       hidden: { luck: 50, injuryRate: 8 },
       overall: 72,
-      careerStats: createEmptyPlayerCareerStats()
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
     });
 
     const storedLeague = {
@@ -912,10 +904,9 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [{ id: 'match-sub-red', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -967,13 +958,13 @@ describe('GameService persistence integration', () => {
     const sub = homeTeam.players.find(p => p.id === 'p-sub');
 
     // Starter played minutes 0-60.
-    expect(starter?.careerStats.minutesPlayed).toBe(60);
-    expect(starter?.careerStats.matchesPlayed).toBe(1);
+    expect(starter?.careerStats[0]?.minutesPlayed).toBe(60);
+    expect(starter?.careerStats[0]?.matchesPlayed).toBe(1);
 
     // Substitute played minutes 60-75 (15 minutes) then was dismissed.
-    expect(sub?.careerStats.minutesPlayed).toBe(15);
-    expect(sub?.careerStats.matchesPlayed).toBe(1);
-    expect(sub?.careerStats.redCards).toBe(1);
+    expect(sub?.careerStats[0]?.minutesPlayed).toBe(15);
+    expect(sub?.careerStats[0]?.matchesPlayed).toBe(1);
+    expect(sub?.careerStats[0]?.redCards).toBe(1);
   });
 
   it('should not double count shots when SHOT and GOAL are emitted for the same attempt', async () => {
@@ -989,7 +980,7 @@ describe('GameService persistence integration', () => {
       skills: { tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5 },
       hidden: { luck: 50, injuryRate: 8 },
       overall: 72,
-      careerStats: createEmptyPlayerCareerStats()
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
     });
 
     const storedLeague = {
@@ -1017,10 +1008,9 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [{ id: 'match-shot-goal', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
-      currentWeek: 1
-    };
+      currentWeek: 1, currentSeasonYear: 2026 };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number });
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -1076,9 +1066,9 @@ describe('GameService persistence integration', () => {
     );
 
     const scorer = homeTeam.players.find((player) => player.id === 'p-home');
-    expect(scorer?.careerStats.shots).toBe(1);
-    expect(scorer?.careerStats.shotsOnTarget).toBe(1);
-    expect(scorer?.careerStats.goals).toBe(1);
+    expect(scorer?.careerStats[0]?.shots).toBe(1);
+    expect(scorer?.careerStats[0]?.shotsOnTarget).toBe(1);
+    expect(scorer?.careerStats[0]?.goals).toBe(1);
   });
 });
 
@@ -1112,7 +1102,8 @@ describe('GameService simulation engine', () => {
                 { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
               ],
               schedule: [{ id: 'm1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false }],
-              currentWeek: 1
+              currentWeek: 1,
+              currentSeasonYear: 2026
             }),
             saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
             saveMatchResult: vi.fn().mockResolvedValue(undefined)
@@ -1166,7 +1157,8 @@ describe('GameService simulation engine', () => {
                 { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
               ],
               schedule: [{ id: 'm1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false }],
-              currentWeek: 1
+              currentWeek: 1,
+              currentSeasonYear: 2026
             }),
             saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
             saveMatchResult: vi.fn().mockResolvedValue(undefined)

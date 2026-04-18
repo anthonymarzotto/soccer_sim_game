@@ -1,7 +1,9 @@
 import { PlayerCareerStats } from './types';
 
-export function createEmptyPlayerCareerStats(): PlayerCareerStats {
+export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string): PlayerCareerStats {
   return {
+    seasonYear,
+    teamId,
     matchesPlayed: 0,
     goals: 0,
     assists: 0,

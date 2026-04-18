@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_5_3_2: FormationSchema = {
   id: 'formation_5_3_2',
-  name: '5-3-2',
+  name: 'The Defensive Fortress',
   shortCode: '5-3-2',
   description: 'Back five with wing-backs, three central midfielders, and a strike pair.',
   isUserDefined: false,

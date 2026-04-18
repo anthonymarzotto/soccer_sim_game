@@ -2,9 +2,11 @@ import { createEmptyPlayerCareerStats } from './player-career-stats';
 
 describe('player-career-stats defaults', () => {
   it('should include all tracked fields with zero defaults', () => {
-    const stats = createEmptyPlayerCareerStats();
+    const stats = createEmptyPlayerCareerStats(2026, 'team-1');
 
     expect(stats).toEqual({
+      seasonYear: 2026,
+      teamId: 'team-1',
       matchesPlayed: 0,
       goals: 0,
       assists: 0,
