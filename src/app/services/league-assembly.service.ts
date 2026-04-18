@@ -7,6 +7,7 @@ export const LEAGUE_METADATA_KEY = 'default';
 export interface PersistedLeagueMetadata {
   key: string;
   currentWeek: number;
+  currentSeasonYear: number;
   userTeamId?: string;
   updatedAt: number;
 }
@@ -50,10 +51,11 @@ export class LeagueAssemblyService {
     return teams.flatMap(team => normalizeTeamRoster(team).players);
   }
 
-  toLeagueMetadata(league: Pick<League, 'currentWeek' | 'userTeamId'>): PersistedLeagueMetadata {
+  toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): PersistedLeagueMetadata {
     return {
       key: LEAGUE_METADATA_KEY,
       currentWeek: league.currentWeek,
+      currentSeasonYear: league.currentSeasonYear,
       userTeamId: league.userTeamId,
       updatedAt: Date.now()
     };
@@ -110,6 +112,7 @@ export class LeagueAssemblyService {
       teams,
       schedule: snapshot.schedule,
       currentWeek: snapshot.metadata?.currentWeek ?? 1,
+      currentSeasonYear: snapshot.metadata?.currentSeasonYear ?? new Date().getFullYear(),
       userTeamId: snapshot.metadata?.userTeamId
     };
   }

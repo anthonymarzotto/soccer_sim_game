@@ -241,7 +241,7 @@ describe('PostMatchAnalysisService', () => {
       },
       hidden: { luck: 50, injuryRate: 5 },
       overall: 70,
-      careerStats: createEmptyPlayerCareerStats()
+      careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
     };
   }
 

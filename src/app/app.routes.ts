@@ -4,6 +4,7 @@ import { HomeComponent } from './pages/home/home';
 import { StandingsComponent } from './pages/standings/standings';
 import { TeamDetailsComponent } from './pages/team-details/team-details';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
+import { PlayerStatsComponent } from './pages/player-stats/player-stats';
 import { ScheduleComponent } from './pages/schedule/schedule';
 import { SettingsComponent } from './pages/settings/settings';
 import { WatchGameComponent } from './pages/watch-game/watch-game';
@@ -27,6 +28,7 @@ const redirectToUserTeam = () => {
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'standings', component: StandingsComponent },
+  { path: 'player-stats', component: PlayerStatsComponent },
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },
   { path: 'team/:id', component: TeamDetailsComponent },
   { path: 'player/:id', component: PlayerProfileComponent },

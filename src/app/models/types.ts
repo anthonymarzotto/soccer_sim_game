@@ -49,10 +49,12 @@ export interface Player {
   skills: PlayerSkills;
   hidden: PlayerHidden;
   overall: number;
-  careerStats: PlayerCareerStats;
+  careerStats: PlayerCareerStats[];
 }
 
 export interface PlayerCareerStats {
+  seasonYear: number;
+  teamId: string;
   matchesPlayed: number;
   goals: number;
   assists: number;
@@ -66,8 +68,8 @@ export interface PlayerCareerStats {
   saves: number;
   cleanSheets: number;
   minutesPlayed: number;
-  fouls?: number;
-  foulsSuffered?: number;
+  fouls: number;
+  foulsSuffered: number;
 }
 
 export interface TeamStats {
@@ -201,5 +203,6 @@ export interface League {
   teams: Team[];
   schedule: Match[];
   currentWeek: number;
+  currentSeasonYear: number;
   userTeamId?: string;
 }

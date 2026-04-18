@@ -30,7 +30,7 @@
   },
   "private": true,
   "lint-staged": {
-    "*.{ts,html,css,scss}": [
+    "*.{ts,html}": [
       "eslint --fix --format=stylish",
       "eslint --format=stylish --max-warnings=0"
     ]

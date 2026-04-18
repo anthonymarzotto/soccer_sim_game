@@ -17,7 +17,7 @@ describe('team-players', () => {
       skills: { tackling: 55, shooting: 60, heading: 52, longPassing: 67, shortPassing: 72, goalkeeping: 1 },
       hidden: { luck: 50, injuryRate: 8 },
       overall: 70,
-      careerStats: createEmptyPlayerCareerStats()
+      careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
     };
   }
 

@@ -152,7 +152,7 @@ export class NormalizedDbService {
     return records.find(record => record.key === LEAGUE_METADATA_KEY) ?? null;
   }
 
-  async saveLeagueMetadata(metadata: Pick<PersistedLeagueMetadata, 'currentWeek' | 'userTeamId'>): Promise<void> {
+  async saveLeagueMetadata(metadata: Pick<PersistedLeagueMetadata, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): Promise<void> {
     const nextRecord = this.leagueAssembly.toLeagueMetadata(metadata);
 
     await this.appDb.bulkPutToTable(TABLE_LEAGUE_METADATA, [nextRecord]);

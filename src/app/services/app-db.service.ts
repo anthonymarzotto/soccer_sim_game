@@ -39,6 +39,7 @@ export type PersistedMatchRecord = Match;
 export interface PersistedLeagueMetadataRecord {
   key: string;
   currentWeek: number;
+  currentSeasonYear: number;
   userTeamId?: string;
   updatedAt: number;
 }

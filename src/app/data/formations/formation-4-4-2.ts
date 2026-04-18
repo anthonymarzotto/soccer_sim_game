@@ -3,7 +3,7 @@ import { FormationSchema } from '../../models/formation.types';
 
 export const FORMATION_4_4_2: FormationSchema = {
   id: 'formation_4_4_2',
-  name: 'Classic 4-4-2',
+  name: 'The Eternal Classic',
   shortCode: '4-4-2',
   description: 'Traditional balanced formation with four defenders, four midfielders, and two strikers.',
   isUserDefined: false,

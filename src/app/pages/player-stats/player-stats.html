@@ -1,0 +1,154 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
+  <div class="max-w-7xl mx-auto space-y-8">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight text-white">Player Statistics</h1>
+      <p class="text-zinc-400 mt-1">All clubs, all tracked stats, sortable columns</p>
+    </div>
+
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 md:p-6 shadow-xl space-y-4">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label for="season-filter" class="filter-label">Season</label>
+          <select id="season-filter" class="filter-control" [ngModel]="selectedYear() || currentSeasonYear()" (ngModelChange)="selectedYear.set($event); pageIndex.set(0)">
+            @for (season of availableSeasons(); track season) {
+              <option [value]="season">{{ season }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="team-filter" class="filter-label">Team</label>
+          <select id="team-filter" class="filter-control" [(ngModel)]="selectedTeam" (change)="pageIndex.set(0)">
+            <option value="">All Teams</option>
+            @for (team of availableTeams(); track team.id) {
+              <option [value]="team.id">{{ team.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="position-filter" class="filter-label">Position</label>
+          <select id="position-filter" class="filter-control" [(ngModel)]="selectedPosition" (change)="pageIndex.set(0)">
+            <option value="">All Positions</option>
+            @for (pos of availablePositions(); track pos) {
+              <option [value]="pos">{{ pos }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="player-search" class="filter-label">Search</label>
+          <input
+            id="player-search"
+            class="filter-control"
+            type="text"
+            placeholder="Player name..."
+            [(ngModel)]="searchQuery"
+            (change)="pageIndex.set(0)"
+          />
+        </div>
+      </div>
+
+      <div class="control-row">
+        <p class="text-sm text-zinc-400">
+          Showing {{ paginatedPlayers().length }} of {{ totalPlayers() }} players
+        </p>
+
+        <div class="pagination-controls">
+          <div class="page-size">
+            <label for="top-page-size" class="text-xs font-semibold uppercase tracking-wide text-zinc-400">Per Page</label>
+            <select id="top-page-size" class="filter-control compact" [ngModel]="pageSize()" (change)="onPageSizeChange($any($event.target).value)">
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
+            </select>
+          </div>
+
+          <div class="page-buttons">
+            <button class="page-button" [disabled]="pageIndex() === 0" (click)="previousPage()">← Previous</button>
+            <span class="page-info">Page {{ pageIndex() + 1 }} of {{ totalPages() }}</span>
+            <button class="page-button" [disabled]="pageIndex() >= totalPages() - 1" (click)="nextPage()">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="stats-table w-full text-sm text-left">
+          <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/80 border-b border-zinc-800 sticky top-0 z-10">
+            <tr>
+              @for (col of columns; track col.key) {
+                <th class="px-4 py-4 font-medium whitespace-nowrap" [class.sortable]="col.sortable" (click)="col.sortable && toggleSort(col.key)">
+                  {{ col.label }}
+                  @if (isSorted(col.key)) {
+                    <span class="sort-indicator">{{ getSortIndicator(col.key) }}</span>
+                  }
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-zinc-800">
+            @for (row of paginatedPlayers(); track row.player.id + '-' + row.seasonYear) {
+              <tr
+                class="hover:bg-zinc-800/50 transition-colors"
+                [class.bg-emerald-950/30]="isUserTeamPlayer(row)"
+                [class.ring-1]="isUserTeamPlayer(row)"
+                [class.ring-inset]="isUserTeamPlayer(row)"
+                [class.ring-emerald-600/50]="isUserTeamPlayer(row)">
+                <td class="px-4 py-3 whitespace-nowrap text-zinc-300 col-team">
+                  <app-team-badge [teamId]="row.player.teamId" size="sm" [link]="false" />
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap font-medium text-white col-player">
+                  <div class="player-cell">
+                    <a
+                      [routerLink]="['/player', row.player.id]"
+                      class="hover:text-emerald-400 transition-colors player-name-link"
+                      [title]="row.player.name">
+                      <span class="player-name-text">{{ row.player.name }}</span>
+                    </a>
+                  </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-zinc-300 font-mono">{{ row.player.position }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'matchesPlayed') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'goals') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'assists') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'shots') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'shotsOnTarget') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'passes') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'tackles') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'interceptions') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'saves') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'cleanSheets') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'minutesPlayed') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-yellow-400">{{ getColumnValue(row, 'yellowCards') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-red-400">{{ getColumnValue(row, 'redCards') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'fouls') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row, 'foulsSuffered') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between p-4 border-t border-zinc-800 bg-zinc-900/50">
+        <div class="page-size">
+          <label for="bottom-page-size" class="text-xs font-semibold uppercase tracking-wide text-zinc-400">Per Page</label>
+          <select id="bottom-page-size" class="filter-control compact" [ngModel]="pageSize()" (change)="onPageSizeChange($any($event.target).value)">
+            <option [value]="10">10</option>
+            <option [value]="25">25</option>
+            <option [value]="50">50</option>
+            <option [value]="100">100</option>
+          </select>
+        </div>
+
+        <div class="page-buttons">
+          <button class="page-button" [disabled]="pageIndex() === 0" (click)="previousPage()">← Previous</button>
+          <span class="page-info">Page {{ pageIndex() + 1 }} of {{ totalPages() }}</span>
+          <button class="page-button" [disabled]="pageIndex() >= totalPages() - 1" (click)="nextPage()">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

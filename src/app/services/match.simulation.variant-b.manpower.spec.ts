@@ -467,6 +467,6 @@ function createPlayer(
     },
     hidden: { luck: 50, injuryRate: 5 },
     overall,
-    careerStats: createEmptyPlayerCareerStats()
+    careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
   };
 }

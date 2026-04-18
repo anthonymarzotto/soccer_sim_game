@@ -36,7 +36,8 @@ describe('ScheduleStateService', () => {
         formationAssignments: {}
       })),
       schedule: [],
-      currentWeek: 3
+      currentWeek: 3,
+      currentSeasonYear: 2026
     });
 
     TestBed.configureTestingModule({
