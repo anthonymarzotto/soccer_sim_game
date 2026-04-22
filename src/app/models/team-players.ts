@@ -1,5 +1,6 @@
 import { isDevMode } from '@angular/core';
 import { Player, Team } from './types';
+import { getLatestTeamSeasonSnapshot } from './season-history';
 
 const warnedInvariantMessages = new Set<string>();
 
@@ -28,9 +29,17 @@ function throwOrWarnInvariant(team: Team, issues: string[]): void {
 
 export function getTeamPlayerInvariantIssues(team: Team, explicitPlayers?: Player[]): string[] {
   const sourcePlayers = explicitPlayers ?? team.players;
+  const snapshot = getLatestTeamSeasonSnapshot(team);
   const issues: string[] = [];
 
-  const duplicatePlayerIds = team.playerIds.filter((playerId, index) => team.playerIds.indexOf(playerId) !== index);
+  if (!snapshot) {
+    issues.push('missing latest season snapshot');
+    return issues;
+  }
+
+  const snapshotPlayerIds = snapshot.playerIds;
+
+  const duplicatePlayerIds = snapshotPlayerIds.filter((playerId, index) => snapshotPlayerIds.indexOf(playerId) !== index);
   if (duplicatePlayerIds.length > 0) {
     issues.push(`duplicate playerIds: ${duplicatePlayerIds.join(', ')}`);
   }
@@ -42,12 +51,12 @@ export function getTeamPlayerInvariantIssues(team: Team, explicitPlayers?: Playe
   }
 
   const sourceIdSet = new Set(sourceIds);
-  const missingPlayers = team.playerIds.filter(playerId => !sourceIdSet.has(playerId));
+  const missingPlayers = snapshotPlayerIds.filter(playerId => !sourceIdSet.has(playerId));
   if (missingPlayers.length > 0) {
     issues.push(`missing players for ids: ${missingPlayers.join(', ')}`);
   }
 
-  const playerIdSet = new Set(team.playerIds);
+  const playerIdSet = new Set(snapshotPlayerIds);
   const extraPlayers = sourceIds.filter(playerId => !playerIdSet.has(playerId));
   if (extraPlayers.length > 0) {
     issues.push(`players missing from playerIds: ${extraPlayers.join(', ')}`);
@@ -58,6 +67,9 @@ export function getTeamPlayerInvariantIssues(team: Team, explicitPlayers?: Playe
 
 export function normalizeTeamRoster(team: Team, explicitPlayers?: Player[]): Team {
   const sourcePlayers = explicitPlayers ?? team.players;
+  const snapshot = getLatestTeamSeasonSnapshot(team);
+  const seasonSnapshots = team.seasonSnapshots ?? [];
+  const preferredPlayerIds = snapshot?.playerIds ?? [];
   const uniquePlayers: Player[] = [];
   const seenIds = new Set<string>();
 
@@ -74,7 +86,7 @@ export function normalizeTeamRoster(team: Team, explicitPlayers?: Player[]): Tea
   const orderedPlayers: Player[] = [];
   const orderedIds = new Set<string>();
 
-  for (const playerId of team.playerIds) {
+  for (const playerId of preferredPlayerIds) {
     const player = playersById.get(playerId);
     if (!player || orderedIds.has(playerId)) {
       continue;
@@ -90,7 +102,14 @@ export function normalizeTeamRoster(team: Team, explicitPlayers?: Player[]): Tea
   return {
     ...team,
     players: normalizedPlayers,
-    playerIds: normalizedPlayers.map(player => player.id)
+    playerIds: normalizedPlayers.map(player => player.id),
+    seasonSnapshots: snapshot ? [
+      ...seasonSnapshots.slice(0, -1),
+      {
+        ...snapshot,
+        playerIds: normalizedPlayers.map(player => player.id)
+      }
+    ] : seasonSnapshots
   };
 }
 

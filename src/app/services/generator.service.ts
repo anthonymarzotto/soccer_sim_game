@@ -3,6 +3,7 @@ import { Player, Team, Match, Position, Role } from '../models/types';
 import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createEmptyTeamStats } from '../models/season-history';
 
 @Injectable({
   providedIn: 'root'
@@ -25,8 +26,12 @@ export class GeneratorService {
   generateLeague(): { teams: Team[], schedule: Match[], currentSeasonYear: number } {
     const currentSeasonYear = new Date().getFullYear();
     const teams: Team[] = this.teamNames.map((name, index) => this.generateTeam(index.toString(), name, currentSeasonYear));
-    const schedule = this.generateSchedule(teams);
+    const schedule = this.generateSchedule(teams, currentSeasonYear);
     return { teams, schedule, currentSeasonYear };
+  }
+
+  generateScheduleForSeason(teams: Team[], seasonYear: number): Match[] {
+    return this.generateSchedule(teams, seasonYear);
   }
 
   private generateTeam(id: string, name: string, currentSeasonYear: number): Team {
@@ -82,9 +87,12 @@ export class GeneratorService {
       playerIds: players.map(player => player.id),
       selectedFormationId: this.formationLibrary.getDefaultFormationId(),
       formationAssignments,
-      stats: {
-        played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
-      }
+      stats: createEmptyTeamStats(),
+      seasonSnapshots: [{
+        seasonYear: currentSeasonYear,
+        playerIds: players.map(player => player.id),
+        stats: createEmptyTeamStats()
+      }]
     };
   }
 
@@ -156,6 +164,14 @@ export class GeneratorService {
       skills,
       hidden,
       overall,
+      seasonAttributes: [{
+        seasonYear: currentSeasonYear,
+        physical,
+        mental,
+        hidden,
+        skills,
+        overall
+      }],
       careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)]
     };
   }
@@ -167,7 +183,7 @@ export class GeneratorService {
     return Math.max(Math.min(adjustedValue, max), min);
   }
 
-  private generateSchedule(teams: Team[]): Match[] {
+  private generateSchedule(teams: Team[], currentSeasonYear: number): Match[] {
     const schedule: Match[] = [];
     const numTeams = teams.length;
     const numWeeks = (numTeams - 1) * 2; // Home and away
@@ -183,6 +199,7 @@ export class GeneratorService {
         
         schedule.push({
           id: (matchId++).toString(),
+          seasonYear: currentSeasonYear,
           homeTeamId: home,
           awayTeamId: away,
           homeScore: undefined,
@@ -194,6 +211,7 @@ export class GeneratorService {
         // Add reverse fixture for second half of season
         schedule.push({
           id: (matchId++).toString(),
+          seasonYear: currentSeasonYear,
           homeTeamId: away,
           awayTeamId: home,
           homeScore: undefined,

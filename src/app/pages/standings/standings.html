@@ -11,12 +11,6 @@
         <a routerLink="/schedule" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm font-medium transition-colors">
           View Schedule
         </a>
-        <button 
-          (click)="gameService.simulateCurrentWeek()"
-          [disabled]="gameService.isSeasonComplete() || gameService.isAnySimulationInProgress()"
-          class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
-          Simulate Week
-        </button>
       </div>
     </div>
 
@@ -57,19 +51,19 @@
                   </a>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ gameService.calculateTeamOverall(team) }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ team.stats.played }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ team.stats.won }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ team.stats.drawn }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ team.stats.lost }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ team.stats.goalsFor }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ team.stats.goalsAgainst }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ getTeamStats(team).played }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ getTeamStats(team).won }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ getTeamStats(team).drawn }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ getTeamStats(team).lost }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ getTeamStats(team).goalsFor }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">{{ getTeamStats(team).goalsAgainst }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
-                  {{ team.stats.goalsFor - team.stats.goalsAgainst > 0 ? '+' : '' }}{{ team.stats.goalsFor - team.stats.goalsAgainst }}
+                  {{ getTeamStats(team).goalsFor - getTeamStats(team).goalsAgainst > 0 ? '+' : '' }}{{ getTeamStats(team).goalsFor - getTeamStats(team).goalsAgainst }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-center font-bold text-white">{{ team.stats.points }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center font-bold text-white">{{ getTeamStats(team).points }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                   <div class="flex items-center justify-center gap-1">
-                    @for (result of team.stats.last5; track $index) {
+                    @for (result of getTeamStats(team).last5; track $index) {
                       <span 
                         class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold"
                         [class.bg-emerald-500]="result === MatchResult.WIN"
@@ -81,7 +75,7 @@
                         {{ result }}
                       </span>
                     }
-                    @if (team.stats.last5.length === 0) {
+                    @if (getTeamStats(team).last5.length === 0) {
                       <span class="text-zinc-600 text-xs">-</span>
                     }
                   </div>

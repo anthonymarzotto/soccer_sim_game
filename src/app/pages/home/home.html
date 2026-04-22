@@ -13,6 +13,7 @@
         
         <button 
           (click)="generateLeague()"
+          [disabled]="isReadOnlyMode()"
           class="w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20">
           Generate New League
         </button>
@@ -35,6 +36,7 @@
             @for (team of gameService.league()?.teams; track team.id) {
               <button
                 (click)="selectTeam(team.id)"
+                [disabled]="isReadOnlyMode()"
                 class="w-full text-left px-4 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors border border-zinc-700/50 hover:border-emerald-500/50"
               >
                 <div class="flex justify-between items-center">
@@ -55,6 +57,7 @@
           @if (!isRegenerateConfirmationOpen()) {
             <button
               (click)="openRegenerateConfirmation()"
+              [disabled]="isReadOnlyMode()"
               class="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold py-3 px-6 rounded-xl transition-colors border border-zinc-700"
             >
               Regenerate League
@@ -67,7 +70,7 @@
               <div class="flex gap-3">
                 <button
                   (click)="confirmRegenerateLeague()"
-                  [disabled]="isRegenerating()"
+                  [disabled]="isRegenerating() || isReadOnlyMode()"
                   class="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-900/50 disabled:text-red-300/70 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
                 >
                   {{ isRegenerating() ? 'Regenerating...' : 'Confirm Regenerate' }}

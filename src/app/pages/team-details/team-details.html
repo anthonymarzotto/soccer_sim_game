@@ -65,23 +65,14 @@
 
         <div class="lg:col-span-3 space-y-8">
 
-          @if (formationValidationErrors().length > 0) {
-            <div class="rounded-2xl border border-red-800 bg-red-950/30 px-4 py-3 shadow-xl">
-              <p class="text-xs font-semibold text-red-300 uppercase tracking-wide mb-1">Lineup Issues</p>
-              <ul class="text-sm text-red-200 space-y-1">
-                @for (error of formationValidationErrors(); track error) {
-                  <li>{{ error }}</li>
-                }
-              </ul>
-            </div>
-          }
-          
-          <!-- Unified Roster Table -->
+          <!-- Persistent header: formation selector + view toggle -->
           <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
             <div class="flex items-center justify-between p-4 border-b border-zinc-800">
               <div class="flex items-center gap-3">
-                <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Player Roster</h2>
-                @if (isUserTeam()) {
+                <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+                  @if (viewMode() === ViewMode.SEASON_HISTORY) { Season History } @else { Player Roster }
+                </h2>
+                @if (isUserTeam() && viewMode() !== ViewMode.SEASON_HISTORY) {
                   <select
                     [value]="team()?.selectedFormationId"
                     (change)="onFormationChange($any($event.target).value)"
@@ -94,20 +85,39 @@
                 }
               </div>
               <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
-                <button (click)="toggleView()" 
+                <button (click)="setViewMode(ViewMode.BIO)" 
                         [class]="viewMode() === ViewMode.BIO ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
                         class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   Bio
                 </button>
-                <button (click)="toggleView()" 
+                <button (click)="setViewMode(ViewMode.STATS)" 
                         [class]="viewMode() === ViewMode.STATS ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
                         class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
                   Stats
                 </button>
+                <button (click)="setViewMode(ViewMode.SEASON_HISTORY)" 
+                        [class]="viewMode() === ViewMode.SEASON_HISTORY ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                        class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M4 12h16M4 4h16"/></svg>
+                  History
+                </button>
               </div>
             </div>
+
+          @if (viewMode() === ViewMode.BIO || viewMode() === ViewMode.STATS) {
+            @if (formationValidationErrors().length > 0) {
+              <div class="rounded-2xl border border-red-800 bg-red-950/30 px-4 py-3 shadow-xl">
+                <p class="text-xs font-semibold text-red-300 uppercase tracking-wide mb-1">Lineup Issues</p>
+                <ul class="text-sm text-red-200 space-y-1">
+                  @for (error of formationValidationErrors(); track error) {
+                    <li>{{ error }}</li>
+                  }
+                </ul>
+              </div>
+            }
+            
             <table class="w-full text-sm text-left">
               <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
                 <tr>
@@ -292,7 +302,7 @@
                       </a>
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ player.overall }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ getPlayerOverall(player) }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ player.personal.age }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                     } @else {
@@ -310,9 +320,62 @@
                     }
                   </tr>
                 }
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+          }
+
+          @if (viewMode() === ViewMode.SEASON_HISTORY) {
+              @if (seasonHistoryWithStats().length === 0) {
+                <div class="p-6 text-center text-zinc-500">
+                  <p class="text-sm">No season history available yet.</p>
+                </div>
+              } @else {
+                <table class="w-full text-sm text-left">
+                  <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+                    <tr>
+                      <th scope="col" class="px-6 py-4 font-medium w-20">Season</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Pos</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Played</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Wins</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Draws</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Losses</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">For</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Against</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Diff</th>
+                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Points</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zinc-800">
+                    @for (season of seasonHistoryWithStats(); track season.season) {
+                      <tr class="hover:bg-zinc-800/50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-white">{{ season.season }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.ovr ?? '—' }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center">
+                          @if (season.rank) {
+                            <span class="font-bold" [class.text-yellow-400]="season.rank === 1" [class.text-zinc-300]="season.rank !== 1">{{ season.rank }}<span class="text-zinc-600 font-normal">/{{ season.totalTeams }}</span></span>
+                          } @else {
+                            <span class="text-zinc-600">—</span>
+                          }
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.played || 0 }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400">{{ season.stats.won || 0 }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300">{{ season.stats.drawn || 0 }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-red-400">{{ season.stats.lost || 0 }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsFor || 0 }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsAgainst || 0 }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center" [class.text-emerald-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) >= 0" [class.text-red-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) < 0">
+                          {{ (season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) }}
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.stats.points || 0 }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+          }
+
+          </div><!-- end persistent card -->
 
         </div>
       </div>

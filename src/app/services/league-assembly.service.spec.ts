@@ -26,6 +26,14 @@ describe('LeagueAssemblyService', () => {
             skills: { tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85 },
             hidden: { luck: 60, injuryRate: 10 },
             overall: 79,
+            seasonAttributes: [{
+              seasonYear: 2026,
+              physical: { speed: 60, strength: 82, endurance: 77 },
+              mental: { flair: 55, vision: 68, determination: 80 },
+              hidden: { luck: 60, injuryRate: 10 },
+              skills: { tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85 },
+              overall: 79
+            }],
             careerStats: [
               {
                 seasonYear: 2026,
@@ -63,12 +71,27 @@ describe('LeagueAssemblyService', () => {
         selectedFormationId: 'formation_4_4_2',
         formationAssignments: {
           gk_1: 'player-1'
-        }
+        },
+        seasonSnapshots: [{
+          seasonYear: 2026,
+          playerIds: ['player-1'],
+          stats: {
+            played: 2,
+            won: 1,
+            drawn: 1,
+            lost: 0,
+            goalsFor: 3,
+            goalsAgainst: 1,
+            points: 4,
+            last5: [MatchResult.DRAW, MatchResult.WIN]
+          }
+        }]
       }
     ],
     schedule: [
       {
         id: 'match-1',
+        seasonYear: 2026,
         week: 2,
         homeTeamId: 'team-1',
         awayTeamId: 'team-2',
@@ -97,7 +120,7 @@ describe('LeagueAssemblyService', () => {
     expect(snapshot.schedule).toHaveLength(1);
     expect(snapshot.metadata?.currentWeek).toBe(3);
     expect(snapshot.metadata?.userTeamId).toBe('team-1');
-    expect(snapshot.teams[0].playerIds).toEqual(['player-1']);
+    expect(snapshot.teams[0].seasonSnapshots[0]?.playerIds).toEqual(['player-1']);
   });
 
   it('should assemble normalized snapshot back to league shape', () => {
@@ -109,6 +132,7 @@ describe('LeagueAssemblyService', () => {
     expect(assembled?.userTeamId).toBe(leagueFixture.userTeamId);
     expect(assembled?.teams[0].players[0].id).toBe('player-1');
     expect(assembled?.teams[0].playerIds).toEqual(['player-1']);
+    expect(assembled?.teams[0].seasonSnapshots?.[0]?.playerIds).toEqual(['player-1']);
     expect(assembled?.schedule[0].id).toBe('match-1');
   });
 

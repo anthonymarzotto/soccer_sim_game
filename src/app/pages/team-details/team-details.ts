@@ -122,6 +122,14 @@ export class TeamDetailsComponent {
     };
   }
 
+  getPlayerOverall(player: Player): number {
+    const attrs = this.gameService.getCurrentSeasonPlayerAttributes(player);
+    if (!attrs) {
+      throw new Error('Player attributes unavailable for current season');
+    }
+    return attrs.overall;
+  }
+
   getRowStats(player: Player | null): TeamDetailsRowStats {
     if (!player) return {
       matchesPlayed: 0,
@@ -256,13 +264,63 @@ export class TeamDetailsComponent {
       .filter((f): f is NonNullable<typeof f> => f !== undefined)
   );
 
+  seasonHistory = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    return t.seasonSnapshots || [];
+  });
+
+  seasonHistoryWithStats = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+
+    const allTeams = this.gameService.league()?.teams ?? [];
+
+    return this.seasonHistory().map(snapshot => {
+      const playerOveralls = snapshot.playerIds
+        .map(id => this.gameService.getPlayer(id))
+        .filter((p): p is NonNullable<typeof p> => p !== undefined)
+        .map(p => p.seasonAttributes?.find(sa => sa.seasonYear === snapshot.seasonYear)?.overall)
+        .filter((o): o is number => o !== undefined);
+
+      const ovr = playerOveralls.length > 0
+        ? Math.round(playerOveralls.reduce((a, b) => a + b, 0) / playerOveralls.length)
+        : null;
+
+      const ranked = allTeams
+        .map(team => {
+          const s = team.seasonSnapshots?.find(ss => ss.seasonYear === snapshot.seasonYear);
+          return { teamId: team.id, stats: s?.stats };
+        })
+        .filter(entry => entry.stats !== undefined)
+        .sort((a, b) => {
+          const ap = a.stats!.points, bp = b.stats!.points;
+          if (bp !== ap) return bp - ap;
+          const agd = (a.stats!.goalsFor - a.stats!.goalsAgainst);
+          const bgd = (b.stats!.goalsFor - b.stats!.goalsAgainst);
+          if (bgd !== agd) return bgd - agd;
+          return b.stats!.goalsFor - a.stats!.goalsFor;
+        });
+
+      const rank = ranked.findIndex(entry => entry.teamId === t.id) + 1;
+
+      return {
+        season: snapshot.seasonYear,
+        stats: snapshot.stats,
+        ovr,
+        rank: rank > 0 ? rank : null,
+        totalTeams: ranked.length
+      };
+    }).sort((a, b) => b.season - a.season);
+  });
+
   onFormationChange(formationId: string) {
     const team = this.team();
     if (!team) return;
     this.gameService.changeTeamFormation(team.id, formationId);
   }
 
-  toggleView() {
-    this.viewMode.set(this.viewMode() === TeamDetailsViewMode.BIO ? TeamDetailsViewMode.STATS : TeamDetailsViewMode.BIO);
+  setViewMode(mode: TeamDetailsViewMode) {
+    this.viewMode.set(mode);
   }
 }

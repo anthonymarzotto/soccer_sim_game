@@ -435,98 +435,149 @@
         </div>
       }
 
-      <!-- Career Statistics - spanning the page -->
+      <!-- Career Stats Table -->
       <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-        <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
-          Career Statistics
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="space-y-4">
-            <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Games & Minutes</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Matches Played</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.matchesPlayed || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Minutes Played</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.minutesPlayed || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Clean Sheets</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.cleanSheets || 0 }}</span>
-              </div>
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+            Career Stats
+          </h2>
+          <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+            <button (click)="setSeasonStatsView('offensive')" 
+                      [class]="seasonStatsView() === 'offensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                Offensive
+              </button>
+              <button (click)="setSeasonStatsView('defensive')" 
+                      [class]="seasonStatsView() === 'defensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                Defensive
+              </button>
+              <button (click)="setSeasonStatsView('discipline')" 
+                      [class]="seasonStatsView() === 'discipline' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                Discipline
+              </button>
             </div>
           </div>
 
-          <div class="space-y-4">
-            <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Offensive Stats</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Goals</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.goals || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Assists</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.assists || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Shots</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.shots || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Shots on Target</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.shotsOnTarget || 0 }}</span>
-              </div>
-            </div>
-          </div>
+          @if (getPastSeasons().length === 0) {
+            <p class="text-sm text-zinc-500">No past seasons available.</p>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-zinc-700 text-zinc-400">
+                    <th class="text-left py-3 px-4 font-semibold">Season</th>
+                    <th class="text-right py-3 px-4 font-semibold">Games</th>
+                    <th class="text-right py-3 px-4 font-semibold">Minutes</th>
+                    @if (seasonStatsView() === 'offensive') {
+                      <th class="text-right py-3 px-4 font-semibold">Goals</th>
+                      <th class="text-right py-3 px-4 font-semibold">Assists</th>
+                      <th class="text-right py-3 px-4 font-semibold">Shots</th>
+                      <th class="text-right py-3 px-4 font-semibold">SoT</th>
+                    } @else if (seasonStatsView() === 'defensive') {
+                      <th class="text-right py-3 px-4 font-semibold">Tackles</th>
+                      <th class="text-right py-3 px-4 font-semibold">Interceptions</th>
+                      <th class="text-right py-3 px-4 font-semibold">Passes</th>
+                      <th class="text-right py-3 px-4 font-semibold">Saves</th>
+                      <th class="text-right py-3 px-4 font-semibold">Clean Sheets</th>
+                    } @else {
+                      <th class="text-right py-3 px-4 font-semibold">Fouls</th>
+                      <th class="text-right py-3 px-4 font-semibold">Suffered</th>
+                      <th class="text-right py-3 px-4 font-semibold">Yellow</th>
+                      <th class="text-right py-3 px-4 font-semibold">Red</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Current Season Row -->
+                  @let currentStats = currentSeasonStats();
+                  @if (currentStats) {
+                    <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30">
+                      <td class="py-3 px-4 text-zinc-300 font-medium">{{ gameService.league()?.currentSeasonYear }}</td>
+                      <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.matchesPlayed || 0 }}</td>
+                      <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.minutesPlayed || 0 }}</td>
+                      @if (seasonStatsView() === 'offensive') {
+                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ currentStats.goals || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ currentStats.assists || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.shots || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.shotsOnTarget || 0 }}</td>
+                      } @else if (seasonStatsView() === 'defensive') {
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.tackles || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.interceptions || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.passes || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.saves || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.cleanSheets || 0 }}</td>
+                      } @else {
+                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ currentStats.fouls || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ currentStats.foulsSuffered || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ currentStats.yellowCards || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-red-400 font-mono">{{ currentStats.redCards || 0 }}</td>
+                      }
+                    </tr>
+                  }
 
-          <div class="space-y-4">
-            <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Defensive Stats</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Tackles</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.tackles || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Interceptions</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.interceptions || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Passes</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.passes || 0 }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Saves</span>
-                <span class="font-mono font-medium text-white">{{ currentSeasonStats()?.saves || 0 }}</span>
-              </div>
-            </div>
-          </div>
+                  <!-- Past Seasons -->
+                  @for (season of getPastSeasons(); track season.seasonYear) {
+                    @let seasonStats = getCareerStatsForSeason(season.seasonYear);
+                    @if (seasonStats) {
+                      <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors">
+                        <td class="py-3 px-4 text-zinc-300 font-medium">{{ season.seasonYear }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.matchesPlayed || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.minutesPlayed || 0 }}</td>
+                        @if (seasonStatsView() === 'offensive') {
+                          <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ seasonStats.goals || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ seasonStats.assists || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.shots || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.shotsOnTarget || 0 }}</td>
+                        } @else if (seasonStatsView() === 'defensive') {
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.tackles || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.interceptions || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.passes || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.saves || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.cleanSheets || 0 }}</td>
+                        } @else {
+                          <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ seasonStats.fouls || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ seasonStats.foulsSuffered || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ seasonStats.yellowCards || 0 }}</td>
+                          <td class="py-3 px-4 text-right text-red-400 font-mono">{{ seasonStats.redCards || 0 }}</td>
+                        }
+                      </tr>
+                    }
+                  }
 
-          <div class="md:col-span-3 space-y-4">
-            <h3 class="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">Disciplinary Record</h3>
-            <div class="flex gap-6 flex-wrap">
-              <div class="flex items-center gap-3">
-                <span class="text-zinc-500">Fouls Committed</span>
-                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.fouls || 0 }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-zinc-500">Fouls Suffered</span>
-                <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.foulsSuffered || 0 }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-zinc-500">Yellow Cards</span>
-                <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.yellowCards || 0 }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-zinc-500">Red Cards</span>
-                <span class="px-2 py-1 bg-red-500/20 text-red-400 rounded-full font-mono font-medium">{{ currentSeasonStats()?.redCards || 0 }}</span>
-              </div>
+                  <!-- Total Row -->
+                  @let totals = getTotalCareerStats();
+                  @if (totals) {
+                    <tr class="border-t-2 border-zinc-600 bg-zinc-800/50 font-semibold">
+                      <td class="py-3 px-4 text-zinc-300">TOTAL</td>
+                      <td class="py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
+                      <td class="py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
+                      @if (seasonStatsView() === 'offensive') {
+                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ totals.goals }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.shots }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.shotsOnTarget }}</td>
+                      } @else if (seasonStatsView() === 'defensive') {
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.tackles }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.interceptions }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.passes }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.saves }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.cleanSheets }}</td>
+                      } @else {
+                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.fouls }}</td>
+                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.foulsSuffered }}</td>
+                        <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ totals.yellowCards }}</td>
+                        <td class="py-3 px-4 text-right text-red-400 font-mono">{{ totals.redCards }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
-          </div>
+          }
         </div>
-      </div>
     } @else {
       <div class="text-center py-12 text-zinc-500">
         Player not found.

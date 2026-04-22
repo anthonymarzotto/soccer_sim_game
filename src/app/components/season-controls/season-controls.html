@@ -1,0 +1,23 @@
+<div class="space-y-2">
+  @if (!gameService.isSeasonComplete() && !isReadOnlyMode()) {
+    <button
+      type="button"
+      (click)="simulateCurrentWeek()"
+      [disabled]="gameService.isAnySimulationInProgress()"
+      class="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Simulate Week {{ gameService.league()?.currentWeek }}
+    </button>
+  }
+
+  @if (gameService.isSeasonComplete() && !isReadOnlyMode()) {
+    <button
+      type="button"
+      (click)="startNewSeason()"
+      [disabled]="gameService.isAnySimulationInProgress()"
+      class="w-full rounded-lg bg-indigo-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Start New Season
+    </button>
+  }
+</div>

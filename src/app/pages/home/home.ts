@@ -25,6 +25,7 @@ export class HomeComponent {
   gameService = inject(GameService);
   private router = inject(Router);
   private scheduleStateService = inject(ScheduleStateService);
+  isReadOnlyMode = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
 
   hasLeague = this.gameService.hasLeague;
   isRegenerateConfirmationOpen = signal(false);
@@ -40,11 +41,19 @@ export class HomeComponent {
   });
 
   async generateLeague(): Promise<void> {
+    if (this.isReadOnlyMode()) {
+      return;
+    }
+
     this.gameService.generateNewLeague();
     await this.scheduleStateService.resetToWeek(1);
   }
 
   selectTeam(teamId: string) {
+    if (this.isReadOnlyMode()) {
+      return;
+    }
+
     this.gameService.setUserTeam(teamId);
     this.router.navigate(['/standings']);
   }
@@ -60,6 +69,10 @@ export class HomeComponent {
   }
 
   openRegenerateConfirmation(): void {
+    if (this.isReadOnlyMode()) {
+      return;
+    }
+
     this.isRegenerateConfirmationOpen.set(true);
   }
 
@@ -68,7 +81,7 @@ export class HomeComponent {
   }
 
   async confirmRegenerateLeague(): Promise<void> {
-    if (this.isRegenerating()) {
+    if (this.isRegenerating() || this.isReadOnlyMode()) {
       return;
     }
 

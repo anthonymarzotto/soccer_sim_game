@@ -13,12 +13,12 @@ export class PostMatchAnalysisService {
   private statisticsService = inject(StatisticsService);
   private commentaryService = inject(CommentaryService);
 
-  generateMatchReport(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchReport {
+  generateMatchReport(matchState: MatchState, homeTeam: Team, awayTeam: Team, seasonYear: number): MatchReport {
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
     const homePlayers = resolveTeamPlayers(homeTeam);
     const awayPlayers = resolveTeamPlayers(awayTeam);
-    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
-    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
+    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers, seasonYear);
+    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers, seasonYear);
     
     const keyMoments = this.extractKeyMoments(matchState.events, homeTeam, awayTeam, homePlayers, awayPlayers);
     const tacticalAnalysis = this.analyzeTactics(matchState, homeTeam, awayTeam);

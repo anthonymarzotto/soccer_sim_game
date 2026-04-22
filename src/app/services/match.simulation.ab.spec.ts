@@ -392,8 +392,8 @@ describe('Match Simulation Variant B Guardrails', () => {
       };
 
       const state = simulationB.simulateMatch(match, homeTeam, awayTeam, config);
-      const homeStats = statisticsService.generatePlayerStatistics(state, homeTeam);
-      const awayStats = statisticsService.generatePlayerStatistics(state, awayTeam);
+      const homeStats = statisticsService.generatePlayerStatistics(state, homeTeam, homeTeam.players, 2026);
+      const awayStats = statisticsService.generatePlayerStatistics(state, awayTeam, awayTeam.players, 2026);
 
       const allStats = [...homeStats, ...awayStats];
       const goalkeeperStats = allStats.filter(s => s.position === PositionEnum.GOALKEEPER);
@@ -617,12 +617,23 @@ function create442Players(prefix: string): Player[] {
 
 function createTeam(idPrefix: string, players: Player[]): Team {
   const [gk1, def1, def2, def3, def4, mid1, mid2, mid3, mid4, fwd1, fwd2] = players;
+  const playerIds = players.map(player => player.id);
+  const initialStats = {
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+    last5: []
+  };
 
   return {
     id: `team-${idPrefix}`,
     name: `Team ${idPrefix.toUpperCase()}`,
     players,
-    playerIds: players.map(player => player.id),
+    playerIds,
     selectedFormationId: 'formation_4_4_2',
     formationAssignments: {
       gk_1: gk1.id,
@@ -637,16 +648,12 @@ function createTeam(idPrefix: string, players: Player[]): Team {
       att_l: fwd1.id,
       att_r: fwd2.id
     },
-    stats: {
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      points: 0,
-      last5: []
-    }
+    stats: { ...initialStats },
+    seasonSnapshots: [{
+      seasonYear: 2026,
+      playerIds,
+      stats: { ...initialStats }
+    }]
   };
 }
 

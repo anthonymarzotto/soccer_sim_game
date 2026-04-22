@@ -2,6 +2,38 @@
 
 Introduce explicit season-scoped history records where the current schema only stores a single live copy today, while keeping current-season access straightforward for the rest of the app. The recommended approach is to add season-keyed history collections for player attributes and team roster/stats, add seasonYear to matches, bump the persisted data schema, and use a deliberate destructive reset for pre-change saves instead of supporting migration from the old format.
 
+**Current status (April 20, 2026)**
+- Overall phase status: **Phases 1, 2, and 3 complete and stable.** Core model/persistence contracts are in place with season-scoped history records. Season rollover orchestration is fully implemented with explicit `startNewSeason()` path, player/team seeding, schedule generation, and week reset. Match retention enforcement (whole-season pruning to 5000-match cap) is active on rollover. Schema-mismatch enforcement blocks mutating writes at service layer. Test coverage validates all new behaviors.
+- Validation status: build succeeds and tests are passing (`22` test files, `197` tests).
+
+**Completed in implementation**
+- Added and wired season-scoped contracts (`PlayerSeasonAttributes`, `TeamSeasonSnapshot`) across models and persistence boundaries.
+- Added shared season-history selectors/helpers and migrated key reads/writes to them.
+- Updated league flatten/assemble boundaries to persist and rehydrate season-scoped data.
+- Updated generated league seeding so players/teams/matches include current season records (`seasonAttributes`, `seasonSnapshots`, `match.seasonYear`).
+- Updated `GameService` current-season selectors and match result write paths to update season snapshots.
+- Migrated remaining Phase 1 runtime call sites that were still relying on flat seasonal fields (standings/team details/statistics/simulation scoring paths).
+- Bumped `dataSchemaVersion` to `C` and synchronized generated schema metadata.
+- **Phase 2 complete:** Implemented explicit `startNewSeason()` orchestrator in `GameService` with year increment, player/team seeding, schedule generation, selected-week reset via `ScheduleStateService` effect, and single-path rollover pattern.
+- **Phase 3 complete:** Implemented match-retention policy with `pruneScheduleBySeasonBuckets()` enforcing 5000-match cap, pruning oldest whole seasons first.
+- **Schema-mismatch enforcement complete:** Added `isMutatingWritesBlockedBySchemaMismatch` computed property to `GameService`, guards ~12 mutation methods, prevents writes during mismatch; UI disabled bindings in place (standings, schedule, home pages).
+- Created reusable `SeasonControlsComponent` mounted in Navigation (top of sidebar, separated by horizontal bar), with "Simulate Week" button visible during season and "Start New Season" button visible at season end. Buttons disabled during simulation, hidden on schema mismatch.
+- Comprehensive test coverage: rollover seeding/schedule-gen/week-reset logic, whole-season retention pruning, season-change auto-reset behavior, mutation guards, schema-mismatch blocks, round-trip league assembly, and multi-season player/team history retrieval.
+
+**In progress / remaining**
+- **Optional Phase 4 enhancement:** Minimal team-history scaffold for end-to-end historical read path (e.g., "View Past Seasons" page with team snapshots). Currently out of scope but available as a follow-up if desired.
+- Performance optimization and refinement based on live gameplay feedback.
+
+**Immediate next actions**
+The core multi-year persistence plan (Phases 1–3) is complete and stable. The following enhancements are now also complete:
+
+**Phase 4 complete: Historical Views**
+- Implemented "View Past Seasons" section in Team Details page with a third view mode toggle (Bio → Stats → Season History → Bio)
+- Season history displays previous seasons with aggregated stats: matches played, wins/draws/losses, goals for/against, goal differential, squad size
+- Implemented "Season History" section on Player Profile page showing past season stats
+- Players can select any past season to view attributes, overall rating, and career stats from that season
+- Season buttons are only shown for seasons before the current season year
+
 **Locked target data shapes**
 The first implementation pass should stop treating these as vague placeholders and lock the persisted contracts up front. The two new season-scoped records should be:
 

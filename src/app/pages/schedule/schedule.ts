@@ -13,6 +13,7 @@ import { MatchSummaryComponent } from '../../components/match-summary/match-summ
 export class ScheduleComponent {
   gameService = inject(GameService);
   scheduleStateService = inject(ScheduleStateService);
+  isSchemaMismatchBlocking = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
 
   selectedWeek = this.scheduleStateService.selectedWeek;
 
@@ -38,21 +39,9 @@ export class ScheduleComponent {
     }
   }
 
-  simulateCurrentWeek() {
-    if (this.gameService.isAnySimulationInProgress()) {
-      return;
-    }
-
-    const currentWeek = this.gameService.league()?.currentWeek;
-    if (currentWeek && currentWeek <= this.maxWeeks()) {
-      this.gameService.simulateCurrentWeek();
-      this.selectedWeek.set(currentWeek);
-    }
-  }
-
 
   simulateMatch(matchId: string) {
-    if (this.gameService.isAnySimulationInProgress()) {
+    if (this.gameService.isAnySimulationInProgress() || this.isSchemaMismatchBlocking()) {
       return;
     }
 

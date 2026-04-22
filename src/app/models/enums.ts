@@ -87,7 +87,8 @@ export enum EventImportance {
 // View Mode Types
 export enum TeamDetailsViewMode {
   BIO = 'bio',
-  STATS = 'stats'
+  STATS = 'stats',
+  SEASON_HISTORY = 'season_history'
 }
 
 // Match Side Types

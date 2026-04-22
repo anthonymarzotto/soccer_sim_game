@@ -200,7 +200,11 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       const emptyTeam = {
         ...mockTeam,
         players: [],
-        playerIds: []
+        playerIds: [],
+        seasonSnapshots: [{
+          ...(mockTeam.seasonSnapshots?.[0] as NonNullable<Team['seasonSnapshots']>[number]),
+          playerIds: []
+        }]
       };
 
       const tactics = fieldService.calculateTeamTactics(emptyTeam);
@@ -321,6 +325,17 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
   }
 
   function createMockTeam(id: string, players: Player[]): Team {
+    const stats = {
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+      last5: []
+    };
+
     return {
       id,
       name: 'Mock Team',
@@ -340,16 +355,15 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
         att_l: 'p10',
         att_r: 'p11'
       },
-      stats: {
-        played: 0,
-        won: 0,
-        drawn: 0,
-        lost: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        points: 0,
-        last5: []
-      }
+      stats,
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: players.map(player => player.id),
+        stats: {
+          ...stats,
+          last5: [...stats.last5]
+        }
+      }]
     };
   }
 });
