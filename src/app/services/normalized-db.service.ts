@@ -58,7 +58,7 @@ export class NormalizedDbService {
         }
 
         if (snapshot.players.length > 0) {
-          await db.players.bulkPut(this.toPersistedPlayers(snapshot.players));
+          await db.players.bulkPut(snapshot.players);
         }
 
         if (snapshot.schedule.length > 0) {
@@ -136,8 +136,8 @@ export class NormalizedDbService {
     });
   }
 
-  async loadPlayers(): Promise<Player[]> {
-    return this.appDb.getAllFromTable<Player>(TABLE_PLAYERS);
+  async loadPlayers(): Promise<PersistedPlayerRecord[]> {
+    return this.appDb.getAllFromTable<PersistedPlayerRecord>(TABLE_PLAYERS);
   }
 
   async loadSchedule(): Promise<Match[]> {

@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
 import { League, Match, Team, Player, PlayerCareerStats, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { GeneratorService } from './generator.service';
@@ -15,7 +15,6 @@ import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players'
 import {
   createEmptyTeamStats,
   getCurrentPlayerSeasonAttributes,
-  getCurrentTeamSeasonSnapshot,
   getPlayerSeasonAttributesForYear,
   getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
@@ -251,13 +250,30 @@ export class GameService {
   }
 
   getTeamSnapshotForSeason(team: Team, seasonYear: number) {
-    return getTeamSeasonSnapshotForYear(team, seasonYear)
-      ?? getCurrentTeamSeasonSnapshot(team, seasonYear)
-      ?? {
-        seasonYear,
-        playerIds: [...team.playerIds],
-        stats: createEmptyTeamStats()
-      };
+    const snapshot = getTeamSeasonSnapshotForYear(team, seasonYear);
+    if (snapshot) {
+      return snapshot;
+    }
+
+    // Missing current-season snapshot indicates corrupted in-memory state; the
+    // assembleLeague boundary guarantees this record exists. Fail loudly in dev.
+    const currentSeasonYear = this.leagueState()?.currentSeasonYear;
+    if (seasonYear === currentSeasonYear) {
+      const message =
+        `getTeamSnapshotForSeason: missing season-${seasonYear} snapshot for team "${team.id}". ` +
+        `Persisted/in-memory data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      console.error(message);
+    }
+
+    // Historical-year query for a team that wasn't in that season: return empty stats.
+    return {
+      seasonYear,
+      playerIds: [...team.playerIds],
+      stats: createEmptyTeamStats()
+    };
   }
 
   getTeamAverageOverallForSeason(team: Team, seasonYear: number): number | null {

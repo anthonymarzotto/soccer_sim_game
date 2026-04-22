@@ -32,11 +32,9 @@ export function getCurrentPlayerSeasonAttributes(player: Player, currentSeasonYe
     return current;
   }
 
-  const latest = getLatestPlayerSeasonAttributes(player);
-  if (latest) {
-    return latest;
-  }
-
+  // Legacy fallback: fresh in-memory players (test fixtures, generator output before persistence)
+  // expose attributes via root fields. This shim is only for the current season; cross-season
+  // fallbacks are forbidden because they silently mask integrity issues.
   return {
     seasonYear: currentSeasonYear,
     physical: player.physical,
@@ -57,24 +55,6 @@ export function getLatestTeamSeasonSnapshot(team: Team): TeamSeasonSnapshot | nu
 
 export function getTeamSeasonSnapshotForYear(team: Team, seasonYear: number): TeamSeasonSnapshot | null {
   return (team.seasonSnapshots ?? []).find(snapshot => snapshot.seasonYear === seasonYear) ?? null;
-}
-
-export function getCurrentTeamSeasonSnapshot(team: Team, currentSeasonYear: number): TeamSeasonSnapshot {
-  const current = getTeamSeasonSnapshotForYear(team, currentSeasonYear);
-  if (current) {
-    return current;
-  }
-
-  const latest = getLatestTeamSeasonSnapshot(team);
-  if (latest) {
-    return latest;
-  }
-
-  return {
-    seasonYear: currentSeasonYear,
-    playerIds: [...team.playerIds],
-    stats: { ...team.stats, last5: [...team.stats.last5] }
-  };
 }
 
 export function withSortedUniqueSeasons<T extends { seasonYear: number }>(records: T[]): T[] {

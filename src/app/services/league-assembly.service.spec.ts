@@ -167,4 +167,36 @@ describe('LeagueAssemblyService', () => {
       /assembleLeague: missing season-2026 snapshot for team "team-1"\. Persisted data is incompatible/
     );
   });
+
+  it('should throw when a player is missing current-season seasonAttributes during flatten', () => {
+    const corruptedLeague: League = {
+      ...leagueFixture,
+      teams: leagueFixture.teams.map(team => ({
+        ...team,
+        players: team.players.map(player => ({
+          ...player,
+          seasonAttributes: (player.seasonAttributes ?? []).filter(attrs => attrs.seasonYear !== 2026)
+        }))
+      }))
+    };
+
+    expect(() => service.flattenLeague(corruptedLeague)).toThrowError(
+      /missing season-2026 seasonAttributes for player "player-1"/
+    );
+  });
+
+  it('should throw when a player is missing current-season seasonAttributes during assembly', () => {
+    const snapshot = service.flattenLeague(leagueFixture);
+    const corruptedSnapshot = {
+      ...snapshot,
+      players: snapshot.players.map(player => ({
+        ...player,
+        seasonAttributes: player.seasonAttributes.filter(attrs => attrs.seasonYear !== 2026)
+      }))
+    };
+
+    expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
+      /assembleLeague: missing season-2026 seasonAttributes for player "player-1".*Persisted data is incompatible/
+    );
+  });
 });
