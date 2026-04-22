@@ -110,7 +110,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   activeEventPlayerIds = signal<string[]>([]);
   activeEventInitiatorPlayerId = signal<string | null>(null);
   homeTeamColor = signal<string>('#0ea5e9');
+  homeTeamAccentColor = signal<string>('#f43f5e');
   awayTeamColor = signal<string>('#f43f5e');
+  awayTeamAccentColor = signal<string>('#0ea5e9');
   
   // Match state from simulation
   matchState = signal<MatchState | null>(null);
@@ -907,8 +909,14 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   private buildFormationDots(homeTeam: Team, awayTeam: Team) {
-    this.homeTeamColor.set(this.getTeamColor(homeTeam));
-    this.awayTeamColor.set(this.getTeamColor(awayTeam));
+    const homeColors = this.teamColorsService.getTeamColors(homeTeam.name);
+    const awayColors = this.teamColorsService.getTeamColors(awayTeam.name);
+    
+    this.homeTeamColor.set(homeColors.main);
+    this.homeTeamAccentColor.set(homeColors.accent);
+    this.awayTeamColor.set(awayColors.main);
+    this.awayTeamAccentColor.set(awayColors.accent);
+    
     this.homeFormationDots.set(this.buildDotsForTeam(homeTeam, TeamSide.HOME, false));
     this.awayFormationDots.set(this.buildDotsForTeam(awayTeam, TeamSide.AWAY, true));
     this.homeRemovedPlayers.set(new Map());
@@ -1149,10 +1157,6 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       .map((word) => word[0])
       .join('')
       .toUpperCase();
-  }
-
-  private getTeamColor(team: Team): string {
-    return this.teamColorsService.getPalette(team.name).solidHex;
   }
 
   private clearFinalFormationSnapshotKey() {

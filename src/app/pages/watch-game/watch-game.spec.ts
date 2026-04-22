@@ -88,7 +88,7 @@ describe('WatchGameComponent', () => {
         {
           provide: TeamColorsService,
           useValue: {
-            getPalette: () => ({ solidHex: '#0ea5e9' })
+            getTeamColors: () => ({ main: '#0ea5e9', accent: '#f43f5e' })
           }
         }
       ]

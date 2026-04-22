@@ -144,7 +144,7 @@
 
           <div class="px-4 pb-4">
             <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_220px] flex-1 overflow-hidden">
-            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4" [style.border-top-color]="homeTeamColor()">
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4 border-l-2" [style.border-top-color]="homeTeamColor()" [style.border-left-color]="homeTeamAccentColor()">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ homeTeam()?.name ?? 'Home' }}</h3>
               <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
                 @for (entry of getOnFieldLineup(TeamSide.HOME); track entry.playerId) {
@@ -209,7 +209,7 @@
                   <div
                     class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-pointer"
                     [style.background-color]="homeTeamColor()"
-                    [style.border-color]="homeTeamColor()">
+                    [style.border-color]="homeTeamAccentColor()">
                     {{ dot.label }}
                     @if (dot.yellowCardMinutes.length > 0) {
                       <span class="absolute -left-2 -top-2 text-[10px] font-bold leading-none flex items-center justify-center gap-0.5 whitespace-nowrap">
@@ -248,7 +248,7 @@
                   <div
                     class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-pointer"
                     [style.background-color]="awayTeamColor()"
-                    [style.border-color]="awayTeamColor()">
+                    [style.border-color]="awayTeamAccentColor()">
                     {{ dot.label }}
                     @if (dot.yellowCardMinutes.length > 0) {
                       <span class="absolute -left-2 -top-2 text-[10px] font-bold leading-none flex items-center justify-center gap-0.5 whitespace-nowrap">
@@ -280,7 +280,7 @@
 
             </div>
 
-            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4" [style.border-top-color]="awayTeamColor()">
+            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4 border-r-2" [style.border-top-color]="awayTeamColor()" [style.border-right-color]="awayTeamAccentColor()">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ awayTeam()?.name ?? 'Away' }}</h3>
               <div class="space-y-1.5 overflow-y-auto pr-1 flex-1">
                 @for (entry of getOnFieldLineup(TeamSide.AWAY); track entry.playerId) {
