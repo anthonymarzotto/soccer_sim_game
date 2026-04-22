@@ -69,24 +69,8 @@ export class TeamBadgeComponent {
       .toUpperCase();
   });
 
-  badgeColor = computed(() => {
-    const name = this.teamName();
-    return this.teamColorsService.getPalette(name).badgeClass;
-  });
-
-  textColor = computed(() => {
-    const name = this.teamName();
-    return this.teamColorsService.getPalette(name).textClass;
-  });
-
-  borderColor = computed(() => {
-    const name = this.teamName();
-    return this.teamColorsService.getPalette(name).borderClass;
-  });
-
   dualPalette = computed((): { main: string; accent: string } => {
-    const palette = this.teamColorsService.getPalette(this.teamName());
-    return { main: palette.solidHex, accent: palette.secondaryHex };
+    return this.teamColorsService.getTeamColors(this.teamName());
   });
 
   sizeClasses = computed(() => {
