@@ -1,9 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, isDevMode } from '@angular/core';
 import { League, Match, Player, Team } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
 import {
-  createEmptyTeamStats,
-  getCurrentTeamSeasonSnapshot,
+  getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
 } from '../models/season-history';
 
@@ -41,7 +40,13 @@ export class LeagueAssemblyService {
 
     return teams.map(team => {
       const normalizedTeam = normalizeTeamRoster(team);
-      const currentSnapshot = getCurrentTeamSeasonSnapshot(normalizedTeam, resolvedSeasonYear);
+      const currentSnapshot = getTeamSeasonSnapshotForYear(normalizedTeam, resolvedSeasonYear);
+      if (!currentSnapshot) {
+        throw new Error(
+          `toPersistedTeams: missing season snapshot for year ${resolvedSeasonYear} on team "${normalizedTeam.id}". ` +
+          `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
+        );
+      }
       const seasonSnapshots = normalizedTeam.seasonSnapshots ?? [];
       const seasonSnapshotsWithoutCurrent = seasonSnapshots.filter(
         snapshot => snapshot.seasonYear !== currentSnapshot.seasonYear
@@ -116,17 +121,18 @@ export class LeagueAssemblyService {
     }
 
     const currentSeasonYear = snapshot.metadata?.currentSeasonYear ?? new Date().getFullYear();
-    const teams: Team[] = snapshot.teams.map(teamRecord => {
-      const seasonSnapshot = getCurrentTeamSeasonSnapshot({
-        id: teamRecord.id,
-        name: teamRecord.name,
-        players: [],
-        playerIds: [],
-        stats: createEmptyTeamStats(),
-        selectedFormationId: teamRecord.selectedFormationId,
-        formationAssignments: teamRecord.formationAssignments,
-        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots)
-      }, currentSeasonYear);
+
+    const teams: (Team | null)[] = snapshot.teams.map(teamRecord => {
+      const seasonSnapshot = teamRecord.seasonSnapshots.find(s => s.seasonYear === currentSeasonYear);
+      if (!seasonSnapshot) {
+        const message =
+          `assembleLeague: missing season-${currentSeasonYear} snapshot for team "${teamRecord.id}". ` +
+          `Persisted data is incompatible; reset required.`;
+        if (isDevMode()) {
+          throw new Error(message);
+        }
+        return null;
+      }
 
       const orderedPlayers: Player[] = seasonSnapshot.playerIds
         .map(playerId => playersById.get(playerId))
@@ -148,8 +154,12 @@ export class LeagueAssemblyService {
       });
     });
 
+    if (teams.some(t => t === null)) {
+      return null;
+    }
+
     return {
-      teams,
+      teams: teams as Team[],
       schedule: snapshot.schedule.map(match => ({
         ...match,
         seasonYear: match.seasonYear ?? currentSeasonYear

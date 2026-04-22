@@ -146,4 +146,25 @@ describe('LeagueAssemblyService', () => {
 
     expect(assembled).toBeNull();
   });
+
+  it('should throw when a team has no snapshot for the requested season year', () => {
+    expect(() => service.toPersistedTeams(leagueFixture.teams, 2025)).toThrowError(
+      /missing season snapshot for year 2025 on team "team-1"/
+    );
+  });
+
+  it('should throw when a team is missing its current-season snapshot during assembly', () => {
+    const snapshot = service.flattenLeague(leagueFixture);
+    const corruptedSnapshot = {
+      ...snapshot,
+      teams: snapshot.teams.map(team => ({
+        ...team,
+        seasonSnapshots: team.seasonSnapshots.filter(s => s.seasonYear !== 2026)
+      }))
+    };
+
+    expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
+      /assembleLeague: missing season-2026 snapshot for team "team-1"\. Persisted data is incompatible/
+    );
+  });
 });

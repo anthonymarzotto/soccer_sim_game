@@ -57,6 +57,14 @@ export class SoccerSimDexieDatabase extends Dexie {
       appState: '&key,updatedAt',
       teams: '&id',
       players: '&id,teamId',
+      matches: '&id,week,seasonYear',
+      leagueMetadata: '&key,updatedAt'
+    });
+
+    this.version(3).stores({
+      appState: '&key,updatedAt',
+      teams: '&id',
+      players: '&id,teamId',
       matches: '&id,[seasonYear+week],week,seasonYear',
       leagueMetadata: '&key,updatedAt'
     });

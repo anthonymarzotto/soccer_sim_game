@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, isDevMode } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { MatchResult } from '../../models/enums';
 import { Team } from '../../models/types';
-import { getTeamSeasonSnapshotForYear, createEmptyTeamStats } from '../../models/season-history';
+import { createEmptyTeamStats } from '../../models/season-history';
 
 @Component({
   selector: 'app-standings',
@@ -23,17 +23,6 @@ export class StandingsComponent {
       return createEmptyTeamStats();
     }
 
-    const snapshot = getTeamSeasonSnapshotForYear(team, league.currentSeasonYear);
-    if (snapshot) {
-      return snapshot.stats;
-    }
-
-    const message = `Missing current-season team snapshot for ${team.name} (${team.id}) in season ${league.currentSeasonYear}`;
-    if (isDevMode()) {
-      throw new Error(message);
-    }
-
-    console.warn(message);
-    return createEmptyTeamStats();
+    return this.gameService.getTeamSnapshotForSeason(team, league.currentSeasonYear).stats;
   }
 }

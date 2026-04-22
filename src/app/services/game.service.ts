@@ -16,6 +16,7 @@ import {
   createEmptyTeamStats,
   getCurrentPlayerSeasonAttributes,
   getCurrentTeamSeasonSnapshot,
+  getPlayerSeasonAttributesForYear,
   getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
 } from '../models/season-history';
@@ -257,6 +258,47 @@ export class GameService {
         playerIds: [...team.playerIds],
         stats: createEmptyTeamStats()
       };
+  }
+
+  getTeamAverageOverallForSeason(team: Team, seasonYear: number): number | null {
+    const snapshot = getTeamSeasonSnapshotForYear(team, seasonYear);
+    if (!snapshot || snapshot.playerIds.length === 0) return null;
+
+    const overalls = snapshot.playerIds
+      .map(id => this.getPlayer(id))
+      .filter((p): p is Player => p !== undefined)
+      .map(p => getPlayerSeasonAttributesForYear(p, seasonYear)?.overall)
+      .filter((o): o is number => o !== undefined);
+
+    if (overalls.length === 0) return null;
+    return Math.round(overalls.reduce((a, b) => a + b, 0) / overalls.length);
+  }
+
+  getLeagueStandingsRankForSeason(teamId: string, seasonYear: number): { rank: number | null; totalTeams: number } {
+    const teams = this.leagueState()?.teams;
+    if (!teams) return { rank: null, totalTeams: 0 };
+
+    const withStats: { teamId: string; points: number; gd: number; gf: number }[] = [];
+    for (const team of teams) {
+      const snapshot = getTeamSeasonSnapshotForYear(team, seasonYear);
+      if (snapshot) {
+        withStats.push({
+          teamId: team.id,
+          points: snapshot.stats.points,
+          gd: snapshot.stats.goalsFor - snapshot.stats.goalsAgainst,
+          gf: snapshot.stats.goalsFor
+        });
+      }
+    }
+
+    withStats.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      return b.gf - a.gf;
+    });
+
+    const index = withStats.findIndex(entry => entry.teamId === teamId);
+    return { rank: index >= 0 ? index + 1 : null, totalTeams: withStats.length };
   }
 
   advanceWeek() {
