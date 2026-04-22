@@ -18,6 +18,7 @@ import { FieldService } from './field.service';
 import { RngService } from './rng.service';
 import { EventType, FieldZone, MatchPhase, PlayingStyle, Position as PositionEnum, Role, TeamSide } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
+import { getCurrentPlayerSeasonAttributes } from '../models/season-history';
 
 interface ResolvedRosters {
   homePlayers: Player[];
@@ -116,12 +117,14 @@ export class MatchSimulationVariantBService {
   private activeMatchShape: MatchShapeState | null = null;
   private pendingTacticalSubstitutions: TeamSubstitutionUsage = { home: 0, away: 0 };
   private lastSimulationForfeit: TeamSide | null = null;
+  private currentSeasonYear = new Date().getFullYear();
 
   didLastSimulationEndByForfeit(): boolean {
     return this.lastSimulationForfeit !== null;
   }
 
   simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig): MatchState {
+    this.currentSeasonYear = match.seasonYear ?? new Date().getFullYear();
     this.rng.beginSimulation(config.seed);
     this.activeTuning = {
       ...DEFAULT_VARIANT_B_TUNING,
@@ -2317,9 +2320,10 @@ export class MatchSimulationVariantBService {
     slot: ActiveShapeSlot,
     previousSlot?: ActiveShapeSlot
   ): number {
+    const seasonAttrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
     let score = this.getPositionCompatibilityScore(player.position, slot.preferredPosition);
     score += this.getShapeSlotPriority(slot) * 0.08;
-    score += player.overall * 0.2;
+    score += seasonAttrs.overall * 0.2;
 
     if (previousSlot?.slotId === slot.slotId) {
       score += 30;

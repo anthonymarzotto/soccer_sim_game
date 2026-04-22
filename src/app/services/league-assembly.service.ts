@@ -1,6 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, isDevMode } from '@angular/core';
 import { League, Match, Player, Team } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
+import {
+  getTeamSeasonSnapshotForYear,
+  withSortedUniqueSeasons
+} from '../models/season-history';
+import { PersistedPlayerRecord } from './app-db.service';
 
 export const LEAGUE_METADATA_KEY = 'default';
 
@@ -15,15 +20,14 @@ export interface PersistedLeagueMetadata {
 export interface PersistedTeam {
   id: string;
   name: string;
-  playerIds: string[];
-  stats: Team['stats'];
   selectedFormationId: string;
   formationAssignments: Record<string, string>;
+  seasonSnapshots: NonNullable<Team['seasonSnapshots']>;
 }
 
 export interface PersistedLeagueSnapshot {
   teams: PersistedTeam[];
-  players: Player[];
+  players: PersistedPlayerRecord[];
   schedule: Match[];
   metadata: PersistedLeagueMetadata | null;
 }
@@ -32,23 +36,67 @@ export interface PersistedLeagueSnapshot {
   providedIn: 'root'
 })
 export class LeagueAssemblyService {
-  toPersistedTeams(teams: Team[]): PersistedTeam[] {
+  toPersistedTeams(teams: Team[], seasonYear?: number): PersistedTeam[] {
+    const resolvedSeasonYear = seasonYear ?? this.resolveCurrentSeasonYear(teams);
+
     return teams.map(team => {
       const normalizedTeam = normalizeTeamRoster(team);
+      const currentSnapshot = getTeamSeasonSnapshotForYear(normalizedTeam, resolvedSeasonYear);
+      if (!currentSnapshot) {
+        throw new Error(
+          `toPersistedTeams: missing season snapshot for year ${resolvedSeasonYear} on team "${normalizedTeam.id}". ` +
+          `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
+        );
+      }
+      const seasonSnapshots = normalizedTeam.seasonSnapshots ?? [];
+      const seasonSnapshotsWithoutCurrent = seasonSnapshots.filter(
+        snapshot => snapshot.seasonYear !== currentSnapshot.seasonYear
+      );
 
       return {
         id: normalizedTeam.id,
         name: normalizedTeam.name,
-        playerIds: normalizedTeam.playerIds,
-        stats: normalizedTeam.stats,
         selectedFormationId: normalizedTeam.selectedFormationId,
-        formationAssignments: normalizedTeam.formationAssignments
+        formationAssignments: normalizedTeam.formationAssignments,
+        seasonSnapshots: withSortedUniqueSeasons([
+          ...seasonSnapshotsWithoutCurrent,
+          {
+            seasonYear: currentSnapshot.seasonYear,
+            playerIds: [...currentSnapshot.playerIds],
+            stats: {
+              ...currentSnapshot.stats,
+              last5: [...currentSnapshot.stats.last5]
+            }
+          }
+        ])
       };
     });
   }
 
-  extractPlayers(teams: Team[]): Player[] {
-    return teams.flatMap(team => normalizeTeamRoster(team).players);
+  extractPlayers(teams: Team[], seasonYear?: number): PersistedPlayerRecord[] {
+    const resolvedSeasonYear = seasonYear ?? this.resolveCurrentSeasonYear(teams);
+
+    return teams.flatMap(team => normalizeTeamRoster(team).players.map(player => {
+      const seasonAttributes = withSortedUniqueSeasons(player.seasonAttributes ?? []);
+      const hasCurrentSeasonAttrs = seasonAttributes.some(attrs => attrs.seasonYear === resolvedSeasonYear);
+      if (!hasCurrentSeasonAttrs) {
+        throw new Error(
+          `extractPlayers: missing season-${resolvedSeasonYear} seasonAttributes for player "${player.id}" (${player.name}). ` +
+          `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
+        );
+      }
+
+      return {
+        id: player.id,
+        name: player.name,
+        teamId: player.teamId,
+        position: player.position,
+        role: player.role,
+        personal: player.personal,
+        seasonAttributes,
+        careerStats: player.careerStats
+      };
+    }));
   }
 
   toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): PersistedLeagueMetadata {
@@ -62,13 +110,17 @@ export class LeagueAssemblyService {
   }
 
   flattenLeague(league: League): PersistedLeagueSnapshot {
-    const players = this.extractPlayers(league.teams);
-    const teams = this.toPersistedTeams(league.teams);
+    const players = this.extractPlayers(league.teams, league.currentSeasonYear);
+    const teams = this.toPersistedTeams(league.teams, league.currentSeasonYear);
+    const schedule = league.schedule.map(match => ({
+      ...match,
+      seasonYear: match.seasonYear ?? league.currentSeasonYear
+    }));
 
     return {
       teams,
       players,
-      schedule: league.schedule,
+      schedule,
       metadata: this.toLeagueMetadata(league)
     };
   }
@@ -79,41 +131,113 @@ export class LeagueAssemblyService {
       return null;
     }
 
-    const playersById = new Map(snapshot.players.map(player => [player.id, player]));
+    const currentSeasonYear = snapshot.metadata?.currentSeasonYear ?? new Date().getFullYear();
+
+    const hydratedPlayers: (Player | null)[] = snapshot.players.map(record => this.hydratePersistedPlayer(record, currentSeasonYear));
+    if (hydratedPlayers.some(player => player === null)) {
+      return null;
+    }
+
+    const hydratedPlayersNonNull = hydratedPlayers as Player[];
+    const playersById = new Map(hydratedPlayersNonNull.map(player => [player.id, player]));
     const playersByTeamId = new Map<string, Player[]>();
 
-    for (const player of snapshot.players) {
+    for (const player of hydratedPlayersNonNull) {
       const current = playersByTeamId.get(player.teamId) ?? [];
       current.push(player);
       playersByTeamId.set(player.teamId, current);
     }
 
-    const teams: Team[] = snapshot.teams.map(teamRecord => {
-      const orderedPlayers: Player[] = teamRecord.playerIds
+    const teams: (Team | null)[] = snapshot.teams.map(teamRecord => {
+      const seasonSnapshot = teamRecord.seasonSnapshots.find(s => s.seasonYear === currentSeasonYear);
+      if (!seasonSnapshot) {
+        const message =
+          `assembleLeague: missing season-${currentSeasonYear} snapshot for team "${teamRecord.id}". ` +
+          `Persisted data is incompatible; reset required.`;
+        if (isDevMode()) {
+          throw new Error(message);
+        }
+        return null;
+      }
+
+      const orderedPlayers: Player[] = seasonSnapshot.playerIds
         .map(playerId => playersById.get(playerId))
         .filter((player): player is Player => player !== undefined);
 
       const missingFromOrder = (playersByTeamId.get(teamRecord.id) ?? []).filter(
-        player => !teamRecord.playerIds.includes(player.id)
+        player => !seasonSnapshot.playerIds.includes(player.id)
       );
 
       return normalizeTeamRoster({
         id: teamRecord.id,
         name: teamRecord.name,
         players: [...orderedPlayers, ...missingFromOrder],
-        playerIds: teamRecord.playerIds,
-        stats: teamRecord.stats,
+        playerIds: seasonSnapshot.playerIds,
+        stats: seasonSnapshot.stats,
         selectedFormationId: teamRecord.selectedFormationId,
-        formationAssignments: teamRecord.formationAssignments
+        formationAssignments: teamRecord.formationAssignments,
+        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots)
       });
     });
 
+    if (teams.some(t => t === null)) {
+      return null;
+    }
+
     return {
-      teams,
-      schedule: snapshot.schedule,
+      teams: teams as Team[],
+      schedule: snapshot.schedule.map(match => ({
+        ...match,
+        seasonYear: match.seasonYear ?? currentSeasonYear
+      })),
       currentWeek: snapshot.metadata?.currentWeek ?? 1,
-      currentSeasonYear: snapshot.metadata?.currentSeasonYear ?? new Date().getFullYear(),
+      currentSeasonYear,
       userTeamId: snapshot.metadata?.userTeamId
     };
+  }
+
+  private hydratePersistedPlayer(record: PersistedPlayerRecord, currentSeasonYear: number): Player | null {
+    const seasonAttributes = withSortedUniqueSeasons(record.seasonAttributes ?? []);
+    const currentAttrs = seasonAttributes.find(attrs => attrs.seasonYear === currentSeasonYear);
+
+    if (!currentAttrs) {
+      const message =
+        `assembleLeague: missing season-${currentSeasonYear} seasonAttributes for player "${record.id}" (${record.name}). ` +
+        `Persisted data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      return null;
+    }
+
+    return {
+      id: record.id,
+      name: record.name,
+      teamId: record.teamId,
+      position: record.position,
+      role: record.role,
+      personal: record.personal,
+      physical: currentAttrs.physical,
+      mental: currentAttrs.mental,
+      skills: currentAttrs.skills,
+      hidden: currentAttrs.hidden,
+      overall: currentAttrs.overall,
+      seasonAttributes,
+      careerStats: record.careerStats
+    };
+  }
+
+  private resolveCurrentSeasonYear(teams: Team[]): number {
+    const latestYear = teams
+      .flatMap(team => (team.seasonSnapshots ?? []).map(snapshot => snapshot.seasonYear))
+      .reduce<number | null>((maxYear, seasonYear) => {
+        if (maxYear === null || seasonYear > maxYear) {
+          return seasonYear;
+        }
+
+        return maxYear;
+      }, null);
+
+    return latestYear ?? new Date().getFullYear();
   }
 }

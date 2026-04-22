@@ -122,6 +122,14 @@ export class TeamDetailsComponent {
     };
   }
 
+  getPlayerOverall(player: Player): number {
+    const attributes = this.gameService.getCurrentSeasonPlayerAttributes(player);
+    if (!attributes) {
+      throw new Error('Player attributes unavailable for current season');
+    }
+    return attributes.overall;
+  }
+
   getRowStats(player: Player | null): TeamDetailsRowStats {
     if (!player) return {
       matchesPlayed: 0,
@@ -256,13 +264,37 @@ export class TeamDetailsComponent {
       .filter((f): f is NonNullable<typeof f> => f !== undefined)
   );
 
+  seasonHistory = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    return t.seasonSnapshots || [];
+  });
+
+  seasonHistoryWithStats = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+
+    return this.seasonHistory().map(snapshot => {
+      const ovr = this.gameService.getTeamAverageOverallForSeason(t, snapshot.seasonYear);
+      const standing = this.gameService.getLeagueStandingsRankForSeason(t.id, snapshot.seasonYear);
+
+      return {
+        season: snapshot.seasonYear,
+        stats: snapshot.stats,
+        ovr,
+        rank: standing.rank,
+        totalTeams: standing.totalTeams
+      };
+    }).sort((a, b) => b.season - a.season);
+  });
+
   onFormationChange(formationId: string) {
     const team = this.team();
     if (!team) return;
     this.gameService.changeTeamFormation(team.id, formationId);
   }
 
-  toggleView() {
-    this.viewMode.set(this.viewMode() === TeamDetailsViewMode.BIO ? TeamDetailsViewMode.STATS : TeamDetailsViewMode.BIO);
+  setViewMode(mode: TeamDetailsViewMode) {
+    this.viewMode.set(mode);
   }
 }

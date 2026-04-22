@@ -38,7 +38,21 @@ describe('team-players', () => {
         last5: [MatchResult.DRAW]
       },
       selectedFormationId: 'formation_4_4_2',
-      formationAssignments: {}
+      formationAssignments: {},
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: [...playerIds],
+        stats: {
+          played: 0,
+          won: 0,
+          drawn: 0,
+          lost: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          points: 0,
+          last5: [MatchResult.DRAW]
+        }
+      }]
     };
   }
 
@@ -82,5 +96,13 @@ describe('team-players', () => {
     expect(() => resolveTeamPlayers(team)).toThrowError(
       'Team playerIds mismatch for Test Team (team-1): missing players for ids: missing-player; players missing from playerIds: p2'
     );
+  });
+
+  it('should report a missing latest season snapshot as an invariant issue', () => {
+    const p1 = createPlayer('p1');
+    const team = createTeam([p1]);
+    delete team.seasonSnapshots;
+
+    expect(getTeamPlayerInvariantIssues(team)).toEqual(['missing latest season snapshot']);
   });
 });

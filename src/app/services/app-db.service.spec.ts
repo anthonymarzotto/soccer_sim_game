@@ -5,47 +5,6 @@ import { vi } from 'vitest';
 const appStateGetMock = vi.fn();
 const appStatePutMock = vi.fn();
 const appStateDeleteMock = vi.fn();
-const dexieOpenMock = vi.fn();
-const dexieVersionMock = vi.fn();
-const dexieStoresMock = vi.fn();
-const dexieConstructorMock = vi.fn();
-
-vi.mock('dexie', () => {
-  class DexieMock {
-    appState!: {
-      get: typeof appStateGetMock;
-      put: typeof appStatePutMock;
-      delete: typeof appStateDeleteMock;
-    };
-
-    constructor(_name: string) {
-      dexieConstructorMock();
-    }
-
-    version(_version: number) {
-      dexieVersionMock();
-      return {
-        stores: (_schema: Record<string, string>) => {
-          dexieStoresMock();
-          this.appState = {
-            get: appStateGetMock,
-            put: appStatePutMock,
-            delete: appStateDeleteMock
-          };
-          return this;
-        }
-      };
-    }
-
-    async open() {
-      return dexieOpenMock();
-    }
-  }
-
-  return {
-    default: DexieMock
-  };
-});
 
 import { AppDbService } from './app-db.service';
 
@@ -96,7 +55,6 @@ describe('AppDbService', () => {
     appStateGetMock.mockResolvedValue(null);
     appStatePutMock.mockResolvedValue(undefined);
     appStateDeleteMock.mockResolvedValue(undefined);
-    dexieOpenMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -113,8 +71,6 @@ describe('AppDbService', () => {
     await service.deleteState('league-state');
 
     expect(result).toBeNull();
-    expect(dexieConstructorMock).not.toHaveBeenCalled();
-    expect(dexieOpenMock).not.toHaveBeenCalled();
     expect(appStateGetMock).not.toHaveBeenCalled();
     expect(appStatePutMock).not.toHaveBeenCalled();
     expect(appStateDeleteMock).not.toHaveBeenCalled();
@@ -129,8 +85,6 @@ describe('AppDbService', () => {
     await service.deleteState('league-state');
 
     expect(result).toBeNull();
-    expect(dexieConstructorMock).not.toHaveBeenCalled();
-    expect(dexieOpenMock).not.toHaveBeenCalled();
     expect(appStateGetMock).not.toHaveBeenCalled();
     expect(appStatePutMock).not.toHaveBeenCalled();
     expect(appStateDeleteMock).not.toHaveBeenCalled();

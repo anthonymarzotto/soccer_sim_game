@@ -4,6 +4,7 @@ import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 import { LocalhostService } from '../../services/localhost.service';
 import { Position } from '../../models/enums';
+import { PlayerCareerStats } from '../../models/types';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 @Component({
@@ -14,7 +15,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 })
 export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
-  private gameService = inject(GameService);
+  gameService = inject(GameService);
   private settingsService = inject(SettingsService);
   private localhostService = inject(LocalhostService);
 
@@ -42,9 +43,16 @@ export class PlayerProfileComponent {
   physicalView = signal<'list' | 'chart'>('list');
   technicalView = signal<'list' | 'chart'>('list');
 
+  // Season stats category toggle
+  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline'>('offensive');
+
   // Toggle methods
   toggleMentalView() {
     this.mentalView.update(v => v === 'list' ? 'chart' : 'list');
+  }
+
+  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline') {
+    this.seasonStatsView.set(view);
   }
 
   togglePhysicalView() {
@@ -96,6 +104,92 @@ export class PlayerProfileComponent {
     const player = this.player();
     if (!player) return null;
     return this.gameService.getCurrentSeasonStats(player);
+  });
+
+  // Season history
+  seasonHistory = computed(() => {
+    const player = this.player();
+    if (!player) return [];
+    return player.seasonAttributes || [];
+  });
+
+  selectedSeason = signal<number | null>(null);
+
+  selectedSeasonAttributes = computed(() => {
+    const seasonNum = this.selectedSeason();
+    const player = this.player();
+    if (!seasonNum || !player) return null;
+    return player.seasonAttributes?.find(s => s.seasonYear === seasonNum) || null;
+  });
+
+  selectedSeasonStats = computed(() => {
+    const seasonNum = this.selectedSeason();
+    const player = this.player();
+    if (!seasonNum || !player) return null;
+    
+    const careerStatsForSeason = player.careerStats?.find(stats => stats.seasonYear === seasonNum);
+    return careerStatsForSeason || null;
+  });
+
+  hasSeasonHistory = computed(() => this.seasonHistory().length > 1);
+
+  getPastSeasons = computed(() => {
+    const seasons = this.seasonHistory();
+    const league = this.gameService.league();
+    const currentYear = league?.currentSeasonYear || 0;
+    
+    return seasons
+      .filter(s => s.seasonYear < currentYear)
+      .sort((a, b) => b.seasonYear - a.seasonYear);
+  });
+
+  private careerStatsBySeasonYear = computed(() => {
+    const statsBySeason = new Map<number, PlayerCareerStats>();
+    const careerStats = this.player()?.careerStats || [];
+    for (const stats of careerStats) {
+      statsBySeason.set(stats.seasonYear, stats);
+    }
+    return statsBySeason;
+  });
+
+  getCareerStatsForSeason(seasonYear: number): PlayerCareerStats | null {
+    return this.careerStatsBySeasonYear().get(seasonYear) || null;
+  }
+
+  getTotalCareerStats = computed(() => {
+    const player = this.player();
+    if (!player) return null;
+
+    const currentStats = this.currentSeasonStats();
+    if (!currentStats) return null;
+
+    const currentSeasonYear = this.gameService.league()?.currentSeasonYear;
+    if (!currentSeasonYear) return null;
+
+    const allStats = [
+      currentStats,
+      ...(player.careerStats?.filter(s => s.seasonYear < currentSeasonYear) || [])
+    ].filter(Boolean);
+
+    if (allStats.length === 0) return null;
+
+    return {
+      matchesPlayed: allStats.reduce((sum, s) => sum + (s?.matchesPlayed || 0), 0),
+      minutesPlayed: allStats.reduce((sum, s) => sum + (s?.minutesPlayed || 0), 0),
+      goals: allStats.reduce((sum, s) => sum + (s?.goals || 0), 0),
+      assists: allStats.reduce((sum, s) => sum + (s?.assists || 0), 0),
+      shots: allStats.reduce((sum, s) => sum + (s?.shots || 0), 0),
+      shotsOnTarget: allStats.reduce((sum, s) => sum + (s?.shotsOnTarget || 0), 0),
+      tackles: allStats.reduce((sum, s) => sum + (s?.tackles || 0), 0),
+      interceptions: allStats.reduce((sum, s) => sum + (s?.interceptions || 0), 0),
+      passes: allStats.reduce((sum, s) => sum + (s?.passes || 0), 0),
+      saves: allStats.reduce((sum, s) => sum + (s?.saves || 0), 0),
+      fouls: allStats.reduce((sum, s) => sum + (s?.fouls || 0), 0),
+      foulsSuffered: allStats.reduce((sum, s) => sum + (s?.foulsSuffered || 0), 0),
+      yellowCards: allStats.reduce((sum, s) => sum + (s?.yellowCards || 0), 0),
+      redCards: allStats.reduce((sum, s) => sum + (s?.redCards || 0), 0),
+      cleanSheets: allStats.reduce((sum, s) => sum + (s?.cleanSheets || 0), 0)
+    };
   });
 
   // Chart calculation helpers

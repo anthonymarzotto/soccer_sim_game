@@ -457,6 +457,16 @@ function create442PlayersWithBench(prefix: string): Player[] {
 
 function createTeam(idPrefix: string, players: Player[]): Team {
   const [gk1, def1, def2, def3, def4, mid1, mid2, mid3, mid4, fwd1, fwd2] = players;
+  const stats = {
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+    last5: []
+  };
 
   return {
     id: `team-${idPrefix}`,
@@ -477,16 +487,15 @@ function createTeam(idPrefix: string, players: Player[]): Team {
       att_l: fwd1.id,
       att_r: fwd2.id
     },
-    stats: {
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      points: 0,
-      last5: []
-    }
+    stats,
+    seasonSnapshots: [{
+      seasonYear: 2026,
+      playerIds: players.map(player => player.id),
+      stats: {
+        ...stats,
+        last5: [...stats.last5]
+      }
+    }]
   };
 }
 

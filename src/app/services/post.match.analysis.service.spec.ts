@@ -158,7 +158,8 @@ describe('PostMatchAnalysisService', () => {
         createEvent('miss-2', EventType.MISS, ['away-striker'], 70, { x: 52, y: 50 }, false)
       ]),
       homeTeam,
-      awayTeam
+      awayTeam,
+      2026
     );
 
     expect(report.keyMoments.map(moment => moment.type)).toEqual([
@@ -190,7 +191,8 @@ describe('PostMatchAnalysisService', () => {
         createEvent('sub-1', EventType.SUBSTITUTION, ['home-mid1', 'home-mid2'], 67, { x: 50, y: 50 }, true)
       ]),
       homeTeam,
-      awayTeam
+      awayTeam,
+      2026
     );
 
     expect(report.keyMoments.length).toBe(1);
@@ -217,7 +219,21 @@ describe('PostMatchAnalysisService', () => {
         goalsAgainst: 0,
         points: 0,
         last5: []
-      }
+      },
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: players.map(player => player.id),
+        stats: {
+          played: 0,
+          won: 0,
+          drawn: 0,
+          lost: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          points: 0,
+          last5: []
+        }
+      }]
     };
   }
 

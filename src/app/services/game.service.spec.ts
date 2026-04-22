@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { GameService } from './game.service';
 import { GeneratorService } from './generator.service';
@@ -9,20 +10,55 @@ import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
+import { DataSchemaVersionService } from './data-schema-version.service';
 import { CommentaryStyle, EventType, FieldZone, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
 import { League, MatchStatistics, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 
 describe('GameService persistence integration', () => {
+  function ensureSeasonSnapshots(storedLeague: League | null): League | null {
+    if (!storedLeague) {
+      return storedLeague;
+    }
+
+    const seasonYear = storedLeague.currentSeasonYear;
+    const teams = storedLeague.teams.map(team => {
+      if ((team.seasonSnapshots?.length ?? 0) > 0) {
+        return team;
+      }
+
+      return {
+        ...team,
+        seasonSnapshots: [{
+          seasonYear,
+          playerIds: [...team.playerIds],
+          stats: {
+            ...team.stats,
+            last5: [...team.stats.last5]
+          }
+        }]
+      };
+    });
+
+    return {
+      ...storedLeague,
+      teams
+    };
+  }
+
   function setup(storedLeague: League | null = null) {
     TestBed.resetTestingModule();
+    const hydratedLeague = ensureSeasonSnapshots(storedLeague);
 
-    const generatorSpy: Pick<GeneratorService, 'generateLeague'> = {
-      generateLeague: vi.fn().mockReturnValue({ teams: [], schedule: [], currentSeasonYear: 2026 })
+    const hasSchemaMismatch = signal(false);
+
+    const generatorSpy: Pick<GeneratorService, 'generateLeague' | 'generateScheduleForSeason'> = {
+      generateLeague: vi.fn().mockReturnValue({ teams: [], schedule: [], currentSeasonYear: 2026 }),
+      generateScheduleForSeason: vi.fn().mockReturnValue([])
     };
 
     const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult'> = {
-      loadLeague: vi.fn().mockResolvedValue(storedLeague),
+      loadLeague: vi.fn().mockResolvedValue(hydratedLeague),
       saveLeague: vi.fn().mockResolvedValue(undefined),
       clearLeague: vi.fn().mockResolvedValue(undefined),
       saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
@@ -41,6 +77,12 @@ describe('GameService persistence integration', () => {
         GameService,
         { provide: GeneratorService, useValue: generatorSpy as GeneratorService },
         { provide: PersistenceService, useValue: persistenceSpy as PersistenceService },
+        {
+          provide: DataSchemaVersionService,
+          useValue: {
+            hasPersistedDataSchemaVersionMismatch: hasSchemaMismatch.asReadonly()
+          } as Pick<DataSchemaVersionService, 'hasPersistedDataSchemaVersionMismatch'>
+        },
         { provide: MatchSimulationVariantBService, useValue: {} },
         { provide: CommentaryService, useValue: {} },
         { provide: StatisticsService, useValue: {} },
@@ -51,7 +93,7 @@ describe('GameService persistence integration', () => {
     });
 
     const service = TestBed.inject(GameService);
-    return { service, generatorSpy, persistenceSpy, formationLibrarySpy };
+    return { service, generatorSpy, persistenceSpy, formationLibrarySpy, hasSchemaMismatch };
   }
 
   afterEach(() => TestBed.resetTestingModule());
@@ -102,6 +144,23 @@ describe('GameService persistence integration', () => {
     );
   });
 
+  it('should block mutating league operations while schema mismatch is active', async () => {
+    const { service, persistenceSpy, hasSchemaMismatch } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    await service.ensureHydrated();
+
+    hasSchemaMismatch.set(true);
+
+    service.generateNewLeague();
+    service.advanceWeek();
+    service.setUserTeam('team-1');
+    const started = service.startNewSeason();
+
+    expect(service.league()?.currentWeek).toBe(4);
+    expect(started).toBe(false);
+    expect(persistenceSpy.saveLeague).not.toHaveBeenCalled();
+    expect(persistenceSpy.saveLeagueMetadata).not.toHaveBeenCalled();
+  });
+
   it('should ignore rapid repeated week simulation calls until lock cooldown ends', async () => {
     vi.useFakeTimers();
 
@@ -138,6 +197,151 @@ describe('GameService persistence integration', () => {
 
     expect(service.league()?.currentWeek).toBe(1);
     expect(persistenceSpy.saveLeagueMetadata).not.toHaveBeenCalled();
+  });
+
+  it('should not start a new season before current season is complete', async () => {
+    const { service, persistenceSpy } = setup({
+      teams: [],
+      schedule: [
+        { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false }
+      ],
+      currentWeek: 1,
+      currentSeasonYear: 2026
+    });
+    await service.ensureHydrated();
+
+    const started = service.startNewSeason();
+
+    expect(started).toBe(false);
+    expect(service.league()?.currentSeasonYear).toBe(2026);
+    expect(persistenceSpy.saveLeague).not.toHaveBeenCalled();
+  });
+
+  it('should start a new season explicitly and seed next-season records', async () => {
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [
+            {
+              id: 'p1',
+              name: 'Player One',
+              teamId: 'team-1',
+              position: Position.GOALKEEPER,
+              role: Role.STARTER,
+              personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
+              physical: { speed: 50, strength: 80, endurance: 75 },
+              mental: { flair: 40, vision: 70, determination: 80 },
+              skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+              hidden: { luck: 50, injuryRate: 8 },
+              overall: 78,
+              seasonAttributes: [{
+                seasonYear: 2026,
+                physical: { speed: 50, strength: 80, endurance: 75 },
+                mental: { flair: 40, vision: 70, determination: 80 },
+                hidden: { luck: 50, injuryRate: 8 },
+                skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
+                overall: 78
+              }],
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
+            }
+          ],
+          playerIds: ['p1'],
+          stats: {
+            played: 1,
+            won: 1,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 1,
+            goalsAgainst: 0,
+            points: 3,
+            last5: [MatchResult.WIN]
+          },
+          seasonSnapshots: [{
+            seasonYear: 2026,
+            playerIds: ['p1'],
+            stats: {
+              played: 1,
+              won: 1,
+              drawn: 0,
+              lost: 0,
+              goalsFor: 1,
+              goalsAgainst: 0,
+              points: 3,
+              last5: [MatchResult.WIN]
+            }
+          }],
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: { gk_1: 'p1' }
+        }
+      ],
+      schedule: [
+        { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'team-1', awayTeamId: 'team-1', played: true, homeScore: 1, awayScore: 0 }
+      ],
+      currentWeek: 1,
+      currentSeasonYear: 2026
+    };
+
+    const { service, generatorSpy, persistenceSpy } = setup(storedLeague as unknown as League);
+    vi.mocked(generatorSpy.generateScheduleForSeason).mockReturnValue([
+      { id: 'n1', week: 1, seasonYear: 2027, homeTeamId: 'team-1', awayTeamId: 'team-1', played: false }
+    ]);
+    await service.ensureHydrated();
+
+    const started = service.startNewSeason();
+    const league = service.league();
+    const player = league?.teams[0]?.players[0];
+    const nextSnapshot = league?.teams[0]?.seasonSnapshots?.find(snapshot => snapshot.seasonYear === 2027);
+
+    expect(started).toBe(true);
+    expect(generatorSpy.generateScheduleForSeason).toHaveBeenCalledWith(expect.any(Array), 2027);
+    expect(league?.currentSeasonYear).toBe(2027);
+    expect(league?.currentWeek).toBe(1);
+    expect(player?.seasonAttributes?.some(attributes => attributes.seasonYear === 2027)).toBe(true);
+    expect(player?.careerStats.some(stats => stats.seasonYear === 2027)).toBe(true);
+    expect(nextSnapshot).toBeDefined();
+    expect(nextSnapshot?.stats.played).toBe(0);
+    expect(league?.schedule.some(match => match.id === 'n1' && match.seasonYear === 2027)).toBe(true);
+    expect(persistenceSpy.saveLeague).toHaveBeenCalledTimes(1);
+  });
+
+  it('should prune whole oldest seasons during explicit season rollover', async () => {
+    const makePlayedMatch = (id: string, seasonYear: number): { id: string; week: number; seasonYear: number; homeTeamId: string; awayTeamId: string; played: boolean; homeScore: number; awayScore: number } => ({
+      id,
+      week: 1,
+      seasonYear,
+      homeTeamId: 'team-1',
+      awayTeamId: 'team-1',
+      played: true,
+      homeScore: 0,
+      awayScore: 0
+    });
+
+    const season2023 = Array.from({ length: 2000 }, (_, index) => makePlayedMatch(`2023-${index}`, 2023));
+    const season2024 = Array.from({ length: 2000 }, (_, index) => makePlayedMatch(`2024-${index}`, 2024));
+    const season2025 = Array.from({ length: 2000 }, (_, index) => makePlayedMatch(`2025-${index}`, 2025));
+
+    const storedLeague = {
+      teams: [],
+      schedule: [...season2023, ...season2024, ...season2025],
+      currentWeek: 1,
+      currentSeasonYear: 2025
+    };
+
+    const { service, generatorSpy } = setup(storedLeague as unknown as League);
+    vi.mocked(generatorSpy.generateScheduleForSeason).mockReturnValue([]);
+    await service.ensureHydrated();
+
+    const started = service.startNewSeason();
+    const schedule = service.league()?.schedule ?? [];
+    const remainingSeasons = new Set(schedule.map(match => match.seasonYear));
+
+    expect(started).toBe(true);
+    expect(schedule.length).toBeLessThanOrEqual(5000);
+    expect(remainingSeasons.has(2023)).toBe(false);
+    expect(remainingSeasons.has(2024)).toBe(true);
+    expect(remainingSeasons.has(2025)).toBe(true);
   });
 
   it('should persist only changed team on formation assignment clear', async () => {
@@ -1153,10 +1357,10 @@ describe('GameService simulation engine', () => {
           useValue: {
             loadLeague: vi.fn().mockResolvedValue({
               teams: [
-                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} },
-                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
               ],
-              schedule: [{ id: 'm1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false }],
+              schedule: [{ id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false }],
               currentWeek: 1,
               currentSeasonYear: 2026
             }),
@@ -1269,7 +1473,7 @@ describe('GameService simulation engine', () => {
 
     const service = TestBed.inject(GameService);
 
-    service.simulateMatchWithDetails({ id: 'match-1' } as never, { id: 'home' } as never, { id: 'away' } as never, {
+    service.simulateMatchWithDetails({ id: 'match-1', seasonYear: 2026 } as never, { id: 'home' } as never, { id: 'away' } as never, {
       enablePlayByPlay: true,
       enableSpatialTracking: true,
       enableTactics: true,

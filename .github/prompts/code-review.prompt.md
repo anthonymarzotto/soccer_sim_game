@@ -2,7 +2,7 @@
 description: "Run a code review for efficiency, maintainability, robustness, and edge-case coverage. Optionally chain to Fix Follow-Up and Test Coverage."
 name: "Code Review"
 agent: "Code Review"
-argument-hint: "Branch name, commit SHA, file path, or diff to review. Optionally append: 'then fix' or 'then fix and test'."
+argument-hint: "Optionally append: 'then fix' or 'then fix and test'."
 ---
 Review the changes described by the user's input.
 

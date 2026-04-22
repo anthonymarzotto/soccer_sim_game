@@ -16,6 +16,7 @@ export class ScheduleStateService {
   private hydrationPromise: Promise<void> | null = null;
   private isSelectionInitialized = false;
   private skipNextPersist = false;
+  private lastObservedSeasonYear: number | null = null;
 
   constructor() {
     void this.ensureHydrated();
@@ -44,7 +45,17 @@ export class ScheduleStateService {
         if (targetWeek !== this.selectedWeek()) {
           this.selectedWeek.set(targetWeek);
         }
+        this.lastObservedSeasonYear = league.currentSeasonYear;
         this.markSelectionInitialized();
+        return;
+      }
+
+      if (this.lastObservedSeasonYear !== league.currentSeasonYear) {
+        this.lastObservedSeasonYear = league.currentSeasonYear;
+        const seasonStartWeek = this.clampWeek(league.currentWeek, league);
+        if (seasonStartWeek !== this.selectedWeek()) {
+          this.selectedWeek.set(seasonStartWeek);
+        }
         return;
       }
 
@@ -99,6 +110,8 @@ export class ScheduleStateService {
         } else {
           this.selectedWeek.set(this.clampWeek(this.selectedWeek(), league));
         }
+
+        this.lastObservedSeasonYear = league.currentSeasonYear;
       }
     } catch (error) {
       console.error('Failed to load selected week:', error);

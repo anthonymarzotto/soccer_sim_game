@@ -3,6 +3,7 @@ import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchStatistics, Team, Player, PlayerStatistics } from '../models/types';
 import { EventType, Position } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
+import { getCurrentPlayerSeasonAttributes } from '../models/season-history';
 
 @Injectable({
   providedIn: 'root'
@@ -59,7 +60,7 @@ export class StatisticsService {
     };
   }
 
-  generatePlayerStatistics(matchState: MatchState, team: Team, players?: Player[]): PlayerStatistics[] {
+  generatePlayerStatistics(matchState: MatchState, team: Team, players: Player[], seasonYear: number): PlayerStatistics[] {
     const playerStats: PlayerStatistics[] = [];
     const teamPlayers = resolveTeamPlayers(team, players);
 
@@ -87,7 +88,7 @@ export class StatisticsService {
         yellowCards: primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
         redCards: primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length,
         saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
-        rating: this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents)
+        rating: this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, seasonYear)
       };
 
       playerStats.push(stats);
@@ -226,8 +227,9 @@ export class StatisticsService {
     return assists;
   }
 
-  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[]): number {
-    let rating = player.overall;
+  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], seasonYear: number): number {
+    const seasonAttrs = getCurrentPlayerSeasonAttributes(player, seasonYear);
+    let rating = seasonAttrs.overall;
 
     // Positive contributions
     const goals = events.filter(e => e.type === EventType.GOAL).length;

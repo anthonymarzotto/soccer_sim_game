@@ -4,6 +4,7 @@ import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 import { LocalhostService } from '../../services/localhost.service';
 import { APP_TITLE, APP_VERSION } from '../../constants';
+import { SeasonControlsComponent } from '../season-controls/season-controls';
 
 function resolveSchemaVersion(value: string | (() => string)): string {
   return typeof value === 'function' ? value() : value;
@@ -12,7 +13,7 @@ function resolveSchemaVersion(value: string | (() => string)): string {
 @Component({
   selector: 'app-navigation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, SeasonControlsComponent],
   templateUrl: './navigation.html',
   styles: [`
     :host {

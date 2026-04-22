@@ -37,6 +37,15 @@ export interface PlayerSkills {
   goalkeeping: number;
 }
 
+export interface PlayerSeasonAttributes {
+  seasonYear: number;
+  physical: PlayerPhysical;
+  mental: PlayerMental;
+  hidden: PlayerHidden;
+  skills: PlayerSkills;
+  overall: number;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -44,11 +53,13 @@ export interface Player {
   position: Position;
   role: Role;
   personal: PlayerPersonal;
+  // Legacy flat attributes remain for incremental migration and should not be treated as authoritative.
   physical: PlayerPhysical;
   mental: PlayerMental;
   skills: PlayerSkills;
   hidden: PlayerHidden;
   overall: number;
+  seasonAttributes?: PlayerSeasonAttributes[];
   careerStats: PlayerCareerStats[];
 }
 
@@ -83,18 +94,27 @@ export interface TeamStats {
   last5: MatchResult[];
 }
 
+export interface TeamSeasonSnapshot {
+  seasonYear: number;
+  playerIds: string[];
+  stats: TeamStats;
+}
+
 export interface Team {
   id: string;
   name: string;
   players: Player[];
+  // Legacy root fields remain for incremental migration and should not be treated as authoritative.
   playerIds: string[]; // Canonical player identity order for normalized persistence and roster resolution.
   stats: TeamStats;
   selectedFormationId: string;  // References a formation schema ID from FormationLibraryService
   formationAssignments: Record<string, string>;  // slotId -> playerId mapping, validated against selectedFormation
+  seasonSnapshots?: TeamSeasonSnapshot[];
 }
 
 export interface Match {
   id: string;
+  seasonYear?: number;
   week: number;
   homeTeamId: string;
   awayTeamId: string;

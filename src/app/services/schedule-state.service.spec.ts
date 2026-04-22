@@ -49,7 +49,7 @@ describe('ScheduleStateService', () => {
     });
 
     const service = TestBed.inject(ScheduleStateService);
-    return { service, persistenceSpy };
+    return { service, persistenceSpy, leagueSignal };
   }
 
   afterEach(() => TestBed.resetTestingModule());
@@ -125,5 +125,24 @@ describe('ScheduleStateService', () => {
     TestBed.flushEffects();
 
     expect(persistenceSpy.saveSelectedWeek).toHaveBeenCalledWith(2);
+  });
+
+  it('should reset selected week to league current week when season year changes', async () => {
+    const { service, persistenceSpy, leagueSignal } = setup(7);
+    await service.ensureHydrated();
+    TestBed.flushEffects();
+
+    expect(service.selectedWeek()).toBe(7);
+
+    const currentLeague = leagueSignal();
+    leagueSignal.set({
+      ...currentLeague!,
+      currentSeasonYear: 2027,
+      currentWeek: 1
+    });
+    TestBed.flushEffects();
+
+    expect(service.selectedWeek()).toBe(1);
+    expect(persistenceSpy.saveSelectedWeek).toHaveBeenCalledWith(1);
   });
 });

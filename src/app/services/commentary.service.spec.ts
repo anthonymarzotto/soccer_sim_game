@@ -145,6 +145,17 @@ function createEvent(
 }
 
 function createTeam(id: string, name: string, players: Player[]): Team {
+  const stats = {
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+    last5: []
+  };
+
   return {
     id,
     name,
@@ -155,16 +166,15 @@ function createTeam(id: string, name: string, players: Player[]): Team {
       slot_1: players[0].id,
       slot_2: players[1].id
     },
-    stats: {
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      points: 0,
-      last5: []
-    }
+    stats,
+    seasonSnapshots: [{
+      seasonYear: 2026,
+      playerIds: players.map(player => player.id),
+      stats: {
+        ...stats,
+        last5: [...stats.last5]
+      }
+    }]
   };
 }
 

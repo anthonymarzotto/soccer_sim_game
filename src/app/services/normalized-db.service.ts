@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import {
   AppDbService,
-  PersistedLeagueMetadataRecord
+  PersistedLeagueMetadataRecord,
+  PersistedPlayerRecord
 } from './app-db.service';
 import {
   LeagueAssemblyService,
@@ -104,7 +105,7 @@ export class NormalizedDbService {
         }
 
         if (players.length > 0) {
-          await db.players.bulkPut(players);
+          await db.players.bulkPut(this.toPersistedPlayers(players));
         }
       });
     });
@@ -127,7 +128,7 @@ export class NormalizedDbService {
         }
 
         if (players.length > 0) {
-          await db.players.bulkPut(players);
+          await db.players.bulkPut(this.toPersistedPlayers(players));
         }
 
         await db.matches.put(match);
@@ -135,8 +136,8 @@ export class NormalizedDbService {
     });
   }
 
-  async loadPlayers(): Promise<Player[]> {
-    return this.appDb.getAllFromTable<Player>(TABLE_PLAYERS);
+  async loadPlayers(): Promise<PersistedPlayerRecord[]> {
+    return this.appDb.getAllFromTable<PersistedPlayerRecord>(TABLE_PLAYERS);
   }
 
   async loadSchedule(): Promise<Match[]> {
@@ -156,5 +157,18 @@ export class NormalizedDbService {
     const nextRecord = this.leagueAssembly.toLeagueMetadata(metadata);
 
     await this.appDb.bulkPutToTable(TABLE_LEAGUE_METADATA, [nextRecord]);
+  }
+
+  private toPersistedPlayers(players: Player[]): PersistedPlayerRecord[] {
+    return players.map(player => {
+      if (player.seasonAttributes === undefined) {
+        throw new Error(`Missing seasonAttributes for player ${player.id} (${player.name})`);
+      }
+
+      return {
+        ...player,
+        seasonAttributes: player.seasonAttributes
+      };
+    });
   }
 }

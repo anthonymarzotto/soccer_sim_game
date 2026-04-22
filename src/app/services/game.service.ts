@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
 import { League, Match, Team, Player, PlayerCareerStats, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { GeneratorService } from './generator.service';
@@ -9,8 +9,16 @@ import { PostMatchAnalysisService } from './post.match.analysis.service';
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
+import { DataSchemaVersionService } from './data-schema-version.service';
 import { normalizeTeamFormation } from '../models/team-migration';
 import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players';
+import {
+  createEmptyTeamStats,
+  getCurrentPlayerSeasonAttributes,
+  getPlayerSeasonAttributesForYear,
+  getTeamSeasonSnapshotForYear,
+  withSortedUniqueSeasons
+} from '../models/season-history';
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 
@@ -31,6 +39,7 @@ type CareerStatsAggregate = Omit<PlayerCareerStats, 'seasonYear'> & {
 })
 export class GameService {
   private static readonly WEEK_SIMULATION_LOCK_MS = 350;
+  private static readonly MATCH_RETENTION_CAP = 5000;
 
   private leagueState = signal<League | null>(null);
   private hydrationPromise: Promise<void> | null = null;
@@ -54,18 +63,20 @@ export class GameService {
     const l = this.leagueState();
     if (!l) return [];
     return [...l.teams].sort((a, b) => {
-      if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
-      const gdA = a.stats.goalsFor - a.stats.goalsAgainst;
-      const gdB = b.stats.goalsFor - b.stats.goalsAgainst;
+      const aStats = this.getTeamSnapshotForSeason(a, l.currentSeasonYear).stats;
+      const bStats = this.getTeamSnapshotForSeason(b, l.currentSeasonYear).stats;
+      if (bStats.points !== aStats.points) return bStats.points - aStats.points;
+      const gdA = aStats.goalsFor - aStats.goalsAgainst;
+      const gdB = bStats.goalsFor - bStats.goalsAgainst;
       if (gdB !== gdA) return gdB - gdA;
-      return b.stats.goalsFor - a.stats.goalsFor;
+      return bStats.goalsFor - aStats.goalsFor;
     });
   });
 
   public currentWeekMatches = computed(() => {
     const l = this.leagueState();
     if (!l) return [];
-    return l.schedule.filter(m => m.week === l.currentWeek);
+    return l.schedule.filter(m => m.week === l.currentWeek && m.seasonYear === l.currentSeasonYear);
   });
 
   private teamById = computed(() => {
@@ -88,6 +99,14 @@ export class GameService {
 
   private generator = inject(GeneratorService);
   private persistenceService = inject(PersistenceService);
+  private dataSchemaVersionService = inject(DataSchemaVersionService, { optional: true });
+  public isMutatingWritesBlockedBySchemaMismatch = computed(
+    () => this.dataSchemaVersionService?.hasPersistedDataSchemaVersionMismatch() ?? false
+  );
+
+  private canMutateLeagueState(): boolean {
+    return !this.isMutatingWritesBlockedBySchemaMismatch();
+  }
 
   constructor() {
     void this.ensureHydrated();
@@ -171,6 +190,10 @@ export class GameService {
   }
 
   generateNewLeague() {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const { teams, schedule, currentSeasonYear } = this.generator.generateLeague();
     const optimizedTeams = this.dressBestPlayers(this.withSyncedPlayerIdsForTeams(teams));
     const league: League = {
@@ -217,10 +240,88 @@ export class GameService {
   }
 
   getMatchesForWeek(week: number): Match[] {
-    return this.leagueState()?.schedule.filter(m => m.week === week) || [];
+    const league = this.leagueState();
+    if (!league) return [];
+    return league.schedule.filter(match => match.week === week && (match.seasonYear ?? league.currentSeasonYear) === league.currentSeasonYear);
+  }
+
+  getCurrentSeasonPlayerAttributes(player: Player): ReturnType<typeof getCurrentPlayerSeasonAttributes> {
+    return getCurrentPlayerSeasonAttributes(player, this.getCurrentLeagueSeasonYear());
+  }
+
+  getTeamSnapshotForSeason(team: Team, seasonYear: number) {
+    const snapshot = getTeamSeasonSnapshotForYear(team, seasonYear);
+    if (snapshot) {
+      return snapshot;
+    }
+
+    // Missing current-season snapshot indicates corrupted in-memory state; the
+    // assembleLeague boundary guarantees this record exists. Fail loudly in dev.
+    const currentSeasonYear = this.leagueState()?.currentSeasonYear;
+    if (seasonYear === currentSeasonYear) {
+      const message =
+        `getTeamSnapshotForSeason: missing season-${seasonYear} snapshot for team "${team.id}". ` +
+        `Persisted/in-memory data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      console.error(message);
+    }
+
+    // Historical-year query for a team that wasn't in that season: return empty stats.
+    return {
+      seasonYear,
+      playerIds: [...team.playerIds],
+      stats: createEmptyTeamStats()
+    };
+  }
+
+  getTeamAverageOverallForSeason(team: Team, seasonYear: number): number | null {
+    const snapshot = getTeamSeasonSnapshotForYear(team, seasonYear);
+    if (!snapshot || snapshot.playerIds.length === 0) return null;
+
+    const overalls = snapshot.playerIds
+      .map(id => this.getPlayer(id))
+      .filter((p): p is Player => p !== undefined)
+      .map(p => getPlayerSeasonAttributesForYear(p, seasonYear)?.overall)
+      .filter((o): o is number => o !== undefined);
+
+    if (overalls.length === 0) return null;
+    return Math.round(overalls.reduce((a, b) => a + b, 0) / overalls.length);
+  }
+
+  getLeagueStandingsRankForSeason(teamId: string, seasonYear: number): { rank: number | null; totalTeams: number } {
+    const teams = this.leagueState()?.teams;
+    if (!teams) return { rank: null, totalTeams: 0 };
+
+    const withStats: { teamId: string; points: number; gd: number; gf: number }[] = [];
+    for (const team of teams) {
+      const snapshot = getTeamSeasonSnapshotForYear(team, seasonYear);
+      if (snapshot) {
+        withStats.push({
+          teamId: team.id,
+          points: snapshot.stats.points,
+          gd: snapshot.stats.goalsFor - snapshot.stats.goalsAgainst,
+          gf: snapshot.stats.goalsFor
+        });
+      }
+    }
+
+    withStats.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      return b.gf - a.gf;
+    });
+
+    const index = withStats.findIndex(entry => entry.teamId === teamId);
+    return { rank: index >= 0 ? index + 1 : null, totalTeams: withStats.length };
   }
 
   advanceWeek() {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const league = this.leagueState();
     if (!league) return;
 
@@ -234,6 +335,8 @@ export class GameService {
   }
 
   simulateCurrentWeek(config?: Partial<SimulationConfig>) {
+    if (!this.canMutateLeagueState()) return;
+
     const l = this.leagueState();
     if (!l || this.isSeasonComplete() || this.isSimulatingWeekState() || this.isSimulatingSingleMatch()) return;
 
@@ -245,7 +348,7 @@ export class GameService {
     this.isSimulatingWeekState.set(true);
 
     try {
-      const matches = l.schedule.filter(m => m.week === l.currentWeek);
+      const matches = l.schedule.filter(m => m.week === l.currentWeek && m.seasonYear === l.currentSeasonYear);
 
       matches.forEach(match => {
         if (match.played) return;
@@ -296,6 +399,10 @@ export class GameService {
   }
 
   setUserTeam(teamId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     if (l) {
       const updatedLeague: League = { ...l, userTeamId: teamId };
@@ -305,6 +412,10 @@ export class GameService {
   }
 
   updatePlayerRole(playerId: string, newRole: Role) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     if (!l) return;
 
@@ -325,6 +436,10 @@ export class GameService {
   }
 
   updateFormationAssignment(teamId: string, slotId: string, playerId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     if (!l) return;
 
@@ -361,6 +476,10 @@ export class GameService {
   }
 
   movePlayerToBench(teamId: string, playerId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     if (!l) return;
 
@@ -395,6 +514,10 @@ export class GameService {
   }
 
   clearFormationAssignment(teamId: string, slotId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     if (!l) return;
 
@@ -421,6 +544,10 @@ export class GameService {
   private formationLibrary = inject(FormationLibraryService);
 
   changeTeamFormation(teamId: string, formationId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     const schema = this.formationLibrary.getFormationSlots(formationId);
     if (!l || !schema) return;
@@ -459,6 +586,10 @@ export class GameService {
   }
 
   swapPlayerRoles(playerId1: string, playerId2: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+
     const l = this.leagueState();
     if (!l) return;
 
@@ -523,10 +654,18 @@ export class GameService {
 
       const players = resolveTeamPlayers(team).map(p => ({ ...p, role: Role.RESERVE }));
 
-      const gks = players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => b.overall - a.overall);
-      const defs = players.filter(p => p.position === Position.DEFENDER).sort((a, b) => b.overall - a.overall);
-      const mids = players.filter(p => p.position === Position.MIDFIELDER).sort((a, b) => b.overall - a.overall);
-      const fwds = players.filter(p => p.position === Position.FORWARD).sort((a, b) => b.overall - a.overall);
+      const gks = players
+        .filter(p => p.position === Position.GOALKEEPER)
+        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+      const defs = players
+        .filter(p => p.position === Position.DEFENDER)
+        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+      const mids = players
+        .filter(p => p.position === Position.MIDFIELDER)
+        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+      const fwds = players
+        .filter(p => p.position === Position.FORWARD)
+        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
 
       if (gks.length > 0) gks[0].role = Role.STARTER;
       for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = Role.STARTER;
@@ -615,7 +754,7 @@ export class GameService {
   public calculateTeamOverall(team: Team): number {
     const starters = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
     if (starters.length === 0) return 50;
-    const sum = starters.reduce((acc, p) => acc + p.overall, 0);
+    const sum = starters.reduce((acc, player) => acc + this.getCurrentSeasonPlayerAttributes(player).overall, 0);
     return Math.round(sum / starters.length);
   }
 
@@ -733,6 +872,10 @@ export class GameService {
     config?: Partial<SimulationConfig>,
     options?: { bypassWeekSimulationLock?: boolean; bypassSingleMatchSimulationLock?: boolean }
   ): SimulateMatchWithDetailsResult | null {
+    if (!this.canMutateLeagueState()) {
+      return null;
+    }
+
     if (this.isSimulatingWeekState() && !options?.bypassWeekSimulationLock) {
       return null;
     }
@@ -768,9 +911,18 @@ export class GameService {
     
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, preparedHomeTeam, preparedAwayTeam);
+
+    const reportSeasonYear =
+      match.seasonYear ??
+      currentLeague?.currentSeasonYear ??
+      preparedHomeTeam.seasonSnapshots?.[preparedHomeTeam.seasonSnapshots.length - 1]?.seasonYear ??
+      preparedAwayTeam.seasonSnapshots?.[preparedAwayTeam.seasonSnapshots.length - 1]?.seasonYear;
+    if (reportSeasonYear == null) {
+      throw new Error(`Missing season year for match report generation (match: ${match.id})`);
+    }
     
     // Generate post-match analysis
-    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam);
+    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam, reportSeasonYear);
     
     // Extract key events from match state
     const keyEvents = this.extractKeyEvents(matchState.events);
@@ -805,6 +957,7 @@ export class GameService {
       m.id === match.id 
         ? { 
             ...m, 
+          seasonYear: m.seasonYear ?? l.currentSeasonYear,
             homeScore: matchState.homeScore, 
             awayScore: matchState.awayScore, 
             played: true,
@@ -815,37 +968,61 @@ export class GameService {
         : m
     );
 
+    const currentSeasonYear = l.currentSeasonYear;
+
     // Update team stats
     const updatedTeams = l.teams.map(team => {
       if (team.id === homeTeam.id) {
+        const snapshot = this.getTeamSnapshotForSeason(team, currentSeasonYear);
+        const nextStats = {
+          ...snapshot.stats,
+          played: snapshot.stats.played + 1,
+          goalsFor: snapshot.stats.goalsFor + matchState.homeScore,
+          goalsAgainst: snapshot.stats.goalsAgainst + matchState.awayScore,
+          won: snapshot.stats.won + (matchState.homeScore > matchState.awayScore ? 1 : 0),
+          drawn: snapshot.stats.drawn + (matchState.homeScore === matchState.awayScore ? 1 : 0),
+          lost: snapshot.stats.lost + (matchState.homeScore < matchState.awayScore ? 1 : 0),
+          points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, true),
+          last5: this.updateLast5Array(snapshot.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, true))
+        };
+
         return {
           ...team,
-          stats: {
-            ...team.stats,
-            played: team.stats.played + 1,
-            goalsFor: team.stats.goalsFor + matchState.homeScore,
-            goalsAgainst: team.stats.goalsAgainst + matchState.awayScore,
-            won: team.stats.won + (matchState.homeScore > matchState.awayScore ? 1 : 0),
-            drawn: team.stats.drawn + (matchState.homeScore === matchState.awayScore ? 1 : 0),
-            lost: team.stats.lost + (matchState.homeScore < matchState.awayScore ? 1 : 0),
-            points: team.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, true),
-            last5: this.updateLast5Array(team.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, true))
-          }
+          stats: nextStats,
+          seasonSnapshots: withSortedUniqueSeasons([
+            ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
+            {
+              seasonYear: currentSeasonYear,
+              playerIds: [...snapshot.playerIds],
+              stats: nextStats
+            }
+          ])
         };
       } else if (team.id === awayTeam.id) {
+        const snapshot = this.getTeamSnapshotForSeason(team, currentSeasonYear);
+        const nextStats = {
+          ...snapshot.stats,
+          played: snapshot.stats.played + 1,
+          goalsFor: snapshot.stats.goalsFor + matchState.awayScore,
+          goalsAgainst: snapshot.stats.goalsAgainst + matchState.homeScore,
+          won: snapshot.stats.won + (matchState.awayScore > matchState.homeScore ? 1 : 0),
+          drawn: snapshot.stats.drawn + (matchState.awayScore === matchState.homeScore ? 1 : 0),
+          lost: snapshot.stats.lost + (matchState.awayScore < matchState.homeScore ? 1 : 0),
+          points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, false),
+          last5: this.updateLast5Array(snapshot.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, false))
+        };
+
         return {
           ...team,
-          stats: {
-            ...team.stats,
-            played: team.stats.played + 1,
-            goalsFor: team.stats.goalsFor + matchState.awayScore,
-            goalsAgainst: team.stats.goalsAgainst + matchState.homeScore,
-            won: team.stats.won + (matchState.awayScore > matchState.homeScore ? 1 : 0),
-            drawn: team.stats.drawn + (matchState.awayScore === matchState.homeScore ? 1 : 0),
-            lost: team.stats.lost + (matchState.awayScore < matchState.homeScore ? 1 : 0),
-            points: team.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, false),
-            last5: this.updateLast5Array(team.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, false))
-          }
+          stats: nextStats,
+          seasonSnapshots: withSortedUniqueSeasons([
+            ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
+            {
+              seasonYear: currentSeasonYear,
+              playerIds: [...snapshot.playerIds],
+              stats: nextStats
+            }
+          ])
         };
       }
       return team;
@@ -1181,6 +1358,105 @@ export class GameService {
     return newLast5;
   }
 
+  startNewSeason(): boolean {
+    if (!this.canMutateLeagueState()) return false;
+
+    const league = this.leagueState();
+    if (!league) return false;
+    if (!this.isSeasonComplete()) return false;
+    if (this.isSimulatingWeekState() || this.isSimulatingSingleMatch()) return false;
+
+    const nextSeasonYear = league.currentSeasonYear + 1;
+
+    const seededTeams = league.teams.map(team => {
+      const currentSnapshot = this.getTeamSnapshotForSeason(team, league.currentSeasonYear);
+      const nextSnapshot = {
+        seasonYear: nextSeasonYear,
+        playerIds: [...currentSnapshot.playerIds],
+        stats: createEmptyTeamStats()
+      };
+
+      const seededPlayers = resolveTeamPlayers(team).map(player => {
+        const currentAttributes = this.getCurrentSeasonPlayerAttributes(player);
+        const seededSeasonAttributes = {
+          seasonYear: nextSeasonYear,
+          physical: { ...currentAttributes.physical },
+          mental: { ...currentAttributes.mental },
+          hidden: { ...currentAttributes.hidden },
+          skills: { ...currentAttributes.skills },
+          overall: currentAttributes.overall
+        };
+
+        const hasSeededAttributes = (player.seasonAttributes ?? []).some(attributes => attributes.seasonYear === nextSeasonYear);
+        const nextCareerStatsExists = player.careerStats.some(stats => stats.seasonYear === nextSeasonYear);
+
+        return {
+          ...player,
+          seasonAttributes: hasSeededAttributes
+            ? (player.seasonAttributes ?? [])
+            : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes]),
+          careerStats: nextCareerStatsExists
+            ? player.careerStats
+            : [...player.careerStats, createEmptyPlayerCareerStats(nextSeasonYear, team.id)].sort((left, right) => left.seasonYear - right.seasonYear)
+        };
+      });
+
+      return this.withSyncedPlayerIds({
+        ...team,
+        players: seededPlayers,
+        stats: nextSnapshot.stats,
+        playerIds: [...nextSnapshot.playerIds],
+        seasonSnapshots: withSortedUniqueSeasons([...(team.seasonSnapshots ?? []), nextSnapshot])
+      });
+    });
+
+    const nextSeasonSchedule = this.generator.generateScheduleForSeason(seededTeams, nextSeasonYear);
+    const retainedSchedule = this.pruneScheduleBySeasonBuckets(
+      [...league.schedule, ...nextSeasonSchedule],
+      GameService.MATCH_RETENTION_CAP,
+      league.currentSeasonYear
+    );
+
+    const updatedLeague: League = {
+      ...league,
+      teams: this.dressBestPlayers(seededTeams),
+      schedule: retainedSchedule,
+      currentSeasonYear: nextSeasonYear,
+      currentWeek: 1
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistLeague(updatedLeague);
+    return true;
+  }
+
+  private pruneScheduleBySeasonBuckets(schedule: Match[], cap: number, fallbackSeasonYear: number): Match[] {
+    if (schedule.length <= cap) {
+      return schedule;
+    }
+
+    const countsBySeason = new Map<number, number>();
+    schedule.forEach(match => {
+      const seasonYear = match.seasonYear ?? fallbackSeasonYear;
+      countsBySeason.set(seasonYear, (countsBySeason.get(seasonYear) ?? 0) + 1);
+    });
+
+    const orderedSeasonYears = [...countsBySeason.keys()].sort((left, right) => left - right);
+    const prunedSeasonYears = new Set<number>();
+    let remaining = schedule.length;
+
+    for (const seasonYear of orderedSeasonYears) {
+      if (remaining <= cap) {
+        break;
+      }
+
+      remaining -= countsBySeason.get(seasonYear) ?? 0;
+      prunedSeasonYears.add(seasonYear);
+    }
+
+    return schedule.filter(match => !prunedSeasonYears.has(match.seasonYear ?? fallbackSeasonYear));
+  }
+
   private generateMatchCommentary(matchState: MatchState, homeTeam: Team, awayTeam: Team, style: CommentaryStyle | undefined): string[] {
     const commentary: string[] = [];
     const homePlayers = resolveTeamPlayers(homeTeam);
@@ -1221,7 +1497,8 @@ export class GameService {
     if (!l) return [];
     
     const team = l.teams.find(t => t.id === teamId);
-    return team?.stats.last5 || [];
+    if (!team) return [];
+    return this.getTeamSnapshotForSeason(team, l.currentSeasonYear).stats.last5;
   }
 
   getTeamStatistics(teamId: string) {

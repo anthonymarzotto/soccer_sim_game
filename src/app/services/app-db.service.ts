@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import Dexie, { Table } from 'dexie';
-import { Match, Player, TeamStats } from '../models/types';
+import { Match, Player, PlayerSeasonAttributes, TeamSeasonSnapshot } from '../models/types';
 import { Position, Role } from '../models/enums';
 
 interface AppStateRecord<TValue = unknown> {
@@ -13,10 +13,9 @@ interface AppStateRecord<TValue = unknown> {
 export interface PersistedTeamRecord {
   id: string;
   name: string;
-  playerIds: string[];
-  stats: TeamStats;
   selectedFormationId: string;
   formationAssignments: Record<string, string>;
+  seasonSnapshots: TeamSeasonSnapshot[];
 }
 
 export interface PersistedPlayerRecord {
@@ -26,11 +25,7 @@ export interface PersistedPlayerRecord {
   position: Position;
   role: Role;
   personal: Player['personal'];
-  physical: Player['physical'];
-  mental: Player['mental'];
-  skills: Player['skills'];
-  hidden: Player['hidden'];
-  overall: number;
+  seasonAttributes: PlayerSeasonAttributes[];
   careerStats: Player['careerStats'];
 }
 
@@ -62,7 +57,15 @@ export class SoccerSimDexieDatabase extends Dexie {
       appState: '&key,updatedAt',
       teams: '&id',
       players: '&id,teamId',
-      matches: '&id,week',
+      matches: '&id,week,seasonYear',
+      leagueMetadata: '&key,updatedAt'
+    });
+
+    this.version(3).stores({
+      appState: '&key,updatedAt',
+      teams: '&id',
+      players: '&id,teamId',
+      matches: '&id,[seasonYear+week],week,seasonYear',
       leagueMetadata: '&key,updatedAt'
     });
   }
