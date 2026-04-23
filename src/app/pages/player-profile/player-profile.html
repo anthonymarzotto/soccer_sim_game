@@ -1,43 +1,45 @@
 <div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
   <div class="max-w-6xl mx-auto space-y-8">
+    @let p = player();
+    @let attrs = currentSeasonAttributes();
     
     <div class="flex items-center gap-4">
-      <a [routerLink]="['/team', player()?.teamId]" class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
+      <a [routerLink]="['/team', p?.teamId]" class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </a>
       <div class="flex items-center gap-4">
         @if (badgeStyle() !== 'text') {
-          <app-team-badge [teamId]="player()?.teamId ?? ''" size="md" [link]="true" />
+          <app-team-badge [teamId]="p?.teamId ?? ''" size="md" [link]="true" />
         }
         <div>
           <div class="flex items-center gap-3">
-            <h1 class="text-3xl font-bold tracking-tight text-white">{{ player()?.name }}</h1>
+            <h1 class="text-3xl font-bold tracking-tight text-white">{{ p?.name }}</h1>
             <span class="px-2 py-1 rounded text-xs font-bold font-mono"
-                  [class.bg-yellow-500/20]="player()?.position === Position.GOALKEEPER"
-                  [class.text-yellow-400]="player()?.position === Position.GOALKEEPER"
-                  [class.bg-blue-500/20]="player()?.position === Position.DEFENDER"
-                  [class.text-blue-400]="player()?.position === Position.DEFENDER"
-                  [class.bg-emerald-500/20]="player()?.position === Position.MIDFIELDER"
-                  [class.text-emerald-400]="player()?.position === Position.MIDFIELDER"
-                  [class.bg-red-500/20]="player()?.position === Position.FORWARD"
-                  [class.text-red-400]="player()?.position === Position.FORWARD">
-              {{ player()?.position }}
+                  [class.bg-yellow-500/20]="p?.position === Position.GOALKEEPER"
+                  [class.text-yellow-400]="p?.position === Position.GOALKEEPER"
+                  [class.bg-blue-500/20]="p?.position === Position.DEFENDER"
+                  [class.text-blue-400]="p?.position === Position.DEFENDER"
+                  [class.bg-emerald-500/20]="p?.position === Position.MIDFIELDER"
+                  [class.text-emerald-400]="p?.position === Position.MIDFIELDER"
+                  [class.bg-red-500/20]="p?.position === Position.FORWARD"
+                  [class.text-red-400]="p?.position === Position.FORWARD">
+              {{ p?.position }}
             </span>
           </div>
           <p class="text-zinc-400 mt-1 flex items-center gap-2">
             @if (badgeStyle() === 'text') {
-              <app-team-badge [teamId]="player()?.teamId ?? ''" size="sm" [link]="true" />• 
+              <app-team-badge [teamId]="p?.teamId ?? ''" size="sm" [link]="true" />• 
             }
-            {{ player()?.role }}
+            {{ p?.role }}
           </p>
         </div>
       </div>
       <div class="ml-auto flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
-        <span class="text-2xl font-bold text-white">{{ player()?.overall }}</span>
+        <span class="text-2xl font-bold text-white" [title]="getStatDescription('overall')">{{  attrs?.overall?.value }}</span>
       </div>
     </div>
 
-    @if (player()) {
+    @if (p) {
       <!-- Personal Details - Thin box spanning the page -->
       <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
         <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
@@ -47,19 +49,19 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
             <span class="text-zinc-500">Age</span>
-            <span class="font-medium text-white">{{ player()?.personal?.age }}</span>
+            <span class="font-medium text-white">{{ playerAge() }}</span>
           </div>
           <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
             <span class="text-zinc-500">Nationality</span>
-            <span class="font-medium text-white">{{ player()?.personal?.nationality }}</span>
+            <span class="font-medium text-white">{{ p?.personal?.nationality }}</span>
           </div>
           <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
             <span class="text-zinc-500">Height</span>
-            <span class="font-medium text-white">{{ player()?.personal?.height }} cm</span>
+            <span class="font-medium text-white">{{ p?.personal?.height }} cm</span>
           </div>
           <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
             <span class="text-zinc-500">Weight</span>
-            <span class="font-medium text-white">{{ player()?.personal?.weight }} kg</span>
+            <span class="font-medium text-white">{{ p?.personal?.weight }} kg</span>
           </div>
         </div>
       </div>
@@ -91,28 +93,29 @@
           @if (mentalView() === 'list') {
             <div class="space-y-4">
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24">Flair</span>
+                <span class="text-zinc-500 w-24" [title]="getStatDescription('flair')">Flair</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.flair"></div>
+                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]=" attrs?.flair?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.flair }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.flair?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24">Vision</span>
+                <span class="text-zinc-500 w-24" [title]="getStatDescription('vision')">Vision</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.vision"></div>
+                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]=" attrs?.vision?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.vision }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.vision?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24">Determination</span>
+                <span class="text-zinc-500 w-24" [title]="getStatDescription('determination')">Determination</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]="player()?.mental?.determination"></div>
+                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]=" attrs?.determination?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.mental?.determination }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.determination?.value }}</span>
               </div>
             </div>
           } @else {
+            @let mentalData = mentalChartData();
             <div class="flex flex-col items-center justify-center space-y-4">
               <div class="relative">
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
@@ -121,8 +124,8 @@
                     <!-- 3-axis grid for Mental (Flair, Vision, Determination) -->
                     @for (i of [0, 1, 2]; track i) {
                       <line [attr.x1]="120" [attr.y1]="120" 
-                            [attr.x2]="getAxisLabelPosition(i, mentalChartData(), 240).x" 
-                            [attr.y2]="getAxisLabelPosition(i, mentalChartData(), 240).y"
+                            [attr.x2]="getAxisLabelPosition(i, mentalData, 240).x" 
+                            [attr.y2]="getAxisLabelPosition(i, mentalData, 240).y"
                             stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
                     }
                     <!-- Inner circles -->
@@ -132,9 +135,9 @@
                   </g>
                   
                   <!-- Axis labels -->
-                  @for (item of mentalChartData(); track item.label; let i = $index) {
-                    <text [attr.x]="getAxisLabelPosition(i, mentalChartData(), 240).x" 
-                          [attr.y]="getAxisLabelPosition(i, mentalChartData(), 240).y + 4"
+                  @for (item of mentalData; track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, mentalData, 240).x" 
+                          [attr.y]="getAxisLabelPosition(i, mentalData, 240).y + 4"
                           text-anchor="middle" 
                           class="text-xs fill-zinc-400 font-medium"
                           dominant-baseline="middle">
@@ -143,7 +146,7 @@
                   }
                   
                   <!-- Data polygon -->
-                  <polygon [attr.points]="createChartPoints(mentalChartData(), 240)"
+                  <polygon [attr.points]="createChartPoints(mentalData, 240)"
                            fill="rgba(59, 130, 246, 0.3)" 
                            stroke="rgb(59, 130, 246)" 
                            stroke-width="3" 
@@ -153,8 +156,8 @@
                   <!-- Axis lines from center -->
                   @for (i of [0, 1, 2]; track i) {
                     <line [attr.x1]="120" [attr.y1]="120" 
-                          [attr.x2]="getAxisLabelPosition(i, mentalChartData(), 240).x" 
-                          [attr.y2]="getAxisLabelPosition(i, mentalChartData(), 240).y"
+                          [attr.x2]="getAxisLabelPosition(i, mentalData, 240).x" 
+                          [attr.y2]="getAxisLabelPosition(i, mentalData, 240).y"
                           stroke="rgba(59, 130, 246, 0.5)" stroke-width="1" />
                   }
                 </svg>
@@ -196,28 +199,29 @@
           @if (physicalView() === 'list') {
             <div class="space-y-4">
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24">Speed</span>
+                <span class="text-zinc-500 w-24" [title]="getStatDescription('speed')">Speed</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.speed"></div>
+                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]=" attrs?.speed?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.speed }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.speed?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24">Strength</span>
+                <span class="text-zinc-500 w-24" [title]="getStatDescription('strength')">Strength</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.strength"></div>
+                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]=" attrs?.strength?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.strength }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.strength?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24">Endurance</span>
+                <span class="text-zinc-500 w-24" [title]="getStatDescription('endurance')">Endurance</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="player()?.physical?.endurance"></div>
+                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]=" attrs?.endurance?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.physical?.endurance }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.endurance?.value }}</span>
               </div>
             </div>
           } @else {
+            @let physicalData = physicalChartData();
             <div class="flex flex-col items-center justify-center space-y-4">
               <div class="relative">
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
@@ -226,8 +230,8 @@
                     <!-- 3-axis grid for Physical (Speed, Strength, Endurance) -->
                     @for (i of [0, 1, 2]; track i) {
                       <line [attr.x1]="120" [attr.y1]="120" 
-                            [attr.x2]="getAxisLabelPosition(i, physicalChartData(), 240).x" 
-                            [attr.y2]="getAxisLabelPosition(i, physicalChartData(), 240).y"
+                            [attr.x2]="getAxisLabelPosition(i, physicalData, 240).x" 
+                            [attr.y2]="getAxisLabelPosition(i, physicalData, 240).y"
                             stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
                     }
                     <!-- Inner circles -->
@@ -237,9 +241,9 @@
                   </g>
                   
                   <!-- Axis labels -->
-                  @for (item of physicalChartData(); track item.label; let i = $index) {
-                    <text [attr.x]="getAxisLabelPosition(i, physicalChartData(), 240).x" 
-                          [attr.y]="getAxisLabelPosition(i, physicalChartData(), 240).y + 4"
+                  @for (item of physicalData; track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, physicalData, 240).x" 
+                          [attr.y]="getAxisLabelPosition(i, physicalData, 240).y + 4"
                           text-anchor="middle" 
                           class="text-xs fill-zinc-400 font-medium"
                           dominant-baseline="middle">
@@ -248,7 +252,7 @@
                   }
                   
                   <!-- Data polygon -->
-                  <polygon [attr.points]="createChartPoints(physicalChartData(), 240)"
+                  <polygon [attr.points]="createChartPoints(physicalData, 240)"
                            fill="rgba(16, 185, 129, 0.3)" 
                            stroke="rgb(16, 185, 129)" 
                            stroke-width="3" 
@@ -258,8 +262,8 @@
                   <!-- Axis lines from center -->
                   @for (i of [0, 1, 2]; track i) {
                     <line [attr.x1]="120" [attr.y1]="120" 
-                          [attr.x2]="getAxisLabelPosition(i, physicalChartData(), 240).x" 
-                          [attr.y2]="getAxisLabelPosition(i, physicalChartData(), 240).y"
+                          [attr.x2]="getAxisLabelPosition(i, physicalData, 240).x" 
+                          [attr.y2]="getAxisLabelPosition(i, physicalData, 240).y"
                           stroke="rgba(16, 185, 129, 0.5)" stroke-width="1" />
                   }
                 </svg>
@@ -301,49 +305,50 @@
           @if (technicalView() === 'list') {
             <div class="space-y-4">
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28">Tackling</span>
+                <span class="text-zinc-500 w-28" [title]="getStatDescription('tackling')">Tackling</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.tackling"></div>
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.tackling?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.tackling }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.tackling?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28">Shooting</span>
+                <span class="text-zinc-500 w-28" [title]="getStatDescription('shooting')">Shooting</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.shooting"></div>
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.shooting?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.shooting }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.shooting?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28">Heading</span>
+                <span class="text-zinc-500 w-28" [title]="getStatDescription('heading')">Heading</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.heading"></div>
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.heading?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.heading }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.heading?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28">Long Passing</span>
+                <span class="text-zinc-500 w-28" [title]="getStatDescription('longPassing')">Long Passing</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.longPassing"></div>
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.longPassing?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.longPassing }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.longPassing?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28">Short Passing</span>
+                <span class="text-zinc-500 w-28" [title]="getStatDescription('shortPassing')">Short Passing</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]="player()?.skills?.shortPassing"></div>
+                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.shortPassing?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.shortPassing }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.shortPassing?.value }}</span>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28">Goalkeeping</span>
+                <span class="text-zinc-500 w-28" [title]="getStatDescription('goalkeeping')">Goalkeeping</span>
                 <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-yellow-500 rounded-full" [style.width.%]="player()?.skills?.goalkeeping"></div>
+                  <div class="h-full bg-yellow-500 rounded-full" [style.width.%]=" attrs?.goalkeeping?.value"></div>
                 </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.skills?.goalkeeping }}</span>
+                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.goalkeeping?.value }}</span>
               </div>
             </div>
           } @else {
+            @let technicalData = technicalChartData();
             <div class="flex flex-col items-center justify-center space-y-4">
               <div class="relative">
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
@@ -352,8 +357,8 @@
                     <!-- 6-axis grid for Technical (Tackling, Shooting, Heading, Long Passing, Short Passing, Goalkeeping) -->
                     @for (i of [0, 1, 2, 3, 4, 5]; track i) {
                       <line [attr.x1]="120" [attr.y1]="120" 
-                            [attr.x2]="getAxisLabelPosition(i, technicalChartData(), 240).x" 
-                            [attr.y2]="getAxisLabelPosition(i, technicalChartData(), 240).y"
+                            [attr.x2]="getAxisLabelPosition(i, technicalData, 240).x" 
+                            [attr.y2]="getAxisLabelPosition(i, technicalData, 240).y"
                             stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
                     }
                     <!-- Inner circles -->
@@ -363,9 +368,9 @@
                   </g>
                   
                   <!-- Axis labels -->
-                  @for (item of technicalChartData(); track item.label; let i = $index) {
-                    <text [attr.x]="getAxisLabelPosition(i, technicalChartData(), 240).x" 
-                          [attr.y]="getAxisLabelPosition(i, technicalChartData(), 240).y + 4"
+                  @for (item of technicalData; track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, technicalData, 240).x" 
+                          [attr.y]="getAxisLabelPosition(i, technicalData, 240).y + 4"
                           text-anchor="middle" 
                           class="text-xs fill-zinc-400 font-medium"
                           dominant-baseline="middle">
@@ -374,7 +379,7 @@
                   }
                   
                   <!-- Data polygon -->
-                  <polygon [attr.points]="createChartPoints(technicalChartData(), 240)"
+                  <polygon [attr.points]="createChartPoints(technicalData, 240)"
                            fill="rgba(168, 85, 247, 0.3)" 
                            stroke="rgb(168, 85, 247)" 
                            stroke-width="3" 
@@ -384,8 +389,8 @@
                   <!-- Axis lines from center -->
                   @for (i of [0, 1, 2, 3, 4, 5]; track i) {
                     <line [attr.x1]="120" [attr.y1]="120" 
-                          [attr.x2]="getAxisLabelPosition(i, technicalChartData(), 240).x" 
-                          [attr.y2]="getAxisLabelPosition(i, technicalChartData(), 240).y"
+                          [attr.x2]="getAxisLabelPosition(i, technicalData, 240).x" 
+                          [attr.y2]="getAxisLabelPosition(i, technicalData, 240).y"
                           stroke="rgba(168, 85, 247, 0.5)" stroke-width="1" />
                   }
                 </svg>
@@ -407,8 +412,8 @@
         </div>
       </div>
 
-      <!-- Hidden Stats - spanning the page (localhost only) -->
-      @if (isLocalhost()) {
+      <!-- Hidden Stats - spanning the page (dev mode only) -->
+      @if (isDev) {
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
           <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
@@ -416,20 +421,20 @@
           </h2>
           <div class="space-y-4">
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Luck</span>
+              <span class="text-zinc-500 w-24" [title]="getStatDescription('luck')">Luck</span>
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="player()?.hidden?.luck"></div>
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]=" attrs?.luck?.value"></div>
               </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.luck }}</span>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.luck?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24">Injury Rate</span>
+              <span class="text-zinc-500 w-24" [title]="getStatDescription('injuryRate')">Injury Rate</span>
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full rounded-full" 
-                     [class]="(player()?.hidden?.injuryRate ?? 50) <= 30 ? 'bg-green-500' : (player()?.hidden?.injuryRate ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
-                     [style.width.%]="player()?.hidden?.injuryRate ?? 50"></div>
+                <div class="h-full rounded-full"
+                     [class]="( attrs?.injuryRate?.value ?? 50) <= 30 ? 'bg-green-500' : ( attrs?.injuryRate?.value ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
+                     [style.width.%]=" attrs?.injuryRate?.value ?? 50"></div>
               </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ player()?.hidden?.injuryRate ?? 'N/A' }}</span>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.injuryRate?.value ?? 'N/A' }}</span>
             </div>
           </div>
         </div>
@@ -437,6 +442,7 @@
 
       <!-- Career Stats Table -->
       <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+        @let statsView = seasonStatsView();
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
@@ -444,25 +450,25 @@
           </h2>
           <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
             <button (click)="setSeasonStatsView('offensive')" 
-                      [class]="seasonStatsView() === 'offensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'offensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Offensive
               </button>
               <button (click)="setSeasonStatsView('defensive')" 
-                      [class]="seasonStatsView() === 'defensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'defensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Defensive
               </button>
               <button (click)="setSeasonStatsView('discipline')" 
-                      [class]="seasonStatsView() === 'discipline' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'discipline' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Discipline
               </button>
             </div>
           </div>
 
-          @if (getPastSeasons().length === 0) {
-            <p class="text-sm text-zinc-500">No past seasons available.</p>
+          @if (allSeasonStats().length === 0) {
+            <p class="text-sm text-zinc-500">No stats available yet.</p>
           } @else {
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
@@ -471,12 +477,12 @@
                     <th class="text-left py-3 px-4 font-semibold">Season</th>
                     <th class="text-right py-3 px-4 font-semibold">Games</th>
                     <th class="text-right py-3 px-4 font-semibold">Minutes</th>
-                    @if (seasonStatsView() === 'offensive') {
+                    @if (statsView === 'offensive') {
                       <th class="text-right py-3 px-4 font-semibold">Goals</th>
                       <th class="text-right py-3 px-4 font-semibold">Assists</th>
                       <th class="text-right py-3 px-4 font-semibold">Shots</th>
                       <th class="text-right py-3 px-4 font-semibold">SoT</th>
-                    } @else if (seasonStatsView() === 'defensive') {
+                    } @else if (statsView === 'defensive') {
                       <th class="text-right py-3 px-4 font-semibold">Tackles</th>
                       <th class="text-right py-3 px-4 font-semibold">Interceptions</th>
                       <th class="text-right py-3 px-4 font-semibold">Passes</th>
@@ -491,60 +497,31 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- Current Season Row -->
-                  @let currentStats = currentSeasonStats();
-                  @if (currentStats) {
-                    <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30">
-                      <td class="py-3 px-4 text-zinc-300 font-medium">{{ gameService.league()?.currentSeasonYear }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.matchesPlayed || 0 }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.minutesPlayed || 0 }}</td>
-                      @if (seasonStatsView() === 'offensive') {
-                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ currentStats.goals || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ currentStats.assists || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.shots || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.shotsOnTarget || 0 }}</td>
-                      } @else if (seasonStatsView() === 'defensive') {
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.tackles || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.interceptions || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.passes || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.saves || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ currentStats.cleanSheets || 0 }}</td>
+                  @let currentYear = gameService.league()?.currentSeasonYear;
+                  @for (s of allSeasonStats(); track s.seasonYear) {
+                    <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors"
+                        [class.bg-zinc-800/30]="s.seasonYear === currentYear">
+                      <td class="py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
+                      <td class="py-3 px-4 text-right text-white font-mono">{{ s.matchesPlayed || 0 }}</td>
+                      <td class="py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
+                      @if (statsView === 'offensive') {
+                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ s.goals || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.shots || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.shotsOnTarget || 0 }}</td>
+                      } @else if (statsView === 'defensive') {
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.tackles || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.interceptions || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.passes || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.saves || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.cleanSheets || 0 }}</td>
                       } @else {
-                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ currentStats.fouls || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ currentStats.foulsSuffered || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ currentStats.yellowCards || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-red-400 font-mono">{{ currentStats.redCards || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.fouls || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.foulsSuffered || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ s.yellowCards || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-red-400 font-mono">{{ s.redCards || 0 }}</td>
                       }
                     </tr>
-                  }
-
-                  <!-- Past Seasons -->
-                  @for (season of getPastSeasons(); track season.seasonYear) {
-                    @let seasonStats = getCareerStatsForSeason(season.seasonYear);
-                    @if (seasonStats) {
-                      <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors">
-                        <td class="py-3 px-4 text-zinc-300 font-medium">{{ season.seasonYear }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.matchesPlayed || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.minutesPlayed || 0 }}</td>
-                        @if (seasonStatsView() === 'offensive') {
-                          <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ seasonStats.goals || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ seasonStats.assists || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.shots || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.shotsOnTarget || 0 }}</td>
-                        } @else if (seasonStatsView() === 'defensive') {
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.tackles || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.interceptions || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.passes || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.saves || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-white font-mono">{{ seasonStats.cleanSheets || 0 }}</td>
-                        } @else {
-                          <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ seasonStats.fouls || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ seasonStats.foulsSuffered || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ seasonStats.yellowCards || 0 }}</td>
-                          <td class="py-3 px-4 text-right text-red-400 font-mono">{{ seasonStats.redCards || 0 }}</td>
-                        }
-                      </tr>
-                    }
                   }
 
                   <!-- Total Row -->
@@ -554,12 +531,12 @@
                       <td class="py-3 px-4 text-zinc-300">TOTAL</td>
                       <td class="py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
                       <td class="py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
-                      @if (seasonStatsView() === 'offensive') {
+                      @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ totals.goals }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.shots }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.shotsOnTarget }}</td>
-                      } @else if (seasonStatsView() === 'defensive') {
+                      } @else if (statsView === 'defensive') {
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.tackles }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.interceptions }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.passes }}</td>

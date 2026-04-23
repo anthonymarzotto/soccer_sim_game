@@ -8,6 +8,7 @@ import { DataSchemaVersionService } from './data-schema-version.service';
 import { MatchResult, Position, Role } from '../models/enums';
 import { Match, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('PersistenceService', () => {
   let service: PersistenceService;
@@ -18,20 +19,20 @@ describe('PersistenceService', () => {
       id,
       name: `Team ${id}`,
       players: [
-        {
-          id: `${id}-p1`,
-          name: `Player ${id}`,
-          teamId: id,
-          position: Position.GOALKEEPER,
-          role: Role.STARTER,
-          personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
-          physical: { speed: 50, strength: 80, endurance: 75 },
-          mental: { flair: 40, vision: 70, determination: 80 },
-          skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
-          hidden: { luck: 50, injuryRate: 8 },
-          overall: 78,
-          careerStats: [createEmptyPlayerCareerStats(2026, id)]
-        }
+        (() => {
+          const p = createTestPlayer({
+            id: `${id}-p1`,
+            name: `Player ${id}`,
+            teamId: id,
+            position: Position.GOALKEEPER,
+            role: Role.STARTER,
+            age: 29, height: 190, weight: 84, nationality: 'ENG',
+            seasonYear: 2026,
+            stats: { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 }
+          });
+          p.careerStats = [createEmptyPlayerCareerStats(2026, id)];
+          return p;
+        })()
       ],
       playerIds: [`${id}-p1`],
       stats: {

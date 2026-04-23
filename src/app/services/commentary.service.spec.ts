@@ -4,6 +4,7 @@ import { CommentaryStyle, EventType, Position as PositionEnum, Role } from '../m
 import { PlayByPlayEvent, PlayByPlayEventAdditionalData } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('CommentaryService', () => {
   let service: CommentaryService;
@@ -180,26 +181,17 @@ function createTeam(id: string, name: string, players: Player[]): Team {
 
 function createPlayer(id: string, teamId: string, name: string, position: PositionEnum): Player {
   const overall = 75;
-
-  return {
+  const player = createTestPlayer({
     id,
     name,
     teamId,
     position,
     role: Role.STARTER,
-    personal: { height: 180, weight: 75, age: 25, nationality: 'ENG' },
-    physical: { speed: overall, strength: overall, endurance: overall },
-    mental: { flair: overall, vision: overall, determination: overall },
-    skills: {
-      tackling: overall,
-      shooting: overall,
-      heading: overall,
-      longPassing: overall,
-      shortPassing: overall,
-      goalkeeping: overall
-    },
-    hidden: { luck: 50, injuryRate: 5 },
-    overall,
-    careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
-  };
+    age: 25,
+    seasonYear: 2026,
+    defaultStat: overall,
+    stats: { luck: 50, injuryRate: 5, overall }
+  });
+  player.careerStats = [createEmptyPlayerCareerStats(2026, teamId)];
+  return player;
 }

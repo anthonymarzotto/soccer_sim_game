@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
-import { LocalhostService } from '../../services/localhost.service';
 import { Position } from '../../models/enums';
-import { PlayerCareerStats } from '../../models/types';
+import { PlayerCareerStats, PlayerSeasonAttributes, StatKey } from '../../models/types';
+import { STAT_DEFINITIONS } from '../../models/stat-definitions';
+import { computeAge, seasonAnchorDate } from '../../models/player-age';
+import { getCurrentPlayerSeasonAttributes } from '../../models/season-history';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 @Component({
@@ -17,12 +19,11 @@ export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
   gameService = inject(GameService);
   private settingsService = inject(SettingsService);
-  private localhostService = inject(LocalhostService);
 
   // Expose enums for template
   Position = Position;
   badgeStyle = this.settingsService.badgeStyle;
-  isLocalhost = computed(() => this.localhostService.isLocalhost());
+  isDev = isDevMode();
 
   private playerId = computed(() => this.route.snapshot.paramMap.get('id'));
 
@@ -31,6 +32,24 @@ export class PlayerProfileComponent {
     if (!id) return undefined;
     return this.gameService.getPlayer(id);
   });
+
+  currentSeasonAttributes = computed<PlayerSeasonAttributes | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || year === undefined) return null;
+    return getCurrentPlayerSeasonAttributes(p, year);
+  });
+
+  playerAge = computed<number | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || year === undefined) return null;
+    return computeAge(p.personal.birthday, seasonAnchorDate(year));
+  });
+
+  getStatDescription(key: StatKey): string {
+    return STAT_DEFINITIONS[key].description;
+  }
 
   team = computed(() => {
     const p = this.player();
@@ -65,38 +84,38 @@ export class PlayerProfileComponent {
 
   // Chart data computation
   mentalChartData = computed(() => {
-    const mental = this.player()?.mental;
-    if (!mental) return [];
-    
+    const attrs = this.currentSeasonAttributes();
+    if (!attrs) return [];
+
     return [
-      { label: 'Flair', value: mental.flair },
-      { label: 'Vision', value: mental.vision },
-      { label: 'Determination', value: mental.determination }
+      { label: 'Flair', value: attrs.flair.value },
+      { label: 'Vision', value: attrs.vision.value },
+      { label: 'Determination', value: attrs.determination.value }
     ];
   });
 
   physicalChartData = computed(() => {
-    const physical = this.player()?.physical;
-    if (!physical) return [];
-    
+    const attrs = this.currentSeasonAttributes();
+    if (!attrs) return [];
+
     return [
-      { label: 'Speed', value: physical.speed },
-      { label: 'Strength', value: physical.strength },
-      { label: 'Endurance', value: physical.endurance }
+      { label: 'Speed', value: attrs.speed.value },
+      { label: 'Strength', value: attrs.strength.value },
+      { label: 'Endurance', value: attrs.endurance.value }
     ];
   });
 
   technicalChartData = computed(() => {
-    const skills = this.player()?.skills;
-    if (!skills) return [];
-    
+    const attrs = this.currentSeasonAttributes();
+    if (!attrs) return [];
+
     return [
-      { label: 'Tackling', value: skills.tackling },
-      { label: 'Shooting', value: skills.shooting },
-      { label: 'Heading', value: skills.heading },
-      { label: 'Long Passing', value: skills.longPassing },
-      { label: 'Short Passing', value: skills.shortPassing },
-      { label: 'Goalkeeping', value: skills.goalkeeping }
+      { label: 'Tackling', value: attrs.tackling.value },
+      { label: 'Shooting', value: attrs.shooting.value },
+      { label: 'Heading', value: attrs.heading.value },
+      { label: 'Long Passing', value: attrs.longPassing.value },
+      { label: 'Short Passing', value: attrs.shortPassing.value },
+      { label: 'Goalkeeping', value: attrs.goalkeeping.value }
     ];
   });
 
@@ -142,6 +161,10 @@ export class PlayerProfileComponent {
       .filter(s => s.seasonYear < currentYear)
       .sort((a, b) => b.seasonYear - a.seasonYear);
   });
+
+  allSeasonStats = computed(() =>
+    [...(this.player()?.careerStats ?? [])].sort((a, b) => a.seasonYear - b.seasonYear)
+  );
 
   private careerStatsBySeasonYear = computed(() => {
     const statsBySeason = new Map<number, PlayerCareerStats>();

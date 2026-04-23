@@ -229,7 +229,7 @@ export class StatisticsService {
 
   private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], seasonYear: number): number {
     const seasonAttrs = getCurrentPlayerSeasonAttributes(player, seasonYear);
-    let rating = seasonAttrs.overall;
+    let rating = seasonAttrs.overall.value;
 
     // Positive contributions
     const goals = events.filter(e => e.type === EventType.GOAL).length;

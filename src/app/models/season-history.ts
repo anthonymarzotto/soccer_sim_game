@@ -1,5 +1,5 @@
 import { isDevMode } from '@angular/core';
-import { Player, PlayerSeasonAttributes, Team, TeamSeasonSnapshot, TeamStats } from './types';
+import { Player, PlayerSeasonAttributes, Stat, StatKey, Team, TeamSeasonSnapshot, TeamStats } from './types';
 
 export function createEmptyTeamStats(): TeamStats {
   return {
@@ -26,23 +26,22 @@ export function getPlayerSeasonAttributesForYear(player: Player, seasonYear: num
   return (player.seasonAttributes ?? []).find(attributes => attributes.seasonYear === seasonYear) ?? null;
 }
 
-export function getCurrentPlayerSeasonAttributes(player: Player, currentSeasonYear: number): PlayerSeasonAttributes {
-  const current = getPlayerSeasonAttributesForYear(player, currentSeasonYear);
-  if (current) {
-    return current;
+export function getCurrentPlayerSeasonAttributes(player: Player, seasonYear: number): PlayerSeasonAttributes {
+  const current = getPlayerSeasonAttributesForYear(player, seasonYear);
+  if (!current) {
+    throw new Error(
+      `getCurrentPlayerSeasonAttributes: missing season-${seasonYear} seasonAttributes for player "${player.id}" (${player.name}).`
+    );
   }
+  return current;
+}
 
-  // Legacy fallback: fresh in-memory players (test fixtures, generator output before persistence)
-  // expose attributes via root fields. This shim is only for the current season; cross-season
-  // fallbacks are forbidden because they silently mask integrity issues.
-  return {
-    seasonYear: currentSeasonYear,
-    physical: player.physical,
-    mental: player.mental,
-    hidden: player.hidden,
-    skills: player.skills,
-    overall: player.overall
-  };
+export function getStat(player: Player, seasonYear: number, key: StatKey): Stat {
+  return getCurrentPlayerSeasonAttributes(player, seasonYear)[key];
+}
+
+export function getStatValue(player: Player, seasonYear: number, key: StatKey): number {
+  return getStat(player, seasonYear, key).value;
 }
 
 export function getLatestTeamSeasonSnapshot(team: Team): TeamSeasonSnapshot | null {

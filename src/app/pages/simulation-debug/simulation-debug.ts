@@ -729,9 +729,10 @@ export class SimulationDebugComponent {
       slots
     );
 
+    const overallOf = (player: Player) => this.gameService.getCurrentSeasonPlayerAttributes(player).overall.value;
     const starters = resolveTeamPlayers(normalized)
       .filter(player => player.role === Role.STARTER)
-      .sort((left, right) => right.overall - left.overall);
+      .sort((left, right) => overallOf(right) - overallOf(left));
     const startersById = new Map(starters.map(player => [player.id, player]));
     const usedPlayers = new Set<string>();
     const formationAssignments: Record<string, string> = { ...normalized.formationAssignments };
@@ -758,9 +759,10 @@ export class SimulationDebugComponent {
 
   private pickStarterForSlot(starters: Player[], preferredPosition: Position, usedPlayers: Set<string>): Player | undefined {
     const availableStarters = starters.filter(player => !usedPlayers.has(player.id));
+    const overallOf = (player: Player) => this.gameService.getCurrentSeasonPlayerAttributes(player).overall.value;
     const exactPositionMatch = availableStarters
       .filter(player => player.position === preferredPosition)
-      .sort((left, right) => right.overall - left.overall)[0];
+      .sort((left, right) => overallOf(right) - overallOf(left))[0];
 
     if (exactPositionMatch) {
       return exactPositionMatch;

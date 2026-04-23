@@ -7,6 +7,7 @@ import { MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/
 import { MatchState, TeamFormation } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 interface ActiveShapeSlot {
   slotId: string;
@@ -100,8 +101,8 @@ describe('Match Simulation Variant B Manpower Shape', () => {
   it('should preserve the central spine when rebalancing after a dismissal', () => {
     const internals = simulationB as unknown as VariantBManpowerInternals;
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
 
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
@@ -161,8 +162,8 @@ describe('Match Simulation Variant B Manpower Shape', () => {
   it('should reduce defensive pressure when the relevant defensive band is understaffed', () => {
     const internals = simulationB as unknown as VariantBManpowerInternals;
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
     tactics.home = { ...tactics.home, pressingIntensity: 42 };
     const state = createMatchState(awayTeam.id, 'away-fwd1', { x: 50, y: 24 });
@@ -189,8 +190,8 @@ describe('Match Simulation Variant B Manpower Shape', () => {
   it('should reduce defensive pressure when the ball-side wide channel is unstaffed', () => {
     const internals = simulationB as unknown as VariantBManpowerInternals;
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
     tactics.home = { ...tactics.home, pressingIntensity: 42 };
     const state = createMatchState(awayTeam.id, 'away-fwd1', { x: 18, y: 27 });
@@ -457,25 +458,16 @@ function createPlayer(
   role: Role,
   overall: number
 ): Player {
-  return {
+  const player = createTestPlayer({
     id,
-    name: id,
     teamId: `team-${teamId}`,
     position,
     role,
-    personal: { height: 182, weight: 78, age: 26, nationality: 'ENG' },
-    physical: { speed: overall, strength: overall, endurance: overall },
-    mental: { flair: overall, vision: overall, determination: overall },
-    skills: {
-      tackling: overall,
-      shooting: overall,
-      heading: overall,
-      longPassing: overall,
-      shortPassing: overall,
-      goalkeeping: overall
-    },
-    hidden: { luck: 50, injuryRate: 5 },
-    overall,
-    careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
-  };
+    age: 26, height: 182, weight: 78, nationality: 'ENG',
+    seasonYear: 2026,
+    defaultStat: overall,
+    stats: { luck: 50, injuryRate: 5, overall }
+  });
+  player.careerStats = [createEmptyPlayerCareerStats(2026, teamId)];
+  return player;
 }

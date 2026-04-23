@@ -160,15 +160,39 @@ export class NormalizedDbService {
   }
 
   private toPersistedPlayers(players: Player[]): PersistedPlayerRecord[] {
-    return players.map(player => {
-      if (player.seasonAttributes === undefined) {
-        throw new Error(`Missing seasonAttributes for player ${player.id} (${player.name})`);
-      }
+    if (players.length === 0) return [];
+    const seasonYear = this.resolveSeasonYearForPlayers(players);
+    // Wrap as a single virtual team so we can reuse the canonical serializer.
+    // If extractPlayers ever gains team-level logic (e.g. cross-referencing team
+    // stats or roster order), this virtual team will need to carry real data or
+    // extractPlayers should expose a player-only overload instead.
+    const virtualTeam: Team = {
+      id: '__normalized_db_virtual__',
+      name: '__virtual__',
+      players,
+      playerIds: players.map(p => p.id),
+      stats: {
+        played: 0, won: 0, drawn: 0, lost: 0,
+        goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+      },
+      selectedFormationId: '',
+      formationAssignments: {},
+      seasonSnapshots: [{
+        seasonYear,
+        playerIds: players.map(p => p.id),
+        stats: {
+          played: 0, won: 0, drawn: 0, lost: 0,
+          goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+        }
+      }]
+    };
+    return this.leagueAssembly.extractPlayers([virtualTeam], seasonYear);
+  }
 
-      return {
-        ...player,
-        seasonAttributes: player.seasonAttributes
-      };
-    });
+  private resolveSeasonYearForPlayers(players: Player[]): number {
+    const years = players
+      .flatMap(p => (p.seasonAttributes ?? []).map(a => a.seasonYear));
+    if (years.length === 0) return new Date().getFullYear();
+    return Math.max(...years);
   }
 }

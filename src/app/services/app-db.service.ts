@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import Dexie, { Table } from 'dexie';
-import { Match, Player, PlayerSeasonAttributes, TeamSeasonSnapshot } from '../models/types';
+import { Match, Player, TeamSeasonSnapshot } from '../models/types';
 import { Position, Role } from '../models/enums';
 
 interface AppStateRecord<TValue = unknown> {
@@ -18,14 +18,27 @@ export interface PersistedTeamRecord {
   seasonSnapshots: TeamSeasonSnapshot[];
 }
 
+export interface PersistedPlayerPersonalRecord {
+  height: number;
+  weight: number;
+  nationality: string;
+  // Stored as ISO string; rehydrated to Date at load time.
+  birthday: string;
+}
+
+export interface PersistedPlayerSeasonAttributesRecord {
+  seasonYear: number;
+  values: Record<string, number>;
+}
+
 export interface PersistedPlayerRecord {
   id: string;
   name: string;
   teamId: string;
   position: Position;
   role: Role;
-  personal: Player['personal'];
-  seasonAttributes: PlayerSeasonAttributes[];
+  personal: PersistedPlayerPersonalRecord;
+  seasonAttributes: PersistedPlayerSeasonAttributesRecord[];
   careerStats: Player['careerStats'];
 }
 

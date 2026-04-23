@@ -305,8 +305,8 @@ export class MatchSimulationVariantBService {
     awayPlayers: Player[]
   ): { home: TacticalSetup; away: TacticalSetup } {
     return {
-      home: this.fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: this.fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: this.fieldService.calculateTeamTactics(homeTeam, this.currentSeasonYear, homePlayers),
+      away: this.fieldService.calculateTeamTactics(awayTeam, this.currentSeasonYear, awayPlayers)
     };
   }
 
@@ -684,8 +684,9 @@ export class MatchSimulationVariantBService {
       successChance -= 0.05;
     }
 
-    successChance += (carrier.physical.speed - 70) * 0.002;
-    successChance += (carrier.mental.flair - 70) * 0.0015;
+    const carrierAttrs = getCurrentPlayerSeasonAttributes(carrier, this.currentSeasonYear);
+    successChance += (carrierAttrs.speed.value - 70) * 0.002;
+    successChance += (carrierAttrs.flair.value - 70) * 0.0015;
 
     const attackingY = currentTeam === TeamSide.HOME
       ? state.ballPossession.location.y
@@ -1103,7 +1104,8 @@ export class MatchSimulationVariantBService {
     const passerFatigue = fatigue.find(entry => entry.playerId === passer.id);
     const targetFatigue = fatigue.find(entry => entry.playerId === target.id);
 
-    let baseChance = (passer.skills.shortPassing + passer.skills.longPassing) / 2;
+    const passerAttrs = getCurrentPlayerSeasonAttributes(passer, this.currentSeasonYear);
+    let baseChance = (passerAttrs.shortPassing.value + passerAttrs.longPassing.value) / 2;
 
     if (passerFatigue) {
       baseChance *= passerFatigue.performanceModifier;
@@ -1515,11 +1517,13 @@ export class MatchSimulationVariantBService {
     const candidatePool = samePositionPool.length > 0 ? samePositionPool : benchPlayers;
 
     const sortedByQuality = [...candidatePool].sort((left, right) => {
-      if (right.overall === left.overall) {
-        return right.physical.endurance - left.physical.endurance;
+      const leftAttrs = getCurrentPlayerSeasonAttributes(left, this.currentSeasonYear);
+      const rightAttrs = getCurrentPlayerSeasonAttributes(right, this.currentSeasonYear);
+      if (rightAttrs.overall.value === leftAttrs.overall.value) {
+        return rightAttrs.endurance.value - leftAttrs.endurance.value;
       }
 
-      return right.overall - left.overall;
+      return rightAttrs.overall.value - leftAttrs.overall.value;
     });
 
     return sortedByQuality[0] ?? null;
@@ -1627,7 +1631,8 @@ export class MatchSimulationVariantBService {
       state.awayShots++;
     }
 
-    let onTargetChance = this.activeTuning.onTargetBase + ((shooter.skills.shooting - 70) * this.activeTuning.onTargetSkillScale);
+    const shooterAttrs = getCurrentPlayerSeasonAttributes(shooter, this.currentSeasonYear);
+    let onTargetChance = this.activeTuning.onTargetBase + ((shooterAttrs.shooting.value - 70) * this.activeTuning.onTargetSkillScale);
     if (attackingY >= 85) {
       onTargetChance += 0.28;
     } else if (attackingY >= 75) {
@@ -1668,8 +1673,10 @@ export class MatchSimulationVariantBService {
       state.awayShotsOnTarget++;
     }
 
-    const keeperSkill = goalkeeper?.skills.goalkeeping ?? 70;
-    let goalChance = this.activeTuning.goalChanceBase + ((shooter.skills.shooting - keeperSkill) * this.activeTuning.goalChanceSkillVsKeeperScale);
+    const keeperSkill = goalkeeper
+      ? getCurrentPlayerSeasonAttributes(goalkeeper, this.currentSeasonYear).goalkeeping.value
+      : 70;
+    let goalChance = this.activeTuning.goalChanceBase + ((shooterAttrs.shooting.value - keeperSkill) * this.activeTuning.goalChanceSkillVsKeeperScale);
 
     if (attackingY >= 85) {
       goalChance += 0.2;
@@ -2323,7 +2330,7 @@ export class MatchSimulationVariantBService {
     const seasonAttrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
     let score = this.getPositionCompatibilityScore(player.position, slot.preferredPosition);
     score += this.getShapeSlotPriority(slot) * 0.08;
-    score += seasonAttrs.overall * 0.2;
+    score += seasonAttrs.overall.value * 0.2;
 
     if (previousSlot?.slotId === slot.slotId) {
       score += 30;

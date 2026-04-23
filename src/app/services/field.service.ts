@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Coordinates, FieldZone, TeamFormation, TacticalSetup, FormationSlot } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
+import { getPlayerSeasonAttributesForYear } from '../models/season-history';
 import { PlayingStyle, Mentality, Role, Position } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
 
@@ -206,7 +207,7 @@ export class FieldService {
     return this.formationLibrary.getAllFormations().map(f => f.id);
   }
 
-  calculateTeamTactics(team: Team, players?: Player[]): TacticalSetup {
+  calculateTeamTactics(team: Team, seasonYear: number, players?: Player[]): TacticalSetup {
     const teamPlayers = resolveTeamPlayers(team, players);
     const formation =
       this.assignPlayersToFormation(team) ??
@@ -232,11 +233,24 @@ export class FieldService {
     }
     
     // Calculate team averages for different attributes
-    const overallAvg = teamPlayers.reduce((sum, p) => sum + p.overall, 0) / teamPlayers.length;
-    const speedAvg = teamPlayers.reduce((sum, p) => sum + p.physical.speed, 0) / teamPlayers.length;
-    const passingAvg = teamPlayers.reduce((sum, p) => sum + p.skills.shortPassing + p.skills.longPassing, 0) / (teamPlayers.length * 2);
-    const defendingAvg = teamPlayers.reduce((sum, p) => sum + p.skills.tackling, 0) / teamPlayers.length;
-    const attackingAvg = teamPlayers.reduce((sum, p) => sum + p.skills.shooting, 0) / teamPlayers.length;
+    const attrsByPlayer = teamPlayers.map(p => getPlayerSeasonAttributesForYear(p, seasonYear));
+    const validAttrs = attrsByPlayer.filter((a): a is NonNullable<typeof a> => a !== null);
+    if (validAttrs.length === 0) {
+      return {
+        teamId: team.id,
+        formation,
+        playingStyle: PlayingStyle.DEFENSIVE,
+        mentality: Mentality.BALANCED,
+        pressingIntensity: 50,
+        defensiveLine: 50,
+        tempo: 50
+      };
+    }
+    const overallAvg = validAttrs.reduce((sum, a) => sum + a.overall.value, 0) / validAttrs.length;
+    const speedAvg = validAttrs.reduce((sum, a) => sum + a.speed.value, 0) / validAttrs.length;
+    const passingAvg = validAttrs.reduce((sum, a) => sum + a.shortPassing.value + a.longPassing.value, 0) / (validAttrs.length * 2);
+    const defendingAvg = validAttrs.reduce((sum, a) => sum + a.tackling.value, 0) / validAttrs.length;
+    const attackingAvg = validAttrs.reduce((sum, a) => sum + a.shooting.value, 0) / validAttrs.length;
 
     // Determine playing style based on team attributes
     let playingStyle: PlayingStyle;
