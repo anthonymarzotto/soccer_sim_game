@@ -162,8 +162,8 @@ describe('PersistenceService', () => {
       )
       .mockResolvedValueOnce(undefined);
 
-    const firstWrite = service.saveTeam(createTeam('team-1'));
-    const secondWrite = service.saveTeam(createTeam('team-2'));
+    const firstWrite = service.saveTeam(createTeam('team-1'), 2026);
+    const secondWrite = service.saveTeam(createTeam('team-2'), 2026);
 
     for (let attempt = 0; attempt < 10 && !releaseFirstWrite; attempt += 1) {
       await Promise.resolve();
@@ -171,23 +171,23 @@ describe('PersistenceService', () => {
 
     expect(releaseFirstWrite).toBeDefined();
     expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenCalledTimes(1);
-    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'team-1' }));
+    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'team-1' }), 2026);
 
     releaseFirstWrite?.();
     await firstWrite;
     await secondWrite;
 
     expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenCalledTimes(2);
-    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 'team-2' }));
+    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 'team-2' }), 2026);
   });
 
   it('should delegate atomic match-result saves to normalized persistence', async () => {
     const match = createMatch();
     const teams = [createTeam('team-1'), createTeam('team-2')];
 
-    await service.saveMatchResult(match, teams);
+    await service.saveMatchResult(match, teams, 2026);
 
-    expect(normalizedDbSpy.saveMatchResultFromLeague).toHaveBeenCalledWith(match, teams);
+    expect(normalizedDbSpy.saveMatchResultFromLeague).toHaveBeenCalledWith(match, teams, 2026);
   });
 
   it('should block mutating writes when persisted schema version mismatches', async () => {

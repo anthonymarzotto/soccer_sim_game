@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Coordinates, FieldZone, TeamFormation, TacticalSetup, FormationSlot } from '../models/simulation.types';
 import { Team, Player } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
-import { getPlayerSeasonAttributesForYear } from '../models/season-history';
+import { getCurrentPlayerSeasonAttributes } from '../models/season-history';
 import { PlayingStyle, Mentality, Role, Position } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
 
@@ -233,19 +233,7 @@ export class FieldService {
     }
     
     // Calculate team averages for different attributes
-    const attrsByPlayer = teamPlayers.map(p => getPlayerSeasonAttributesForYear(p, seasonYear));
-    const validAttrs = attrsByPlayer.filter((a): a is NonNullable<typeof a> => a !== null);
-    if (validAttrs.length === 0) {
-      return {
-        teamId: team.id,
-        formation,
-        playingStyle: PlayingStyle.DEFENSIVE,
-        mentality: Mentality.BALANCED,
-        pressingIntensity: 50,
-        defensiveLine: 50,
-        tempo: 50
-      };
-    }
+    const validAttrs = teamPlayers.map(p => getCurrentPlayerSeasonAttributes(p, seasonYear));
     const overallAvg = validAttrs.reduce((sum, a) => sum + a.overall.value, 0) / validAttrs.length;
     const speedAvg = validAttrs.reduce((sum, a) => sum + a.speed.value, 0) / validAttrs.length;
     const passingAvg = validAttrs.reduce((sum, a) => sum + a.shortPassing.value + a.longPassing.value, 0) / (validAttrs.length * 2);

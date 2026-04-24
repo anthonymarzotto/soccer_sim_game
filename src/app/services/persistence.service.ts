@@ -73,16 +73,16 @@ export class PersistenceService {
     await this.doSafeNormalizedWrite(() => this.normalizedDb.saveLeagueMetadata(metadata));
   }
 
-  async saveTeam(team: Team): Promise<void> {
-    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveTeamFromLeague(team));
+  async saveTeam(team: Team, seasonYear: number): Promise<void> {
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveTeamFromLeague(team, seasonYear));
   }
 
   async saveTeamDefinition(team: Team): Promise<void> {
     await this.doSafeNormalizedWrite(() => this.normalizedDb.saveTeamDefinitionFromLeague(team));
   }
 
-  async saveMatchResult(match: Match, teams: Team[]): Promise<void> {
-    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveMatchResultFromLeague(match, teams));
+  async saveMatchResult(match: Match, teams: Team[], seasonYear: number): Promise<void> {
+    await this.doSafeNormalizedWrite(() => this.normalizedDb.saveMatchResultFromLeague(match, teams, seasonYear));
   }
 
   async saveMatch(match: Match): Promise<void> {

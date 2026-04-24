@@ -303,7 +303,7 @@
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ getPlayerOverall(player) }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                     } @else {
                       @let stats = getCurrentSeasonStats(player);

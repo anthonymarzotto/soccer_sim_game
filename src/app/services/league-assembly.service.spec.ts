@@ -197,7 +197,7 @@ describe('LeagueAssemblyService', () => {
         ...player,
         seasonAttributes: player.seasonAttributes.map(attrs => {
           const { speed: _omit, ...rest } = attrs.values as Record<string, number>;
-          return { ...attrs, values: rest };
+          return { ...attrs, values: rest as unknown as typeof attrs.values };
         })
       }))
     };
@@ -215,7 +215,7 @@ describe('LeagueAssemblyService', () => {
         ...player,
         seasonAttributes: player.seasonAttributes.map(attrs => ({
           ...attrs,
-          values: { ...(attrs.values as Record<string, number>), speed: 999 }
+          values: { ...(attrs.values as Record<string, number>), speed: 999 } as unknown as typeof attrs.values
         }))
       }))
     };

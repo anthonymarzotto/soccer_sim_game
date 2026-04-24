@@ -731,7 +731,8 @@ describe('GameService persistence integration', () => {
       expect.arrayContaining([
         expect.objectContaining({ id: 'team-1' }),
         expect.objectContaining({ id: 'team-2' })
-      ])
+      ]),
+      2026
     );
     expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
     expect(persistenceSpy.saveMatch).not.toHaveBeenCalled();

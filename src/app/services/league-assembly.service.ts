@@ -90,6 +90,15 @@ export class LeagueAssemblyService {
         );
       }
 
+      const birthdayDate = player.personal.birthday instanceof Date
+        ? player.personal.birthday
+        : new Date(player.personal.birthday as unknown as string);
+      if (isNaN(birthdayDate.getTime())) {
+        throw new Error(
+          `extractPlayers: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
+        );
+      }
+
       return {
         id: player.id,
         name: player.name,
@@ -100,9 +109,7 @@ export class LeagueAssemblyService {
           height: player.personal.height,
           weight: player.personal.weight,
           nationality: player.personal.nationality,
-          birthday: player.personal.birthday instanceof Date
-            ? player.personal.birthday.toISOString()
-            : new Date(player.personal.birthday).toISOString()
+          birthday: birthdayDate.toISOString()
         },
         seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
         careerStats: player.careerStats

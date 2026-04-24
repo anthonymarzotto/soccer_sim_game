@@ -164,7 +164,7 @@ export class GameService {
     const changedTeams = nextTeams.filter(team => previousById.get(team.id) !== team);
 
     changedTeams.forEach(team => {
-      void this.persistenceService.saveTeam(team);
+      void this.persistenceService.saveTeam(team, this.getCurrentLeagueSeasonYear());
     });
   }
 
@@ -1054,7 +1054,7 @@ export class GameService {
     });
 
     if (updatedMatch && changedTeams.length > 0 && !this.isHydrating()) {
-      void this.persistenceService.saveMatchResult(updatedMatch, changedTeams);
+      void this.persistenceService.saveMatchResult(updatedMatch, changedTeams, updatedLeague.currentSeasonYear);
     }
   }
 
