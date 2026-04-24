@@ -13,6 +13,11 @@ const DESIGN_DOCS: DesignDoc[] = [
     label: 'Simulation Flow',
     path: '/design-docs/simulation-flow.html',
     description: 'Variant B simulation loop — high-level flowchart'
+  },
+  {
+    label: 'PlayerSeasonAttributes Usage',
+    path: '/design-docs/player-season-attributes-usage.html',
+    description: 'Where each seasonal stat enters Variant B and match setup'
   }
 ];
 
