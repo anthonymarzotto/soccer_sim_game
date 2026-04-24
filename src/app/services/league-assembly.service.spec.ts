@@ -22,7 +22,7 @@ describe('LeagueAssemblyService', () => {
             position: Position.GOALKEEPER,
             role: Role.STARTER,
             personal: mockPersonal({ height: 190, weight: 85, age: 27, nationality: 'ENG', seasonYear: 2026 }),
-            seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 82, endurance: 77, flair: 55, vision: 68, determination: 80, tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85, luck: 60, injuryRate: 10, overall: 79 })],
+            seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 82, endurance: 77, flair: 55, vision: 68, determination: 80, tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, luck: 60, injuryRate: 10, overall: 79 })],
             careerStats: [
               {
                 seasonYear: 2026,
@@ -43,7 +43,9 @@ describe('LeagueAssemblyService', () => {
                 fouls: 0,
                 foulsSuffered: 0
               }
-            ]
+            ],
+            mood: 73,
+            fatigue: 61
           }
         ],
         playerIds: ['player-1'],
@@ -110,6 +112,8 @@ describe('LeagueAssemblyService', () => {
     expect(snapshot.metadata?.currentWeek).toBe(3);
     expect(snapshot.metadata?.userTeamId).toBe('team-1');
     expect(snapshot.teams[0].seasonSnapshots[0]?.playerIds).toEqual(['player-1']);
+    expect(snapshot.players[0].mood).toBe(73);
+    expect(snapshot.players[0].fatigue).toBe(61);
   });
 
   it('should assemble normalized snapshot back to league shape', () => {
@@ -122,6 +126,8 @@ describe('LeagueAssemblyService', () => {
     expect(assembled?.teams[0].players[0].id).toBe('player-1');
     expect(assembled?.teams[0].playerIds).toEqual(['player-1']);
     expect(assembled?.teams[0].seasonSnapshots?.[0]?.playerIds).toEqual(['player-1']);
+    expect(assembled?.teams[0].players[0].mood).toBe(73);
+    expect(assembled?.teams[0].players[0].fatigue).toBe(61);
     expect(assembled?.schedule[0].id).toBe('match-1');
   });
 
@@ -222,6 +228,21 @@ describe('LeagueAssemblyService', () => {
 
     expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
       /invalid or out-of-range stat value in seasonAttributes for player "player-1".*Persisted data is incompatible/
+    );
+  });
+
+  it('should throw during assembly when a player is missing mood or fatigue', () => {
+    const snapshot = service.flattenLeague(leagueFixture);
+    const corruptedSnapshot = {
+      ...snapshot,
+      players: snapshot.players.map(player => {
+        const { mood: _omit, ...rest } = player;
+        return rest as typeof player;
+      })
+    };
+
+    expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
+      /assembleLeague: invalid mood\/fatigue for player "player-1".*Persisted data is incompatible/
     );
   });
 });

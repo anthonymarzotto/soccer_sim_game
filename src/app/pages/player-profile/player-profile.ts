@@ -61,6 +61,7 @@ export class PlayerProfileComponent {
   mentalView = signal<'list' | 'chart'>('list');
   physicalView = signal<'list' | 'chart'>('list');
   technicalView = signal<'list' | 'chart'>('list');
+  goalkeeperView = signal<'list' | 'chart'>('list');
 
   // Season stats category toggle
   seasonStatsView = signal<'offensive' | 'defensive' | 'discipline'>('offensive');
@@ -80,6 +81,10 @@ export class PlayerProfileComponent {
 
   toggleTechnicalView() {
     this.technicalView.update(v => v === 'list' ? 'chart' : 'list');
+  }
+
+  toggleGoalkeeperView() {
+    this.goalkeeperView.update(v => v === 'list' ? 'chart' : 'list');
   }
 
   // Chart data computation
@@ -114,8 +119,18 @@ export class PlayerProfileComponent {
       { label: 'Shooting', value: attrs.shooting.value },
       { label: 'Heading', value: attrs.heading.value },
       { label: 'Long Passing', value: attrs.longPassing.value },
-      { label: 'Short Passing', value: attrs.shortPassing.value },
-      { label: 'Goalkeeping', value: attrs.goalkeeping.value }
+      { label: 'Short Passing', value: attrs.shortPassing.value }
+    ];
+  });
+
+  goalkeepingChartData = computed(() => {
+    const attrs = this.currentSeasonAttributes();
+    if (!attrs) return [];
+
+    return [
+      { label: 'Handling', value: attrs.handling.value },
+      { label: 'Reflexes', value: attrs.reflexes.value },
+      { label: 'Cmd. of Area', value: attrs.commandOfArea.value }
     ];
   });
 

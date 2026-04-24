@@ -232,7 +232,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -347,7 +347,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -413,7 +413,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             },
             {
@@ -423,7 +423,7 @@ describe('GameService persistence integration', () => {
               position: Position.MIDFIELDER,
               role: Role.BENCH,
               personal: mockPersonal({ height: 180, weight: 78, age: 24, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 61, strength: 70, endurance: 78, flair: 55, vision: 66, determination: 71, tackling: 52, shooting: 61, heading: 48, longPassing: 67, shortPassing: 72, goalkeeping: 6, luck: 52, injuryRate: 10, overall: 73 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 61, strength: 70, endurance: 78, flair: 55, vision: 66, determination: 71, tackling: 52, shooting: 61, heading: 48, longPassing: 67, shortPassing: 72, luck: 52, injuryRate: 10, overall: 73 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -473,7 +473,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             },
             {
@@ -483,7 +483,7 @@ describe('GameService persistence integration', () => {
               position: Position.DEFENDER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 184, weight: 79, age: 25, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 62, strength: 74, endurance: 77, flair: 44, vision: 60, determination: 73, tackling: 79, shooting: 22, heading: 70, longPassing: 63, shortPassing: 67, goalkeeping: 4, luck: 46, injuryRate: 9, overall: 74 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 62, strength: 74, endurance: 77, flair: 44, vision: 60, determination: 73, tackling: 79, shooting: 22, heading: 70, longPassing: 63, shortPassing: 67, luck: 46, injuryRate: 9, overall: 74 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -552,7 +552,7 @@ describe('GameService persistence integration', () => {
               position: Position.DEFENDER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 180, weight: 78, age: 24, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 70, endurance: 72, flair: 50, vision: 58, determination: 66, tackling: 78, shooting: 30, heading: 65, longPassing: 60, shortPassing: 66, goalkeeping: 5, luck: 45, injuryRate: 10, overall: 72 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 70, endurance: 72, flair: 50, vision: 58, determination: 66, tackling: 78, shooting: 30, heading: 65, longPassing: 60, shortPassing: 66, luck: 45, injuryRate: 10, overall: 72 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             },
             {
@@ -562,7 +562,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 192, weight: 85, age: 28, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 78, endurance: 70, flair: 35, vision: 72, determination: 80, tackling: 18, shooting: 12, heading: 40, longPassing: 56, shortPassing: 60, goalkeeping: 86, luck: 52, injuryRate: 8, overall: 77 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 78, endurance: 70, flair: 35, vision: 72, determination: 80, tackling: 18, shooting: 12, heading: 40, longPassing: 56, shortPassing: 60, luck: 52, injuryRate: 8, overall: 77 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -613,7 +613,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -642,7 +642,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 191, weight: 83, age: 30, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 81, endurance: 74, flair: 39, vision: 69, determination: 82, tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87, luck: 52, injuryRate: 7, overall: 77 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 81, endurance: 74, flair: 39, vision: 69, determination: 82, tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, luck: 52, injuryRate: 7, overall: 77 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
             }
           ],
@@ -757,7 +757,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -786,7 +786,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 191, weight: 83, age: 30, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 81, endurance: 74, flair: 39, vision: 69, determination: 82, tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, goalkeeping: 87, luck: 52, injuryRate: 7, overall: 77 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 81, endurance: 74, flair: 39, vision: 69, determination: 82, tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, luck: 52, injuryRate: 7, overall: 77 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
             }
           ],
@@ -904,7 +904,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
             }
           ],
@@ -924,7 +924,7 @@ describe('GameService persistence integration', () => {
               position: Position.GOALKEEPER,
               role: Role.STARTER,
               personal: mockPersonal({ height: 188, weight: 82, age: 28, nationality: 'ESP', seasonYear: 2026 }),
-              seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 79, endurance: 74, flair: 38, vision: 68, determination: 79, tackling: 18, shooting: 14, heading: 33, longPassing: 54, shortPassing: 61, goalkeeping: 86, luck: 49, injuryRate: 7, overall: 77 })],
+              seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 79, endurance: 74, flair: 38, vision: 68, determination: 79, tackling: 18, shooting: 14, heading: 33, longPassing: 54, shortPassing: 61, luck: 49, injuryRate: 7, overall: 77 })],
               careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
             }
           ],
@@ -1013,7 +1013,7 @@ describe('GameService persistence integration', () => {
       position: pos,
       role,
       personal: mockPersonal({ height: 182, weight: 79, age: 25, nationality: 'ENG', seasonYear: 2026 }),
-      seasonAttributes: [mockSeasonAttrs(2026, { speed: 72, strength: 70, endurance: 74, flair: 60, vision: 62, determination: 68, tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5, luck: 50, injuryRate: 8, overall: 72 })],
+      seasonAttributes: [mockSeasonAttrs(2026, { speed: 72, strength: 70, endurance: 74, flair: 60, vision: 62, determination: 68, tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, luck: 50, injuryRate: 8, overall: 72 })],
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
     });
 
@@ -1113,7 +1113,7 @@ describe('GameService persistence integration', () => {
       position: pos,
       role,
       personal: mockPersonal({ height: 182, weight: 79, age: 25, nationality: 'ENG', seasonYear: 2026 }),
-      seasonAttributes: [mockSeasonAttrs(2026, { speed: 72, strength: 70, endurance: 74, flair: 60, vision: 62, determination: 68, tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, goalkeeping: 5, luck: 50, injuryRate: 8, overall: 72 })],
+      seasonAttributes: [mockSeasonAttrs(2026, { speed: 72, strength: 70, endurance: 74, flair: 60, vision: 62, determination: 68, tackling: 65, shooting: 40, heading: 60, longPassing: 58, shortPassing: 64, luck: 50, injuryRate: 8, overall: 72 })],
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
     });
 

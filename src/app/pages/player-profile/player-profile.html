@@ -66,52 +66,41 @@
         </div>
       </div>
 
-      <!-- Mental, Physical, and Technical skills in three columns -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Mental, Physical, Technical, Goalkeeping stats -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <!-- Mental -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center justify-between mb-6">
+        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-blue-500 rounded-2xl p-6 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
               Mental
             </h2>
-            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
-              <button (click)="toggleMentalView()" 
+            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+              <button (click)="toggleMentalView()"
                       [class]="mentalView() === 'list' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                      class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                List
               </button>
-              <button (click)="toggleMentalView()" 
+              <button (click)="toggleMentalView()"
                       [class]="mentalView() === 'chart' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                      class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                Chart
               </button>
             </div>
           </div>
           @if (mentalView() === 'list') {
-            <div class="space-y-4">
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24" [title]="getStatDescription('flair')">Flair</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]=" attrs?.flair?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.flair?.value }}</span>
+            <div class="divide-y divide-zinc-800/60">
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('flair')">Flair</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.flair?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24" [title]="getStatDescription('vision')">Vision</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]=" attrs?.vision?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.vision?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('vision')">Vision</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.vision?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24" [title]="getStatDescription('determination')">Determination</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 rounded-full" [style.width.%]=" attrs?.determination?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.determination?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('determination')">Determination</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.determination?.value }}</span>
               </div>
             </div>
           } @else {
@@ -175,49 +164,38 @@
         </div>
 
         <!-- Physical -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center justify-between mb-6">
+        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-emerald-500 rounded-2xl p-6 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
               Physical
             </h2>
-            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
-              <button (click)="togglePhysicalView()" 
+            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+              <button (click)="togglePhysicalView()"
                       [class]="physicalView() === 'list' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                      class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                List
               </button>
-              <button (click)="togglePhysicalView()" 
+              <button (click)="togglePhysicalView()"
                       [class]="physicalView() === 'chart' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                      class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                Chart
               </button>
             </div>
           </div>
           @if (physicalView() === 'list') {
-            <div class="space-y-4">
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24" [title]="getStatDescription('speed')">Speed</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]=" attrs?.speed?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.speed?.value }}</span>
+            <div class="divide-y divide-zinc-800/60">
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('speed')">Speed</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.speed?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24" [title]="getStatDescription('strength')">Strength</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]=" attrs?.strength?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.strength?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('strength')">Strength</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.strength?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-24" [title]="getStatDescription('endurance')">Endurance</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-emerald-500 rounded-full" [style.width.%]=" attrs?.endurance?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.endurance?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('endurance')">Endurance</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.endurance?.value }}</span>
               </div>
             </div>
           } @else {
@@ -281,70 +259,46 @@
         </div>
 
         <!-- Technical -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center justify-between mb-6">
+        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-purple-500 rounded-2xl p-6 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               Technical
             </h2>
-            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
-              <button (click)="toggleTechnicalView()" 
+            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+              <button (click)="toggleTechnicalView()"
                       [class]="technicalView() === 'list' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                      class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                List
               </button>
-              <button (click)="toggleTechnicalView()" 
+              <button (click)="toggleTechnicalView()"
                       [class]="technicalView() === 'chart' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                      class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                Chart
               </button>
             </div>
           </div>
           @if (technicalView() === 'list') {
-            <div class="space-y-4">
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28" [title]="getStatDescription('tackling')">Tackling</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.tackling?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.tackling?.value }}</span>
+            <div class="divide-y divide-zinc-800/60">
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('tackling')">Tackling</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.tackling?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28" [title]="getStatDescription('shooting')">Shooting</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.shooting?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.shooting?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('shooting')">Shooting</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.shooting?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28" [title]="getStatDescription('heading')">Heading</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.heading?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.heading?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('heading')">Heading</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.heading?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28" [title]="getStatDescription('longPassing')">Long Passing</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.longPassing?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.longPassing?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('longPassing')">Long Passing</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.longPassing?.value }}</span>
               </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28" [title]="getStatDescription('shortPassing')">Short Passing</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-purple-500 rounded-full" [style.width.%]=" attrs?.shortPassing?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.shortPassing?.value }}</span>
-              </div>
-              <div class="flex items-center gap-4">
-                <span class="text-zinc-500 w-28" [title]="getStatDescription('goalkeeping')">Goalkeeping</span>
-                <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-yellow-500 rounded-full" [style.width.%]=" attrs?.goalkeeping?.value"></div>
-                </div>
-                <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.goalkeeping?.value }}</span>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('shortPassing')">Short Passing</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.shortPassing?.value }}</span>
               </div>
             </div>
           } @else {
@@ -354,8 +308,8 @@
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
                   <!-- Background grid lines -->
                   <g class="text-zinc-700">
-                    <!-- 6-axis grid for Technical (Tackling, Shooting, Heading, Long Passing, Short Passing, Goalkeeping) -->
-                    @for (i of [0, 1, 2, 3, 4, 5]; track i) {
+                    <!-- 5-axis grid for Technical (Tackling, Shooting, Heading, Long Passing, Short Passing) -->
+                    @for (i of [0, 1, 2, 3, 4]; track i) {
                       <line [attr.x1]="120" [attr.y1]="120" 
                             [attr.x2]="getAxisLabelPosition(i, technicalData, 240).x" 
                             [attr.y2]="getAxisLabelPosition(i, technicalData, 240).y"
@@ -387,7 +341,7 @@
                            style="filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.3))" />
                   
                   <!-- Axis lines from center -->
-                  @for (i of [0, 1, 2, 3, 4, 5]; track i) {
+                  @for (i of [0, 1, 2, 3, 4]; track i) {
                     <line [attr.x1]="120" [attr.y1]="120" 
                           [attr.x2]="getAxisLabelPosition(i, technicalData, 240).x" 
                           [attr.y2]="getAxisLabelPosition(i, technicalData, 240).y"
@@ -402,6 +356,97 @@
                   <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
                   <span>Technical Skills</span>
                 </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Goalkeeping -->
+        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-yellow-500 rounded-2xl p-6 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+              Goalkeeping
+            </h2>
+            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+              <button (click)="toggleGoalkeeperView()"
+                      [class]="goalkeeperView() === 'list' ? 'bg-yellow-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="p-1.5 rounded transition-colors" title="List">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              </button>
+              <button (click)="toggleGoalkeeperView()"
+                      [class]="goalkeeperView() === 'chart' ? 'bg-yellow-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="p-1.5 rounded transition-colors" title="Chart">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </button>
+            </div>
+          </div>
+          @if (goalkeeperView() === 'list') {
+            <div class="divide-y divide-zinc-800/60">
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('handling')">Handling</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.handling?.value }}</span>
+              </div>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('reflexes')">Reflexes</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.reflexes?.value }}</span>
+              </div>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('commandOfArea')">Cmd. of Area</span>
+                <span class="font-mono text-sm font-semibold">{{ attrs?.commandOfArea?.value }}</span>
+              </div>
+            </div>
+          } @else {
+            @let gkData = goalkeepingChartData();
+            <div class="flex flex-col items-center justify-center space-y-4">
+              <div class="relative">
+                <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
+                  <!-- Background grid lines -->
+                  <g class="text-zinc-700">
+                    <!-- 3-axis grid for Goalkeeping (Handling, Reflexes, Cmd. of Area) -->
+                    @for (i of [0, 1, 2]; track i) {
+                      <line [attr.x1]="120" [attr.y1]="120"
+                            [attr.x2]="getAxisLabelPosition(i, gkData, 240).x"
+                            [attr.y2]="getAxisLabelPosition(i, gkData, 240).y"
+                            stroke="rgba(161, 161, 170, 0.3)" stroke-width="1" />
+                    }
+                    <!-- Inner circles -->
+                    @for (r of [20, 40, 60, 80]; track r) {
+                      <circle cx="120" cy="120" [attr.r]="r" stroke="rgba(161, 161, 170, 0.2)" stroke-width="1" fill="none" />
+                    }
+                  </g>
+
+                  <!-- Axis labels -->
+                  @for (item of gkData; track item.label; let i = $index) {
+                    <text [attr.x]="getAxisLabelPosition(i, gkData, 240).x"
+                          [attr.y]="getAxisLabelPosition(i, gkData, 240).y + 4"
+                          text-anchor="middle"
+                          class="text-xs fill-zinc-400 font-medium"
+                          dominant-baseline="middle">
+                      {{ item.label }}
+                    </text>
+                  }
+
+                  <!-- Data polygon -->
+                  <polygon [attr.points]="createChartPoints(gkData, 240)"
+                           fill="rgba(234, 179, 8, 0.3)"
+                           stroke="rgb(234, 179, 8)"
+                           stroke-width="3"
+                           class="transition-all duration-500 ease-in-out"
+                           style="filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.3))" />
+
+                  <!-- Axis lines from center -->
+                  @for (i of [0, 1, 2]; track i) {
+                    <line [attr.x1]="120" [attr.y1]="120"
+                          [attr.x2]="getAxisLabelPosition(i, gkData, 240).x"
+                          [attr.y2]="getAxisLabelPosition(i, gkData, 240).y"
+                          stroke="rgba(234, 179, 8, 0.5)" stroke-width="1" />
+                  }
+                </svg>
+              </div>
+
+              <!-- Legend -->
+              <div class="flex gap-4 text-sm text-zinc-400">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
                   <span>Goalkeeping</span>
@@ -419,22 +464,78 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
             Hidden Stats
           </h2>
-          <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24" [title]="getStatDescription('luck')">Luck</span>
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('clutch')">Clutch</span>
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]=" attrs?.luck?.value"></div>
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.clutch?.value"></div>
               </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.luck?.value }}</span>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.clutch?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-24" [title]="getStatDescription('injuryRate')">Injury Rate</span>
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('composure')">Composure</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.composure?.value"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.composure?.value }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('morale')">Morale</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.morale?.value"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.morale?.value }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('consistency')">Consistency</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.consistency?.value"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.consistency?.value }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('aggressiveness')">Aggression</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.aggressiveness?.value"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.aggressiveness?.value }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('fitness')">Fitness</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.fitness?.value"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.fitness?.value }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28">Mood</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.mood"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.mood }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28">Fatigue</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.fatigue"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.fatigue }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('luck')">Luck</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.luck?.value"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.luck?.value }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-28" [title]="getStatDescription('injuryRate')">Injury Rate</span>
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
                 <div class="h-full rounded-full"
-                     [class]="( attrs?.injuryRate?.value ?? 50) <= 30 ? 'bg-green-500' : ( attrs?.injuryRate?.value ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
-                     [style.width.%]=" attrs?.injuryRate?.value ?? 50"></div>
+                     [class]="(attrs?.injuryRate?.value ?? 50) <= 30 ? 'bg-green-500' : (attrs?.injuryRate?.value ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
+                     [style.width.%]="attrs?.injuryRate?.value ?? 50"></div>
               </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{  attrs?.injuryRate?.value ?? 'N/A' }}</span>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.injuryRate?.value ?? 'N/A' }}</span>
             </div>
           </div>
         </div>

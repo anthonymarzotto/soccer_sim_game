@@ -17,7 +17,10 @@ export type StatKey =
   | 'speed' | 'strength' | 'endurance'
   | 'flair' | 'vision' | 'determination'
   | 'tackling' | 'shooting' | 'heading'
-  | 'longPassing' | 'shortPassing' | 'goalkeeping'
+  | 'longPassing' | 'shortPassing'
+  | 'clutch' | 'composure' | 'morale' | 'consistency' | 'aggressiveness'
+  | 'fitness'
+  | 'handling' | 'reflexes' | 'commandOfArea'
   | 'luck' | 'injuryRate'
   | 'overall';
 
@@ -45,7 +48,17 @@ export interface PlayerSeasonAttributes {
   longPassing: Stat;
   shortPassing: Stat;
   // goalkeeping
-  goalkeeping: Stat;
+  handling: Stat;
+  reflexes: Stat;
+  commandOfArea: Stat;
+  // hidden mental
+  clutch: Stat;
+  composure: Stat;
+  morale: Stat;
+  consistency: Stat;
+  aggressiveness: Stat;
+  // hidden physical
+  fitness: Stat;
   // misc
   luck: Stat;
   injuryRate: Stat;
@@ -61,6 +74,8 @@ export interface Player {
   personal: PlayerPersonal;
   seasonAttributes: PlayerSeasonAttributes[];
   careerStats: PlayerCareerStats[];
+  mood: number;
+  fatigue: number;
 }
 
 export interface PlayerCareerStats {

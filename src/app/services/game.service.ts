@@ -1393,7 +1393,15 @@ export class GameService {
           heading: { ...currentAttributes.heading },
           longPassing: { ...currentAttributes.longPassing },
           shortPassing: { ...currentAttributes.shortPassing },
-          goalkeeping: { ...currentAttributes.goalkeeping },
+          handling: { ...currentAttributes.handling },
+          reflexes: { ...currentAttributes.reflexes },
+          commandOfArea: { ...currentAttributes.commandOfArea },
+          clutch: { ...currentAttributes.clutch },
+          composure: { ...currentAttributes.composure },
+          morale: { ...currentAttributes.morale },
+          consistency: { ...currentAttributes.consistency },
+          aggressiveness: { ...currentAttributes.aggressiveness },
+          fitness: { ...currentAttributes.fitness },
           luck: { ...currentAttributes.luck },
           injuryRate: { ...currentAttributes.injuryRate },
           overall: { ...currentAttributes.overall }
@@ -1404,6 +1412,8 @@ export class GameService {
 
         return {
           ...player,
+          mood: 100,
+          fatigue: 100,
           seasonAttributes: hasSeededAttributes
             ? (player.seasonAttributes ?? [])
             : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes]),

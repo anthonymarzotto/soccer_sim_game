@@ -303,7 +303,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
         speed: 75, strength: 80, endurance: 78,
         flair: 70, vision: 75, determination: 80,
         tackling: 75, shooting: 70, heading: 72,
-        longPassing: 75, shortPassing: 80, goalkeeping: 85,
+        longPassing: 75, shortPassing: 80,
         luck: 50, injuryRate: 5, overall: 78
       }
     });

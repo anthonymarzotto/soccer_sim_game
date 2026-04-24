@@ -66,7 +66,9 @@ export function createTestPlayer(opts: {
     seasonAttributes: opts.seasonAttributes ?? [
       createTestSeasonAttributes(seasonYear, opts.stats ?? {}, opts.defaultStat ?? 70)
     ],
-    careerStats: []
+    careerStats: [],
+    mood: 100,
+    fatigue: 100
   };
 }
 
@@ -88,6 +90,8 @@ export function createTestPersistedPlayer(opts: {
   stats?: StatOverrides;
   defaultStat?: number;
   careerStats?: unknown[];
+  mood?: number;
+  fatigue?: number;
 }): Record<string, unknown> {
   const seasonYear = opts.seasonYear ?? new Date().getUTCFullYear();
   const personal = createTestPersonal({
@@ -114,6 +118,8 @@ export function createTestPersistedPlayer(opts: {
       birthday: personal.birthday.toISOString()
     },
     seasonAttributes: [{ seasonYear, values }],
-    careerStats: opts.careerStats ?? []
+    careerStats: opts.careerStats ?? [],
+    mood: opts.mood ?? 100,
+    fatigue: opts.fatigue ?? 100
   };
 }

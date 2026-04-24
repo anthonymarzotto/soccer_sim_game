@@ -122,7 +122,15 @@ export class GeneratorService {
       heading: this.randomStat(20, 90, teamQuality),
       longPassing: this.randomStat(20, 90, teamQuality),
       shortPassing: this.randomStat(20, 90, teamQuality),
-      goalkeeping: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
+      handling: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
+      reflexes: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
+      commandOfArea: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
+      clutch: this.randomStat(40, 80, teamQuality),
+      composure: this.randomStat(40, 80, teamQuality),
+      morale: this.randomStat(40, 80, teamQuality),
+      consistency: this.randomStat(40, 80, teamQuality),
+      aggressiveness: this.randomStat(40, 80, teamQuality),
+      fitness: this.randomStat(40, 80, teamQuality),
       luck: this.randomStat(1, 100, teamQuality),
       injuryRate: this.randomStat(1, 100, teamQuality),
       overall: 0
@@ -145,7 +153,7 @@ export class GeneratorService {
     values.overall = Math.floor((
       values.speed + values.strength + values.flair + values.vision + values.determination +
       values.tackling + values.shooting + values.heading + values.longPassing + values.shortPassing +
-      (position === PositionEnum.GOALKEEPER ? values.goalkeeping * 5 : 0)
+      (position === PositionEnum.GOALKEEPER ? values.handling * 2 + values.reflexes * 2 + values.commandOfArea : 0)
     ) / (position === PositionEnum.GOALKEEPER ? 15 : 10));
 
     const seasonAttributes: PlayerSeasonAttributes = {
@@ -161,7 +169,15 @@ export class GeneratorService {
       heading: buildStat('heading', values.heading),
       longPassing: buildStat('longPassing', values.longPassing),
       shortPassing: buildStat('shortPassing', values.shortPassing),
-      goalkeeping: buildStat('goalkeeping', values.goalkeeping),
+      handling: buildStat('handling', values.handling),
+      reflexes: buildStat('reflexes', values.reflexes),
+      commandOfArea: buildStat('commandOfArea', values.commandOfArea),
+      clutch: buildStat('clutch', values.clutch),
+      composure: buildStat('composure', values.composure),
+      morale: buildStat('morale', values.morale),
+      consistency: buildStat('consistency', values.consistency),
+      aggressiveness: buildStat('aggressiveness', values.aggressiveness),
+      fitness: buildStat('fitness', values.fitness),
       luck: buildStat('luck', values.luck),
       injuryRate: buildStat('injuryRate', values.injuryRate),
       overall: buildStat('overall', values.overall)
@@ -175,7 +191,9 @@ export class GeneratorService {
       role,
       personal: { height, weight, birthday, nationality },
       seasonAttributes: [seasonAttributes],
-      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)]
+      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
+      mood: 100,
+      fatigue: 100
     };
   }
 

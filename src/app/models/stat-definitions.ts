@@ -62,10 +62,50 @@ export const STAT_DEFINITIONS: Record<StatKey, StatDefinition> = {
     description: 'Accuracy and tempo of short, possession-oriented passes.',
     hidden: false
   },
-  goalkeeping: {
+  handling: {
     type: 'goalkeeping',
-    description: 'Shot-stopping, positioning, and handling. Primarily relevant for keepers.',
+    description: 'How well the goalkeeper hangs on to shots versus allowing rebounds.',
     hidden: false
+  },
+  reflexes: {
+    type: 'goalkeeping',
+    description: 'How quickly the goalkeeper reacts to shots.',
+    hidden: false
+  },
+  commandOfArea: {
+    type: 'goalkeeping',
+    description: 'Organizing free-kick walls, intercepting crosses, and commanding the penalty area.',
+    hidden: false
+  },
+  clutch: {
+    type: 'mental',
+    description: 'Performance quality in important games and high-pressure individual moments.',
+    hidden: true
+  },
+  composure: {
+    type: 'mental',
+    description: 'Ability to stay calm and make good decisions under pressure.',
+    hidden: true
+  },
+  morale: {
+    type: 'mental',
+    description: 'How affected the player is by wins and losses; influences overall and in-game mood.',
+    hidden: true
+  },
+  consistency: {
+    type: 'mental',
+    description: 'Tendency to perform at the same level from match to match.',
+    hidden: true
+  },
+  aggressiveness: {
+    type: 'mental',
+    description: 'How hard the player tackles and contests duels.',
+    hidden: true
+  },
+  fitness: {
+    type: 'physical',
+    description: 'The rate at which the player builds up fatigue during a game.',
+    hidden: true
   },
   luck: {
     type: 'misc',

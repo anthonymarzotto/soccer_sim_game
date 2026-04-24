@@ -40,6 +40,8 @@ export interface PersistedPlayerRecord {
   personal: PersistedPlayerPersonalRecord;
   seasonAttributes: PersistedPlayerSeasonAttributesRecord[];
   careerStats: Player['careerStats'];
+  mood: number;
+  fatigue: number;
 }
 
 export type PersistedMatchRecord = Match;
