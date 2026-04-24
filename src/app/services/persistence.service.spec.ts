@@ -28,7 +28,7 @@ describe('PersistenceService', () => {
             role: Role.STARTER,
             age: 29, height: 190, weight: 84, nationality: 'ENG',
             seasonYear: 2026,
-            stats: { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 }
+            stats: { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 }
           });
           p.careerStats = [createEmptyPlayerCareerStats(2026, id)];
           return p;

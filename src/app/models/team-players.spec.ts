@@ -17,7 +17,7 @@ describe('team-players', () => {
         speed: 70, strength: 65, endurance: 72,
         flair: 68, vision: 71, determination: 74,
         tackling: 55, shooting: 60, heading: 52,
-        longPassing: 67, shortPassing: 72, goalkeeping: 1,
+        longPassing: 67, shortPassing: 72,
         luck: 50, injuryRate: 8, overall: 70
       }
     });

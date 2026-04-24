@@ -98,6 +98,11 @@ export class LeagueAssemblyService {
           `extractPlayers: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
         );
       }
+      if (!this.isValidPlayerConditionValue(player.mood) || !this.isValidPlayerConditionValue(player.fatigue)) {
+        throw new Error(
+          `extractPlayers: invalid mood/fatigue for player "${player.id}" (${player.name}).`
+        );
+      }
 
       return {
         id: player.id,
@@ -112,7 +117,9 @@ export class LeagueAssemblyService {
           birthday: birthdayDate.toISOString()
         },
         seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
-        careerStats: player.careerStats
+        careerStats: player.careerStats,
+        mood: player.mood,
+        fatigue: player.fatigue
       };
     }));
   }
@@ -255,6 +262,17 @@ export class LeagueAssemblyService {
       }
       return null;
     }
+    const mood = this.rehydratePlayerConditionValue(record.mood);
+    const fatigue = this.rehydratePlayerConditionValue(record.fatigue);
+    if (mood === null || fatigue === null) {
+      const message =
+        `assembleLeague: invalid mood/fatigue for player "${record.id}" (${record.name}). ` +
+        `Persisted data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      return null;
+    }
 
     return {
       id: record.id,
@@ -264,7 +282,9 @@ export class LeagueAssemblyService {
       role: record.role,
       personal,
       seasonAttributes,
-      careerStats: record.careerStats
+      careerStats: record.careerStats,
+      mood,
+      fatigue
     };
   }
 
@@ -298,6 +318,14 @@ export class LeagueAssemblyService {
       nationality: personal.nationality,
       birthday
     };
+  }
+
+  private rehydratePlayerConditionValue(value: unknown): number | null {
+    return this.isValidPlayerConditionValue(value) ? value : null;
+  }
+
+  private isValidPlayerConditionValue(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
   }
 
   private resolveCurrentSeasonYear(teams: Team[]): number {

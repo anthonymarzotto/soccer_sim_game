@@ -1673,8 +1673,11 @@ export class MatchSimulationVariantBService {
       state.awayShotsOnTarget++;
     }
 
-    const keeperSkill = goalkeeper
-      ? getCurrentPlayerSeasonAttributes(goalkeeper, this.currentSeasonYear).goalkeeping.value
+    const keeperAttrs = goalkeeper
+      ? getCurrentPlayerSeasonAttributes(goalkeeper, this.currentSeasonYear)
+      : null;
+    const keeperSkill = keeperAttrs
+      ? (keeperAttrs.handling.value + keeperAttrs.reflexes.value) / 2
       : 70;
     let goalChance = this.activeTuning.goalChanceBase + ((shooterAttrs.shooting.value - keeperSkill) * this.activeTuning.goalChanceSkillVsKeeperScale);
 
