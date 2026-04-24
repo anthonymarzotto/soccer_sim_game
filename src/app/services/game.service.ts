@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
@@ -164,7 +164,7 @@ export class GameService {
     const changedTeams = nextTeams.filter(team => previousById.get(team.id) !== team);
 
     changedTeams.forEach(team => {
-      void this.persistenceService.saveTeam(team);
+      void this.persistenceService.saveTeam(team, this.getCurrentLeagueSeasonYear());
     });
   }
 
@@ -283,7 +283,7 @@ export class GameService {
     const overalls = snapshot.playerIds
       .map(id => this.getPlayer(id))
       .filter((p): p is Player => p !== undefined)
-      .map(p => getPlayerSeasonAttributesForYear(p, seasonYear)?.overall)
+      .map(p => getPlayerSeasonAttributesForYear(p, seasonYear)?.overall.value)
       .filter((o): o is number => o !== undefined);
 
     if (overalls.length === 0) return null;
@@ -654,18 +654,19 @@ export class GameService {
 
       const players = resolveTeamPlayers(team).map(p => ({ ...p, role: Role.RESERVE }));
 
+      const overallOf = (player: Player) => this.getCurrentSeasonPlayerAttributes(player).overall.value;
       const gks = players
         .filter(p => p.position === Position.GOALKEEPER)
-        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+        .sort((a, b) => overallOf(b) - overallOf(a));
       const defs = players
         .filter(p => p.position === Position.DEFENDER)
-        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+        .sort((a, b) => overallOf(b) - overallOf(a));
       const mids = players
         .filter(p => p.position === Position.MIDFIELDER)
-        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+        .sort((a, b) => overallOf(b) - overallOf(a));
       const fwds = players
         .filter(p => p.position === Position.FORWARD)
-        .sort((a, b) => this.getCurrentSeasonPlayerAttributes(b).overall - this.getCurrentSeasonPlayerAttributes(a).overall);
+        .sort((a, b) => overallOf(b) - overallOf(a));
 
       if (gks.length > 0) gks[0].role = Role.STARTER;
       for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = Role.STARTER;
@@ -754,7 +755,7 @@ export class GameService {
   public calculateTeamOverall(team: Team): number {
     const starters = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
     if (starters.length === 0) return 50;
-    const sum = starters.reduce((acc, player) => acc + this.getCurrentSeasonPlayerAttributes(player).overall, 0);
+    const sum = starters.reduce((acc, player) => acc + this.getCurrentSeasonPlayerAttributes(player).overall.value, 0);
     return Math.round(sum / starters.length);
   }
 
@@ -1053,7 +1054,7 @@ export class GameService {
     });
 
     if (updatedMatch && changedTeams.length > 0 && !this.isHydrating()) {
-      void this.persistenceService.saveMatchResult(updatedMatch, changedTeams);
+      void this.persistenceService.saveMatchResult(updatedMatch, changedTeams, updatedLeague.currentSeasonYear);
     }
   }
 
@@ -1378,13 +1379,24 @@ export class GameService {
 
       const seededPlayers = resolveTeamPlayers(team).map(player => {
         const currentAttributes = this.getCurrentSeasonPlayerAttributes(player);
-        const seededSeasonAttributes = {
+        const seededSeasonAttributes: PlayerSeasonAttributes = {
+          ...currentAttributes,
           seasonYear: nextSeasonYear,
-          physical: { ...currentAttributes.physical },
-          mental: { ...currentAttributes.mental },
-          hidden: { ...currentAttributes.hidden },
-          skills: { ...currentAttributes.skills },
-          overall: currentAttributes.overall
+          speed: { ...currentAttributes.speed },
+          strength: { ...currentAttributes.strength },
+          endurance: { ...currentAttributes.endurance },
+          flair: { ...currentAttributes.flair },
+          vision: { ...currentAttributes.vision },
+          determination: { ...currentAttributes.determination },
+          tackling: { ...currentAttributes.tackling },
+          shooting: { ...currentAttributes.shooting },
+          heading: { ...currentAttributes.heading },
+          longPassing: { ...currentAttributes.longPassing },
+          shortPassing: { ...currentAttributes.shortPassing },
+          goalkeeping: { ...currentAttributes.goalkeeping },
+          luck: { ...currentAttributes.luck },
+          injuryRate: { ...currentAttributes.injuryRate },
+          overall: { ...currentAttributes.overall }
         };
 
         const hasSeededAttributes = (player.seasonAttributes ?? []).some(attributes => attributes.seasonYear === nextSeasonYear);

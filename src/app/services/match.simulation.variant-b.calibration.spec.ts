@@ -7,6 +7,7 @@ import { Role, Position as PositionEnum, CommentaryStyle, EventType } from '../m
 import { Player, Team } from '../models/types';
 import { PlayByPlayEvent, SimulationConfig, VariantBTuningConfig } from '../models/simulation.types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 import { SimulationABRunner, SimulationABVariant } from '../testing/simulation-ab.runner';
 
 describe('Match Simulation Variant B Calibration Benchmark', () => {
@@ -479,27 +480,18 @@ function createPlayer(
   role: Role,
   overall: number
 ): Player {
-  return {
+  const player = createTestPlayer({
     id,
-    name: id,
     teamId: `team-${teamId}`,
     position,
     role,
-    personal: { height: 182, weight: 78, age: 26, nationality: 'ENG' },
-    physical: { speed: overall, strength: overall, endurance: overall },
-    mental: { flair: overall, vision: overall, determination: overall },
-    skills: {
-      tackling: overall,
-      shooting: overall,
-      heading: overall,
-      longPassing: overall,
-      shortPassing: overall,
-      goalkeeping: overall
-    },
-    hidden: { luck: 50, injuryRate: 5 },
-    overall,
-    careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
-  };
+    age: 26, height: 182, weight: 78, nationality: 'ENG',
+    seasonYear: 2026,
+    defaultStat: overall,
+    stats: { luck: 50, injuryRate: 5, overall }
+  });
+  player.careerStats = [createEmptyPlayerCareerStats(2026, teamId)];
+  return player;
 }
 
 function calculatePassQuality(events: PlayByPlayEvent[]): {

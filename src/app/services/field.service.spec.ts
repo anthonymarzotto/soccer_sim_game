@@ -4,6 +4,7 @@ import { FormationLibraryService } from './formation-library.service';
 import { Team, Player } from '../models/types';
 import { Role, Position as PositionEnum, FieldZone } from '../models/enums';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('FieldService - Schema-Driven Formation Logic', () => {
   let fieldService: FieldService;
@@ -158,14 +159,14 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
 
   describe('Tactical Setup', () => {
     it('should calculate team tactics for valid team', () => {
-      const tactics = fieldService.calculateTeamTactics(mockTeam);
+      const tactics = fieldService.calculateTeamTactics(mockTeam, 2026);
       expect(tactics).toBeDefined();
       expect(tactics.teamId).toBe('team_1');
       expect(tactics.formation).toBeDefined();
     });
 
     it('should include playing style and mentality', () => {
-      const tactics = fieldService.calculateTeamTactics(mockTeam);
+      const tactics = fieldService.calculateTeamTactics(mockTeam, 2026);
       expect(tactics.playingStyle).toBeDefined();
       expect(tactics.mentality).toBeDefined();
       expect(tactics.pressingIntensity).toBeGreaterThanOrEqual(0);
@@ -176,7 +177,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
     it('should fallback to default formation when selected formation is invalid', () => {
       const team = { ...mockTeam, selectedFormationId: 'invalid_formation_id' };
 
-      const tactics = fieldService.calculateTeamTactics(team);
+      const tactics = fieldService.calculateTeamTactics(team, 2026);
 
       expect(tactics.formation).toBeDefined();
       expect(tactics.formation.name).toBeTruthy();
@@ -187,7 +188,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       const originalAssignPlayersToFormation = fieldService.assignPlayersToFormation.bind(fieldService);
       (fieldService as FieldService & { assignPlayersToFormation: (team: Team) => null }).assignPlayersToFormation = () => null;
 
-      const tactics = fieldService.calculateTeamTactics(mockTeam);
+      const tactics = fieldService.calculateTeamTactics(mockTeam, 2026);
 
       expect(tactics.formation).toBeDefined();
       expect(tactics.formation.name).toBe('Unavailable Formation');
@@ -207,7 +208,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
         }]
       };
 
-      const tactics = fieldService.calculateTeamTactics(emptyTeam);
+      const tactics = fieldService.calculateTeamTactics(emptyTeam, 2026);
 
       expect(tactics.playingStyle).toBeDefined();
       expect(tactics.mentality).toBeDefined();
@@ -287,41 +288,41 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
     position: PositionEnum,
     role: Role
   ): Player {
-    return {
+    const player = createTestPlayer({
       id,
       name,
       teamId: 'team_1',
       position,
       role,
-      personal: { height: 185, weight: 82, age: 28, nationality: 'English' },
-      physical: { speed: 75, strength: 80, endurance: 78 },
-      mental: { flair: 70, vision: 75, determination: 80 },
-      skills: {
-        tackling: 75,
-        shooting: 70,
-        heading: 72,
-        longPassing: 75,
-        shortPassing: 80,
-        goalkeeping: 85
-      },
-      hidden: { luck: 50, injuryRate: 5 },
-      overall: 78,
-      careerStats: [
-        {
-          ...createEmptyPlayerCareerStats(2026, 'team-1'),
-          matchesPlayed: 50,
-          goals: 5,
-          assists: 3,
-          yellowCards: 2,
-          shots: 40,
-          shotsOnTarget: 20,
-          tackles: 100,
-          interceptions: 50,
-          passes: 500,
-          minutesPlayed: 4500
-        }
-      ]
-    };
+      age: 28,
+      height: 185,
+      weight: 82,
+      nationality: 'English',
+      seasonYear: 2026,
+      stats: {
+        speed: 75, strength: 80, endurance: 78,
+        flair: 70, vision: 75, determination: 80,
+        tackling: 75, shooting: 70, heading: 72,
+        longPassing: 75, shortPassing: 80, goalkeeping: 85,
+        luck: 50, injuryRate: 5, overall: 78
+      }
+    });
+    player.careerStats = [
+      {
+        ...createEmptyPlayerCareerStats(2026, 'team-1'),
+        matchesPlayed: 50,
+        goals: 5,
+        assists: 3,
+        yellowCards: 2,
+        shots: 40,
+        shotsOnTarget: 20,
+        tackles: 100,
+        interceptions: 50,
+        passes: 500,
+        minutesPlayed: 4500
+      }
+    ];
+    return player;
   }
 
   function createMockTeam(id: string, players: Player[]): Team {

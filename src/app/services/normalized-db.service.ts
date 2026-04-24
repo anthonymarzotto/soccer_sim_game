@@ -87,7 +87,7 @@ export class NormalizedDbService {
     return this.appDb.getAllFromTable<PersistedTeam>(TABLE_TEAMS);
   }
 
-  async saveTeamFromLeague(team: Team): Promise<void> {
+  async saveTeamFromLeague(team: Team, seasonYear: number): Promise<void> {
     const normalizedTeam = normalizeTeamRoster(team);
     const persistedTeam = this.leagueAssembly.toPersistedTeams([normalizedTeam])[0];
     const players = resolveTeamPlayers(normalizedTeam);
@@ -105,7 +105,7 @@ export class NormalizedDbService {
         }
 
         if (players.length > 0) {
-          await db.players.bulkPut(this.toPersistedPlayers(players));
+          await db.players.bulkPut(this.toPersistedPlayers(players, seasonYear));
         }
       });
     });
@@ -116,7 +116,7 @@ export class NormalizedDbService {
     await this.appDb.bulkPutToTable(TABLE_TEAMS, [persistedTeam]);
   }
 
-  async saveMatchResultFromLeague(match: Match, teams: Team[]): Promise<void> {
+  async saveMatchResultFromLeague(match: Match, teams: Team[], seasonYear: number): Promise<void> {
     const normalizedTeams = teams.map(team => normalizeTeamRoster(team));
     const persistedTeams = this.leagueAssembly.toPersistedTeams(normalizedTeams);
     const players = normalizedTeams.flatMap(team => resolveTeamPlayers(team));
@@ -128,7 +128,7 @@ export class NormalizedDbService {
         }
 
         if (players.length > 0) {
-          await db.players.bulkPut(this.toPersistedPlayers(players));
+          await db.players.bulkPut(this.toPersistedPlayers(players, seasonYear));
         }
 
         await db.matches.put(match);
@@ -159,16 +159,33 @@ export class NormalizedDbService {
     await this.appDb.bulkPutToTable(TABLE_LEAGUE_METADATA, [nextRecord]);
   }
 
-  private toPersistedPlayers(players: Player[]): PersistedPlayerRecord[] {
-    return players.map(player => {
-      if (player.seasonAttributes === undefined) {
-        throw new Error(`Missing seasonAttributes for player ${player.id} (${player.name})`);
-      }
-
-      return {
-        ...player,
-        seasonAttributes: player.seasonAttributes
-      };
-    });
+  private toPersistedPlayers(players: Player[], seasonYear: number): PersistedPlayerRecord[] {
+    if (players.length === 0) return [];
+    // Wrap as a single virtual team so we can reuse the canonical serializer.
+    // If extractPlayers ever gains team-level logic (e.g. cross-referencing team
+    // stats or roster order), this virtual team will need to carry real data or
+    // extractPlayers should expose a player-only overload instead.
+    const virtualTeam: Team = {
+      id: '__normalized_db_virtual__',
+      name: '__virtual__',
+      players,
+      playerIds: players.map(p => p.id),
+      stats: {
+        played: 0, won: 0, drawn: 0, lost: 0,
+        goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+      },
+      selectedFormationId: '',
+      formationAssignments: {},
+      seasonSnapshots: [{
+        seasonYear,
+        playerIds: players.map(p => p.id),
+        stats: {
+          played: 0, won: 0, drawn: 0, lost: 0,
+          goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+        }
+      }]
+    };
+    return this.leagueAssembly.extractPlayers([virtualTeam], seasonYear);
   }
+
 }

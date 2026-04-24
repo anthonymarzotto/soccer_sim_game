@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { Player, Team, Match, Position, Role } from '../models/types';
+import { Player, Team, Match, Position, Role, PlayerSeasonAttributes, StatKey } from '../models/types';
 import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createEmptyTeamStats } from '../models/season-history';
+import { buildStat } from '../models/stat-definitions';
+import { birthdayForAge } from '../models/player-age';
 
 @Injectable({
   providedIn: 'root'
@@ -103,54 +105,67 @@ export class GeneratorService {
     const name = `${firstName} ${lastName}`;
 
     const age = Math.floor(Math.random() * 20) + 16; // 16 to 35
+    const birthday = birthdayForAge(age, currentSeasonYear, Math.random());
     const height = Math.floor(Math.random() * 30) + 165; // 165cm to 195cm
     const weight = Math.floor(Math.random() * 25) + 65; // 65kg to 90kg
     const nationality = this.nationalities[Math.floor(Math.random() * this.nationalities.length)];
 
-    const physical = {
+    const values: Record<StatKey, number> = {
       speed: this.randomStat(20, 90, teamQuality),
       strength: this.randomStat(20, 90, teamQuality),
-      endurance: this.randomStat(20, 90, teamQuality)
-    };
-
-    const mental = {
+      endurance: this.randomStat(20, 90, teamQuality),
       flair: this.randomStat(20, 90, teamQuality),
       vision: this.randomStat(20, 90, teamQuality),
-      determination: this.randomStat(20, 90, teamQuality)
-    };
-
-    const skills = {
+      determination: this.randomStat(20, 90, teamQuality),
       tackling: this.randomStat(20, 90, teamQuality),
       shooting: this.randomStat(20, 90, teamQuality),
       heading: this.randomStat(20, 90, teamQuality),
       longPassing: this.randomStat(20, 90, teamQuality),
       shortPassing: this.randomStat(20, 90, teamQuality),
-      goalkeeping: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality)
-    };
-
-    const hidden = {
+      goalkeeping: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
       luck: this.randomStat(1, 100, teamQuality),
-      injuryRate: this.randomStat(1, 100, teamQuality)
+      injuryRate: this.randomStat(1, 100, teamQuality),
+      overall: 0
     };
 
     // Boost stats based on position
     if (position === PositionEnum.DEFENDER) {
-      skills.tackling = this.randomStat(60, 99, teamQuality);
-      skills.heading = this.randomStat(50, 90, teamQuality);
+      values.tackling = this.randomStat(60, 99, teamQuality);
+      values.heading = this.randomStat(50, 90, teamQuality);
     } else if (position === PositionEnum.MIDFIELDER) {
-      skills.shortPassing = this.randomStat(60, 99, teamQuality);
-      skills.longPassing = this.randomStat(60, 99, teamQuality);
-      mental.vision = this.randomStat(60, 99, teamQuality);
+      values.shortPassing = this.randomStat(60, 99, teamQuality);
+      values.longPassing = this.randomStat(60, 99, teamQuality);
+      values.vision = this.randomStat(60, 99, teamQuality);
     } else if (position === PositionEnum.FORWARD) {
-      skills.shooting = this.randomStat(60, 99, teamQuality);
-      physical.speed = this.randomStat(60, 99, teamQuality);
-      mental.flair = this.randomStat(60, 99, teamQuality);
+      values.shooting = this.randomStat(60, 99, teamQuality);
+      values.speed = this.randomStat(60, 99, teamQuality);
+      values.flair = this.randomStat(60, 99, teamQuality);
     }
 
-    const overall = Math.floor((
-      physical.speed + physical.strength + mental.flair + mental.vision + mental.determination +
-      skills.tackling + skills.shooting + skills.heading + skills.longPassing + skills.shortPassing + (position === PositionEnum.GOALKEEPER ? skills.goalkeeping * 5 : 0)
+    values.overall = Math.floor((
+      values.speed + values.strength + values.flair + values.vision + values.determination +
+      values.tackling + values.shooting + values.heading + values.longPassing + values.shortPassing +
+      (position === PositionEnum.GOALKEEPER ? values.goalkeeping * 5 : 0)
     ) / (position === PositionEnum.GOALKEEPER ? 15 : 10));
+
+    const seasonAttributes: PlayerSeasonAttributes = {
+      seasonYear: currentSeasonYear,
+      speed: buildStat('speed', values.speed),
+      strength: buildStat('strength', values.strength),
+      endurance: buildStat('endurance', values.endurance),
+      flair: buildStat('flair', values.flair),
+      vision: buildStat('vision', values.vision),
+      determination: buildStat('determination', values.determination),
+      tackling: buildStat('tackling', values.tackling),
+      shooting: buildStat('shooting', values.shooting),
+      heading: buildStat('heading', values.heading),
+      longPassing: buildStat('longPassing', values.longPassing),
+      shortPassing: buildStat('shortPassing', values.shortPassing),
+      goalkeeping: buildStat('goalkeeping', values.goalkeeping),
+      luck: buildStat('luck', values.luck),
+      injuryRate: buildStat('injuryRate', values.injuryRate),
+      overall: buildStat('overall', values.overall)
+    };
 
     return {
       id,
@@ -158,20 +173,8 @@ export class GeneratorService {
       teamId,
       position,
       role,
-      personal: { height, weight, age, nationality },
-      physical,
-      mental,
-      skills,
-      hidden,
-      overall,
-      seasonAttributes: [{
-        seasonYear: currentSeasonYear,
-        physical,
-        mental,
-        hidden,
-        skills,
-        overall
-      }],
+      personal: { height, weight, birthday, nationality },
+      seasonAttributes: [seasonAttributes],
       careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)]
     };
   }

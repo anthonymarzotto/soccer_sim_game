@@ -1,11 +1,15 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { League, Match, Player, Team } from '../models/types';
+import { League, Match, Player, PlayerSeasonAttributes, Team } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
 import {
   getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
 } from '../models/season-history';
-import { PersistedPlayerRecord } from './app-db.service';
+import { STAT_KEYS, buildStat, isValidStatValue } from '../models/stat-definitions';
+import {
+  PersistedPlayerRecord,
+  PersistedPlayerSeasonAttributesRecord
+} from './app-db.service';
 
 export const LEAGUE_METADATA_KEY = 'default';
 
@@ -86,19 +90,40 @@ export class LeagueAssemblyService {
         );
       }
 
+      const birthdayDate = player.personal.birthday instanceof Date
+        ? player.personal.birthday
+        : new Date(player.personal.birthday as unknown as string);
+      if (isNaN(birthdayDate.getTime())) {
+        throw new Error(
+          `extractPlayers: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
+        );
+      }
+
       return {
         id: player.id,
         name: player.name,
         teamId: player.teamId,
         position: player.position,
         role: player.role,
-        personal: player.personal,
-        seasonAttributes,
+        personal: {
+          height: player.personal.height,
+          weight: player.personal.weight,
+          nationality: player.personal.nationality,
+          birthday: birthdayDate.toISOString()
+        },
+        seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
         careerStats: player.careerStats
       };
     }));
   }
 
+  private serializeSeasonAttributes(attrs: PlayerSeasonAttributes): PersistedPlayerSeasonAttributesRecord {
+    const values: Record<string, number> = {};
+    for (const key of STAT_KEYS) {
+      values[key] = attrs[key].value;
+    }
+    return { seasonYear: attrs.seasonYear, values };
+  }
   toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): PersistedLeagueMetadata {
     return {
       key: LEAGUE_METADATA_KEY,
@@ -197,12 +222,33 @@ export class LeagueAssemblyService {
   }
 
   private hydratePersistedPlayer(record: PersistedPlayerRecord, currentSeasonYear: number): Player | null {
-    const seasonAttributes = withSortedUniqueSeasons(record.seasonAttributes ?? []);
+    const rehydratedAttributes = this.rehydrateSeasonAttributes(record.seasonAttributes ?? []);
+    if (!rehydratedAttributes) {
+      const message =
+        `assembleLeague: invalid or out-of-range stat value in seasonAttributes for player "${record.id}" (${record.name}). ` +
+        `Persisted data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      return null;
+    }
+    const seasonAttributes = withSortedUniqueSeasons(rehydratedAttributes);
     const currentAttrs = seasonAttributes.find(attrs => attrs.seasonYear === currentSeasonYear);
 
     if (!currentAttrs) {
       const message =
         `assembleLeague: missing season-${currentSeasonYear} seasonAttributes for player "${record.id}" (${record.name}). ` +
+        `Persisted data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      return null;
+    }
+
+    const personal = this.rehydratePersonal(record.personal);
+    if (!personal) {
+      const message =
+        `assembleLeague: invalid personal.birthday for player "${record.id}" (${record.name}). ` +
         `Persisted data is incompatible; reset required.`;
       if (isDevMode()) {
         throw new Error(message);
@@ -216,14 +262,41 @@ export class LeagueAssemblyService {
       teamId: record.teamId,
       position: record.position,
       role: record.role,
-      personal: record.personal,
-      physical: currentAttrs.physical,
-      mental: currentAttrs.mental,
-      skills: currentAttrs.skills,
-      hidden: currentAttrs.hidden,
-      overall: currentAttrs.overall,
+      personal,
       seasonAttributes,
       careerStats: record.careerStats
+    };
+  }
+
+  private rehydrateSeasonAttributes(records: PersistedPlayerSeasonAttributesRecord[]): PlayerSeasonAttributes[] | null {
+    const result: PlayerSeasonAttributes[] = [];
+    for (const record of records) {
+      const values = record.values ?? {};
+      const built: Partial<PlayerSeasonAttributes> = { seasonYear: record.seasonYear };
+      for (const key of STAT_KEYS) {
+        const value = (values as Record<string, unknown>)[key];
+        if (!isValidStatValue(value)) {
+          return null;
+        }
+        (built as Record<string, unknown>)[key] = buildStat(key, value);
+      }
+      // Safe: the loop above covers every key in STAT_KEYS, and any missing/invalid
+      // value causes an early return null, so all required fields are present here.
+      result.push(built as PlayerSeasonAttributes);
+    }
+    return result;
+  }
+
+  private rehydratePersonal(personal: { height: number; weight: number; nationality: string; birthday: Date | string }): Player['personal'] | null {
+    const birthday = personal.birthday instanceof Date ? personal.birthday : new Date(personal.birthday);
+    if (Number.isNaN(birthday.getTime())) {
+      return null;
+    }
+    return {
+      height: personal.height,
+      weight: personal.weight,
+      nationality: personal.nationality,
+      birthday
     };
   }
 

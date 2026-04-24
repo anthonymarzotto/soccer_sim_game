@@ -6,6 +6,7 @@ import { FormationLibraryService } from '../../services/formation-library.servic
 import { Player, PlayerCareerStats, Role } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
+import { computeAge, seasonAnchorDate } from '../../models/player-age';
 
 type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards'>;
 
@@ -127,7 +128,14 @@ export class TeamDetailsComponent {
     if (!attributes) {
       throw new Error('Player attributes unavailable for current season');
     }
-    return attributes.overall;
+    return attributes.overall.value;
+  }
+
+  getPlayerAge(player: Player | null | undefined): number | null {
+    if (!player) return null;
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (year === undefined) return null;
+    return computeAge(player.personal.birthday, seasonAnchorDate(year));
   }
 
   getRowStats(player: Player | null): TeamDetailsRowStats {

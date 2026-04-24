@@ -8,6 +8,7 @@ import { DataSchemaVersionService } from './data-schema-version.service';
 import { MatchResult, Position, Role } from '../models/enums';
 import { Match, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('PersistenceService', () => {
   let service: PersistenceService;
@@ -18,20 +19,20 @@ describe('PersistenceService', () => {
       id,
       name: `Team ${id}`,
       players: [
-        {
-          id: `${id}-p1`,
-          name: `Player ${id}`,
-          teamId: id,
-          position: Position.GOALKEEPER,
-          role: Role.STARTER,
-          personal: { height: 190, weight: 84, age: 29, nationality: 'ENG' },
-          physical: { speed: 50, strength: 80, endurance: 75 },
-          mental: { flair: 40, vision: 70, determination: 80 },
-          skills: { tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88 },
-          hidden: { luck: 50, injuryRate: 8 },
-          overall: 78,
-          careerStats: [createEmptyPlayerCareerStats(2026, id)]
-        }
+        (() => {
+          const p = createTestPlayer({
+            id: `${id}-p1`,
+            name: `Player ${id}`,
+            teamId: id,
+            position: Position.GOALKEEPER,
+            role: Role.STARTER,
+            age: 29, height: 190, weight: 84, nationality: 'ENG',
+            seasonYear: 2026,
+            stats: { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, goalkeeping: 88, luck: 50, injuryRate: 8, overall: 78 }
+          });
+          p.careerStats = [createEmptyPlayerCareerStats(2026, id)];
+          return p;
+        })()
       ],
       playerIds: [`${id}-p1`],
       stats: {
@@ -161,8 +162,8 @@ describe('PersistenceService', () => {
       )
       .mockResolvedValueOnce(undefined);
 
-    const firstWrite = service.saveTeam(createTeam('team-1'));
-    const secondWrite = service.saveTeam(createTeam('team-2'));
+    const firstWrite = service.saveTeam(createTeam('team-1'), 2026);
+    const secondWrite = service.saveTeam(createTeam('team-2'), 2026);
 
     for (let attempt = 0; attempt < 10 && !releaseFirstWrite; attempt += 1) {
       await Promise.resolve();
@@ -170,23 +171,23 @@ describe('PersistenceService', () => {
 
     expect(releaseFirstWrite).toBeDefined();
     expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenCalledTimes(1);
-    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'team-1' }));
+    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'team-1' }), 2026);
 
     releaseFirstWrite?.();
     await firstWrite;
     await secondWrite;
 
     expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenCalledTimes(2);
-    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 'team-2' }));
+    expect(normalizedDbSpy.saveTeamFromLeague).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 'team-2' }), 2026);
   });
 
   it('should delegate atomic match-result saves to normalized persistence', async () => {
     const match = createMatch();
     const teams = [createTeam('team-1'), createTeam('team-2')];
 
-    await service.saveMatchResult(match, teams);
+    await service.saveMatchResult(match, teams, 2026);
 
-    expect(normalizedDbSpy.saveMatchResultFromLeague).toHaveBeenCalledWith(match, teams);
+    expect(normalizedDbSpy.saveMatchResultFromLeague).toHaveBeenCalledWith(match, teams, 2026);
   });
 
   it('should block mutating writes when persisted schema version mismatches', async () => {

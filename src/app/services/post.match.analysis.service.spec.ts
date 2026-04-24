@@ -3,6 +3,7 @@ import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { EventImportance, EventType, MatchPhase, Position, Role } from '../models/enums';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 import { CommentaryService } from './commentary.service';
 import { PostMatchAnalysisService, SeasonMatchContext } from './post.match.analysis.service';
 import { StatisticsService, TeamSeasonStatistics } from './statistics.service';
@@ -238,27 +239,15 @@ describe('PostMatchAnalysisService', () => {
   }
 
   function createMockPlayer(id: string, name: string, teamId: string, position: Position): Player {
-    return {
-      id,
-      name,
-      teamId,
-      position,
-      role: Role.STARTER,
-      personal: { height: 180, weight: 75, age: 25, nationality: 'ENG' },
-      physical: { speed: 70, strength: 70, endurance: 70 },
-      mental: { flair: 70, vision: 70, determination: 70 },
-      skills: {
-        tackling: 70,
-        shooting: 70,
-        heading: 70,
-        longPassing: 70,
-        shortPassing: 70,
-        goalkeeping: 70
-      },
-      hidden: { luck: 50, injuryRate: 5 },
-      overall: 70,
-      careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
-    };
+    const player = createTestPlayer({
+      id, name, teamId, position, role: Role.STARTER,
+      age: 25, height: 180, weight: 75, nationality: 'ENG',
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { luck: 50, injuryRate: 5, overall: 70 }
+    });
+    player.careerStats = [createEmptyPlayerCareerStats(2026, teamId)];
+    return player;
   }
 
   function createMatchState(homeScore: number, awayScore: number, events: PlayByPlayEvent[] = []): MatchState {

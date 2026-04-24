@@ -1,6 +1,7 @@
 import { LeagueAssemblyService } from './league-assembly.service';
 import { EventImportance, EventType, MatchResult, Position, Role } from '../models/enums';
 import { League } from '../models/types';
+import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs } from '../testing/test-player-fixtures';
 
 describe('LeagueAssemblyService', () => {
   const service = new LeagueAssemblyService();
@@ -20,20 +21,8 @@ describe('LeagueAssemblyService', () => {
             teamId: 'team-1',
             position: Position.GOALKEEPER,
             role: Role.STARTER,
-            personal: { height: 190, weight: 85, age: 27, nationality: 'ENG' },
-            physical: { speed: 60, strength: 82, endurance: 77 },
-            mental: { flair: 55, vision: 68, determination: 80 },
-            skills: { tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85 },
-            hidden: { luck: 60, injuryRate: 10 },
-            overall: 79,
-            seasonAttributes: [{
-              seasonYear: 2026,
-              physical: { speed: 60, strength: 82, endurance: 77 },
-              mental: { flair: 55, vision: 68, determination: 80 },
-              hidden: { luck: 60, injuryRate: 10 },
-              skills: { tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85 },
-              overall: 79
-            }],
+            personal: mockPersonal({ height: 190, weight: 85, age: 27, nationality: 'ENG', seasonYear: 2026 }),
+            seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 82, endurance: 77, flair: 55, vision: 68, determination: 80, tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, goalkeeping: 85, luck: 60, injuryRate: 10, overall: 79 })],
             careerStats: [
               {
                 seasonYear: 2026,
@@ -197,6 +186,42 @@ describe('LeagueAssemblyService', () => {
 
     expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
       /assembleLeague: missing season-2026 seasonAttributes for player "player-1".*Persisted data is incompatible/
+    );
+  });
+
+  it('should throw during assembly when a player has a missing stat key in seasonAttributes', () => {
+    const snapshot = service.flattenLeague(leagueFixture);
+    const corruptedSnapshot = {
+      ...snapshot,
+      players: snapshot.players.map(player => ({
+        ...player,
+        seasonAttributes: player.seasonAttributes.map(attrs => {
+          const { speed: _omit, ...rest } = attrs.values as Record<string, number>;
+          return { ...attrs, values: rest as unknown as typeof attrs.values };
+        })
+      }))
+    };
+
+    expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
+      /invalid or out-of-range stat value in seasonAttributes for player "player-1".*Persisted data is incompatible/
+    );
+  });
+
+  it('should throw during assembly when a player has an out-of-range stat value in seasonAttributes', () => {
+    const snapshot = service.flattenLeague(leagueFixture);
+    const corruptedSnapshot = {
+      ...snapshot,
+      players: snapshot.players.map(player => ({
+        ...player,
+        seasonAttributes: player.seasonAttributes.map(attrs => ({
+          ...attrs,
+          values: { ...(attrs.values as Record<string, number>), speed: 999 } as unknown as typeof attrs.values
+        }))
+      }))
+    };
+
+    expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(
+      /invalid or out-of-range stat value in seasonAttributes for player "player-1".*Persisted data is incompatible/
     );
   });
 });

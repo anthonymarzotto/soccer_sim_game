@@ -2,23 +2,27 @@ import { MatchResult, Position, Role } from './enums';
 import { Player, Team } from './types';
 import { getTeamPlayerInvariantIssues, normalizeTeamRoster, resolveTeamPlayers } from './team-players';
 import { createEmptyPlayerCareerStats } from './player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('team-players', () => {
   function createPlayer(id: string, teamId = 'team-1'): Player {
-    return {
+    const player = createTestPlayer({
       id,
-      name: id,
       teamId,
       position: Position.MIDFIELDER,
       role: Role.STARTER,
-      personal: { height: 180, weight: 75, age: 24, nationality: 'ENG' },
-      physical: { speed: 70, strength: 65, endurance: 72 },
-      mental: { flair: 68, vision: 71, determination: 74 },
-      skills: { tackling: 55, shooting: 60, heading: 52, longPassing: 67, shortPassing: 72, goalkeeping: 1 },
-      hidden: { luck: 50, injuryRate: 8 },
-      overall: 70,
-      careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
-    };
+      age: 24,
+      seasonYear: 2026,
+      stats: {
+        speed: 70, strength: 65, endurance: 72,
+        flair: 68, vision: 71, determination: 74,
+        tackling: 55, shooting: 60, heading: 52,
+        longPassing: 67, shortPassing: 72, goalkeeping: 1,
+        luck: 50, injuryRate: 8, overall: 70
+      }
+    });
+    player.careerStats = [createEmptyPlayerCareerStats(2026, teamId)];
+    return player;
   }
 
   function createTeam(players: Player[], playerIds = players.map(player => player.id)): Team {

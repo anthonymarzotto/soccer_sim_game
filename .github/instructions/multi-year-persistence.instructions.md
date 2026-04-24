@@ -10,7 +10,11 @@ These rules define non-negotiable behavior for the multi-year persistence archit
 ## Canonical Data Shape Rules
 
 1. `PlayerSeasonAttributes` is the source of truth for seasonal player attributes.
-- Seasonal attributes include physical, mental, hidden, skills, and overall.
+- Seasonal attributes are flat `Stat` fields on `PlayerSeasonAttributes`: `speed`, `strength`, `endurance`, `flair`, `vision`, `determination`, `tackling`, `shooting`, `heading`, `longPassing`, `shortPassing`, `goalkeeping`, `luck`, `injuryRate`, and `overall`.
+- Each `Stat` carries `value`, `type` (`StatCategory`), `description?`, and `hidden`.
+- Stat metadata is sourced from `STAT_DEFINITIONS` (`src/app/models/stat-definitions.ts`) — not duplicated in storage.
+- Persisted player attributes use the value-only shape `{ seasonYear, values: Record<StatKey, number> }` and are rehydrated through `buildStat`.
+- Player age is derived from `personal.birthday` via `computeAge` against `seasonAnchorDate(year)`. Never persist `age` directly.
 - Do not keep duplicate authoritative seasonal values on the root `Player` model.
 
 2. `TeamSeasonSnapshot` is the source of truth for seasonal team state.

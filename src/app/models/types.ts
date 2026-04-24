@@ -7,43 +7,49 @@ export { Position, Role, MatchResult, EventImportance };
 export interface PlayerPersonal {
   height: number; // cm
   weight: number; // kg
-  age: number;
+  birthday: Date;
   nationality: string;
 }
 
-export interface PlayerPhysical {
-  speed: number;
-  strength: number;
-  endurance: number;
-}
+export type StatCategory = 'physical' | 'mental' | 'skill' | 'goalkeeping' | 'misc';
 
-export interface PlayerMental {
-  flair: number;
-  vision: number;
-  determination: number;
-}
+export type StatKey =
+  | 'speed' | 'strength' | 'endurance'
+  | 'flair' | 'vision' | 'determination'
+  | 'tackling' | 'shooting' | 'heading'
+  | 'longPassing' | 'shortPassing' | 'goalkeeping'
+  | 'luck' | 'injuryRate'
+  | 'overall';
 
-export interface PlayerHidden {
-  luck: number;
-  injuryRate: number;
-}
-
-export interface PlayerSkills {
-  tackling: number;
-  shooting: number;
-  heading: number;
-  longPassing: number;
-  shortPassing: number;
-  goalkeeping: number;
+export interface Stat {
+  value: number;
+  type: StatCategory;
+  description?: string;
+  hidden: boolean;
 }
 
 export interface PlayerSeasonAttributes {
   seasonYear: number;
-  physical: PlayerPhysical;
-  mental: PlayerMental;
-  hidden: PlayerHidden;
-  skills: PlayerSkills;
-  overall: number;
+  // physical
+  speed: Stat;
+  strength: Stat;
+  endurance: Stat;
+  // mental
+  flair: Stat;
+  vision: Stat;
+  determination: Stat;
+  // skill
+  tackling: Stat;
+  shooting: Stat;
+  heading: Stat;
+  longPassing: Stat;
+  shortPassing: Stat;
+  // goalkeeping
+  goalkeeping: Stat;
+  // misc
+  luck: Stat;
+  injuryRate: Stat;
+  overall: Stat;
 }
 
 export interface Player {
@@ -53,13 +59,7 @@ export interface Player {
   position: Position;
   role: Role;
   personal: PlayerPersonal;
-  // Legacy flat attributes remain for incremental migration and should not be treated as authoritative.
-  physical: PlayerPhysical;
-  mental: PlayerMental;
-  skills: PlayerSkills;
-  hidden: PlayerHidden;
-  overall: number;
-  seasonAttributes?: PlayerSeasonAttributes[];
+  seasonAttributes: PlayerSeasonAttributes[];
   careerStats: PlayerCareerStats[];
 }
 

@@ -8,6 +8,7 @@ import { MatchState, PlayerFatigue, SimulationConfig } from '../models/simulatio
 import { CommentaryStyle, EventType, MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/enums';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { createTestPlayer } from '../testing/test-player-fixtures';
 
 type TeamSubstitutionUsage = Record<TeamSide, number>;
 
@@ -91,8 +92,8 @@ describe('Match Simulation Variant B Substitutions', () => {
     const state = createMatchState(homeTeam.id, 'home-mid1');
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
     const substitutionsUsed: TeamSubstitutionUsage = { [TeamSide.HOME]: 0, [TeamSide.AWAY]: 0 };
 
@@ -145,8 +146,8 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
 
     vi.spyOn(internals.rng, 'random').mockReturnValue(0);
@@ -177,8 +178,8 @@ describe('Match Simulation Variant B Substitutions', () => {
     const state = createMatchState(homeTeam.id, 'home-mid2');
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
     const substitutionsUsed: TeamSubstitutionUsage = { [TeamSide.HOME]: 0, [TeamSide.AWAY]: 0 };
 
@@ -239,8 +240,8 @@ describe('Match Simulation Variant B Substitutions', () => {
     const state = createMatchState(homeTeam.id, 'home-mid1');
     const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
     const substitutionsUsed: TeamSubstitutionUsage = { [TeamSide.HOME]: 0, [TeamSide.AWAY]: 0 };
 
@@ -340,8 +341,8 @@ describe('Match Simulation Variant B Substitutions', () => {
     state.ballPossession.location = { x: 50, y: 84 };
     const fatigue = createFatigueState(homePlayers, awayPlayers, 20);
     const tactics = {
-      home: fieldService.calculateTeamTactics(homeTeam, homePlayers),
-      away: fieldService.calculateTeamTactics(awayTeam, awayPlayers)
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
 
     const benchGoalkeeper = createPlayer('away-gk-bench', 'away', PositionEnum.GOALKEEPER, Role.BENCH, 70);
@@ -506,25 +507,16 @@ function createPlayer(
   role: Role,
   overall: number
 ): Player {
-  return {
+  const player = createTestPlayer({
     id,
-    name: id,
     teamId: `team-${teamId}`,
     position,
     role,
-    personal: { height: 182, weight: 78, age: 26, nationality: 'ENG' },
-    physical: { speed: overall, strength: overall, endurance: overall },
-    mental: { flair: overall, vision: overall, determination: overall },
-    skills: {
-      tackling: overall,
-      shooting: overall,
-      heading: overall,
-      longPassing: overall,
-      shortPassing: overall,
-      goalkeeping: overall
-    },
-    hidden: { luck: 50, injuryRate: 5 },
-    overall,
-    careerStats: [createEmptyPlayerCareerStats(2026, teamId)]
-  };
+    age: 26, height: 182, weight: 78, nationality: 'ENG',
+    seasonYear: 2026,
+    defaultStat: overall,
+    stats: { luck: 50, injuryRate: 5, overall }
+  });
+  player.careerStats = [createEmptyPlayerCareerStats(2026, teamId)];
+  return player;
 }
