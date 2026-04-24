@@ -463,7 +463,7 @@
     <section class="panel">
       <div class="panel-header">
         <h2>Unused</h2>
-        <p>Persisted on each season record and copied forward in <code>GameService.advanceToNextSeason</code>, but with no consumer in tactics, the Variant B engine, ratings, or current UI gameplay surfaces.</p>
+        <p>Persisted on each season record and copied forward in <code>GameService.startNewSeason</code>, but with no consumer in tactics, the Variant B engine, ratings, or current UI gameplay surfaces.</p>
       </div>
 
       <div class="stat-grid">
@@ -472,7 +472,7 @@
         <div class="stat-card"><div><span class="stat-name">morale</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental — distinct from <code>Player.mood</code></div></div>
         <div class="stat-card"><div><span class="stat-name">consistency</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
         <div class="stat-card"><div><span class="stat-name">aggressiveness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
-        <div class="stat-card"><div><span class="stat-name">fitness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden physical — fatigue lives in <code>PlayerFatigue</code></div></div>
+        <div class="stat-card"><div><span class="stat-name">fitness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden physical</div><p style="font-size:0.8rem;color:#52525b;margin-top:4px">In-match fatigue is tracked by the transient <code>PlayerFatigue</code> struct (<code>currentStamina</code>, <code>fatigueLevel</code>, <code>performanceModifier</code>), initialised fresh each match and never persisted. This stored stat is a separate field with no current consumer.</p></div>
         <div class="stat-card"><div><span class="stat-name">luck</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — randomness comes from the simulation RNG</div></div>
         <div class="stat-card"><div><span class="stat-name">injuryRate</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — no injury simulation yet</div></div>
       </div>
@@ -491,7 +491,7 @@
       <div class="principle-grid">
         <article class="principle">
           <h3>Stat values never change mid-match</h3>
-          <p>Variant B always reads from the active season record. In-match dynamics live in separate state (<code>PlayerFatigue</code>, possession chain, scoreline, RNG), not in <code>PlayerSeasonAttributes</code>.</p>
+          <p>Variant B always reads from the active season record. In-match dynamics live in transient state — <code>PlayerFatigue</code> (<code>currentStamina</code> / <code>fatigueLevel</code> / <code>performanceModifier</code>, initialised fresh each match and never persisted), possession chain, scoreline, and RNG — none of which writes back into <code>PlayerSeasonAttributes</code>.</p>
         </article>
         <article class="principle">
           <h3><code>overall</code> is a snapshot, not a derivative</h3>
@@ -503,7 +503,7 @@
         </article>
         <article class="principle">
           <h3>Rollover is a copy, not a progression</h3>
-          <p><code>GameService.advanceToNextSeason</code> deep-copies every stat object into the next season and resets mood/fatigue. There is no automatic aging, training, or decay step.</p>
+          <p><code>GameService.startNewSeason</code> deep-copies every stat object into the next season and resets mood/fatigue. There is no automatic aging, training, or decay step.</p>
         </article>
       </div>
     </section>
