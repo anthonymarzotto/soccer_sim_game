@@ -304,7 +304,10 @@
         </article>
         <article class="lane">
           <h3>2. Bake overall</h3>
-          <p><code>overall</code> is computed once from speed, strength, flair, vision, determination, tackling, shooting, heading, longPassing, and shortPassing — plus weighted goalkeeping stats for keepers. It is not recomputed after generation.</p>
+          <p><code>overall</code> is computed once, immediately after generation, via two asymmetric formulas:</p>
+          <span class="formula" style="font-size:0.72rem">outfield: floor( speed+strength+flair+vision+determination<br>+tackling+shooting+heading+longPassing+shortPassing ) ÷ 10</span>
+          <span class="formula" style="font-size:0.72rem;margin-top:6px">goalkeeper: same 10 + handling×2 + reflexes×2 + commandOfArea ) ÷ 15</span>
+          <p style="margin-top:6px">Never recomputed — including at rollover. The goalkeeper divisor compensates for the three extra weighted GK terms; if you add a stat to the GK sum, update the denominator too.</p>
         </article>
         <article class="lane">
           <h3>3. Resolve season</h3>
@@ -340,6 +343,7 @@
               <td>
                 Bonus to carry success in <code>calculateCarrySuccessChance</code>; raises team <code>speedAvg</code> in <code>calculateTeamTactics</code>, gating possession and counter-attack styles.
                 <span class="formula">+ (speed − 70) × 0.002</span>
+                <span class="formula" style="color:#71717a">→ final carry chance clamped [0.30, 0.86]</span>
               </td>
               <td>Position bonus, attacking depth, defensive pressure, carry shape modifier, fatigue &gt; 70.</td>
             </tr>
@@ -358,6 +362,7 @@
               <td>
                 Averaged with <code>longPassing</code> for pass success in <code>calculatePassSuccess</code>; feeds <code>passingAvg</code> in tactics selection.
                 <span class="formula">base = (shortPassing + longPassing) / 2</span>
+                <span class="formula" style="color:#71717a">→ final base clamped [20, 95] %</span>
               </td>
               <td>Passer fatigue modifier, target fatigue modifier, playing style, pass intent (recycle / progression / through-ball / cross), defensive pressure × 4, pass-shape coverage.</td>
             </tr>
@@ -415,10 +420,152 @@
                   <li><code>selectSubstitutionIncomingPlayer</code> — bench sort key</li>
                   <li><code>GameService.dressBestPlayers</code> — auto starter selection per position</li>
                   <li><code>calculateTeamOverall</code> / <code>getMatchProbabilities</code> — preview odds</li>
-                  <li><code>StatisticsService.calculatePlayerRating</code> — match-rating baseline</li>
+                  <li><code>StatisticsService.calculatePlayerRating</code> — post-match rating baseline; runs on <code>PlayByPlayEvent</code> logs after the match completes, not during it</li>
                 </ul>
               </td>
               <td>Generated once and never recomputed at rollover. Match ratings then add goals/assists/passes/tackles and subtract fouls/cards.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Tuning Variables</h2>
+        <p>All 31 fields of <code>VariantBTuningConfig</code> (<code>src/app/models/simulation.types.ts</code>). Defaults live in <code>DEFAULT_VARIANT_B_TUNING</code> at the top of <code>match.simulation.variant-b.service.ts</code>. Pass a <code>Partial&lt;VariantBTuningConfig&gt;</code> via <code>SimulationConfig.variantBTuning</code> to override at match start; the debug panel exposes all fields at runtime.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Default</th>
+              <th>Effect</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Tick Pace — events generated per zone per minute</td></tr>
+            <tr>
+              <td class="col-stat">baseTickMin / baseTickMax<small>default zone</small></td>
+              <td><code>1 / 3</code></td>
+              <td>Random tick range for the defensive zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">midfieldTickMin / midfieldTickMax<small>midfield zone</small></td>
+              <td><code>2 / 5</code></td>
+              <td>Random tick range while possession is in the midfield zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">attackTickMin / attackTickMax<small>attack zone</small></td>
+              <td><code>2 / 4</code></td>
+              <td>Random tick range while possession is in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">lateCloseBoostTicks<small>late-game urgency</small></td>
+              <td><code>1</code></td>
+              <td>Added to both min and max tick bounds from minute 75 onward when the score difference is ≤ 1. Simulates end-of-game intensity by increasing the event rate.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Ball Movement</td></tr>
+            <tr>
+              <td class="col-stat">movementStepBase<small>spatial</small></td>
+              <td><code>2.4</code></td>
+              <td>Fixed forward advance (y-axis units) per tick.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">movementStepRandom<small>spatial</small></td>
+              <td><code>3.0</code></td>
+              <td>Random ceiling added to the base each tick (<code>rng × movementStepRandom</code>). Raising this makes advance distance more variable.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">lateUrgencyMultiplier<small>late-game</small></td>
+              <td><code>1.2</code></td>
+              <td>Multiplied onto the full y-step after minute 75. Makes possession advance faster toward goal in the closing stages.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Action Weights — relative probability at each tick</td></tr>
+            <tr>
+              <td class="col-stat">passWeightBase<small>action selection</small></td>
+              <td><code>0.57</code></td>
+              <td>Base weight for choosing a pass. Zone, tactics, and scoreline context modify this before the action is sampled.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">carryWeightBase<small>action selection</small></td>
+              <td><code>0.12</code></td>
+              <td>Base weight for a dribble/carry. Uprated in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">shotWeightBase<small>action selection</small></td>
+              <td><code>0.24</code></td>
+              <td>Base weight for a shot attempt. Only reachable in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">foulWeightBase<small>action selection</small></td>
+              <td><code>0.03</code></td>
+              <td>Base weight for conceding a foul. Keep small relative to the other weights.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">outOfWindowShotMultiplier<small>action selection</small></td>
+              <td><code>0.27</code></td>
+              <td>Multiplied onto <code>shotWeightBase</code> when the ball is outside the optimal shooting window. Strongly suppresses low-percentage long shots.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Shot: On-Target Gate — first resolution gate; uses <code>shooting</code></td></tr>
+            <tr>
+              <td class="col-stat">onTargetBase<small>shot gate 1</small></td>
+              <td><code>0.31</code></td>
+              <td>Starting probability before skill and position adjustments. At average shooting (70), this is the on-target rate.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetSkillScale<small>shot gate 1</small></td>
+              <td><code>0.0045</code></td>
+              <td>Scales the <code>shooting − 70</code> delta. A shooter with 90 shooting adds 0.09 to the base; a 50-rated shooter loses 0.09.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetWidePenalty<small>shot gate 1</small></td>
+              <td><code>0.06</code></td>
+              <td>Deducted proportionally to lateral distance from centre (<code>lateralDistance / 50 × penalty</code>). At full lateral distance, costs up to 6 pp accuracy.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetFatiguePenalty<small>shot gate 1</small></td>
+              <td><code>0.04</code></td>
+              <td>Flat deduction when the shooter's <code>fatigueLevel</code> exceeds 75. Connects in-match <code>PlayerFatigue</code> state to shot accuracy.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetMin / onTargetMax<small>shot gate 1</small></td>
+              <td><code>0.15 / 0.82</code></td>
+              <td>Hard clamp after all modifiers. No shot can be less than 15 % or more than 82 % on-target regardless of skill or fatigue.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Shot: Goal Gate — second gate (only reached for on-target shots); uses <code>shooting</code> vs <code>keeperSkill</code></td></tr>
+            <tr>
+              <td class="col-stat">goalChanceBase<small>shot gate 2</small></td>
+              <td><code>0.25</code></td>
+              <td>Starting probability before skill, position, and home-advantage adjustments. At parity between shooter and keeper, this is the conversion rate.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceSkillVsKeeperScale<small>shot gate 2</small></td>
+              <td><code>0.0033</code></td>
+              <td>Scales the <code>shooting − keeperSkill</code> delta. A 20-point shooting advantage adds about 6.6 pp; a 20-point deficit costs the same.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceWidePenalty<small>shot gate 2</small></td>
+              <td><code>0.035</code></td>
+              <td>Same lateral-distance penalty structure as gate 1 but smaller — wide shots already fail the on-target gate more often, so the double penalty is intentionally lighter.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceMin / goalChanceMax<small>shot gate 2</small></td>
+              <td><code>0.10 / 0.55</code></td>
+              <td>Hard clamp. An on-target shot always converts at least 10 % of the time; no conversion exceeds 55 % regardless of keeper quality or home advantage.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Misc</td></tr>
+            <tr>
+              <td class="col-stat">homeAdvantageGoalBonus<small>goal gate</small></td>
+              <td><code>0.04</code></td>
+              <td>Flat bonus added to the goal chance when the shooting team is the home side. Applied before the goal-chance clamp.</td>
             </tr>
           </tbody>
         </table>
