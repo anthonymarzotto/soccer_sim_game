@@ -1,4 +1,4 @@
-import { createEmptyPlayerCareerStats } from './player-career-stats';
+import { calculateAverageMatchRating, createEmptyPlayerCareerStats, formatAverageMatchRating } from './player-career-stats';
 
 describe('player-career-stats defaults', () => {
   it('should include all tracked fields with zero defaults', () => {
@@ -21,7 +21,25 @@ describe('player-career-stats defaults', () => {
       cleanSheets: 0,
       minutesPlayed: 0,
       fouls: 0,
-      foulsSuffered: 0
+      foulsSuffered: 0,
+      totalMatchRating: 0,
+      starNominations: { first: 0, second: 0, third: 0 }
     });
+  });
+
+  it('should calculate average match rating on the 1-10 display scale', () => {
+    const stats = createEmptyPlayerCareerStats(2026, 'team-1');
+    stats.matchesPlayed = 4;
+    stats.totalMatchRating = 278;
+
+    expect(calculateAverageMatchRating(stats)).toBe(6.95);
+    expect(formatAverageMatchRating(stats)).toBe('7.0');
+  });
+
+  it('should return null and placeholder output when no matches were played', () => {
+    const stats = createEmptyPlayerCareerStats(2026, 'team-1');
+
+    expect(calculateAverageMatchRating(stats)).toBeNull();
+    expect(formatAverageMatchRating(stats)).toBe('--');
   });
 });

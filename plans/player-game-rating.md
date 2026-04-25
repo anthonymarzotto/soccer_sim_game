@@ -16,6 +16,18 @@ Items are ordered so each step builds cleanly on the previous one.
 
 ## Implementation Order
 
+### ~~Step 1 — Fix and expand the rating formula (`statistics.service.ts`)~~ ✅ DONE
+
+**Completed.** Changes landed in `statistics.service.ts`, `post.match.analysis.service.ts`, `match.simulation.ab.spec.ts`, and the new `statistics.service.spec.ts` (13 tests, all passing).
+
+Key changes delivered:
+- Fixed base of `50` replaces the overall-ability anchor; `getCurrentPlayerSeasonAttributes` call and `seasonYear` parameter removed entirely.
+- `minutesPlayed` now derived per-player via new private helper `calculateMinutesPlayed` using `SUBSTITUTION` and `RED_CARD` events. Bench players who never entered get `0` and a `rating` of `0`.
+- New event coverage added: `SAVE` (+4, GK only), `INTERCEPTION` (+2), shot on target (+1), `CORNER` (+0.5), `FREE_KICK` (+0.5), `PENALTY` (+3), `MISS` (−1).
+- `generatePlayerStatistics` no longer takes a `seasonYear` parameter.
+
+---
+
 ### Step 1 — Fix and expand the rating formula (`statistics.service.ts`)
 
 #### Three existing bugs to fix first
@@ -79,6 +91,20 @@ This is **deferred** — the weighting constants require calibration and the fea
 
 ---
 
+### ~~Step 2 — Persist per-season average match rating and star nominations (`types.ts`, `game.service.ts`, schema)~~ ✅ DONE
+
+**Completed.** Changes landed in `types.ts`, `player-career-stats.ts`, `game.service.ts`, `package.json`, `generated/data-schema-version.ts`, and the new `match-stars.ts` (191 tests, all passing).
+
+Key changes delivered:
+- `PlayerCareerStats` extended with `totalMatchRating: number` and `starNominations: { first, second, third }`.
+- `createEmptyPlayerCareerStats` factory initializes both new fields to zero.
+- `dataSchemaVersion` bumped `E` → `F`; `sync-data-schema-version` regenerated the generated file.
+- New pure helper `rankThreeStars` in `match-stars.ts` — shared by persistence, Match Summary, and Watch Mode. Full tie-break chain: rating → winning team → goals → saves → assists → fewer cards → playerId.
+- `updatePlayerCareerStats` in `game.service.ts` now takes `matchState` directly; after clean-sheets, calls `generatePlayerStatistics` for both teams, accumulates `totalMatchRating`, calls `rankThreeStars`, and increments the correct `starNominations` field.
+- `getAggregatedCareerStats` initializes and sums the two new fields across seasons.
+
+---
+
 ### Step 2 — Persist per-season average match rating and star nominations (`types.ts`, `game.service.ts`, schema)
 
 Add the following two fields to `PlayerCareerStats`:
@@ -113,6 +139,19 @@ The shared ranking helper should accept the home and away player-stat arrays plu
 
 ---
 
+### ~~Step 3 — Surface "Stars of the Game" on the Match Summary (`match-summary.html`, `match-summary.ts`)~~ ✅ DONE
+
+**Completed.** Changes landed in `types.ts`, `post.match.analysis.service.ts`, `match-summary.ts`, `match-summary.html`, and `match-summary.spec.ts` (194 tests, all passing).
+
+Key changes delivered:
+- Canonical `MatchReport` in `types.ts` extended with `matchStats`, `homePlayerStats`, and `awayPlayerStats` — now matches what `PostMatchAnalysisService` produces.
+- Duplicate local `MatchReport` interface removed from `post.match.analysis.service.ts`; it now imports from `types.ts`.
+- `matchStars` computed signal added to `MatchSummaryComponent` — derives winning team from scores, calls shared `rankThreeStars` helper.
+- `formatRating` helper added (internal 1–100 ÷ 10, one decimal place).
+- Stars of the Game section added to `match-summary.html` after Match Statistics; visible when `showStats() && matchStars().length > 0`. Each card shows medal emoji, team badge, player name (linked to profile), 1–10 rating, and non-zero key stats (goals, assists, saves).
+
+---
+
 ### Step 3 — Surface "Stars of the Game" on the Match Summary (`match-summary.html`, `match-summary.ts`)
 
 The `MatchReport` (on the `Match` record) already contains `playerPerformances.homeTeam.mvp`, `topPerformers`, and `playerPerformances.awayTeam.*`. The component does not currently render any of this.
@@ -133,6 +172,17 @@ Each of the three cards shows:
 > **Note:** The `types.ts` `MatchReport` interface is leaner than the service-local one. The `homePlayerStats` / `awayPlayerStats` arrays will need to be added to the canonical `types.ts` interface (or the match-summary component can access them via the service-local type). This alignment should be resolved as part of this step.
 
 ---
+
+~~### Step 4 — Watch Mode live rating display (`watch-game.ts`, `watch-game.html`)~~ ✅ DONE
+
+**Delivered:**
+- Injected `StatisticsService` into `WatchGameComponent`. Added `liveHomePlayerStats` and `liveAwayPlayerStats` signals (reset on each new simulation start).
+- Added `liveStars = computed(...)` — calls `rankThreeStars` with live stats and current score context.
+- Added `private recomputeLivePlayerStats(upToMinute)` — filters matchState events `<= upToMinute`, calls `generatePlayerStatistics` for both teams, updates signals. Called at kickoff (minute 0) after match result arrives, and on every `addNextCommentary` tick.
+- Added `getLiveRating(playerId, side): string` — returns `"--"` for unplayed/bench, formatted 1–10 scale otherwise.
+- Added `getLiveStarRank(playerId): 1|2|3|null`.
+- On-field lineup rows in both HOME and AWAY panels now show a rating pill (amber text) and optional medal emoji (🥇/🥈/🥉).
+- `watch-game.spec.ts` updated with `StatisticsService` mock.
 
 ### Step 4 — Watch Mode live rating display (`watch-game.ts`, `watch-game.html`)
 
@@ -165,7 +215,14 @@ Highlight the current top-3 cross-team players with a rank badge (🥇/🥈/🥉
 
 ---
 
-### Step 5 — Player Profile and Player Stats page (`player-profile.ts/html`, `player-stats.ts/html`)
+~~### Step 5 — Player Profile and Player Stats page (`player-profile.ts/html`, `player-stats.ts/html`), Team Details page (`team-details.ts/html`)~~ ✅ DONE
+
+**Delivered:**
+- **Player Profile** — added "Ratings" tab button to the Career Stats card tab bar; header columns (`Avg Rating / 🥇 / 🥈 / 🥉`), per-season data rows, and total row (stars summed via `totalStarNominations` computed, avg shows `--`). Added `currentSeasonRatingChip` computed (avg rating + three star counts). Added `totalStarNominations` computed. Extended `seasonStatsView` signal type to include `'ratings'`. Added header chip with `avgRating` + medal counts beside the overall OVR badge.
+- **Player Stats** — extended `SortColumn` type with `'averageRating' | 'starsFirst' | 'starsSecond' | 'starsThird'`. Added sort handling and `getColumnValue` branches for all four. Added four columns to the `columns` array. Added four `<td>` cells per row to the HTML.
+- **Team Details** — widened `TeamDetailsRowStats` Pick to include `totalMatchRating` and `starNominations`. Updated both zero-value fallbacks (`getRowStats`, `getCurrentSeasonStats`). Added `formatAvgRating(stats)` helper. Added `Rating` column header (Bio mode only). Added rating cell + conditional star badges (non-zero only) after OVR for starters, bench, and reserves rows.
+
+### Step 5 — Player Profile and Player Stats page (`player-profile.ts/html`, `player-stats.ts/html`), Team Details page (`team-details.ts/html`)
 
 #### Player Profile
 

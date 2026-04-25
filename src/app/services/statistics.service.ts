@@ -3,7 +3,7 @@ import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchStatistics, Team, Player, PlayerStatistics } from '../models/types';
 import { EventType, Position } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
-import { getCurrentPlayerSeasonAttributes } from '../models/season-history';
+
 
 @Injectable({
   providedIn: 'root'
@@ -60,35 +60,48 @@ export class StatisticsService {
     };
   }
 
-  generatePlayerStatistics(matchState: MatchState, team: Team, players: Player[], seasonYear: number): PlayerStatistics[] {
+  generatePlayerStatistics(matchState: MatchState, team: Team, players: Player[]): PlayerStatistics[] {
     const playerStats: PlayerStatistics[] = [];
     const teamPlayers = resolveTeamPlayers(team, players);
+    const starterIds = new Set(Object.values(team.formationAssignments));
 
     teamPlayers.forEach(player => {
+      const isStarter = starterIds.has(player.id);
       const playerEvents = matchState.events.filter(e => e.playerIds.includes(player.id));
       const primaryPlayerEvents = playerEvents.filter(e => e.playerIds[0] === player.id);
       const passEvents = playerEvents.filter(e => e.type === EventType.PASS && e.playerIds[0] === player.id);
-      
+      const tackleEvents = primaryPlayerEvents.filter(e => e.type === EventType.TACKLE);
+      const interceptionEvents = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION);
+      const minutesPlayed = this.calculateMinutesPlayed(
+        player.id,
+        matchState.events,
+        matchState.currentMinute,
+        isStarter
+      );
+      const hasEnteredMatch = this.hasEnteredMatch(player.id, matchState.events, isStarter);
+
       const stats: PlayerStatistics = {
         playerId: player.id,
         playerName: player.name,
         position: player.position,
-        minutesPlayed: matchState.currentMinute,
+        minutesPlayed,
         passes: passEvents.length,
         passesSuccessful: passEvents.filter(e => e.success).length,
         shots: playerEvents.filter(e => e.type === EventType.SHOT).length,
         shotsOnTarget: playerEvents.filter(e => e.type === EventType.SHOT && e.success).length,
         goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
         assists: this.calculateAssists(playerEvents, matchState.events),
-        tackles: player.position === Position.GOALKEEPER ? 0 : playerEvents.filter(e => e.type === EventType.TACKLE).length,
-        tacklesSuccessful: player.position === Position.GOALKEEPER ? 0 : playerEvents.filter(e => e.type === EventType.TACKLE && e.success).length,
-        interceptions: playerEvents.filter(e => e.type === EventType.INTERCEPTION).length,
+        tackles: player.position === Position.GOALKEEPER ? 0 : tackleEvents.length,
+        tacklesSuccessful: player.position === Position.GOALKEEPER ? 0 : tackleEvents.filter(e => e.success).length,
+        interceptions: interceptionEvents.length,
         fouls: primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length,
         foulsSuffered: playerEvents.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length,
         yellowCards: primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
         redCards: primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length,
         saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
-        rating: this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, seasonYear)
+        rating: !hasEnteredMatch
+          ? 0
+          : this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents)
       };
 
       playerStats.push(stats);
@@ -227,26 +240,95 @@ export class StatisticsService {
     return assists;
   }
 
-  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], seasonYear: number): number {
-    const seasonAttrs = getCurrentPlayerSeasonAttributes(player, seasonYear);
-    let rating = seasonAttrs.overall.value;
+  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[]): number {
+    let rating = 50; // fixed base — event-driven, no ability anchor
 
     // Positive contributions
     const goals = events.filter(e => e.type === EventType.GOAL).length;
     const assists = this.calculateAssists(events, events);
     const successfulPasses = events.filter(e => e.type === EventType.PASS && e.success && e.playerIds[0] === player.id).length;
-    const tackles = player.position === Position.GOALKEEPER ? 0 : events.filter(e => e.type === EventType.TACKLE && e.success).length;
+    const tackles = player.position === Position.GOALKEEPER ? 0 : primaryPlayerEvents.filter(e => e.type === EventType.TACKLE && e.success).length;
+    const saves = player.position === Position.GOALKEEPER
+      ? events.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length
+      : 0;
+    const interceptions = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION).length;
+    const shotsOnTarget = events.filter(e => e.type === EventType.SHOT && e.success && e.playerIds[0] === player.id).length;
+    const corners = events.filter(e => e.type === EventType.CORNER && e.playerIds[0] === player.id).length;
+    const freeKicks = events.filter(e => e.type === EventType.FREE_KICK && e.playerIds[0] === player.id).length;
+    const penalties = events.filter(e => e.type === EventType.PENALTY && e.playerIds[0] === player.id).length;
 
     // Negative contributions
+    const misses = primaryPlayerEvents.filter(e => e.type === EventType.MISS).length;
     const fouls = primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length;
     const yellowCards = primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length;
     const redCards = primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length;
 
-    // Rating calculation
+    // Victim contributions
+    const foulsSuffered = events.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length;
+
     rating += (goals * 10) + (assists * 5) + (successfulPasses * 0.1) + (tackles * 2);
-    rating -= (fouls * 2) + (yellowCards * 5) + (redCards * 15);
+    rating += (saves * 4) + (interceptions * 2) + (shotsOnTarget * 1) + (corners * 0.5) + (freeKicks * 0.5) + (penalties * 3);
+    rating += (foulsSuffered * 0.5);
+    rating -= (misses * 1) + (fouls * 2) + (yellowCards * 5) + (redCards * 15);
 
     return Math.max(1, Math.min(100, Math.round(rating)));
+  }
+
+  private hasEnteredMatch(
+    playerId: string,
+    allEvents: PlayByPlayEvent[],
+    isStarter: boolean
+  ): boolean {
+    if (isStarter) {
+      return true;
+    }
+
+    return allEvents.some(
+      e => e.type === EventType.SUBSTITUTION && e.playerIds[1] === playerId
+    );
+  }
+
+  private calculateMinutesPlayed(
+    playerId: string,
+    allEvents: PlayByPlayEvent[],
+    matchCurrentMinute: number,
+    isStarter: boolean
+  ): number {
+    // Starter substituted off
+    const subOffEvent = allEvents.find(
+      e => e.type === EventType.SUBSTITUTION && e.playerIds[0] === playerId
+    );
+    if (subOffEvent) {
+      return subOffEvent.time;
+    }
+
+    // Player came on as substitute
+    const subOnEvent = allEvents.find(
+      e => e.type === EventType.SUBSTITUTION && e.playerIds[1] === playerId
+    );
+    if (subOnEvent) {
+      const redCardAfterSub = allEvents.find(
+        e => e.type === EventType.RED_CARD && e.playerIds[0] === playerId && e.time > subOnEvent.time
+      );
+      if (redCardAfterSub) {
+        return redCardAfterSub.time - subOnEvent.time;
+      }
+      return matchCurrentMinute - subOnEvent.time;
+    }
+
+    if (isStarter) {
+      // Starter who played until sent off or end of match
+      const redCardEvent = allEvents.find(
+        e => e.type === EventType.RED_CARD && e.playerIds[0] === playerId
+      );
+      if (redCardEvent) {
+        return redCardEvent.time;
+      }
+      return matchCurrentMinute;
+    }
+
+    // Bench player who never entered
+    return 0;
   }
 
   private getMatchResult(matchState: MatchState, teamId: string): 'W' | 'D' | 'L' {

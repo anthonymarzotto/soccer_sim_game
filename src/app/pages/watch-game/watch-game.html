@@ -151,8 +151,14 @@
                   <div class="rounded bg-zinc-900/70 px-2 py-1.5">
                     <div class="flex items-center justify-between gap-2 text-[11px]">
                       <span class="truncate text-zinc-100"><span class="text-zinc-400">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
-                      <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
-                        <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        @if (getLiveStarRank(entry.playerId); as rank) {
+                          <span>{{ rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉' }}</span>
+                        }
+                        <span class="text-xs font-semibold text-amber-400">{{ getLiveRating(entry.playerId, TeamSide.HOME) }}</span>
+                        <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                          <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -287,8 +293,14 @@
                   <div class="rounded bg-zinc-900/70 px-2 py-1.5">
                     <div class="flex items-center justify-between gap-2 text-[11px]">
                       <span class="truncate text-zinc-100"><span class="text-zinc-400">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
-                      <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
-                        <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        @if (getLiveStarRank(entry.playerId); as rank) {
+                          <span>{{ rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉' }}</span>
+                        }
+                        <span class="text-xs font-semibold text-amber-400">{{ getLiveRating(entry.playerId, TeamSide.AWAY) }}</span>
+                        <div class="min-w-10 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                          <div class="h-full" [style.width.%]="entry.fatigue" [style.background-color]="getLineupBarColor(entry.fatigue)"></div>
+                        </div>
                       </div>
                     </div>
                   </div>

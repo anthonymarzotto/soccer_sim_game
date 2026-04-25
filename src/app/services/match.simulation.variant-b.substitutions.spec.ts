@@ -5,7 +5,7 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
 import { MatchState, PlayerFatigue, SimulationConfig } from '../models/simulation.types';
-import { CommentaryStyle, EventType, MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/enums';
+import { CommentaryStyle, EventType, FieldZone, MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/enums';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createTestPlayer } from '../testing/test-player-fixtures';
@@ -14,6 +14,28 @@ type TeamSubstitutionUsage = Record<TeamSide, number>;
 
 interface VariantBSubstitutionInternals {
   rng: { random: () => number };
+  getDefendingShapeContextForLocation: (
+    location: { x: number; y: number },
+    currentTeam: TeamSide
+  ) => {
+    zoneSlots: TestShapeSlot[];
+    staffedZoneSlots: TestShapeSlot[];
+    zoneCoverage: number;
+    wideChannel: boolean;
+    channelSlots: TestShapeSlot[];
+    centralSlots: TestShapeSlot[];
+  } | null;
+  createPassFailureEvent: (
+    state: MatchState,
+    mode: 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT',
+    currentLocation: { x: number; y: number },
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
+    passerId: string,
+    passIntent: 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS',
+    minute: number,
+    config: SimulationConfig
+  ) => string;
   handlePass: (
     state: MatchState,
     action: { type: EventType.PASS; player: Player; passIntent: 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS' },
@@ -54,6 +76,15 @@ interface VariantBSubstitutionInternals {
     config: SimulationConfig,
     rosters: { homePlayers: Player[]; awayPlayers: Player[] }
   ) => void;
+}
+
+interface TestShapeSlot {
+  slotId: string;
+  playerId: string | null;
+  coordinates: { x: number; y: number };
+  zone: FieldZone;
+  role: string;
+  preferredPosition: PositionEnum;
 }
 
 describe('Match Simulation Variant B Substitutions', () => {
@@ -166,10 +197,129 @@ describe('Match Simulation Variant B Substitutions', () => {
     );
 
     expect(state.events.at(-1)?.type).toBe(EventType.TACKLE);
+    expect(state.events.at(-1)?.playerIds).toEqual(['away-gk1', 'home-mid1']);
     expect(state.ballPossession.teamId).toBe(awayTeam.id);
     expect(state.ballPossession.playerWithBall).toBe('away-gk1');
     expect(state.ballPossession.passes).toBe(0);
     expect(state.ballPossession.phase).toBe(MatchPhase.ATTACKING);
+  });
+
+  it('should attribute pass interceptions to the ball-winning defender', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-mid1');
+
+    vi.spyOn(internals.rng, 'random').mockReturnValue(0);
+
+    const turnoverWinnerId = internals.createPassFailureEvent(
+      state,
+      'LANE_CUT_OUT',
+      state.ballPossession.location,
+      TeamSide.HOME,
+      awayPlayers,
+      'home-mid1',
+      'THROUGH_BALL',
+      41,
+      config
+    );
+
+    expect(turnoverWinnerId).toBe('away-gk1');
+    expect(state.events.at(-1)?.type).toBe(EventType.INTERCEPTION);
+    expect(state.events.at(-1)?.playerIds).toEqual(['away-gk1', 'home-mid1']);
+  });
+
+  it('should favor stronger tacklers over slightly closer defenders for tackle attribution', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-mid1');
+    const closeDefender = createTestPlayer({
+      id: 'away-def-close',
+      teamId: awayTeam.id,
+      position: PositionEnum.DEFENDER,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 70, speed: 58, strength: 48, determination: 50, tackling: 42 }
+    });
+    const strongTackler = createTestPlayer({
+      id: 'away-def-strong',
+      teamId: awayTeam.id,
+      position: PositionEnum.DEFENDER,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 74, speed: 72, strength: 88, determination: 90, tackling: 96 }
+    });
+
+    vi.spyOn(internals, 'getDefendingShapeContextForLocation').mockReturnValue(
+      createTurnoverShapeContext([
+        createShapeSlot('away-close-slot', 'away-def-close', 49, 62),
+        createShapeSlot('away-strong-slot', 'away-def-strong', 55, 62)
+      ])
+    );
+
+    const turnoverWinnerId = internals.createPassFailureEvent(
+      state,
+      'TACKLED',
+      state.ballPossession.location,
+      TeamSide.HOME,
+      [closeDefender, strongTackler],
+      'home-mid1',
+      'PROGRESSION',
+      41,
+      config
+    );
+
+    expect(turnoverWinnerId).toBe('away-def-strong');
+    expect(state.events.at(-1)?.type).toBe(EventType.TACKLE);
+    expect(state.events.at(-1)?.playerIds).toEqual(['away-def-strong', 'home-mid1']);
+  });
+
+  it('should favor better readers of play over slightly closer defenders for interception attribution', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-mid1');
+    const closeDefender = createTestPlayer({
+      id: 'away-def-close',
+      teamId: awayTeam.id,
+      position: PositionEnum.DEFENDER,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 70, speed: 60, vision: 44, determination: 52, tackling: 48 }
+    });
+    const smartDefender = createTestPlayer({
+      id: 'away-def-smart',
+      teamId: awayTeam.id,
+      position: PositionEnum.DEFENDER,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 74, speed: 74, vision: 95, determination: 88, tackling: 82 }
+    });
+
+    vi.spyOn(internals, 'getDefendingShapeContextForLocation').mockReturnValue(
+      createTurnoverShapeContext([
+        createShapeSlot('away-close-slot', 'away-def-close', 49, 62),
+        createShapeSlot('away-smart-slot', 'away-def-smart', 55, 62)
+      ])
+    );
+
+    const turnoverWinnerId = internals.createPassFailureEvent(
+      state,
+      'LANE_CUT_OUT',
+      state.ballPossession.location,
+      TeamSide.HOME,
+      [closeDefender, smartDefender],
+      'home-mid1',
+      'THROUGH_BALL',
+      41,
+      config
+    );
+
+    expect(turnoverWinnerId).toBe('away-def-smart');
+    expect(state.events.at(-1)?.type).toBe(EventType.INTERCEPTION);
+    expect(state.events.at(-1)?.playerIds).toEqual(['away-def-smart', 'home-mid1']);
   });
 
   it('should not reintroduce dismissed players and should honor substitution limits', () => {
@@ -497,6 +647,35 @@ function createTeam(idPrefix: string, players: Player[]): Team {
         last5: [...stats.last5]
       }
     }]
+  };
+}
+
+function createShapeSlot(slotId: string, playerId: string, x: number, y: number): TestShapeSlot {
+  return {
+    slotId,
+    playerId,
+    coordinates: { x, y },
+    zone: FieldZone.MIDFIELD,
+    role: 'defending-line',
+    preferredPosition: PositionEnum.DEFENDER
+  };
+}
+
+function createTurnoverShapeContext(staffedZoneSlots: TestShapeSlot[]): {
+  zoneSlots: TestShapeSlot[];
+  staffedZoneSlots: TestShapeSlot[];
+  zoneCoverage: number;
+  wideChannel: boolean;
+  channelSlots: TestShapeSlot[];
+  centralSlots: TestShapeSlot[];
+} {
+  return {
+    zoneSlots: staffedZoneSlots,
+    staffedZoneSlots,
+    zoneCoverage: staffedZoneSlots.length === 0 ? 0 : 1,
+    wideChannel: false,
+    channelSlots: staffedZoneSlots,
+    centralSlots: staffedZoneSlots
   };
 }
 

@@ -108,6 +108,17 @@ function createMatch(input: { keyEvents: MatchEvent[]; expandedMoments: MatchEve
     matchReport: {
       matchId: 'm1',
       finalScore: '1-0',
+      matchStats: {
+        possession: { home: 50, away: 50 },
+        shots: { home: 5, away: 4 },
+        shotsOnTarget: { home: 3, away: 2 },
+        corners: { home: 2, away: 3 },
+        fouls: { home: 8, away: 9 },
+        cards: { home: { yellow: 0, red: 0 }, away: { yellow: 0, red: 0 } },
+        passes: { home: 200, away: 180 },
+        tackles: { home: 15, away: 12 },
+        saves: { home: 2, away: 3 }
+      },
       keyMoments: input.expandedMoments,
       tacticalAnalysis: {
         homeTeam: { possession: 50, shots: 5, corners: 2, fouls: 8, style: PlayingStyle.POSSESSION, effectiveness: 50 },
@@ -128,7 +139,9 @@ function createMatch(input: { keyEvents: MatchEvent[]; expandedMoments: MatchEve
           averageRating: 6.8
         }
       },
-      matchSummary: 'Summary'
+      matchSummary: 'Summary',
+      homePlayerStats: [createPlayerStats('home-p1')],
+      awayPlayerStats: [createPlayerStats('away-p1')]
     }
   };
 }

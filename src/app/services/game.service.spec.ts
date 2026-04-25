@@ -11,8 +11,8 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { DataSchemaVersionService } from './data-schema-version.service';
-import { CommentaryStyle, EventType, FieldZone, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
-import { League, MatchStatistics, Team } from '../models/types';
+import { CommentaryStyle, EventType, FieldZone, MatchPhase, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
+import { League, MatchStatistics, Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs } from '../testing/test-player-fixtures';
 
@@ -86,7 +86,7 @@ describe('GameService persistence integration', () => {
         },
         { provide: MatchSimulationVariantBService, useValue: {} },
         { provide: CommentaryService, useValue: {} },
-        { provide: StatisticsService, useValue: {} },
+        { provide: StatisticsService, useValue: { generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: {} },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: formationLibrarySpy as FormationLibraryService }
@@ -743,6 +743,104 @@ describe('GameService persistence integration', () => {
     expect(awayKeeper?.careerStats[0]?.cleanSheets).toBe(0);
   });
 
+  it('should credit tackles and interceptions only to the turnover winner', async () => {
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    await service.ensureHydrated();
+
+    const emptyStats = {
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+      last5: [] as MatchResult[]
+    };
+
+    const homeDefender = {
+      id: 'home-def',
+      name: 'Home Defender',
+      teamId: 'team-1',
+      position: Position.DEFENDER,
+      role: Role.STARTER,
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
+    } as unknown as Player;
+    const awayAttacker = {
+      id: 'away-att',
+      name: 'Away Attacker',
+      teamId: 'team-2',
+      position: Position.FORWARD,
+      role: Role.STARTER,
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
+    } as unknown as Player;
+
+    const homeTeam = {
+      id: 'team-1',
+      name: 'Team One',
+      players: [homeDefender],
+      playerIds: ['home-def'],
+      stats: emptyStats,
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { slot_0: 'home-def' },
+      seasonSnapshots: [{ seasonYear: 2026, playerIds: ['home-def'], stats: emptyStats }]
+    } as unknown as Team;
+    const awayTeam = {
+      id: 'team-2',
+      name: 'Team Two',
+      players: [awayAttacker],
+      playerIds: ['away-att'],
+      stats: emptyStats,
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { slot_0: 'away-att' },
+      seasonSnapshots: [{ seasonYear: 2026, playerIds: ['away-att'], stats: emptyStats }]
+    } as unknown as Team;
+
+    (service as unknown as {
+      updatePlayerCareerStats: (matchState: unknown, homeTeam: Team, awayTeam: Team) => void;
+    }).updatePlayerCareerStats(
+      {
+        ballPossession: {
+          teamId: 'team-1',
+          playerWithBall: 'home-def',
+          location: { x: 50, y: 50 },
+          phase: MatchPhase.BUILD_UP,
+          passes: 0,
+          timeElapsed: 0
+        },
+        events: [
+          { id: 't1', type: EventType.TACKLE, description: '', playerIds: ['home-def', 'away-att'], location: { x: 50, y: 50 }, time: 30, success: true },
+          { id: 'i1', type: EventType.INTERCEPTION, description: '', playerIds: ['home-def', 'away-att'], location: { x: 50, y: 50 }, time: 60, success: false }
+        ],
+        fatigueTimeline: [],
+        currentMinute: 90,
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0,
+        homePossession: 50,
+        awayPossession: 50,
+        homeCorners: 0,
+        awayCorners: 0,
+        homeFouls: 0,
+        awayFouls: 0,
+        homeYellowCards: 0,
+        awayYellowCards: 0,
+        homeRedCards: 0,
+        awayRedCards: 0
+      },
+      homeTeam,
+      awayTeam
+    );
+
+    expect(homeDefender.careerStats[0]?.tackles).toBe(1);
+    expect(homeDefender.careerStats[0]?.interceptions).toBe(1);
+    expect(awayAttacker.careerStats[0]?.tackles).toBe(0);
+    expect(awayAttacker.careerStats[0]?.interceptions).toBe(0);
+  });
+
   it('should truncate minutes played when a starter is sent off', async () => {
     const storedLeague = {
       teams: [
@@ -1245,7 +1343,7 @@ describe('GameService simulation engine', () => {
         },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
-        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: {} }
@@ -1300,7 +1398,7 @@ describe('GameService simulation engine', () => {
         },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
-        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: {} }
@@ -1345,7 +1443,7 @@ describe('GameService simulation engine', () => {
         { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
-        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: {} }
@@ -1383,7 +1481,7 @@ describe('GameService simulation engine', () => {
       awayShotsOnTarget: 0
     };
     const variantBSpy = { simulateMatch: vi.fn().mockReturnValue(variantBMatchState) };
-    const statisticsSpy = { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics) };
+    const statisticsSpy = { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) };
     const reportSpy = { generateMatchReport: vi.fn().mockReturnValue({}) };
     const commentarySpy = { generateCommentary: vi.fn().mockReturnValue([]) };
 

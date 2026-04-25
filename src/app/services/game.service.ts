@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
 import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
+import { rankThreeStars } from '../models/match-stars';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
@@ -835,7 +836,9 @@ export class GameService {
       cleanSheets: 0,
       minutesPlayed: 0,
       fouls: 0,
-      foulsSuffered: 0
+      foulsSuffered: 0,
+      totalMatchRating: 0,
+      starNominations: { first: 0, second: 0, third: 0 }
     };
 
     player.careerStats.forEach(season => {
@@ -854,6 +857,10 @@ export class GameService {
       aggregated.minutesPlayed += season.minutesPlayed;
       aggregated.fouls += (season.fouls ?? 0);
       aggregated.foulsSuffered += (season.foulsSuffered ?? 0);
+      aggregated.totalMatchRating += season.totalMatchRating;
+      aggregated.starNominations.first += season.starNominations.first;
+      aggregated.starNominations.second += season.starNominations.second;
+      aggregated.starNominations.third += season.starNominations.third;
     });
 
     return aggregated;
@@ -913,17 +920,8 @@ export class GameService {
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, preparedHomeTeam, preparedAwayTeam);
 
-    const reportSeasonYear =
-      match.seasonYear ??
-      currentLeague?.currentSeasonYear ??
-      preparedHomeTeam.seasonSnapshots?.[preparedHomeTeam.seasonSnapshots.length - 1]?.seasonYear ??
-      preparedAwayTeam.seasonSnapshots?.[preparedAwayTeam.seasonSnapshots.length - 1]?.seasonYear;
-    if (reportSeasonYear == null) {
-      throw new Error(`Missing season year for match report generation (match: ${match.id})`);
-    }
-    
     // Generate post-match analysis
-    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam, reportSeasonYear);
+    const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam);
     
     // Extract key events from match state
     const keyEvents = this.extractKeyEvents(matchState.events);
@@ -1030,7 +1028,7 @@ export class GameService {
     });
 
     if (!skipPlayerCareerStats) {
-      this.updatePlayerCareerStats(matchState.events, homeTeam, awayTeam, matchState.homeScore, matchState.awayScore);
+      this.updatePlayerCareerStats(matchState, homeTeam, awayTeam);
     }
 
     const finalizedTeams = this.dressBestPlayers(updatedTeams);
@@ -1071,10 +1069,11 @@ export class GameService {
     return statsEntry;
   }
 
-  private updatePlayerCareerStats(events: PlayByPlayEvent[], homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number) {
+  private updatePlayerCareerStats(matchState: MatchState, homeTeam: Team, awayTeam: Team) {
     const l = this.leagueState();
     if (!l) return;
 
+    const { events, homeScore, awayScore } = matchState;
     const homePlayers = resolveTeamPlayers(homeTeam);
     const awayPlayers = resolveTeamPlayers(awayTeam);
 
@@ -1151,11 +1150,13 @@ export class GameService {
             }
             break;
           case EventType.TACKLE:
+            if (playerId !== primaryPlayerId) return;
             if (player.position !== Position.GOALKEEPER) {
               stats.tackles++;
             }
             break;
           case EventType.INTERCEPTION:
+            if (playerId !== primaryPlayerId) return;
             if (player.position !== Position.GOALKEEPER) {
               stats.interceptions++;
             }
@@ -1270,6 +1271,35 @@ export class GameService {
       const stats = this.getOrCreateCurrentSeasonStats(awayGoalkeeper, awayGoalkeeper.teamId);
       stats.cleanSheets++;
     }
+
+    // Accumulate per-match ratings and star nominations.
+    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
+    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
+
+    // Accumulate totalMatchRating for every player who entered the pitch.
+    [...homePlayerStats, ...awayPlayerStats].forEach(ps => {
+      if (ps.rating === 0) return;
+      const player = [...homePlayers, ...awayPlayers].find(p => p.id === ps.playerId);
+      if (!player) return;
+      const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+      stats.totalMatchRating += ps.rating;
+    });
+
+    // Determine stars and increment nomination counts.
+    const winningTeamId = homeScore > awayScore
+      ? homeTeam.id
+      : awayScore > homeScore
+        ? awayTeam.id
+        : null;
+    const stars = rankThreeStars(homePlayerStats, awayPlayerStats, winningTeamId, homeTeam.id, awayTeam.id);
+    stars.forEach(star => {
+      const player = [...homePlayers, ...awayPlayers].find(p => p.id === star.stats.playerId);
+      if (!player) return;
+      const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+      if (star.rank === 1) stats.starNominations.first++;
+      else if (star.rank === 2) stats.starNominations.second++;
+      else stats.starNominations.third++;
+    });
   }
 
   private extractKeyEvents(events: PlayByPlayEvent[]): MatchEvent[] {

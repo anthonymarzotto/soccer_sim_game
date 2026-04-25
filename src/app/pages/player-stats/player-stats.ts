@@ -5,9 +5,14 @@ import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Position } from '../../models/enums';
+import { calculateAverageMatchRating, formatAverageMatchRating } from '../../models/player-career-stats';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
-type SortColumn = 'name' | 'team' | 'position' | keyof PlayerCareerStats;
+type NumericPlayerCareerStatColumn = Exclude<{
+  [K in keyof PlayerCareerStats]: PlayerCareerStats[K] extends number ? K : never;
+}[keyof PlayerCareerStats], 'seasonYear' | 'totalMatchRating'>;
+
+type SortColumn = 'name' | 'team' | 'position' | NumericPlayerCareerStatColumn | 'averageRating' | 'starsFirst' | 'starsSecond' | 'starsThird';
 type SortableValue = string | number;
 
 interface PlayerStatsRow {
@@ -134,9 +139,21 @@ export class PlayerStatsComponent {
         } else if (column === 'position') {
           aVal = a.player.position;
           bVal = b.player.position;
+        } else if (column === 'averageRating') {
+          aVal = calculateAverageMatchRating(a.stats) ?? 0;
+          bVal = calculateAverageMatchRating(b.stats) ?? 0;
+        } else if (column === 'starsFirst') {
+          aVal = a.stats.starNominations.first;
+          bVal = b.stats.starNominations.first;
+        } else if (column === 'starsSecond') {
+          aVal = a.stats.starNominations.second;
+          bVal = b.stats.starNominations.second;
+        } else if (column === 'starsThird') {
+          aVal = a.stats.starNominations.third;
+          bVal = b.stats.starNominations.third;
         } else {
-          aVal = a.stats[column] ?? 0;
-          bVal = b.stats[column] ?? 0;
+          aVal = a.stats[column];
+          bVal = b.stats[column];
         }
 
         if (typeof aVal === 'string') {
@@ -191,7 +208,11 @@ export class PlayerStatsComponent {
     { key: 'yellowCards', label: 'Yellow', sortable: true },
     { key: 'redCards', label: 'Red', sortable: true },
     { key: 'fouls', label: 'Fouls', sortable: true },
-    { key: 'foulsSuffered', label: 'Fouls Suf', sortable: true }
+    { key: 'foulsSuffered', label: 'Fouls Suf', sortable: true },
+    { key: 'averageRating', label: 'Avg Rating', sortable: true },
+    { key: 'starsFirst', label: '🥇', sortable: true },
+    { key: 'starsSecond', label: '🥈', sortable: true },
+    { key: 'starsThird', label: '🥉', sortable: true }
   ];
 
   getTeamName(teamId: string): string {
@@ -245,7 +266,13 @@ export class PlayerStatsComponent {
     if (column === 'name') return row.player.name;
     if (column === 'team') return this.getTeamName(row.player.teamId);
     if (column === 'position') return row.player.position;
-    return row.stats[column] ?? 0;
+    if (column === 'averageRating') {
+      return formatAverageMatchRating(row.stats);
+    }
+    if (column === 'starsFirst') return row.stats.starNominations.first;
+    if (column === 'starsSecond') return row.stats.starNominations.second;
+    if (column === 'starsThird') return row.stats.starNominations.third;
+    return row.stats[column];
   }
 
   isUserTeamPlayer(row: PlayerStatsRow): boolean {

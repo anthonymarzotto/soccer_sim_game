@@ -3,13 +3,14 @@ import { ElementRef } from '@angular/core';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { WatchGameComponent } from './watch-game';
-import { EventImportance, EventType, TeamSide, MatchPhase } from '../../models/enums';
+import { EventImportance, EventType, TeamSide, MatchPhase, Position, Role } from '../../models/enums';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
 import { TeamColorsService } from '../../services/team-colors.service';
+import { StatisticsService } from '../../services/statistics.service';
 import { MatchState } from '../../models/simulation.types';
-import { Player } from '../../models/types';
+import { Player, PlayerStatistics, Team } from '../../models/types';
 import { vi } from 'vitest';
 
 describe('WatchGameComponent', () => {
@@ -41,6 +42,60 @@ describe('WatchGameComponent', () => {
     awayYellowCards: 0,
     homeRedCards: 0,
     awayRedCards: 0
+  });
+
+  const createPlayer = (id: string, teamId: string, role: Role, position = Position.MIDFIELDER): Player => ({
+    id,
+    name: id,
+    teamId,
+    role,
+    position
+  } as Player);
+
+  const createTeam = (id: string, players: Player[]): Team => ({
+    id,
+    name: id,
+    players,
+    playerIds: players.map(player => player.id),
+    selectedFormationId: 'test',
+    formationAssignments: players
+      .filter(player => player.role === Role.STARTER)
+      .reduce<Record<string, string>>((assignments, player, index) => {
+        assignments[`slot_${index}`] = player.id;
+        return assignments;
+      }, {}),
+    stats: {
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+      last5: []
+    }
+  } as Team);
+
+  const createPlayerStats = (player: Player, rating: number): PlayerStatistics => ({
+    playerId: player.id,
+    playerName: player.name,
+    position: player.position,
+    rating,
+    minutesPlayed: 0,
+    passes: 0,
+    passesSuccessful: 0,
+    shots: 0,
+    shotsOnTarget: 0,
+    goals: 0,
+    assists: 0,
+    tackles: 0,
+    tacklesSuccessful: 0,
+    interceptions: 0,
+    saves: 0,
+    fouls: 0,
+    foulsSuffered: 0,
+    yellowCards: 0,
+    redCards: 0
   });
 
   beforeEach(() => {
@@ -89,6 +144,12 @@ describe('WatchGameComponent', () => {
           provide: TeamColorsService,
           useValue: {
             getTeamColors: () => ({ main: '#0ea5e9', accent: '#f43f5e' })
+          }
+        },
+        {
+          provide: StatisticsService,
+          useValue: {
+            generatePlayerStatistics: () => []
           }
         }
       ]
@@ -361,6 +422,50 @@ describe('WatchGameComponent', () => {
     expect(startFeedSpy).toHaveBeenCalledWith(false);
 
     startFeedSpy.mockRestore();
+  });
+
+  it('shows kickoff live ratings for starters while bench players remain unrated', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    const homeStarter = createPlayer('home-starter', 'home', Role.STARTER);
+    const homeBench = createPlayer('home-bench', 'home', Role.BENCH);
+    const awayStarter = createPlayer('away-starter', 'away', Role.STARTER);
+    const homeTeam = createTeam('home', [homeStarter, homeBench]);
+    const awayTeam = createTeam('away', [awayStarter]);
+
+    component.matchState.set(createMatchState([]));
+    component.homeTeam.set(homeTeam);
+    component.awayTeam.set(awayTeam);
+
+    vi.spyOn(component.gameService, 'getPlayersForTeam').mockImplementation((teamId: string) => {
+      if (teamId === 'home') {
+        return [homeStarter, homeBench];
+      }
+
+      return [awayStarter];
+    });
+
+    const generatePlayerStatisticsSpy = vi.spyOn(component.statisticsService, 'generatePlayerStatistics')
+      .mockImplementation((state, team) => {
+        expect(state.currentMinute).toBe(0);
+
+        if (team.id === 'home') {
+          return [
+            createPlayerStats(homeStarter, 50),
+            createPlayerStats(homeBench, 0)
+          ];
+        }
+
+        return [createPlayerStats(awayStarter, 50)];
+      });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).recomputeLivePlayerStats(0);
+
+    expect(generatePlayerStatisticsSpy).toHaveBeenCalledTimes(2);
+    expect(component.getLiveRating(homeStarter.id, TeamSide.HOME)).toBe('5.0');
+    expect(component.getLiveRating(homeBench.id, TeamSide.HOME)).toBe('--');
   });
 
   it('returns latest tracked fatigue snapshot at or before current minute', () => {

@@ -96,6 +96,8 @@ export interface PlayerCareerStats {
   minutesPlayed: number;
   fouls: number;
   foulsSuffered: number;
+  totalMatchRating: number;
+  starNominations: { first: number; second: number; third: number };
 }
 
 export interface TeamStats {
@@ -171,10 +173,13 @@ export interface MatchStatistics {
 export interface MatchReport {
   matchId: string;
   finalScore: string;
+  matchStats: MatchStatistics;
   keyMoments: MatchEvent[];
   tacticalAnalysis: TacticalAnalysis;
   playerPerformances: PlayerAnalysis;
   matchSummary: string;
+  homePlayerStats: PlayerStatistics[];
+  awayPlayerStats: PlayerStatistics[];
 }
 
 export interface TacticalAnalysis {

@@ -219,9 +219,10 @@ export class CommentaryService {
 
   generatePlayerHighlight(player: Player, events: PlayByPlayEvent[]): string {
     const playerEvents = events.filter(e => e.playerIds.includes(player.id));
+    const primaryPlayerEvents = playerEvents.filter(e => e.playerIds[0] === player.id);
     const goals = playerEvents.filter(e => e.type === EventType.GOAL).length;
     const assists = playerEvents.filter(e => e.type === EventType.PASS && e.success).length;
-    const tackles = playerEvents.filter(e => e.type === EventType.TACKLE).length;
+    const tackles = primaryPlayerEvents.filter(e => e.type === EventType.TACKLE).length;
     const shots = playerEvents.filter(e => e.type === EventType.SHOT).length;
 
     if (goals > 0 || assists > 0) {
@@ -300,17 +301,14 @@ export class CommentaryService {
     playerName: string,
     targetName: string
   ): string {
+    const dispossessedPlayerName = targetName || playerName;
+    const dispossessedPossessive = dispossessedPlayerName.endsWith('s')
+      ? `${dispossessedPlayerName}'`
+      : `${dispossessedPlayerName}'s`;
     const carryResult = this.getCarryResult(event);
 
     if (style === CommentaryStyle.DETAILED && carryResult === 'DISPOSSESSED') {
-      const carryDispossessionPhrases = [
-        `${playerName} loses the ball fighting for space.`,
-        `${playerName} is dispossessed in a contested challenge.`,
-        `${playerName} gives away possession trying to carry the ball forward.`,
-        `${playerName} loses the ball trying to break through.`,
-        `${playerName} is caught out of possession.`
-      ];
-      return carryDispossessionPhrases[Math.floor(Math.random() * carryDispossessionPhrases.length)];
+      return `${playerName} wins it from ${dispossessedPlayerName}.`;
     }
 
     const passFailure = this.getPassFailure(event);
@@ -320,15 +318,15 @@ export class CommentaryService {
       const intentLabel = this.describePassIntent(passIntent);
 
       if (passFailure === 'TACKLED') {
-        return `${playerName} loses out after an attempted ${intentLabel}. Possession turns over.`;
+        return `${playerName} steps in and wins it from ${dispossessedPlayerName} after the attempted ${intentLabel}.`;
       }
 
       if (passFailure === 'LANE_CUT_OUT') {
-        return `${playerName} tries an ${intentLabel}, but the lane is cut out.`;
+        return `${playerName} reads it and cuts out ${dispossessedPossessive} ${intentLabel}.`;
       }
 
       if (passFailure === 'OVERHIT') {
-        return `${playerName} overhits the ${intentLabel} and it runs through.`;
+        return `${dispossessedPlayerName} overhits the ${intentLabel} and ${playerName} gathers.`;
       }
     }
 

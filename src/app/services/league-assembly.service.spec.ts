@@ -41,7 +41,9 @@ describe('LeagueAssemblyService', () => {
                 cleanSheets: 4,
                 minutesPlayed: 900,
                 fouls: 0,
-                foulsSuffered: 0
+                foulsSuffered: 0,
+                totalMatchRating: 0,
+                starNominations: { first: 0, second: 0, third: 0 }
               }
             ],
             mood: 73,
