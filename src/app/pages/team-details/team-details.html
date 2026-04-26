@@ -14,6 +14,17 @@
             </span>
           }
         </div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-zinc-400 text-xs">Viewing:</span>
+          <select
+            [value]="teamId()"
+            (change)="onTeamChange($any($event.target).value)"
+            class="bg-zinc-800 border border-zinc-700 text-white rounded px-2 py-0.5 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors">
+            @for (t of allTeamsSorted(); track t.id) {
+              <option [value]="t.id" [selected]="t.id === teamId()">{{ userTeamId() === t.id ? '★ ' : '' }}{{ t.name }}</option>
+            }
+          </select>
+        </div>
         <p class="text-zinc-400 mt-1">Team Roster & Details</p>
       </div>
     </div>
