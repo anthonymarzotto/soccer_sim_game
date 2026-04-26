@@ -143,12 +143,12 @@
             <a [routerLink]="['/player', star.stats.playerId]" class="flex-1 text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:underline">
               {{ star.stats.playerName }}
             </a>
-            <span class="text-sm font-mono font-bold text-white">{{ formatRating(star.stats.rating) }}</span>
             <span class="text-xs text-zinc-500 font-mono">
               @if (star.stats.goals > 0) { ⚽{{ star.stats.goals }} }
-              @if (star.stats.assists > 0) { 🅰️{{ star.stats.assists }} }
+              @if (star.stats.assists > 0) { 🤝{{ star.stats.assists }} }
               @if (star.stats.saves > 0) { 🧤{{ star.stats.saves }} }
             </span>
+            <span class="text-sm font-mono font-bold text-white">{{ formatRating(star.stats.rating) }}</span>
           </div>
         }
       </div>

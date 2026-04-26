@@ -149,7 +149,9 @@ describe('WatchGameComponent', () => {
         {
           provide: StatisticsService,
           useValue: {
-            generatePlayerStatistics: () => []
+            generatePlayerStatistics: () => [],
+            getSuccessfulPassBonus: () => 0,
+            getSuccessfulTackleBonus: () => 0
           }
         }
       ]
@@ -466,6 +468,66 @@ describe('WatchGameComponent', () => {
     expect(generatePlayerStatisticsSpy).toHaveBeenCalledTimes(2);
     expect(component.getLiveRating(homeStarter.id, TeamSide.HOME)).toBe('5.0');
     expect(component.getLiveRating(homeBench.id, TeamSide.HOME)).toBe('--');
+  });
+
+  it('builds structured breakdown data for rated players with full negative detail', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const player = createPlayer('home-starter', 'home', Role.STARTER);
+    const statsService = TestBed.inject(StatisticsService);
+
+    component.liveHomePlayerStats.set([
+      {
+        ...createPlayerStats(player, 67),
+        passesSuccessful: 18,
+        goals: 1,
+        assists: 1,
+        saves: 0,
+        tacklesSuccessful: 2,
+        interceptions: 1,
+        shots: 3,
+        shotsOnTarget: 2,
+        fouls: 1,
+        foulsSuffered: 2,
+        yellowCards: 0,
+        redCards: 0
+      }
+    ]);
+
+    vi.spyOn(statsService, 'getSuccessfulPassBonus').mockReturnValue(2.4);
+
+    const breakdown = component.getLiveRatingBreakdownData(player.id, TeamSide.HOME);
+
+    expect(breakdown).not.toBeNull();
+    expect(breakdown?.isRated).toBe(true);
+    expect(breakdown?.currentRating).toBe(67);
+    expect(breakdown?.positiveItems.find(item => item.label === 'Passes')?.count).toBe(18);
+    expect(breakdown?.positiveItems.find(item => item.label === 'Passes')?.points).toBe(2.4);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Misses')?.count).toBe(1);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Misses')?.points).toBe(1);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Fouls')?.points).toBe(2);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Yellow Cards')?.points).toBe(0);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Red Cards')?.points).toBe(0);
+
+    const summary = component.getLiveRatingBreakdown(player.id, TeamSide.HOME);
+    expect(summary).toContain('Base 5.0');
+    expect(summary).toContain('Current 6.7');
+    expect(summary).toContain('Misses:1');
+  });
+
+  it('returns a clear breakdown message for unrated players', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const bench = createPlayer('home-bench', 'home', Role.BENCH);
+
+    component.liveHomePlayerStats.set([createPlayerStats(bench, 0)]);
+
+    const breakdown = component.getLiveRatingBreakdownData(bench.id, TeamSide.HOME);
+
+    expect(breakdown).not.toBeNull();
+    expect(breakdown?.isRated).toBe(false);
+    expect(breakdown?.unavailableReason).toBe('No rating: player has not entered the match');
+    expect(component.getLiveRatingBreakdown(bench.id, TeamSide.HOME)).toBe('No rating: player has not entered the match');
   });
 
   it('returns latest tracked fatigue snapshot at or before current minute', () => {

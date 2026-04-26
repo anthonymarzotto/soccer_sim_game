@@ -1276,13 +1276,15 @@ export class GameService {
     const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
     const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
 
-    // Accumulate totalMatchRating for every player who entered the pitch.
+    // Accumulate assists and totalMatchRating from per-match player stats.
     [...homePlayerStats, ...awayPlayerStats].forEach(ps => {
-      if (ps.rating === 0) return;
       const player = [...homePlayers, ...awayPlayers].find(p => p.id === ps.playerId);
       if (!player) return;
       const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
-      stats.totalMatchRating += ps.rating;
+      stats.assists += ps.assists;
+      if (ps.rating !== 0) {
+        stats.totalMatchRating += ps.rating;
+      }
     });
 
     // Determine stars and increment nomination counts.

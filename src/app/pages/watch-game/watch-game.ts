@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, OnDestroy, effect, ElementRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, OnDestroy, effect, ElementRef, ViewChild, isDevMode } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
@@ -58,6 +58,29 @@ interface TeamLineupEntry {
   playerStatus: Role;
 }
 
+interface RatingBreakdownItem {
+  label: string;
+  count: number;
+  points: number;
+}
+
+interface LiveRatingBreakdown {
+  currentRating: number;
+  isRated: boolean;
+  unavailableReason: string | null;
+  positiveItems: RatingBreakdownItem[];
+  negativeItems: RatingBreakdownItem[];
+  positiveTotal: number;
+  negativeTotal: number;
+}
+
+interface LiveRatingTooltipState {
+  left: number;
+  top: number;
+  ratingLabel: string;
+  breakdown: LiveRatingBreakdown;
+}
+
 @Component({
   selector: 'app-watch-game',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -90,6 +113,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   statisticsService = inject(StatisticsService);
   TeamSide = TeamSide;
   Role = Role;
+  readonly showDevRatingTooltip = isDevMode();
 
   // Match data
   matchId = signal<string>('');
@@ -145,6 +169,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   currentCommentaryItem = signal<CommentaryItem | null>(null);
   isCommentaryExpanded = signal<boolean>(false);
   commentaryAutoFollow = signal<boolean>(true);
+  ratingTooltip = signal<LiveRatingTooltipState | null>(null);
   private pausedSpeed: number | null = null;
   
   // Replay scheduling
@@ -1216,6 +1241,132 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const entry = stats.find(s => s.playerId === playerId);
     if (!entry || entry.rating === 0) return '--';
     return (entry.rating / 10).toFixed(1);
+  }
+
+  getLiveRatingBreakdown(playerId: string, side: TeamSide): string {
+    const breakdown = this.getLiveRatingBreakdownData(playerId, side);
+
+    if (!breakdown) {
+      return 'Live rating unavailable';
+    }
+
+    if (!breakdown.isRated) {
+      return breakdown.unavailableReason ?? 'Live rating unavailable';
+    }
+
+    const positiveSummary = breakdown.positiveItems
+      .map((item) => `${item.label}:${item.count}`)
+      .join(' ');
+    const negativeSummary = breakdown.negativeItems
+      .map((item) => `${item.label}:${item.count}`)
+      .join(' ');
+
+    return `Base 5.0 | +${(breakdown.positiveTotal / 10).toFixed(1)} (${positiveSummary}) | -${(breakdown.negativeTotal / 10).toFixed(1)} (${negativeSummary}) | Current ${(breakdown.currentRating / 10).toFixed(1)}`;
+  }
+
+  getLiveRatingBreakdownData(playerId: string, side: TeamSide): LiveRatingBreakdown | null {
+    const stats = side === TeamSide.HOME
+      ? this.liveHomePlayerStats()
+      : this.liveAwayPlayerStats();
+    const entry = stats.find((s) => s.playerId === playerId);
+
+    if (!entry) {
+      return null;
+    }
+
+    if (entry.rating === 0) {
+      return {
+        currentRating: 0,
+        isRated: false,
+        unavailableReason: 'No rating: player has not entered the match',
+        positiveItems: [],
+        negativeItems: [],
+        positiveTotal: 0,
+        negativeTotal: 0,
+      };
+    }
+
+    const passBonus = this.statisticsService.getSuccessfulPassBonus(entry.passesSuccessful);
+    const tackleBonus = this.statisticsService.getSuccessfulTackleBonus(entry.tacklesSuccessful);
+    const misses = Math.max(entry.shots - entry.shotsOnTarget, 0);
+
+    const positiveItems: RatingBreakdownItem[] = [
+      { label: 'Goals', count: entry.goals, points: entry.goals * 10 },
+      { label: 'Assists', count: entry.assists, points: entry.assists * 5 },
+      { label: 'Passes', count: entry.passesSuccessful, points: passBonus },
+      { label: 'Tackles', count: entry.tacklesSuccessful, points: tackleBonus },
+      { label: 'Saves', count: entry.saves, points: entry.saves * 4 },
+      { label: 'Interceptions', count: entry.interceptions, points: entry.interceptions * 2 },
+      { label: 'Shots On Target', count: entry.shotsOnTarget, points: entry.shotsOnTarget * 1 },
+      { label: 'Fouls Won', count: entry.foulsSuffered, points: entry.foulsSuffered * 0.5 },
+    ];
+    const negativeItems: RatingBreakdownItem[] = [
+      { label: 'Misses', count: misses, points: misses * 1 },
+      { label: 'Fouls', count: entry.fouls, points: entry.fouls * 2 },
+      { label: 'Yellow Cards', count: entry.yellowCards, points: entry.yellowCards * 5 },
+      { label: 'Red Cards', count: entry.redCards, points: entry.redCards * 15 },
+    ];
+
+    return {
+      currentRating: entry.rating,
+      isRated: true,
+      unavailableReason: null,
+      positiveItems,
+      negativeItems,
+      positiveTotal: positiveItems.reduce((sum, item) => sum + item.points, 0),
+      negativeTotal: negativeItems.reduce((sum, item) => sum + item.points, 0),
+    };
+  }
+
+  formatRatingDelta(points: number): string {
+    return (points / 10).toFixed(1);
+  }
+
+  showLiveRatingTooltip(event: MouseEvent, playerId: string, side: TeamSide): void {
+    if (!this.showDevRatingTooltip) {
+      return;
+    }
+
+    const breakdown = this.getLiveRatingBreakdownData(playerId, side);
+    if (!breakdown) {
+      this.ratingTooltip.set(null);
+      return;
+    }
+
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      this.ratingTooltip.set(null);
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const tooltipWidth = 256;
+    const estimatedHeight = breakdown.isRated ? 292 : 72;
+    const gap = 8;
+    const viewportPadding = 8;
+
+    let left = rect.right + gap;
+    if (left + tooltipWidth > window.innerWidth - viewportPadding) {
+      left = rect.left - tooltipWidth - gap;
+    }
+    left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipWidth - viewportPadding));
+
+    let top = rect.bottom + gap;
+    if (top + estimatedHeight > window.innerHeight - viewportPadding) {
+      top = rect.top - estimatedHeight - gap;
+    }
+    top = Math.max(viewportPadding, Math.min(top, window.innerHeight - estimatedHeight - viewportPadding));
+
+    this.ratingTooltip.set({
+      left,
+      top,
+      ratingLabel: this.getLiveRating(playerId, side),
+      breakdown,
+    });
+  }
+
+  hideLiveRatingTooltip(): void {
+    this.ratingTooltip.set(null);
   }
 
   getLiveStarRank(playerId: string): 1 | 2 | 3 | null {

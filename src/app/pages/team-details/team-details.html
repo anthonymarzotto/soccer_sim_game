@@ -187,6 +187,13 @@
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ row.player ? getPlayerOverall(row.player) : '--' }}</td>
+                      @let sStatsB = getRowStats(row.player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                        <span class="text-amber-400 font-mono">{{ formatAvgRating(sStatsB) }}</span>
+                        @if (sStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ sStatsB.starNominations.first }}</span>}
+                        @if (sStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ sStatsB.starNominations.second }}</span>}
+                        @if (sStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ sStatsB.starNominations.third }}</span>}
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {

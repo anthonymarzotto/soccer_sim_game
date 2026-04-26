@@ -591,9 +591,9 @@
               <table class="w-full text-sm">
                 <thead>
                   <tr class="border-b border-zinc-700 text-zinc-400">
-                    <th class="text-left py-3 px-4 font-semibold">Season</th>
-                    <th class="text-right py-3 px-4 font-semibold">Games</th>
-                    <th class="text-right py-3 px-4 font-semibold">Minutes</th>
+                    <th class="w-20 whitespace-nowrap text-left py-3 px-4 font-semibold">Season</th>
+                    <th class="w-16 whitespace-nowrap text-right py-3 px-4 font-semibold">Games</th>
+                    <th class="w-24 whitespace-nowrap text-right py-3 px-4 font-semibold">Minutes</th>
                     @if (statsView === 'offensive') {
                       <th class="text-right py-3 px-4 font-semibold">Goals</th>
                       <th class="text-right py-3 px-4 font-semibold">Assists</th>
@@ -623,9 +623,9 @@
                   @for (s of allSeasonStats(); track s.seasonYear) {
                     <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors"
                         [class.bg-zinc-800/30]="s.seasonYear === currentYear">
-                      <td class="py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ s.matchesPlayed || 0 }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
+                      <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.matchesPlayed || 0 }}</td>
+                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
                       @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ s.goals || 0 }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
@@ -655,9 +655,9 @@
                   @let totals = getTotalCareerStats();
                   @if (totals) {
                     <tr class="border-t-2 border-zinc-600 bg-zinc-800/50 font-semibold">
-                      <td class="py-3 px-4 text-zinc-300">TOTAL</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
+                      <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300">TOTAL</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
+                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
                       @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ totals.goals }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>

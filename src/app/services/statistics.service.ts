@@ -9,6 +9,8 @@ import { resolveTeamPlayers } from '../models/team-players';
   providedIn: 'root'
 })
 export class StatisticsService {
+  private static readonly MAX_SUCCESSFUL_PASS_BONUS = 6;
+  private static readonly SUCCESSFUL_TACKLE_BONUS = 1;
   
   generateMatchStatistics(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchStatistics {
     const homeEvents = matchState.events.filter(e => this.isHomeTeamEvent(e, homeTeam));
@@ -64,6 +66,8 @@ export class StatisticsService {
     const playerStats: PlayerStatistics[] = [];
     const teamPlayers = resolveTeamPlayers(team, players);
     const starterIds = new Set(Object.values(team.formationAssignments));
+    const teamPlayerIds = new Set(teamPlayers.map(player => player.id));
+    const assistsByPlayer = this.calculateAssistsByPlayer(matchState.events, teamPlayerIds);
 
     teamPlayers.forEach(player => {
       const isStarter = starterIds.has(player.id);
@@ -90,7 +94,7 @@ export class StatisticsService {
         shots: playerEvents.filter(e => e.type === EventType.SHOT).length,
         shotsOnTarget: playerEvents.filter(e => e.type === EventType.SHOT && e.success).length,
         goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
-        assists: this.calculateAssists(playerEvents, matchState.events),
+        assists: assistsByPlayer.get(player.id) ?? 0,
         tackles: player.position === Position.GOALKEEPER ? 0 : tackleEvents.length,
         tacklesSuccessful: player.position === Position.GOALKEEPER ? 0 : tackleEvents.filter(e => e.success).length,
         interceptions: interceptionEvents.length,
@@ -101,7 +105,7 @@ export class StatisticsService {
         saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
         rating: !hasEnteredMatch
           ? 0
-          : this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents)
+          : this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, assistsByPlayer.get(player.id) ?? 0)
       };
 
       playerStats.push(stats);
@@ -221,31 +225,48 @@ export class StatisticsService {
     return events.filter(e => e.type === EventType.SAVE).length;
   }
 
-  private calculateAssists(playerEvents: PlayByPlayEvent[], allEvents: PlayByPlayEvent[]): number {
-    let assists = 0;
-    
-    playerEvents.forEach(event => {
-      if (event.type === EventType.PASS && event.success) {
-        // Check if next goal was assisted by this pass
-        const goalEvent = allEvents.find(e => 
-          e.time > event.time && 
-          e.type === EventType.GOAL && 
-          e.playerIds[0] !== event.playerIds[0]
-        );
-        
-        if (goalEvent) assists++;
+  private calculateAssistsByPlayer(allEvents: PlayByPlayEvent[], teamPlayerIds: Set<string>): Map<string, number> {
+    const assistsByPlayer = new Map<string, number>();
+
+    allEvents.forEach((event, index) => {
+      if (event.type !== EventType.GOAL) {
+        return;
+      }
+
+      const scorerId = event.playerIds[0];
+      if (!scorerId || !teamPlayerIds.has(scorerId)) {
+        return;
+      }
+
+      for (let i = index - 1; i >= 0; i--) {
+        const priorEvent = allEvents[i];
+        if (priorEvent.type !== EventType.PASS || !priorEvent.success) {
+          continue;
+        }
+
+        const passerId = priorEvent.playerIds[0];
+        const receiverId = priorEvent.playerIds[1];
+        if (!passerId || !receiverId) {
+          continue;
+        }
+
+        if (receiverId === scorerId && passerId !== scorerId && teamPlayerIds.has(passerId)) {
+          assistsByPlayer.set(passerId, (assistsByPlayer.get(passerId) ?? 0) + 1);
+        }
+
+        // The last successful pass to the scorer is the only eligible assist event.
+        break;
       }
     });
 
-    return assists;
+    return assistsByPlayer;
   }
 
-  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[]): number {
+  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], assists: number): number {
     let rating = 50; // fixed base — event-driven, no ability anchor
 
     // Positive contributions
     const goals = events.filter(e => e.type === EventType.GOAL).length;
-    const assists = this.calculateAssists(events, events);
     const successfulPasses = events.filter(e => e.type === EventType.PASS && e.success && e.playerIds[0] === player.id).length;
     const tackles = player.position === Position.GOALKEEPER ? 0 : primaryPlayerEvents.filter(e => e.type === EventType.TACKLE && e.success).length;
     const saves = player.position === Position.GOALKEEPER
@@ -256,6 +277,8 @@ export class StatisticsService {
     const corners = events.filter(e => e.type === EventType.CORNER && e.playerIds[0] === player.id).length;
     const freeKicks = events.filter(e => e.type === EventType.FREE_KICK && e.playerIds[0] === player.id).length;
     const penalties = events.filter(e => e.type === EventType.PENALTY && e.playerIds[0] === player.id).length;
+    const successfulPassBonus = this.getSuccessfulPassBonus(successfulPasses);
+    const successfulTackleBonus = this.getSuccessfulTackleBonus(tackles);
 
     // Negative contributions
     const misses = primaryPlayerEvents.filter(e => e.type === EventType.MISS).length;
@@ -266,12 +289,31 @@ export class StatisticsService {
     // Victim contributions
     const foulsSuffered = events.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length;
 
-    rating += (goals * 10) + (assists * 5) + (successfulPasses * 0.1) + (tackles * 2);
+    rating += (goals * 10) + (assists * 5) + successfulPassBonus + successfulTackleBonus;
     rating += (saves * 4) + (interceptions * 2) + (shotsOnTarget * 1) + (corners * 0.5) + (freeKicks * 0.5) + (penalties * 3);
     rating += (foulsSuffered * 0.5);
     rating -= (misses * 1) + (fouls * 2) + (yellowCards * 5) + (redCards * 15);
 
     return Math.max(1, Math.min(100, Math.round(rating)));
+  }
+
+  getSuccessfulPassBonus(successfulPasses: number): number {
+    if (successfulPasses <= 0) {
+      return 0;
+    }
+
+    // Keep passing meaningful while preventing high-tempo possessions from saturating ratings too early.
+    const linearComponent = successfulPasses * 0.03;
+    const volumeComponent = Math.log10(successfulPasses + 1) * 1.6;
+    return Math.min(StatisticsService.MAX_SUCCESSFUL_PASS_BONUS, linearComponent + volumeComponent);
+  }
+
+  getSuccessfulTackleBonus(successfulTackles: number): number {
+    if (successfulTackles <= 0) {
+      return 0;
+    }
+
+    return successfulTackles * StatisticsService.SUCCESSFUL_TACKLE_BONUS;
   }
 
   private hasEnteredMatch(

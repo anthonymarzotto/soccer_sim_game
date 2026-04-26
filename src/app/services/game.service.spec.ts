@@ -841,6 +841,146 @@ describe('GameService persistence integration', () => {
     expect(awayAttacker.careerStats[0]?.interceptions).toBe(0);
   });
 
+  it('should persist assists from generated player statistics', async () => {
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    await service.ensureHydrated();
+
+    const emptyStats = {
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+      last5: [] as MatchResult[]
+    };
+
+    const homePasser = {
+      id: 'home-pass',
+      name: 'Home Passer',
+      teamId: 'team-1',
+      position: Position.MIDFIELDER,
+      role: Role.STARTER,
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
+    } as unknown as Player;
+    const homeScorer = {
+      id: 'home-score',
+      name: 'Home Scorer',
+      teamId: 'team-1',
+      position: Position.FORWARD,
+      role: Role.STARTER,
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
+    } as unknown as Player;
+    const awayPlayer = {
+      id: 'away-1',
+      name: 'Away Player',
+      teamId: 'team-2',
+      position: Position.DEFENDER,
+      role: Role.STARTER,
+      careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
+    } as unknown as Player;
+
+    const homeTeam = {
+      id: 'team-1',
+      name: 'Team One',
+      players: [homePasser, homeScorer],
+      playerIds: ['home-pass', 'home-score'],
+      stats: emptyStats,
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { slot_0: 'home-pass', slot_1: 'home-score' },
+      seasonSnapshots: [{ seasonYear: 2026, playerIds: ['home-pass', 'home-score'], stats: emptyStats }]
+    } as unknown as Team;
+    const awayTeam = {
+      id: 'team-2',
+      name: 'Team Two',
+      players: [awayPlayer],
+      playerIds: ['away-1'],
+      stats: emptyStats,
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { slot_0: 'away-1' },
+      seasonSnapshots: [{ seasonYear: 2026, playerIds: ['away-1'], stats: emptyStats }]
+    } as unknown as Team;
+
+    const statsService = (service as unknown as {
+      statisticsService: { generatePlayerStatistics: ReturnType<typeof vi.fn> };
+    }).statisticsService;
+
+    const makePlayerStats = (playerId: string, playerName: string, position: Position, assists: number, rating: number) => ({
+      playerId,
+      playerName,
+      position,
+      minutesPlayed: 90,
+      passes: 0,
+      passesSuccessful: 0,
+      shots: 0,
+      shotsOnTarget: 0,
+      goals: 0,
+      assists,
+      tackles: 0,
+      tacklesSuccessful: 0,
+      interceptions: 0,
+      fouls: 0,
+      foulsSuffered: 0,
+      yellowCards: 0,
+      redCards: 0,
+      saves: 0,
+      rating
+    });
+
+    statsService.generatePlayerStatistics = vi
+      .fn()
+      .mockReturnValueOnce([
+        makePlayerStats('home-pass', 'Home Passer', Position.MIDFIELDER, 1, 60),
+        makePlayerStats('home-score', 'Home Scorer', Position.FORWARD, 0, 70)
+      ])
+      .mockReturnValueOnce([
+        makePlayerStats('away-1', 'Away Player', Position.DEFENDER, 0, 55)
+      ]);
+
+    (service as unknown as {
+      updatePlayerCareerStats: (matchState: unknown, homeTeam: Team, awayTeam: Team) => void;
+    }).updatePlayerCareerStats(
+      {
+        ballPossession: {
+          teamId: 'team-1',
+          playerWithBall: 'home-pass',
+          location: { x: 50, y: 50 },
+          phase: MatchPhase.BUILD_UP,
+          passes: 0,
+          timeElapsed: 0
+        },
+        events: [
+          { id: 'p1', type: EventType.PASS, description: '', playerIds: ['home-pass', 'home-score'], location: { x: 50, y: 50 }, time: 12, success: true },
+          { id: 'g1', type: EventType.GOAL, description: '', playerIds: ['home-score'], location: { x: 50, y: 50 }, time: 13, success: true }
+        ],
+        fatigueTimeline: [],
+        currentMinute: 90,
+        homeScore: 1,
+        awayScore: 0,
+        homeShots: 1,
+        awayShots: 0,
+        homeShotsOnTarget: 1,
+        awayShotsOnTarget: 0,
+        homePossession: 50,
+        awayPossession: 50,
+        homeCorners: 0,
+        awayCorners: 0,
+        homeFouls: 0,
+        awayFouls: 0,
+        homeYellowCards: 0,
+        awayYellowCards: 0,
+        homeRedCards: 0,
+        awayRedCards: 0
+      },
+      homeTeam,
+      awayTeam
+    );
+
+    expect(homePasser.careerStats[0]?.assists).toBe(1);
+    expect(homeScorer.careerStats[0]?.assists).toBe(0);
+  });
+
   it('should truncate minutes played when a starter is sent off', async () => {
     const storedLeague = {
       teams: [
