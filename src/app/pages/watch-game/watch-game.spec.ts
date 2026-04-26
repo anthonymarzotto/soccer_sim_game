@@ -86,6 +86,7 @@ describe('WatchGameComponent', () => {
     passesSuccessful: 0,
     shots: 0,
     shotsOnTarget: 0,
+    misses: 0,
     goals: 0,
     assists: 0,
     tackles: 0,
@@ -151,7 +152,7 @@ describe('WatchGameComponent', () => {
           useValue: {
             generatePlayerStatistics: () => [],
             getSuccessfulPassBonus: () => 0,
-            getSuccessfulTackleBonus: () => 0
+            computeRatingBreakdown: () => ({ positiveItems: [], negativeItems: [], positiveTotal: 0, negativeTotal: 0 })
           }
         }
       ]
@@ -487,6 +488,7 @@ describe('WatchGameComponent', () => {
         interceptions: 1,
         shots: 3,
         shotsOnTarget: 2,
+        misses: 1,
         fouls: 1,
         foulsSuffered: 2,
         yellowCards: 0,
@@ -494,7 +496,26 @@ describe('WatchGameComponent', () => {
       }
     ]);
 
-    vi.spyOn(statsService, 'getSuccessfulPassBonus').mockReturnValue(2.4);
+    vi.spyOn(statsService, 'computeRatingBreakdown').mockReturnValue({
+      positiveItems: [
+        { label: 'Goals', count: 1, points: 10 },
+        { label: 'Assists', count: 1, points: 5 },
+        { label: 'Passes', count: 18, points: 2.4 },
+        { label: 'Tackles', count: 2, points: 2 },
+        { label: 'Saves', count: 0, points: 0 },
+        { label: 'Interceptions', count: 1, points: 2 },
+        { label: 'Shots On Target', count: 2, points: 2 },
+        { label: 'Fouls Won', count: 2, points: 1 },
+      ],
+      negativeItems: [
+        { label: 'Misses', count: 1, points: 1 },
+        { label: 'Fouls', count: 1, points: 2 },
+        { label: 'Yellow Cards', count: 0, points: 0 },
+        { label: 'Red Cards', count: 0, points: 0 },
+      ],
+      positiveTotal: 24.4,
+      negativeTotal: 3,
+    });
 
     const breakdown = component.getLiveRatingBreakdownData(player.id, TeamSide.HOME);
 

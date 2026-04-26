@@ -13,6 +13,7 @@ function makeStat(playerId: string, rating: number, overrides: Partial<PlayerSta
     passesSuccessful: 0,
     shots: 0,
     shotsOnTarget: 0,
+    misses: 0,
     goals: 0,
     assists: 0,
     tackles: 0,

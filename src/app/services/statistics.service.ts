@@ -5,12 +5,40 @@ import { EventType, Position } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
 
 
+export interface PlayerRatingBreakdownItem {
+  label: string;
+  count: number;
+  points: number;
+}
+
+export interface PlayerRatingBreakdown {
+  positiveItems: PlayerRatingBreakdownItem[];
+  negativeItems: PlayerRatingBreakdownItem[];
+  positiveTotal: number;
+  negativeTotal: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class StatisticsService {
   private static readonly MAX_SUCCESSFUL_PASS_BONUS = 6;
-  private static readonly SUCCESSFUL_TACKLE_BONUS = 1;
+  static readonly RATING_WEIGHTS = {
+    goal: 10,
+    assist: 5,
+    save: 4,
+    interception: 2,
+    shotOnTarget: 1,
+    corner: 0.5,
+    freeKick: 0.5,
+    penalty: 3,
+    foulSuffered: 0.5,
+    tackle: 1,
+    miss: 1,
+    foul: 2,
+    yellowCard: 5,
+    redCard: 15,
+  } as const;
   
   generateMatchStatistics(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchStatistics {
     const homeEvents = matchState.events.filter(e => this.isHomeTeamEvent(e, homeTeam));
@@ -91,8 +119,9 @@ export class StatisticsService {
         minutesPlayed,
         passes: passEvents.length,
         passesSuccessful: passEvents.filter(e => e.success).length,
-        shots: playerEvents.filter(e => e.type === EventType.SHOT).length,
-        shotsOnTarget: playerEvents.filter(e => e.type === EventType.SHOT && e.success).length,
+        shots: primaryPlayerEvents.filter(e => e.type === EventType.GOAL || e.type === EventType.SAVE || e.type === EventType.MISS).length,
+        shotsOnTarget: primaryPlayerEvents.filter(e => e.type === EventType.GOAL || e.type === EventType.SAVE).length,
+        misses: primaryPlayerEvents.filter(e => e.type === EventType.MISS).length,
         goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
         assists: assistsByPlayer.get(player.id) ?? 0,
         tackles: player.position === Position.GOALKEEPER ? 0 : tackleEvents.length,
@@ -273,12 +302,11 @@ export class StatisticsService {
       ? events.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length
       : 0;
     const interceptions = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION).length;
-    const shotsOnTarget = events.filter(e => e.type === EventType.SHOT && e.success && e.playerIds[0] === player.id).length;
+    const shotsOnTarget = events.filter(e => (e.type === EventType.GOAL || e.type === EventType.SAVE) && e.playerIds[0] === player.id).length;
     const corners = events.filter(e => e.type === EventType.CORNER && e.playerIds[0] === player.id).length;
     const freeKicks = events.filter(e => e.type === EventType.FREE_KICK && e.playerIds[0] === player.id).length;
     const penalties = events.filter(e => e.type === EventType.PENALTY && e.playerIds[0] === player.id).length;
     const successfulPassBonus = this.getSuccessfulPassBonus(successfulPasses);
-    const successfulTackleBonus = this.getSuccessfulTackleBonus(tackles);
 
     // Negative contributions
     const misses = primaryPlayerEvents.filter(e => e.type === EventType.MISS).length;
@@ -289,12 +317,42 @@ export class StatisticsService {
     // Victim contributions
     const foulsSuffered = events.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length;
 
-    rating += (goals * 10) + (assists * 5) + successfulPassBonus + successfulTackleBonus;
-    rating += (saves * 4) + (interceptions * 2) + (shotsOnTarget * 1) + (corners * 0.5) + (freeKicks * 0.5) + (penalties * 3);
-    rating += (foulsSuffered * 0.5);
-    rating -= (misses * 1) + (fouls * 2) + (yellowCards * 5) + (redCards * 15);
+    const W = StatisticsService.RATING_WEIGHTS;
+    rating += (goals * W.goal) + (assists * W.assist) + successfulPassBonus + (tackles * W.tackle);
+    rating += (saves * W.save) + (interceptions * W.interception) + (shotsOnTarget * W.shotOnTarget) + (corners * W.corner) + (freeKicks * W.freeKick) + (penalties * W.penalty);
+    rating += (foulsSuffered * W.foulSuffered);
+    rating -= (misses * W.miss) + (fouls * W.foul) + (yellowCards * W.yellowCard) + (redCards * W.redCard);
 
     return Math.max(1, Math.min(100, Math.round(rating)));
+  }
+
+  computeRatingBreakdown(stats: PlayerStatistics): PlayerRatingBreakdown {
+    const passBonus = this.getSuccessfulPassBonus(stats.passesSuccessful);
+    const W = StatisticsService.RATING_WEIGHTS;
+
+    const positiveItems: PlayerRatingBreakdownItem[] = [
+      { label: 'Goals', count: stats.goals, points: stats.goals * W.goal },
+      { label: 'Assists', count: stats.assists, points: stats.assists * W.assist },
+      { label: 'Passes', count: stats.passesSuccessful, points: passBonus },
+      { label: 'Tackles', count: stats.tacklesSuccessful, points: stats.tacklesSuccessful * W.tackle },
+      { label: 'Saves', count: stats.saves, points: stats.saves * W.save },
+      { label: 'Interceptions', count: stats.interceptions, points: stats.interceptions * W.interception },
+      { label: 'Shots On Target', count: stats.shotsOnTarget, points: stats.shotsOnTarget * W.shotOnTarget },
+      { label: 'Fouls Won', count: stats.foulsSuffered, points: stats.foulsSuffered * W.foulSuffered },
+    ];
+    const negativeItems: PlayerRatingBreakdownItem[] = [
+      { label: 'Misses', count: stats.misses, points: stats.misses * W.miss },
+      { label: 'Fouls', count: stats.fouls, points: stats.fouls * W.foul },
+      { label: 'Yellow Cards', count: stats.yellowCards, points: stats.yellowCards * W.yellowCard },
+      { label: 'Red Cards', count: stats.redCards, points: stats.redCards * W.redCard },
+    ];
+
+    return {
+      positiveItems,
+      negativeItems,
+      positiveTotal: positiveItems.reduce((sum, item) => sum + item.points, 0),
+      negativeTotal: negativeItems.reduce((sum, item) => sum + item.points, 0),
+    };
   }
 
   getSuccessfulPassBonus(successfulPasses: number): number {
@@ -306,14 +364,6 @@ export class StatisticsService {
     const linearComponent = successfulPasses * 0.03;
     const volumeComponent = Math.log10(successfulPasses + 1) * 1.6;
     return Math.min(StatisticsService.MAX_SUCCESSFUL_PASS_BONUS, linearComponent + volumeComponent);
-  }
-
-  getSuccessfulTackleBonus(successfulTackles: number): number {
-    if (successfulTackles <= 0) {
-      return 0;
-    }
-
-    return successfulTackles * StatisticsService.SUCCESSFUL_TACKLE_BONUS;
   }
 
   private hasEnteredMatch(

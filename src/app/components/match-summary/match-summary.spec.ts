@@ -170,6 +170,7 @@ function createPlayerStats(playerId: string) {
     passesSuccessful: 45,
     shots: 0,
     shotsOnTarget: 0,
+    misses: 0,
     goals: 0,
     assists: 0,
     tackles: 0,

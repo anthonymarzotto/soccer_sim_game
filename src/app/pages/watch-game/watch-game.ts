@@ -6,7 +6,7 @@ import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
 import { TeamColorsService } from '../../services/team-colors.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
-import { StatisticsService } from '../../services/statistics.service';
+import { StatisticsService, PlayerRatingBreakdownItem } from '../../services/statistics.service';
 import { rankThreeStars, MatchStarEntry } from '../../models/match-stars';
 import { Match, MatchEvent, MatchStatistics, Team, Player, PlayerStatistics } from '../../models/types';
 import { EventType, EventImportance, CommentaryStyle, TeamSide, Role } from '../../models/enums';
@@ -58,18 +58,12 @@ interface TeamLineupEntry {
   playerStatus: Role;
 }
 
-interface RatingBreakdownItem {
-  label: string;
-  count: number;
-  points: number;
-}
-
 interface LiveRatingBreakdown {
   currentRating: number;
   isRated: boolean;
   unavailableReason: string | null;
-  positiveItems: RatingBreakdownItem[];
-  negativeItems: RatingBreakdownItem[];
+  positiveItems: PlayerRatingBreakdownItem[];
+  negativeItems: PlayerRatingBreakdownItem[];
   positiveTotal: number;
   negativeTotal: number;
 }
@@ -1286,35 +1280,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       };
     }
 
-    const passBonus = this.statisticsService.getSuccessfulPassBonus(entry.passesSuccessful);
-    const tackleBonus = this.statisticsService.getSuccessfulTackleBonus(entry.tacklesSuccessful);
-    const misses = Math.max(entry.shots - entry.shotsOnTarget, 0);
-
-    const positiveItems: RatingBreakdownItem[] = [
-      { label: 'Goals', count: entry.goals, points: entry.goals * 10 },
-      { label: 'Assists', count: entry.assists, points: entry.assists * 5 },
-      { label: 'Passes', count: entry.passesSuccessful, points: passBonus },
-      { label: 'Tackles', count: entry.tacklesSuccessful, points: tackleBonus },
-      { label: 'Saves', count: entry.saves, points: entry.saves * 4 },
-      { label: 'Interceptions', count: entry.interceptions, points: entry.interceptions * 2 },
-      { label: 'Shots On Target', count: entry.shotsOnTarget, points: entry.shotsOnTarget * 1 },
-      { label: 'Fouls Won', count: entry.foulsSuffered, points: entry.foulsSuffered * 0.5 },
-    ];
-    const negativeItems: RatingBreakdownItem[] = [
-      { label: 'Misses', count: misses, points: misses * 1 },
-      { label: 'Fouls', count: entry.fouls, points: entry.fouls * 2 },
-      { label: 'Yellow Cards', count: entry.yellowCards, points: entry.yellowCards * 5 },
-      { label: 'Red Cards', count: entry.redCards, points: entry.redCards * 15 },
-    ];
-
     return {
       currentRating: entry.rating,
       isRated: true,
       unavailableReason: null,
-      positiveItems,
-      negativeItems,
-      positiveTotal: positiveItems.reduce((sum, item) => sum + item.points, 0),
-      negativeTotal: negativeItems.reduce((sum, item) => sum + item.points, 0),
+      ...this.statisticsService.computeRatingBreakdown(entry),
     };
   }
 

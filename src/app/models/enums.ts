@@ -1,21 +1,26 @@
 // Event Types
 export enum EventType {
+  // --- Emitted to matchState.events by the simulation engine ---
   PASS = 'PASS',
-  SHOT = 'SHOT',
-  TACKLE = 'TACKLE',
-  INTERCEPTION = 'INTERCEPTION',
+  GOAL = 'GOAL',
   SAVE = 'SAVE',
   MISS = 'MISS',
-  GOAL = 'GOAL',
+  FOUL = 'FOUL',
+  YELLOW_CARD = 'YELLOW_CARD',
+  RED_CARD = 'RED_CARD',
+  SUBSTITUTION = 'SUBSTITUTION',
+  TACKLE = 'TACKLE',
+  INTERCEPTION = 'INTERCEPTION',
+
+  // --- Transient action tokens: used to route simulation logic, never emitted ---
+  SHOT = 'SHOT',   // resolved into GOAL | SAVE | MISS before event creation
+  CARRY = 'CARRY', // ball movement step; no event is recorded
+
+  // --- Defined but not yet implemented in the simulation engine ---
   CORNER = 'CORNER',
   FREE_KICK = 'FREE_KICK',
   PENALTY = 'PENALTY',
-  SUBSTITUTION = 'SUBSTITUTION',
   INJURY = 'INJURY',
-  YELLOW_CARD = 'YELLOW_CARD',
-  RED_CARD = 'RED_CARD',
-  FOUL = 'FOUL',
-  CARRY = 'CARRY'
 }
 
 // Position Types

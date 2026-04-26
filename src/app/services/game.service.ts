@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { GeneratorService } from './generator.service';
@@ -1080,7 +1080,7 @@ export class GameService {
     });
 
     if (!skipPlayerCareerStats) {
-      this.updatePlayerCareerStats(matchState, homeTeam, awayTeam);
+      this.updatePlayerCareerStats(matchState, homeTeam, awayTeam, matchReport.homePlayerStats, matchReport.awayPlayerStats);
     }
 
     const finalizedTeams = this.dressBestPlayers(updatedTeams);
@@ -1121,7 +1121,7 @@ export class GameService {
     return statsEntry;
   }
 
-  private updatePlayerCareerStats(matchState: MatchState, homeTeam: Team, awayTeam: Team) {
+  private updatePlayerCareerStats(matchState: MatchState, homeTeam: Team, awayTeam: Team, homePlayerStats: PlayerStatistics[], awayPlayerStats: PlayerStatistics[]) {
     const l = this.leagueState();
     if (!l) return;
 
@@ -1133,15 +1133,6 @@ export class GameService {
     const allPlayers = new Map<string, Player>();
     [...homePlayers, ...awayPlayers].forEach(player => {
       allPlayers.set(player.id, player);
-    });
-
-    // When both SHOT and terminal outcome events exist for the same attempt,
-    // count the attempt once from the terminal outcome and skip the paired SHOT.
-    const shotOutcomeByMinuteAndShooter = new Set<string>();
-    events.forEach((event) => {
-      if ((event.type === EventType.GOAL || event.type === EventType.SAVE || event.type === EventType.MISS) && event.playerIds[0]) {
-        shotOutcomeByMinuteAndShooter.add(`${event.time}:${event.playerIds[0]}`);
-      }
     });
 
     // Update player stats based on events
@@ -1192,15 +1183,6 @@ export class GameService {
 
         // Update career stats based on event type
         switch (event.type) {
-          case EventType.SHOT:
-            if (shotOutcomeByMinuteAndShooter.has(`${event.time}:${playerId}`)) {
-              return;
-            }
-            stats.shots++;
-            if (event.success) {
-              stats.shotsOnTarget++;
-            }
-            break;
           case EventType.TACKLE:
             if (playerId !== primaryPlayerId) return;
             if (player.position !== Position.GOALKEEPER) {
@@ -1323,10 +1305,6 @@ export class GameService {
       const stats = this.getOrCreateCurrentSeasonStats(awayGoalkeeper, awayGoalkeeper.teamId);
       stats.cleanSheets++;
     }
-
-    // Accumulate per-match ratings and star nominations.
-    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
-    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
 
     // Accumulate assists and totalMatchRating from per-match player stats.
     [...homePlayerStats, ...awayPlayerStats].forEach(ps => {

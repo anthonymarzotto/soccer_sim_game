@@ -56,7 +56,7 @@ export function rankThreeStars(
     if (aCards !== bCards) return aCards - bCards;
 
     // 7. Stable playerId ordering
-    return a.stats.playerId < b.stats.playerId ? -1 : 1;
+    return a.stats.playerId < b.stats.playerId ? -1 : a.stats.playerId > b.stats.playerId ? 1 : 0;
   });
 
   return candidates.slice(0, 3).map((c, i) => ({

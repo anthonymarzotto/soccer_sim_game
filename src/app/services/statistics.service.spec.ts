@@ -256,7 +256,7 @@ describe('StatisticsService', () => {
       expect(stats.rating).toBeGreaterThan(50);
     });
 
-    it('does not give a save bonus to a non-GK player mentioned in a SAVE event', () => {
+    it('gives shooter a shots-on-target bonus for a SAVE event, not the GK save bonus', () => {
       const shooter = createTestPlayer({ id: 'fwd1', position: Position.FORWARD });
       const gk = createTestPlayer({ id: 'gk1', position: Position.GOALKEEPER });
       const team = makeTeam([shooter, gk]);
@@ -266,7 +266,10 @@ describe('StatisticsService', () => {
       const results = service.generatePlayerStatistics(state, team, [shooter, gk]);
       const fwdStats = results.find(s => s.playerId === 'fwd1')!;
 
-      expect(fwdStats.rating).toBe(50); // no bonus, no penalty for a saved shot
+      // SAVE counts as a shot on target for the shooter (+1 shotsOnTarget rating bonus)
+      expect(fwdStats.shots).toBe(1);
+      expect(fwdStats.shotsOnTarget).toBe(1);
+      expect(fwdStats.rating).toBe(51);
     });
 
     it('clamps minimum rating to 1 even with many negative events', () => {

@@ -227,6 +227,7 @@ export interface PlayerStatistics {
   passesSuccessful: number;
   shots: number;
   shotsOnTarget: number;
+  misses: number;
   goals: number;
   assists: number;
   tackles: number;
