@@ -347,6 +347,13 @@ export class GameService {
     this.isSimulatingWeekState.set(true);
 
     try {
+      // Refresh lineups once before the loop; updateLeagueWithMatchResult re-dresses
+      // teams after each match, so per-match refreshes are redundant.
+      const initialLeague = this.leagueState();
+      if (initialLeague) {
+        this.persistRefreshedComputerControlledLineups(initialLeague);
+      }
+
       while (!this.isSeasonComplete()) {
         const league = this.leagueState()!;
         const matches = league.schedule.filter(
@@ -365,7 +372,7 @@ export class GameService {
             enableFatigue: true,
             skipCommentary: true,
             simulationVariant: 'B'
-          }, { bypassWeekSimulationLock: true });
+          }, { bypassWeekSimulationLock: true, skipLineupRefresh: true });
         });
 
         this.advanceWeek();
@@ -921,7 +928,7 @@ export class GameService {
     homeTeam: Team,
     awayTeam: Team,
     config?: Partial<SimulationConfig>,
-    options?: { bypassWeekSimulationLock?: boolean; bypassSingleMatchSimulationLock?: boolean }
+    options?: { bypassWeekSimulationLock?: boolean; bypassSingleMatchSimulationLock?: boolean; skipLineupRefresh?: boolean }
   ): SimulateMatchWithDetailsResult | null {
     if (!this.canMutateLeagueState()) {
       return null;
@@ -935,9 +942,11 @@ export class GameService {
       return null;
     }
 
-    const refreshedLeague = this.leagueState();
-    if (refreshedLeague) {
-      this.persistRefreshedComputerControlledLineups(refreshedLeague);
+    if (!options?.skipLineupRefresh) {
+      const refreshedLeague = this.leagueState();
+      if (refreshedLeague) {
+        this.persistRefreshedComputerControlledLineups(refreshedLeague);
+      }
     }
 
     const currentLeague = this.leagueState();
