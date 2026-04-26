@@ -712,7 +712,9 @@ describe('GameService persistence integration', () => {
         homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
         awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
-      matchSummary: 'Summary'
+      matchSummary: 'Summary',
+      homePlayerStats: [],
+      awayPlayerStats: []
     };
 
     (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
@@ -797,7 +799,7 @@ describe('GameService persistence integration', () => {
     } as unknown as Team;
 
     (service as unknown as {
-      updatePlayerCareerStats: (matchState: unknown, homeTeam: Team, awayTeam: Team) => void;
+      updatePlayerCareerStats: (matchState: unknown, homeTeam: Team, awayTeam: Team, homePlayerStats: unknown[], awayPlayerStats: unknown[]) => void;
     }).updatePlayerCareerStats(
       {
         ballPossession: {
@@ -832,7 +834,9 @@ describe('GameService persistence integration', () => {
         awayRedCards: 0
       },
       homeTeam,
-      awayTeam
+      awayTeam,
+      [],
+      []
     );
 
     expect(homeDefender.careerStats[0]?.tackles).toBe(1);
@@ -902,10 +906,6 @@ describe('GameService persistence integration', () => {
       seasonSnapshots: [{ seasonYear: 2026, playerIds: ['away-1'], stats: emptyStats }]
     } as unknown as Team;
 
-    const statsService = (service as unknown as {
-      statisticsService: { generatePlayerStatistics: ReturnType<typeof vi.fn> };
-    }).statisticsService;
-
     const makePlayerStats = (playerId: string, playerName: string, position: Position, assists: number, rating: number) => ({
       playerId,
       playerName,
@@ -928,18 +928,16 @@ describe('GameService persistence integration', () => {
       rating
     });
 
-    statsService.generatePlayerStatistics = vi
-      .fn()
-      .mockReturnValueOnce([
-        makePlayerStats('home-pass', 'Home Passer', Position.MIDFIELDER, 1, 60),
-        makePlayerStats('home-score', 'Home Scorer', Position.FORWARD, 0, 70)
-      ])
-      .mockReturnValueOnce([
-        makePlayerStats('away-1', 'Away Player', Position.DEFENDER, 0, 55)
-      ]);
+    const homePlayerStats = [
+      makePlayerStats('home-pass', 'Home Passer', Position.MIDFIELDER, 1, 60),
+      makePlayerStats('home-score', 'Home Scorer', Position.FORWARD, 0, 70)
+    ];
+    const awayPlayerStats = [
+      makePlayerStats('away-1', 'Away Player', Position.DEFENDER, 0, 55)
+    ];
 
     (service as unknown as {
-      updatePlayerCareerStats: (matchState: unknown, homeTeam: Team, awayTeam: Team) => void;
+      updatePlayerCareerStats: (matchState: unknown, homeTeam: Team, awayTeam: Team, homePlayerStats: unknown[], awayPlayerStats: unknown[]) => void;
     }).updatePlayerCareerStats(
       {
         ballPossession: {
@@ -974,7 +972,9 @@ describe('GameService persistence integration', () => {
         awayRedCards: 0
       },
       homeTeam,
-      awayTeam
+      awayTeam,
+      homePlayerStats,
+      awayPlayerStats
     );
 
     expect(homePasser.careerStats[0]?.assists).toBe(1);
@@ -1106,7 +1106,9 @@ describe('GameService persistence integration', () => {
         homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
         awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
       },
-      matchSummary: 'Player One was dismissed in the first half.'
+      matchSummary: 'Player One was dismissed in the first half.',
+      homePlayerStats: [],
+      awayPlayerStats: []
     };
 
     (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
@@ -1323,7 +1325,9 @@ describe('GameService persistence integration', () => {
         homeTeam: { mvp: { playerId: 'p-sub', playerName: 'p-sub', position: Position.MIDFIELDER, rating: 5, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
         awayTeam: { mvp: { playerId: 'p-opp', playerName: 'p-opp', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 }
       },
-      matchSummary: 'p-sub sent off after coming on.'
+      matchSummary: 'p-sub sent off after coming on.',
+      homePlayerStats: [],
+      awayPlayerStats: []
     };
 
     (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
@@ -1424,7 +1428,9 @@ describe('GameService persistence integration', () => {
         homeTeam: { mvp: { playerId: 'p-home', playerName: 'p-home', position: Position.FORWARD, rating: 8, goals: 1, assists: 0, shots: 1, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
         awayTeam: { mvp: { playerId: 'p-away-gk', playerName: 'p-away-gk', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
-      matchSummary: 'Single finished shot event path.'
+      matchSummary: 'Single finished shot event path.',
+      homePlayerStats: [],
+      awayPlayerStats: []
     };
 
     (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
@@ -1484,7 +1490,7 @@ describe('GameService simulation engine', () => {
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
-        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: {} }
       ]
@@ -1539,7 +1545,7 @@ describe('GameService simulation engine', () => {
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
-        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: {} }
       ]
@@ -1584,7 +1590,7 @@ describe('GameService simulation engine', () => {
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
-        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({}) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
         { provide: FormationLibraryService, useValue: {} }
       ]
@@ -1622,7 +1628,7 @@ describe('GameService simulation engine', () => {
     };
     const variantBSpy = { simulateMatch: vi.fn().mockReturnValue(variantBMatchState) };
     const statisticsSpy = { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) };
-    const reportSpy = { generateMatchReport: vi.fn().mockReturnValue({}) };
+    const reportSpy = { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) };
     const commentarySpy = { generateCommentary: vi.fn().mockReturnValue([]) };
 
     TestBed.configureTestingModule({
@@ -1659,3 +1665,4 @@ describe('GameService simulation engine', () => {
     );
   });
 });
+
