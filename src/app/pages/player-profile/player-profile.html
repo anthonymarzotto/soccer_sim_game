@@ -33,7 +33,7 @@
               (change)="onPlayerChange($any($event.target).value)"
               class="bg-zinc-800 border border-zinc-700 text-white rounded px-2 py-0.5 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors">
               @for (pl of allPlayersOnTeamSorted(); track pl.id) {
-                <option [value]="pl.id" [selected]="pl.id === playerId()">{{ pl.position }} – {{ pl.name }}</option>
+                <option [value]="pl.id">{{ pl.position }} – {{ pl.name }}</option>
               }
             </select>
           </div>
