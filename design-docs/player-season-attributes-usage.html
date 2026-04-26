@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PlayerSeasonAttributes Usage Map</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #09090b;
+      color: #f4f4f5;
+      font-family: sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      padding: 2rem;
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.2; }
+
+    h1 { font-size: 1.25rem; color: #a1a1aa; font-weight: 600; margin-bottom: 0.25rem; }
+    h2 { font-size: 1rem; font-weight: 600; color: #e4e4e7; }
+    h3 { font-size: 0.875rem; font-weight: 600; color: #e4e4e7; margin-bottom: 6px; }
+
+    p { margin: 0; color: #a1a1aa; }
+
+    .panel {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel-header { display: grid; gap: 6px; }
+
+    .chip-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .chip-card {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+
+    .chip-card strong {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f4f4f5;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .chip-card span { color: #71717a; font-size: 0.8rem; }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: #a1a1aa;
+    }
+
+    .legend-item .pill { flex-shrink: 0; margin-top: 1px; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 12px 14px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .stat-card .stat-name {
+      font-weight: 600;
+      color: #e4e4e7;
+      font-size: 0.875rem;
+    }
+
+    .stat-card .stat-meta {
+      color: #52525b;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat-card p {
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+
+    .lane-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .lane {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 14px;
+      display: grid;
+      gap: 6px;
+      position: relative;
+    }
+
+    .lane::after {
+      content: '→';
+      position: absolute;
+      right: -13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #3f3f46;
+      font-size: 1rem;
+    }
+
+    .lane:last-child::after { display: none; }
+    .lane p { font-size: 0.82rem; }
+
+    .principle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+
+    .principle {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .principle p { font-size: 0.875rem; }
+
+    code, .formula {
+      font-family: ui-monospace, 'Cascadia Code', monospace;
+      font-size: 0.8em;
+      background: #27272a;
+      color: #d4d4d8;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    .formula {
+      display: inline-block;
+      margin-top: 6px;
+      color: #a5f3fc;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #71717a;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      font-weight: 600;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      vertical-align: top;
+      border-bottom: 1px solid #1f1f22;
+      font-size: 0.875rem;
+      color: #a1a1aa;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #1f1f22; }
+
+    td.col-stat {
+      font-weight: 600;
+      color: #e4e4e7;
+      white-space: nowrap;
+    }
+
+    td.col-stat small {
+      display: block;
+      color: #52525b;
+      font-size: 0.72rem;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 3px;
+    }
+
+    .status-stack { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    ul.compact {
+      margin: 0;
+      padding-left: 16px;
+      display: grid;
+      gap: 3px;
+      color: #a1a1aa;
+    }
+
+    ul.compact li code { font-size: 0.78rem; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .pill.live      { background: #134e4a; color: #5eead4; }
+    .pill.team      { background: #431407; color: #fb923c; }
+    .pill.viaoverall { background: #1e3a5f; color: #93c5fd; }
+    .pill.unused    { background: #27272a; color: #71717a; }
+
+    .footnote {
+      font-size: 0.8rem;
+      color: #52525b;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>PlayerSeasonAttributes — Variant B Usage Map</h1>
+      <p>
+        This document tracks every field on <code>PlayerSeasonAttributes</code>: where the current code reads it and
+        what other context shapes the outcome. The simulation reads each player's current-season snapshot through
+        <code>getCurrentPlayerSeasonAttributes</code>; it never mutates the stored stat values during a match.
+      </p>
+
+      <div class="legend">
+        <div class="legend-item"><span class="pill live">live</span><span>Read by the Variant B match engine inside per-tick action resolution.</span></div>
+        <div class="legend-item"><span class="pill team">team setup</span><span>Read pre-match to derive team tactics, formation slot fit, or auto-lineups.</span></div>
+        <div class="legend-item"><span class="pill viaoverall">via overall</span><span>Not read directly today; only influences gameplay because it was folded into generated <code>overall</code>.</span></div>
+        <div class="legend-item"><span class="pill unused">unused</span><span>Persisted and rolled forward but no current consumer in setup, simulation, or reporting.</span></div>
+      </div>
+
+      <div class="chip-row">
+        <div class="chip-card"><strong>23</strong><span>Total stats on <code>PlayerSeasonAttributes</code></span></div>
+        <div class="chip-card"><strong>13</strong><span>Read by match setup or Variant B</span></div>
+        <div class="chip-card"><strong>2</strong><span>Indirect via generated <code>overall</code></span></div>
+        <div class="chip-card"><strong>8</strong><span>Unused in the current pipeline</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Read Path</h2>
+        <p>Each attribute travels through the same four stages. Most never make it past stage&nbsp;2.</p>
+      </div>
+
+      <div class="lane-grid">
+        <article class="lane">
+          <h3>1. Generate</h3>
+          <p><code>GeneratorService.generatePlayer</code> rolls every stat via <code>randomStat(min, max, teamQuality)</code> with position boosts for forwards, midfielders, defenders, and goalkeepers.</p>
+        </article>
+        <article class="lane">
+          <h3>2. Bake overall</h3>
+          <p><code>overall</code> is computed once, immediately after generation, via two asymmetric formulas:</p>
+          <span class="formula" style="font-size:0.72rem">outfield: floor( speed+strength+flair+vision+determination<br>+tackling+shooting+heading+longPassing+shortPassing ) ÷ 10</span>
+          <span class="formula" style="font-size:0.72rem;margin-top:6px">goalkeeper: same 10 + handling×2 + reflexes×2 + commandOfArea ) ÷ 15</span>
+          <p style="margin-top:6px">Never recomputed — including at rollover. The goalkeeper divisor compensates for the three extra weighted GK terms; if you add a stat to the GK sum, update the denominator too.</p>
+        </article>
+        <article class="lane">
+          <h3>3. Resolve season</h3>
+          <p><code>getCurrentPlayerSeasonAttributes(player, seasonYear)</code> returns the active record. A missing record is treated as a persistence integrity failure and throws.</p>
+        </article>
+        <article class="lane">
+          <h3>4. Consume</h3>
+          <p><code>FieldService</code> derives team tactics; <code>MatchSimulationVariantBService</code> reads stats inside action resolution; <code>GameService</code> uses <code>overall</code> as a quality proxy; <code>StatisticsService</code> seeds player ratings from <code>overall</code>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Active Stats</h2>
+        <p>These ten attributes have at least one read path beyond contributing to generated <code>overall</code>.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>Status</th>
+              <th>How it is used</th>
+              <th>Other factors in the same check</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-stat">speed<small>physical</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>
+                Bonus to carry success in <code>calculateCarrySuccessChance</code>; secondary input when <code>selectTurnoverWinner</code> ranks defenders for tackles and interceptions; raises team <code>speedAvg</code> in <code>calculateTeamTactics</code>, gating possession and counter-attack styles.
+                <span class="formula">+ (speed − 70) × 0.002</span>
+                <span class="formula" style="color:#71717a">→ final carry chance clamped [0.30, 0.86]</span>
+              </td>
+              <td>Position bonus, attacking depth, defensive pressure, carry shape modifier, fatigue &gt; 70, plus turnover winner proximity.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">strength<small>physical</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Secondary input when <code>selectTurnoverWinner</code> ranks defenders for <code>TACKLE</code> events.
+                <span class="formula">tackle attribution = proximity + tackling + strength × 0.5 + determination × 0.35 + speed × 0.2</span>
+              </td>
+              <td>Only affects which defender gets credited after a turnover has already happened; does not change turnover probability.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">flair<small>mental</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Smaller secondary bonus to carry success.
+                <span class="formula">+ (flair − 70) × 0.0015</span>
+              </td>
+              <td>Same context as <code>speed</code> on the carry check.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">shortPassing<small>skill</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>
+                Averaged with <code>longPassing</code> for pass success in <code>calculatePassSuccess</code>; feeds <code>passingAvg</code> in tactics selection.
+                <span class="formula">base = (shortPassing + longPassing) / 2</span>
+                <span class="formula" style="color:#71717a">→ final base clamped [20, 95] %</span>
+              </td>
+              <td>Passer fatigue modifier, target fatigue modifier, playing style, pass intent (recycle / progression / through-ball / cross), defensive pressure × 4, pass-shape coverage.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">longPassing<small>skill</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>Same averaged base as <code>shortPassing</code>.</td>
+              <td>Same context as <code>shortPassing</code>.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">shooting<small>skill</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>
+                Drives both shot-resolution gates in <code>executeVariantBShot</code>; raises team <code>attackingAvg</code> in tactics.
+                <span class="formula">onTarget = base + (shooting − 70) × scale</span>
+                <span class="formula">goal = base + (shooting − keeperSkill) × scale</span>
+              </td>
+              <td>Attacking depth, lateral distance, fatigue &gt; 75, defensive pressure, possession-chain quality, shot-shape bonus, home advantage on goal chance.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">handling<small>goalkeeping</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Averaged with <code>reflexes</code> to form <code>keeperSkill</code> on the goal-chance gate.
+                <span class="formula">keeperSkill = (handling + reflexes) / 2</span>
+              </td>
+              <td>Falls back to 70 if no on-field goalkeeper. Same shot context modifiers as the shooter side.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">reflexes<small>goalkeeping</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>Other half of <code>keeperSkill</code>.</td>
+              <td>Same as <code>handling</code>.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">endurance<small>physical</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>Tie-breaker in <code>selectSubstitutionIncomingPlayer</code> after candidates are sorted by <code>overall</code>.</td>
+              <td>Only consulted when two bench players share the same <code>overall</code> in the same position.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">vision<small>mental</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Primary non-distance input when <code>selectTurnoverWinner</code> ranks defenders for <code>INTERCEPTION</code> events.
+                <span class="formula">interception attribution = proximity + vision + tackling × 0.5 + determination × 0.35 + speed × 0.2</span>
+              </td>
+              <td>Only affects which defender gets credited after a pass failure has already happened; does not change pass success or failure mode.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">determination<small>mental</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>Secondary input in both tackle and interception winner attribution inside <code>selectTurnoverWinner</code>.</td>
+              <td>Combined with proximity and the primary event-specific skill (<code>tackling</code> or <code>vision</code>).</td>
+            </tr>
+            <tr>
+              <td class="col-stat">tackling<small>skill</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>Used as <code>defendingAvg</code> in <code>calculateTeamTactics</code> to set pressing intensity, playing style, and mentality; primary skill input for <code>TACKLE</code> winner attribution and secondary skill input for <code>INTERCEPTION</code> winner attribution.</td>
+              <td>Combined with <code>overall</code> threshold (&gt; 65) to choose pressing vs defensive style, and with proximity plus supporting attributes inside turnover attribution.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">overall<small>misc</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>
+                Primary quality proxy across the codebase:
+                <ul class="compact">
+                  <li><code>FieldService.calculateTeamTactics</code> — team-strength threshold</li>
+                  <li><code>getPlayerSlotFitScore</code> — formation slot fit (<code>+ overall × 0.2</code>)</li>
+                  <li><code>selectSubstitutionIncomingPlayer</code> — bench sort key</li>
+                  <li><code>GameService.dressBestPlayers</code> — auto starter selection per position</li>
+                  <li><code>calculateTeamOverall</code> / <code>getMatchProbabilities</code> — preview odds</li>
+                  <li><code>StatisticsService.calculatePlayerRating</code> — post-match rating baseline; runs on <code>PlayByPlayEvent</code> logs after the match completes, not during it</li>
+                </ul>
+              </td>
+              <td>Generated once and never recomputed at rollover. Match ratings then add goals/assists/passes/tackles and subtract fouls/cards.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Tuning Variables</h2>
+        <p>All 31 fields of <code>VariantBTuningConfig</code> (<code>src/app/models/simulation.types.ts</code>). Defaults live in <code>DEFAULT_VARIANT_B_TUNING</code> at the top of <code>match.simulation.variant-b.service.ts</code>. Pass a <code>Partial&lt;VariantBTuningConfig&gt;</code> via <code>SimulationConfig.variantBTuning</code> to override at match start; the debug panel exposes all fields at runtime.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Default</th>
+              <th>Effect</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Tick Pace — events generated per zone per minute</td></tr>
+            <tr>
+              <td class="col-stat">baseTickMin / baseTickMax<small>default zone</small></td>
+              <td><code>1 / 3</code></td>
+              <td>Random tick range for the defensive zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">midfieldTickMin / midfieldTickMax<small>midfield zone</small></td>
+              <td><code>2 / 5</code></td>
+              <td>Random tick range while possession is in the midfield zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">attackTickMin / attackTickMax<small>attack zone</small></td>
+              <td><code>2 / 4</code></td>
+              <td>Random tick range while possession is in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">lateCloseBoostTicks<small>late-game urgency</small></td>
+              <td><code>1</code></td>
+              <td>Added to both min and max tick bounds from minute 75 onward when the score difference is ≤ 1. Simulates end-of-game intensity by increasing the event rate.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Ball Movement</td></tr>
+            <tr>
+              <td class="col-stat">movementStepBase<small>spatial</small></td>
+              <td><code>2.4</code></td>
+              <td>Fixed forward advance (y-axis units) per tick.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">movementStepRandom<small>spatial</small></td>
+              <td><code>3.0</code></td>
+              <td>Random ceiling added to the base each tick (<code>rng × movementStepRandom</code>). Raising this makes advance distance more variable.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">lateUrgencyMultiplier<small>late-game</small></td>
+              <td><code>1.2</code></td>
+              <td>Multiplied onto the full y-step after minute 75. Makes possession advance faster toward goal in the closing stages.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Action Weights — relative probability at each tick</td></tr>
+            <tr>
+              <td class="col-stat">passWeightBase<small>action selection</small></td>
+              <td><code>0.57</code></td>
+              <td>Base weight for choosing a pass. Zone, tactics, and scoreline context modify this before the action is sampled.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">carryWeightBase<small>action selection</small></td>
+              <td><code>0.12</code></td>
+              <td>Base weight for a dribble/carry. Uprated in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">shotWeightBase<small>action selection</small></td>
+              <td><code>0.24</code></td>
+              <td>Base weight for a shot attempt. Only reachable in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">foulWeightBase<small>action selection</small></td>
+              <td><code>0.03</code></td>
+              <td>Base weight for conceding a foul. Keep small relative to the other weights.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">outOfWindowShotMultiplier<small>action selection</small></td>
+              <td><code>0.27</code></td>
+              <td>Multiplied onto <code>shotWeightBase</code> when the ball is outside the optimal shooting window. Strongly suppresses low-percentage long shots.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Shot: On-Target Gate — first resolution gate; uses <code>shooting</code></td></tr>
+            <tr>
+              <td class="col-stat">onTargetBase<small>shot gate 1</small></td>
+              <td><code>0.31</code></td>
+              <td>Starting probability before skill and position adjustments. At average shooting (70), this is the on-target rate.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetSkillScale<small>shot gate 1</small></td>
+              <td><code>0.0045</code></td>
+              <td>Scales the <code>shooting − 70</code> delta. A shooter with 90 shooting adds 0.09 to the base; a 50-rated shooter loses 0.09.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetWidePenalty<small>shot gate 1</small></td>
+              <td><code>0.06</code></td>
+              <td>Deducted proportionally to lateral distance from centre (<code>lateralDistance / 50 × penalty</code>). At full lateral distance, costs up to 6 pp accuracy.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetFatiguePenalty<small>shot gate 1</small></td>
+              <td><code>0.04</code></td>
+              <td>Flat deduction when the shooter's <code>fatigueLevel</code> exceeds 75. Connects in-match <code>PlayerFatigue</code> state to shot accuracy.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetMin / onTargetMax<small>shot gate 1</small></td>
+              <td><code>0.15 / 0.82</code></td>
+              <td>Hard clamp after all modifiers. No shot can be less than 15 % or more than 82 % on-target regardless of skill or fatigue.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Shot: Goal Gate — second gate (only reached for on-target shots); uses <code>shooting</code> vs <code>keeperSkill</code></td></tr>
+            <tr>
+              <td class="col-stat">goalChanceBase<small>shot gate 2</small></td>
+              <td><code>0.25</code></td>
+              <td>Starting probability before skill, position, and home-advantage adjustments. At parity between shooter and keeper, this is the conversion rate.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceSkillVsKeeperScale<small>shot gate 2</small></td>
+              <td><code>0.0033</code></td>
+              <td>Scales the <code>shooting − keeperSkill</code> delta. A 20-point shooting advantage adds about 6.6 pp; a 20-point deficit costs the same.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceWidePenalty<small>shot gate 2</small></td>
+              <td><code>0.035</code></td>
+              <td>Same lateral-distance penalty structure as gate 1 but smaller — wide shots already fail the on-target gate more often, so the double penalty is intentionally lighter.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceMin / goalChanceMax<small>shot gate 2</small></td>
+              <td><code>0.10 / 0.55</code></td>
+              <td>Hard clamp. An on-target shot always converts at least 10 % of the time; no conversion exceeds 55 % regardless of keeper quality or home advantage.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Misc</td></tr>
+            <tr>
+              <td class="col-stat">homeAdvantageGoalBonus<small>goal gate</small></td>
+              <td><code>0.04</code></td>
+              <td>Flat bonus added to the goal chance when the shooting team is the home side. Applied before the goal-chance clamp.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Indirect via <code>overall</code></h2>
+        <p>These two attributes are not read directly by setup or simulation, but were rolled into the generated <code>overall</code> value, so they still influence anything keyed off team strength or quality.</p>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div><span class="stat-name">heading</span> <span class="pill viaoverall">via overall</span></div>
+          <div class="stat-meta">skill — defender generation boost</div>
+          <p>No live read. Contributes to the outfield <code>overall</code> sum. No heading, duel, or cross resolution exists yet.</p>
+        </div>
+        <div class="stat-card">
+          <div><span class="stat-name">commandOfArea</span> <span class="pill viaoverall">via overall</span></div>
+          <div class="stat-meta">goalkeeping</div>
+          <p>No live read. Contributes to goalkeeper <code>overall</code> with extra weight. No aerial-claim or box-control check uses it directly.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Unused</h2>
+        <p>Persisted on each season record and copied forward in <code>GameService.startNewSeason</code>, but with no consumer in tactics, the Variant B engine, ratings, or current UI gameplay surfaces.</p>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div><span class="stat-name">clutch</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
+        <div class="stat-card"><div><span class="stat-name">composure</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
+        <div class="stat-card"><div><span class="stat-name">morale</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental — distinct from <code>Player.mood</code></div></div>
+        <div class="stat-card"><div><span class="stat-name">consistency</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
+        <div class="stat-card"><div><span class="stat-name">aggressiveness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
+        <div class="stat-card"><div><span class="stat-name">fitness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden physical</div><p style="font-size:0.8rem;color:#52525b;margin-top:4px">In-match fatigue is tracked by the transient <code>PlayerFatigue</code> struct (<code>currentStamina</code>, <code>fatigueLevel</code>, <code>performanceModifier</code>), initialised fresh each match and never persisted. This stored stat is a separate field with no current consumer.</p></div>
+        <div class="stat-card"><div><span class="stat-name">luck</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — randomness comes from the simulation RNG</div></div>
+        <div class="stat-card"><div><span class="stat-name">injuryRate</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — no injury simulation yet</div></div>
+      </div>
+
+      <p class="footnote">
+        Unused does not mean removable. These fields are part of the persisted season contract and remain available for
+        future simulation features.
+      </p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Principles to remember</h2>
+      </div>
+
+      <div class="principle-grid">
+        <article class="principle">
+          <h3>Stat values never change mid-match</h3>
+          <p>Variant B always reads from the active season record. In-match dynamics live in transient state — <code>PlayerFatigue</code> (<code>currentStamina</code> / <code>fatigueLevel</code> / <code>performanceModifier</code>, initialised fresh each match and never persisted), possession chain, scoreline, and RNG — none of which writes back into <code>PlayerSeasonAttributes</code>.</p>
+        </article>
+        <article class="principle">
+          <h3><code>overall</code> is a snapshot, not a derivative</h3>
+          <p>Generated once from a fixed subset and never recomputed. Edits to source stats after generation will silently desync from <code>overall</code>, and most quality-driven UI/logic keys off <code>overall</code>.</p>
+        </article>
+        <article class="principle">
+          <h3>Team tactics use averages, not stars</h3>
+          <p><code>FieldService.calculateTeamTactics</code> averages <code>overall</code>, <code>speed</code>, <code>shortPassing</code>, <code>longPassing</code>, <code>tackling</code>, and <code>shooting</code> across the whole roster. One elite player will not flip the team's playing style.</p>
+        </article>
+        <article class="principle">
+          <h3>Rollover is a copy, not a progression</h3>
+          <p><code>GameService.startNewSeason</code> deep-copies every stat object into the next season and resets mood/fatigue. There is no automatic aging, training, or decay step.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
