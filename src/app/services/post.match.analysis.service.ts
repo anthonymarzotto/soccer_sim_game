@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
-import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis, Player, PlayerStatistics } from '../models/types';
+import { Team, MatchEvent, MatchStatistics, TacticalAnalysis, PlayerAnalysis, Player, PlayerStatistics, MatchReport } from '../models/types';
 import { resolveTeamPlayers } from '../models/team-players';
 import { StatisticsService, TeamSeasonStatistics } from './statistics.service';
 import { CommentaryService } from './commentary.service';
@@ -13,12 +13,12 @@ export class PostMatchAnalysisService {
   private statisticsService = inject(StatisticsService);
   private commentaryService = inject(CommentaryService);
 
-  generateMatchReport(matchState: MatchState, homeTeam: Team, awayTeam: Team, seasonYear: number): MatchReport {
+  generateMatchReport(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchReport {
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, homeTeam, awayTeam);
     const homePlayers = resolveTeamPlayers(homeTeam);
     const awayPlayers = resolveTeamPlayers(awayTeam);
-    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers, seasonYear);
-    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers, seasonYear);
+    const homePlayerStats = this.statisticsService.generatePlayerStatistics(matchState, homeTeam, homePlayers);
+    const awayPlayerStats = this.statisticsService.generatePlayerStatistics(matchState, awayTeam, awayPlayers);
     
     const keyMoments = this.extractKeyMoments(matchState.events, homeTeam, awayTeam, homePlayers, awayPlayers);
     const tacticalAnalysis = this.analyzeTactics(matchState, homeTeam, awayTeam);
@@ -550,18 +550,6 @@ export class PostMatchAnalysisService {
     if (teamScore < opponentScore) return 'L';
     return 'D';
   }
-}
-
-export interface MatchReport {
-  matchId: string;
-  finalScore: string;
-  matchStats: MatchStatistics;
-  keyMoments: MatchEvent[];
-  tacticalAnalysis: TacticalAnalysis;
-  playerPerformances: PlayerAnalysis;
-  matchSummary: string;
-  homePlayerStats: PlayerStatistics[];
-  awayPlayerStats: PlayerStatistics[];
 }
 
 export interface SeasonReport {

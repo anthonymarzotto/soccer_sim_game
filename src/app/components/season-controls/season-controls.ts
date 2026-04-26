@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, isDevMode } from '@angular/core';
 import { GameService } from '../../services/game.service';
 
 @Component({
@@ -9,9 +9,14 @@ import { GameService } from '../../services/game.service';
 export class SeasonControlsComponent {
   gameService = inject(GameService);
   isReadOnlyMode = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
+  isDevMode = isDevMode();
 
   simulateCurrentWeek(): void {
     this.gameService.simulateCurrentWeek();
+  }
+
+  simulateWholeSeason(): void {
+    this.gameService.simulateWholeSeason();
   }
 
   startNewSeason(): void {

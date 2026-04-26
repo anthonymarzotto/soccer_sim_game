@@ -7,8 +7,9 @@ import { Player, PlayerCareerStats, Role } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
+import { formatAverageMatchRating } from '../../models/player-career-stats';
 
-type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards'>;
+type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'totalMatchRating' | 'starNominations'>;
 
 interface StarterRow {
   slot: FormationSlot;
@@ -119,7 +120,9 @@ export class TeamDetailsComponent {
       goals: 0,
       assists: 0,
       yellowCards: 0,
-      redCards: 0
+      redCards: 0,
+      totalMatchRating: 0,
+      starNominations: { first: 0, second: 0, third: 0 }
     };
   }
 
@@ -138,6 +141,10 @@ export class TeamDetailsComponent {
     return computeAge(player.personal.birthday, seasonAnchorDate(year));
   }
 
+  formatAvgRating(stats: TeamDetailsRowStats): string {
+    return formatAverageMatchRating(stats);
+  }
+
   getRowStats(player: Player | null): TeamDetailsRowStats {
     if (!player) return {
       matchesPlayed: 0,
@@ -145,7 +152,9 @@ export class TeamDetailsComponent {
       goals: 0,
       assists: 0,
       yellowCards: 0,
-      redCards: 0
+      redCards: 0,
+      totalMatchRating: 0,
+      starNominations: { first: 0, second: 0, third: 0 }
     };
     return this.getCurrentSeasonStats(player);
   }

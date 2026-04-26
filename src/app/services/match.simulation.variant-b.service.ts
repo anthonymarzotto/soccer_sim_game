@@ -255,10 +255,11 @@ export class MatchSimulationVariantBService {
 
     if (eventCreated) {
       const replayActionType = this.resolveReplayActionType(newState, minute, action.type);
+      const replayActorPlayerId = this.resolveReplayActorPlayerId(newState, minute, carrier.id);
       this.attachVariantBReplayMetadata(
         newState,
         minute,
-        this.createReplayMetadata(carrier.id, replayActionType, locationBeforeMove, locationBeforeAction, locationAfterAction)
+        this.createReplayMetadata(replayActorPlayerId, replayActionType, locationBeforeMove, locationBeforeAction, locationAfterAction)
       );
     }
 
@@ -642,11 +643,13 @@ export class MatchSimulationVariantBService {
     const successChance = this.calculateCarrySuccessChance(state, action.player, currentTeam, teamFatigue, pressure);
 
     if (this.rng.random() >= successChance) {
-      this.createEvent(
+      const turnoverWinnerId = this.createTurnoverEvent(
         state,
         EventType.TACKLE,
-        [action.player.id],
         { ...state.ballPossession.location },
+        currentTeam,
+        currentTeam === TeamSide.HOME ? rosters.awayPlayers : rosters.homePlayers,
+        action.player.id,
         minute,
         true,
         config,
@@ -654,8 +657,7 @@ export class MatchSimulationVariantBService {
       );
 
       state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
-      const newCarrierPool = state.ballPossession.teamId === homeTeam.id ? rosters.homePlayers : rosters.awayPlayers;
-      state.ballPossession.playerWithBall = this.getRandomPlayerId(newCarrierPool);
+      state.ballPossession.playerWithBall = turnoverWinnerId;
       state.ballPossession.passes = 0;
 
       const newPossessionTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
@@ -768,9 +770,19 @@ export class MatchSimulationVariantBService {
     const targetPlayer = this.findPassTarget(passer, teamPlayers, teamTactics, state.ballPossession.location, currentTeam, passIntent);
 
     if (!targetPlayer) {
-      this.createEvent(state, EventType.TACKLE, [passer.id], state.ballPossession.location, minute, false, config);
+      const turnoverWinnerId = this.createTurnoverEvent(
+        state,
+        EventType.TACKLE,
+        state.ballPossession.location,
+        currentTeam,
+        opponentPlayers,
+        passer.id,
+        minute,
+        false,
+        config
+      );
       state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
-      state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentPlayers);
+      state.ballPossession.playerWithBall = turnoverWinnerId;
       state.ballPossession.passes = 0;
       const newPossessionTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
       state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, newPossessionTeam);
@@ -819,9 +831,19 @@ export class MatchSimulationVariantBService {
       passDistance,
       progression
     );
-    this.createPassFailureEvent(state, failureMode, passer.id, passIntent, minute, config);
+    const turnoverWinnerId = this.createPassFailureEvent(
+      state,
+      failureMode,
+      state.ballPossession.location,
+      currentTeam,
+      opponentPlayers,
+      passer.id,
+      passIntent,
+      minute,
+      config
+    );
     state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
-    state.ballPossession.playerWithBall = this.getRandomPlayerId(opponentPlayers);
+    state.ballPossession.playerWithBall = turnoverWinnerId;
     state.ballPossession.passes = 0;
   }
 
@@ -871,30 +893,36 @@ export class MatchSimulationVariantBService {
   private createPassFailureEvent(
     state: MatchState,
     mode: PassFailureMode,
+    currentLocation: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
     passerId: string,
     passIntent: PassIntent,
     minute: number,
     config: SimulationConfig
-  ): void {
+  ): string {
     if (mode === PASS_FAILURE_MODE.TACKLED) {
-      this.createEvent(
+      return this.createTurnoverEvent(
         state,
         EventType.TACKLE,
-        [passerId],
-        state.ballPossession.location,
+        currentLocation,
+        currentTeam,
+        opponentPlayers,
+        passerId,
         minute,
         true,
         config,
         { passFailure: mode, passIntent }
       );
-      return;
     }
 
-    this.createEvent(
+    return this.createTurnoverEvent(
       state,
       EventType.INTERCEPTION,
-      [passerId],
-      state.ballPossession.location,
+      currentLocation,
+      currentTeam,
+      opponentPlayers,
+      passerId,
       minute,
       false,
       config,
@@ -1803,6 +1831,15 @@ export class MatchSimulationVariantBService {
     return EventType.PASS;
   }
 
+  private resolveReplayActorPlayerId(state: MatchState, minute: number, fallbackPlayerId: string): string {
+    const latestEventIndex = this.findLatestEventIndexForMinute(state, minute);
+    if (latestEventIndex >= 0) {
+      return state.events[latestEventIndex].playerIds[0] ?? fallbackPlayerId;
+    }
+
+    return fallbackPlayerId;
+  }
+
   private createReplayMetadata(
     actorPlayerId: string,
     actionType: EventType,
@@ -1847,6 +1884,116 @@ export class MatchSimulationVariantBService {
 
   private findPlayerById(playerId: string, players: Player[]): Player | null {
     return players.find(player => player.id === playerId) ?? null;
+  }
+
+  private createTurnoverEvent(
+    state: MatchState,
+    eventType: EventType.TACKLE | EventType.INTERCEPTION,
+    currentLocation: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
+    losingPlayerId: string,
+    minute: number,
+    success: boolean,
+    config: SimulationConfig,
+    additionalData?: PlayByPlayEventAdditionalData
+  ): string {
+    const turnoverWinnerId = this.selectTurnoverWinner(eventType, currentLocation, currentTeam, opponentPlayers)?.id
+      ?? this.getRandomPlayerId(opponentPlayers);
+
+    this.createEvent(
+      state,
+      eventType,
+      [turnoverWinnerId, losingPlayerId],
+      { ...currentLocation },
+      minute,
+      success,
+      config,
+      additionalData
+    );
+
+    return turnoverWinnerId;
+  }
+
+  private selectTurnoverWinner(
+    eventType: EventType.TACKLE | EventType.INTERCEPTION,
+    currentLocation: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[]
+  ): Player | null {
+    const seenPlayerIds = new Set<string>();
+    const context = this.getDefendingShapeContextForLocation(currentLocation, currentTeam);
+    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+
+    return this.findBestTurnoverShapePlayer(context?.channelSlots ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
+      ?? this.findBestTurnoverShapePlayer(context?.centralSlots ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
+      ?? this.findBestTurnoverShapePlayer(context?.staffedZoneSlots ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
+      ?? this.findBestTurnoverShapePlayer(this.activeMatchShape?.[defendingTeam] ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
+      ?? null;
+  }
+
+  private findBestTurnoverShapePlayer(
+    slots: ActiveShapeSlot[],
+    eventType: EventType.TACKLE | EventType.INTERCEPTION,
+    currentLocation: Coordinates,
+    players: Player[],
+    seenPlayerIds: Set<string>
+  ): Player | null {
+    const rankedCandidates = slots
+      .filter((slot): slot is ActiveShapeSlot & { playerId: string } => typeof slot.playerId === 'string' && !seenPlayerIds.has(slot.playerId))
+      .map(slot => {
+        seenPlayerIds.add(slot.playerId);
+        const player = this.findPlayerById(slot.playerId, players);
+        if (!player) {
+          return null;
+        }
+
+        const distance = this.fieldService.getDistance(currentLocation, slot.coordinates);
+        return {
+          distance,
+          player,
+          score: this.scoreTurnoverWinnerCandidate(player, eventType, distance)
+        };
+      })
+      .filter((candidate): candidate is { distance: number; player: Player; score: number } => candidate !== null)
+      .sort((left, right) => {
+        const scoreDelta = right.score - left.score;
+        if (scoreDelta !== 0) {
+          return scoreDelta;
+        }
+
+        const distanceDelta = left.distance - right.distance;
+        if (distanceDelta !== 0) {
+          return distanceDelta;
+        }
+
+        return left.player.id.localeCompare(right.player.id);
+      });
+
+    return rankedCandidates[0]?.player ?? null;
+  }
+
+  private scoreTurnoverWinnerCandidate(
+    player: Player,
+    eventType: EventType.TACKLE | EventType.INTERCEPTION,
+    distance: number
+  ): number {
+    const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
+    const proximityScore = Math.max(0, 30 - distance) * 2.5;
+
+    if (eventType === EventType.TACKLE) {
+      return proximityScore
+        + attrs.tackling.value
+        + (attrs.strength.value * 0.5)
+        + (attrs.determination.value * 0.35)
+        + (attrs.speed.value * 0.2);
+    }
+
+    return proximityScore
+      + attrs.vision.value
+      + (attrs.tackling.value * 0.5)
+      + (attrs.determination.value * 0.35)
+      + (attrs.speed.value * 0.2);
   }
 
   private findPassTarget(

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, OnInit, OnDestroy, effect, ElementRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, OnDestroy, effect, ElementRef, ViewChild, isDevMode } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
@@ -6,7 +6,9 @@ import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
 import { TeamColorsService } from '../../services/team-colors.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
-import { Match, MatchEvent, MatchStatistics, Team, Player } from '../../models/types';
+import { StatisticsService, PlayerRatingBreakdownItem } from '../../services/statistics.service';
+import { rankThreeStars, MatchStarEntry } from '../../models/match-stars';
+import { Match, MatchEvent, MatchStatistics, Team, Player, PlayerStatistics } from '../../models/types';
 import { EventType, EventImportance, CommentaryStyle, TeamSide, Role } from '../../models/enums';
 import { PlayByPlayEvent, MatchState, Coordinates, PlayByPlayEventAdditionalData, VariantBMatchShapeSnapshot, VariantBShapeSlotSnapshot, MinuteFatigueSnapshot } from '../../models/simulation.types';
 
@@ -56,6 +58,23 @@ interface TeamLineupEntry {
   playerStatus: Role;
 }
 
+interface LiveRatingBreakdown {
+  currentRating: number;
+  isRated: boolean;
+  unavailableReason: string | null;
+  positiveItems: PlayerRatingBreakdownItem[];
+  negativeItems: PlayerRatingBreakdownItem[];
+  positiveTotal: number;
+  negativeTotal: number;
+}
+
+interface LiveRatingTooltipState {
+  left: number;
+  top: number;
+  ratingLabel: string;
+  breakdown: LiveRatingBreakdown;
+}
+
 @Component({
   selector: 'app-watch-game',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,8 +104,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   commentaryService = inject(CommentaryService);
   fieldService = inject(FieldService);
   teamColorsService = inject(TeamColorsService);
+  statisticsService = inject(StatisticsService);
   TeamSide = TeamSide;
   Role = Role;
+  readonly showDevRatingTooltip = isDevMode();
 
   // Match data
   matchId = signal<string>('');
@@ -119,6 +140,22 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   matchStats = signal<MatchStatistics | null>(null);
   keyEvents = signal<MatchEvent[]>([]);
 
+  // Live player rating signals — recomputed on every commentary tick
+  liveHomePlayerStats = signal<PlayerStatistics[]>([]);
+  liveAwayPlayerStats = signal<PlayerStatistics[]>([]);
+
+  liveStars = computed((): MatchStarEntry[] => {
+    const home = this.homeTeam();
+    const away = this.awayTeam();
+    const homeStats = this.liveHomePlayerStats();
+    const awayStats = this.liveAwayPlayerStats();
+    if (!home || !away || (homeStats.length === 0 && awayStats.length === 0)) return [];
+    const homeScore = this.homeScore();
+    const awayScore = this.awayScore();
+    const winningTeamId = homeScore > awayScore ? home.id : awayScore > homeScore ? away.id : null;
+    return rankThreeStars(homeStats, awayStats, winningTeamId, home.id, away.id);
+  });
+
   // Display state - only show stats after commentary completes
   showStats = signal<boolean>(false);
   validationError = signal<string | null>(null);
@@ -126,6 +163,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   currentCommentaryItem = signal<CommentaryItem | null>(null);
   isCommentaryExpanded = signal<boolean>(false);
   commentaryAutoFollow = signal<boolean>(true);
+  ratingTooltip = signal<LiveRatingTooltipState | null>(null);
   private pausedSpeed: number | null = null;
   
   // Replay scheduling
@@ -278,6 +316,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.keyEvents.set([]);
     this.matchStats.set(null);
     this.commentary.set([]);
+    this.liveHomePlayerStats.set([]);
+    this.liveAwayPlayerStats.set([]);
     this.commentaryAutoFollow.set(true);
     this.commentaryPlaybackSpeed.set(1);
     this.pausedSpeed = null;
@@ -320,6 +360,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       this.finalKeyEvents = result.keyEvents;
       this.finalMatchStats = result.matchStats;
       this.keyEvents.set(result.keyEvents);
+
+      // Seed kickoff ratings — starters show 5.0, bench shows --
+      this.recomputeLivePlayerStats(0);
 
       // Generate commentary items from the match
       this.generateCommentaryFromMatch(result.matchState, home, away);
@@ -524,6 +567,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.activeEventInitiatorPlayerId.set(item.playerIds[0] ?? null);
     this.currentCommentaryItem.set(item);
     this.applyCommentaryPitchState(item);
+
+    // Recompute live player ratings up to the current minute
+    this.recomputeLivePlayerStats(item.minute);
 
     this.updateDisplayMatchAtMinute(item.minute);
 
@@ -759,6 +805,29 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       // Keep the final on-pitch shape stable after completion without replaying key events repeatedly.
       this.finalFormationSnapshotKey = `${match.id}:${this.finalKeyEvents.length}`;
     }
+  }
+
+  private recomputeLivePlayerStats(upToMinute: number): void {
+    const matchState = this.matchState();
+    const home = this.homeTeam();
+    const away = this.awayTeam();
+    if (!matchState || !home || !away) return;
+
+    const filteredState = {
+      ...matchState,
+      events: matchState.events.filter(e => e.time <= upToMinute),
+      currentMinute: upToMinute
+    };
+
+    const homePlayers = this.gameService.getPlayersForTeam(home.id);
+    const awayPlayers = this.gameService.getPlayersForTeam(away.id);
+
+    this.liveHomePlayerStats.set(
+      this.statisticsService.generatePlayerStatistics(filteredState, home, homePlayers)
+    );
+    this.liveAwayPlayerStats.set(
+      this.statisticsService.generatePlayerStatistics(filteredState, away, awayPlayers)
+    );
   }
 
   private buildPlayerTeamLookup(homeTeamId: string, awayTeamId: string) {
@@ -1157,6 +1226,122 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       .map((word) => word[0])
       .join('')
       .toUpperCase();
+  }
+
+  getLiveRating(playerId: string, side: TeamSide): string {
+    const stats = side === TeamSide.HOME
+      ? this.liveHomePlayerStats()
+      : this.liveAwayPlayerStats();
+    const entry = stats.find(s => s.playerId === playerId);
+    if (!entry || entry.rating === 0) return '--';
+    return (entry.rating / 10).toFixed(1);
+  }
+
+  getLiveRatingBreakdown(playerId: string, side: TeamSide): string {
+    const breakdown = this.getLiveRatingBreakdownData(playerId, side);
+
+    if (!breakdown) {
+      return 'Live rating unavailable';
+    }
+
+    if (!breakdown.isRated) {
+      return breakdown.unavailableReason ?? 'Live rating unavailable';
+    }
+
+    const positiveSummary = breakdown.positiveItems
+      .map((item) => `${item.label}:${item.count}`)
+      .join(' ');
+    const negativeSummary = breakdown.negativeItems
+      .map((item) => `${item.label}:${item.count}`)
+      .join(' ');
+
+    return `Base 5.0 | +${(breakdown.positiveTotal / 10).toFixed(1)} (${positiveSummary}) | -${(breakdown.negativeTotal / 10).toFixed(1)} (${negativeSummary}) | Current ${(breakdown.currentRating / 10).toFixed(1)}`;
+  }
+
+  getLiveRatingBreakdownData(playerId: string, side: TeamSide): LiveRatingBreakdown | null {
+    const stats = side === TeamSide.HOME
+      ? this.liveHomePlayerStats()
+      : this.liveAwayPlayerStats();
+    const entry = stats.find((s) => s.playerId === playerId);
+
+    if (!entry) {
+      return null;
+    }
+
+    if (entry.rating === 0) {
+      return {
+        currentRating: 0,
+        isRated: false,
+        unavailableReason: 'No rating: player has not entered the match',
+        positiveItems: [],
+        negativeItems: [],
+        positiveTotal: 0,
+        negativeTotal: 0,
+      };
+    }
+
+    return {
+      currentRating: entry.rating,
+      isRated: true,
+      unavailableReason: null,
+      ...this.statisticsService.computeRatingBreakdown(entry),
+    };
+  }
+
+  formatRatingDelta(points: number): string {
+    return (points / 10).toFixed(1);
+  }
+
+  showLiveRatingTooltip(event: MouseEvent, playerId: string, side: TeamSide): void {
+    if (!this.showDevRatingTooltip) {
+      return;
+    }
+
+    const breakdown = this.getLiveRatingBreakdownData(playerId, side);
+    if (!breakdown) {
+      this.ratingTooltip.set(null);
+      return;
+    }
+
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      this.ratingTooltip.set(null);
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const tooltipWidth = 256;
+    const estimatedHeight = breakdown.isRated ? 292 : 72;
+    const gap = 8;
+    const viewportPadding = 8;
+
+    let left = rect.right + gap;
+    if (left + tooltipWidth > window.innerWidth - viewportPadding) {
+      left = rect.left - tooltipWidth - gap;
+    }
+    left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipWidth - viewportPadding));
+
+    let top = rect.bottom + gap;
+    if (top + estimatedHeight > window.innerHeight - viewportPadding) {
+      top = rect.top - estimatedHeight - gap;
+    }
+    top = Math.max(viewportPadding, Math.min(top, window.innerHeight - estimatedHeight - viewportPadding));
+
+    this.ratingTooltip.set({
+      left,
+      top,
+      ratingLabel: this.getLiveRating(playerId, side),
+      breakdown,
+    });
+  }
+
+  hideLiveRatingTooltip(): void {
+    this.ratingTooltip.set(null);
+  }
+
+  getLiveStarRank(playerId: string): 1 | 2 | 3 | null {
+    const star = this.liveStars().find(s => s.stats.playerId === playerId);
+    return star?.rank ?? null;
   }
 
   private clearFinalFormationSnapshotKey() {

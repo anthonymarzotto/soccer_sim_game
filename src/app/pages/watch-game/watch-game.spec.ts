@@ -3,13 +3,14 @@ import { ElementRef } from '@angular/core';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { WatchGameComponent } from './watch-game';
-import { EventImportance, EventType, TeamSide, MatchPhase } from '../../models/enums';
+import { EventImportance, EventType, TeamSide, MatchPhase, Position, Role } from '../../models/enums';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
 import { TeamColorsService } from '../../services/team-colors.service';
+import { StatisticsService } from '../../services/statistics.service';
 import { MatchState } from '../../models/simulation.types';
-import { Player } from '../../models/types';
+import { Player, PlayerStatistics, Team } from '../../models/types';
 import { vi } from 'vitest';
 
 describe('WatchGameComponent', () => {
@@ -41,6 +42,61 @@ describe('WatchGameComponent', () => {
     awayYellowCards: 0,
     homeRedCards: 0,
     awayRedCards: 0
+  });
+
+  const createPlayer = (id: string, teamId: string, role: Role, position = Position.MIDFIELDER): Player => ({
+    id,
+    name: id,
+    teamId,
+    role,
+    position
+  } as Player);
+
+  const createTeam = (id: string, players: Player[]): Team => ({
+    id,
+    name: id,
+    players,
+    playerIds: players.map(player => player.id),
+    selectedFormationId: 'test',
+    formationAssignments: players
+      .filter(player => player.role === Role.STARTER)
+      .reduce<Record<string, string>>((assignments, player, index) => {
+        assignments[`slot_${index}`] = player.id;
+        return assignments;
+      }, {}),
+    stats: {
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+      last5: []
+    }
+  } as Team);
+
+  const createPlayerStats = (player: Player, rating: number): PlayerStatistics => ({
+    playerId: player.id,
+    playerName: player.name,
+    position: player.position,
+    rating,
+    minutesPlayed: 0,
+    passes: 0,
+    passesSuccessful: 0,
+    shots: 0,
+    shotsOnTarget: 0,
+    misses: 0,
+    goals: 0,
+    assists: 0,
+    tackles: 0,
+    tacklesSuccessful: 0,
+    interceptions: 0,
+    saves: 0,
+    fouls: 0,
+    foulsSuffered: 0,
+    yellowCards: 0,
+    redCards: 0
   });
 
   beforeEach(() => {
@@ -89,6 +145,14 @@ describe('WatchGameComponent', () => {
           provide: TeamColorsService,
           useValue: {
             getTeamColors: () => ({ main: '#0ea5e9', accent: '#f43f5e' })
+          }
+        },
+        {
+          provide: StatisticsService,
+          useValue: {
+            generatePlayerStatistics: () => [],
+            getSuccessfulPassBonus: () => 0,
+            computeRatingBreakdown: () => ({ positiveItems: [], negativeItems: [], positiveTotal: 0, negativeTotal: 0 })
           }
         }
       ]
@@ -361,6 +425,130 @@ describe('WatchGameComponent', () => {
     expect(startFeedSpy).toHaveBeenCalledWith(false);
 
     startFeedSpy.mockRestore();
+  });
+
+  it('shows kickoff live ratings for starters while bench players remain unrated', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+
+    const homeStarter = createPlayer('home-starter', 'home', Role.STARTER);
+    const homeBench = createPlayer('home-bench', 'home', Role.BENCH);
+    const awayStarter = createPlayer('away-starter', 'away', Role.STARTER);
+    const homeTeam = createTeam('home', [homeStarter, homeBench]);
+    const awayTeam = createTeam('away', [awayStarter]);
+
+    component.matchState.set(createMatchState([]));
+    component.homeTeam.set(homeTeam);
+    component.awayTeam.set(awayTeam);
+
+    vi.spyOn(component.gameService, 'getPlayersForTeam').mockImplementation((teamId: string) => {
+      if (teamId === 'home') {
+        return [homeStarter, homeBench];
+      }
+
+      return [awayStarter];
+    });
+
+    const generatePlayerStatisticsSpy = vi.spyOn(component.statisticsService, 'generatePlayerStatistics')
+      .mockImplementation((state, team) => {
+        expect(state.currentMinute).toBe(0);
+
+        if (team.id === 'home') {
+          return [
+            createPlayerStats(homeStarter, 50),
+            createPlayerStats(homeBench, 0)
+          ];
+        }
+
+        return [createPlayerStats(awayStarter, 50)];
+      });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).recomputeLivePlayerStats(0);
+
+    expect(generatePlayerStatisticsSpy).toHaveBeenCalledTimes(2);
+    expect(component.getLiveRating(homeStarter.id, TeamSide.HOME)).toBe('5.0');
+    expect(component.getLiveRating(homeBench.id, TeamSide.HOME)).toBe('--');
+  });
+
+  it('builds structured breakdown data for rated players with full negative detail', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const player = createPlayer('home-starter', 'home', Role.STARTER);
+    const statsService = TestBed.inject(StatisticsService);
+
+    component.liveHomePlayerStats.set([
+      {
+        ...createPlayerStats(player, 67),
+        passesSuccessful: 18,
+        goals: 1,
+        assists: 1,
+        saves: 0,
+        tacklesSuccessful: 2,
+        interceptions: 1,
+        shots: 3,
+        shotsOnTarget: 2,
+        misses: 1,
+        fouls: 1,
+        foulsSuffered: 2,
+        yellowCards: 0,
+        redCards: 0
+      }
+    ]);
+
+    vi.spyOn(statsService, 'computeRatingBreakdown').mockReturnValue({
+      positiveItems: [
+        { label: 'Goals', count: 1, points: 10 },
+        { label: 'Assists', count: 1, points: 5 },
+        { label: 'Passes', count: 18, points: 2.4 },
+        { label: 'Tackles', count: 2, points: 2 },
+        { label: 'Saves', count: 0, points: 0 },
+        { label: 'Interceptions', count: 1, points: 2 },
+        { label: 'Shots On Target', count: 2, points: 2 },
+        { label: 'Fouls Won', count: 2, points: 1 },
+      ],
+      negativeItems: [
+        { label: 'Misses', count: 1, points: 1 },
+        { label: 'Fouls', count: 1, points: 2 },
+        { label: 'Yellow Cards', count: 0, points: 0 },
+        { label: 'Red Cards', count: 0, points: 0 },
+      ],
+      positiveTotal: 24.4,
+      negativeTotal: 3,
+    });
+
+    const breakdown = component.getLiveRatingBreakdownData(player.id, TeamSide.HOME);
+
+    expect(breakdown).not.toBeNull();
+    expect(breakdown?.isRated).toBe(true);
+    expect(breakdown?.currentRating).toBe(67);
+    expect(breakdown?.positiveItems.find(item => item.label === 'Passes')?.count).toBe(18);
+    expect(breakdown?.positiveItems.find(item => item.label === 'Passes')?.points).toBe(2.4);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Misses')?.count).toBe(1);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Misses')?.points).toBe(1);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Fouls')?.points).toBe(2);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Yellow Cards')?.points).toBe(0);
+    expect(breakdown?.negativeItems.find(item => item.label === 'Red Cards')?.points).toBe(0);
+
+    const summary = component.getLiveRatingBreakdown(player.id, TeamSide.HOME);
+    expect(summary).toContain('Base 5.0');
+    expect(summary).toContain('Current 6.7');
+    expect(summary).toContain('Misses:1');
+  });
+
+  it('returns a clear breakdown message for unrated players', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const bench = createPlayer('home-bench', 'home', Role.BENCH);
+
+    component.liveHomePlayerStats.set([createPlayerStats(bench, 0)]);
+
+    const breakdown = component.getLiveRatingBreakdownData(bench.id, TeamSide.HOME);
+
+    expect(breakdown).not.toBeNull();
+    expect(breakdown?.isRated).toBe(false);
+    expect(breakdown?.unavailableReason).toBe('No rating: player has not entered the match');
+    expect(component.getLiveRatingBreakdown(bench.id, TeamSide.HOME)).toBe('No rating: player has not entered the match');
   });
 
   it('returns latest tracked fatigue snapshot at or before current minute', () => {

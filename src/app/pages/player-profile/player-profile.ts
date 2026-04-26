@@ -6,6 +6,7 @@ import { Position } from '../../models/enums';
 import { PlayerCareerStats, PlayerSeasonAttributes, StatKey } from '../../models/types';
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
+import { formatAverageMatchRating } from '../../models/player-career-stats';
 import { getCurrentPlayerSeasonAttributes } from '../../models/season-history';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
@@ -64,14 +65,14 @@ export class PlayerProfileComponent {
   goalkeeperView = signal<'list' | 'chart'>('list');
 
   // Season stats category toggle
-  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline'>('offensive');
+  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline' | 'ratings'>('offensive');
 
   // Toggle methods
   toggleMentalView() {
     this.mentalView.update(v => v === 'list' ? 'chart' : 'list');
   }
 
-  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline') {
+  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline' | 'ratings') {
     this.seasonStatsView.set(view);
   }
 
@@ -180,6 +181,26 @@ export class PlayerProfileComponent {
   allSeasonStats = computed(() =>
     [...(this.player()?.careerStats ?? [])].sort((a, b) => a.seasonYear - b.seasonYear)
   );
+
+  currentSeasonRatingChip = computed(() => {
+    const stats = this.currentSeasonStats();
+    if (!stats) return { avgRating: '--', first: 0, second: 0, third: 0 };
+    const avgRating = formatAverageMatchRating(stats);
+    return { avgRating, first: stats.starNominations.first, second: stats.starNominations.second, third: stats.starNominations.third };
+  });
+
+  formatAverageRating(stats: PlayerCareerStats): string {
+    return formatAverageMatchRating(stats);
+  }
+
+  totalStarNominations = computed(() => {
+    const stats = this.allSeasonStats();
+    return {
+      first: stats.reduce((s, r) => s + r.starNominations.first, 0),
+      second: stats.reduce((s, r) => s + r.starNominations.second, 0),
+      third: stats.reduce((s, r) => s + r.starNominations.third, 0),
+    };
+  });
 
   private careerStatsBySeasonYear = computed(() => {
     const statsBySeason = new Map<number, PlayerCareerStats>();

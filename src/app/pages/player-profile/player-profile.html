@@ -34,8 +34,19 @@
           </p>
         </div>
       </div>
-      <div class="ml-auto flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
-        <span class="text-2xl font-bold text-white" [title]="getStatDescription('overall')">{{ attrs?.overall?.value ?? '--' }}</span>
+      <div class="ml-auto flex items-center gap-3">
+        @let chip = currentSeasonRatingChip();
+        <div class="flex flex-col items-end gap-0.5 text-xs">
+          <span class="font-semibold text-amber-400 text-base">{{ chip.avgRating }}</span>
+          <div class="flex gap-1.5 text-zinc-400">
+            <span>🥇{{ chip.first }}</span>
+            <span>🥈{{ chip.second }}</span>
+            <span>🥉{{ chip.third }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
+          <span class="text-2xl font-bold text-white" [title]="getStatDescription('overall')">{{ attrs?.overall?.value ?? '--' }}</span>
+        </div>
       </div>
     </div>
 
@@ -565,6 +576,11 @@
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Discipline
               </button>
+              <button (click)="setSeasonStatsView('ratings')" 
+                      [class]="statsView === 'ratings' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                Ratings
+              </button>
             </div>
           </div>
 
@@ -575,9 +591,9 @@
               <table class="w-full text-sm">
                 <thead>
                   <tr class="border-b border-zinc-700 text-zinc-400">
-                    <th class="text-left py-3 px-4 font-semibold">Season</th>
-                    <th class="text-right py-3 px-4 font-semibold">Games</th>
-                    <th class="text-right py-3 px-4 font-semibold">Minutes</th>
+                    <th class="w-20 whitespace-nowrap text-left py-3 px-4 font-semibold">Season</th>
+                    <th class="w-16 whitespace-nowrap text-right py-3 px-4 font-semibold">Games</th>
+                    <th class="w-24 whitespace-nowrap text-right py-3 px-4 font-semibold">Minutes</th>
                     @if (statsView === 'offensive') {
                       <th class="text-right py-3 px-4 font-semibold">Goals</th>
                       <th class="text-right py-3 px-4 font-semibold">Assists</th>
@@ -589,11 +605,16 @@
                       <th class="text-right py-3 px-4 font-semibold">Passes</th>
                       <th class="text-right py-3 px-4 font-semibold">Saves</th>
                       <th class="text-right py-3 px-4 font-semibold">Clean Sheets</th>
-                    } @else {
+                    } @else if (statsView === 'discipline') {
                       <th class="text-right py-3 px-4 font-semibold">Fouls</th>
                       <th class="text-right py-3 px-4 font-semibold">Suffered</th>
                       <th class="text-right py-3 px-4 font-semibold">Yellow</th>
                       <th class="text-right py-3 px-4 font-semibold">Red</th>
+                    } @else {
+                      <th class="text-right py-3 px-4 font-semibold">Avg Rating</th>
+                      <th class="text-right py-3 px-4 font-semibold">🥇</th>
+                      <th class="text-right py-3 px-4 font-semibold">🥈</th>
+                      <th class="text-right py-3 px-4 font-semibold">🥉</th>
                     }
                   </tr>
                 </thead>
@@ -602,9 +623,9 @@
                   @for (s of allSeasonStats(); track s.seasonYear) {
                     <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors"
                         [class.bg-zinc-800/30]="s.seasonYear === currentYear">
-                      <td class="py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ s.matchesPlayed || 0 }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
+                      <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.matchesPlayed || 0 }}</td>
+                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
                       @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ s.goals || 0 }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
@@ -616,11 +637,16 @@
                         <td class="py-3 px-4 text-right text-white font-mono">{{ s.passes || 0 }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ s.saves || 0 }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ s.cleanSheets || 0 }}</td>
-                      } @else {
+                      } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.fouls || 0 }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.foulsSuffered || 0 }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ s.yellowCards || 0 }}</td>
                         <td class="py-3 px-4 text-right text-red-400 font-mono">{{ s.redCards || 0 }}</td>
+                      } @else {
+                        <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ formatAverageRating(s) }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.first }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.second }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.third }}</td>
                       }
                     </tr>
                   }
@@ -629,9 +655,9 @@
                   @let totals = getTotalCareerStats();
                   @if (totals) {
                     <tr class="border-t-2 border-zinc-600 bg-zinc-800/50 font-semibold">
-                      <td class="py-3 px-4 text-zinc-300">TOTAL</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
-                      <td class="py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
+                      <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300">TOTAL</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
+                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
                       @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ totals.goals }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
@@ -643,11 +669,17 @@
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.passes }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.saves }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ totals.cleanSheets }}</td>
-                      } @else {
+                      } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.fouls }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.foulsSuffered }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ totals.yellowCards }}</td>
                         <td class="py-3 px-4 text-right text-red-400 font-mono">{{ totals.redCards }}</td>
+                      } @else {
+                        @let stars = totalStarNominations();
+                        <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ stars.first }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ stars.second }}</td>
+                        <td class="py-3 px-4 text-right text-white font-mono">{{ stars.third }}</td>
                       }
                     </tr>
                   }

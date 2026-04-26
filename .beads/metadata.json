@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "soccer_sim_game",
+  "project_id": "dd5b108c-ed54-4797-8be6-8582ec6fc3ec"
+}

@@ -285,8 +285,8 @@
 
       <div class="chip-row">
         <div class="chip-card"><strong>23</strong><span>Total stats on <code>PlayerSeasonAttributes</code></span></div>
-        <div class="chip-card"><strong>10</strong><span>Read by match setup or Variant B</span></div>
-        <div class="chip-card"><strong>5</strong><span>Indirect via generated <code>overall</code></span></div>
+        <div class="chip-card"><strong>13</strong><span>Read by match setup or Variant B</span></div>
+        <div class="chip-card"><strong>2</strong><span>Indirect via generated <code>overall</code></span></div>
         <div class="chip-card"><strong>8</strong><span>Unused in the current pipeline</span></div>
       </div>
     </section>
@@ -341,11 +341,20 @@
               <td class="col-stat">speed<small>physical</small></td>
               <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
               <td>
-                Bonus to carry success in <code>calculateCarrySuccessChance</code>; raises team <code>speedAvg</code> in <code>calculateTeamTactics</code>, gating possession and counter-attack styles.
+                Bonus to carry success in <code>calculateCarrySuccessChance</code>; secondary input when <code>selectTurnoverWinner</code> ranks defenders for tackles and interceptions; raises team <code>speedAvg</code> in <code>calculateTeamTactics</code>, gating possession and counter-attack styles.
                 <span class="formula">+ (speed − 70) × 0.002</span>
                 <span class="formula" style="color:#71717a">→ final carry chance clamped [0.30, 0.86]</span>
               </td>
-              <td>Position bonus, attacking depth, defensive pressure, carry shape modifier, fatigue &gt; 70.</td>
+              <td>Position bonus, attacking depth, defensive pressure, carry shape modifier, fatigue &gt; 70, plus turnover winner proximity.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">strength<small>physical</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Secondary input when <code>selectTurnoverWinner</code> ranks defenders for <code>TACKLE</code> events.
+                <span class="formula">tackle attribution = proximity + tackling + strength × 0.5 + determination × 0.35 + speed × 0.2</span>
+              </td>
+              <td>Only affects which defender gets credited after a turnover has already happened; does not change turnover probability.</td>
             </tr>
             <tr>
               <td class="col-stat">flair<small>mental</small></td>
@@ -404,10 +413,25 @@
               <td>Only consulted when two bench players share the same <code>overall</code> in the same position.</td>
             </tr>
             <tr>
+              <td class="col-stat">vision<small>mental</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Primary non-distance input when <code>selectTurnoverWinner</code> ranks defenders for <code>INTERCEPTION</code> events.
+                <span class="formula">interception attribution = proximity + vision + tackling × 0.5 + determination × 0.35 + speed × 0.2</span>
+              </td>
+              <td>Only affects which defender gets credited after a pass failure has already happened; does not change pass success or failure mode.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">determination<small>mental</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>Secondary input in both tackle and interception winner attribution inside <code>selectTurnoverWinner</code>.</td>
+              <td>Combined with proximity and the primary event-specific skill (<code>tackling</code> or <code>vision</code>).</td>
+            </tr>
+            <tr>
               <td class="col-stat">tackling<small>skill</small></td>
-              <td><div class="status-stack"><span class="pill team">team setup</span></div></td>
-              <td>Used as <code>defendingAvg</code> in <code>calculateTeamTactics</code> to set pressing intensity, playing style, and mentality. Not read by the live tackle resolution itself.</td>
-              <td>Combined with <code>overall</code> threshold (&gt; 65) to choose pressing vs defensive style.</td>
+              <td><div class="status-stack"><span class="pill live">live</span><span class="pill team">team setup</span></div></td>
+              <td>Used as <code>defendingAvg</code> in <code>calculateTeamTactics</code> to set pressing intensity, playing style, and mentality; primary skill input for <code>TACKLE</code> winner attribution and secondary skill input for <code>INTERCEPTION</code> winner attribution.</td>
+              <td>Combined with <code>overall</code> threshold (&gt; 65) to choose pressing vs defensive style, and with proximity plus supporting attributes inside turnover attribution.</td>
             </tr>
             <tr>
               <td class="col-stat">overall<small>misc</small></td>
@@ -575,25 +599,10 @@
     <section class="panel">
       <div class="panel-header">
         <h2>Indirect via <code>overall</code></h2>
-        <p>These five attributes are not read by setup or simulation, but were rolled into the generated <code>overall</code> value, so they still influence anything keyed off team strength or quality.</p>
+        <p>These two attributes are not read directly by setup or simulation, but were rolled into the generated <code>overall</code> value, so they still influence anything keyed off team strength or quality.</p>
       </div>
 
       <div class="stat-grid">
-        <div class="stat-card">
-          <div><span class="stat-name">strength</span> <span class="pill viaoverall">via overall</span></div>
-          <div class="stat-meta">physical</div>
-          <p>No live read. Contributes to the outfield <code>overall</code> sum.</p>
-        </div>
-        <div class="stat-card">
-          <div><span class="stat-name">vision</span> <span class="pill viaoverall">via overall</span></div>
-          <div class="stat-meta">mental — midfielder generation boost</div>
-          <p>No live read. Contributes to the outfield <code>overall</code> sum.</p>
-        </div>
-        <div class="stat-card">
-          <div><span class="stat-name">determination</span> <span class="pill viaoverall">via overall</span></div>
-          <div class="stat-meta">mental</div>
-          <p>No live read. Contributes to the outfield <code>overall</code> sum.</p>
-        </div>
         <div class="stat-card">
           <div><span class="stat-name">heading</span> <span class="pill viaoverall">via overall</span></div>
           <div class="stat-meta">skill — defender generation boost</div>

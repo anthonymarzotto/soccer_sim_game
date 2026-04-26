@@ -5,6 +5,7 @@ import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/s
 import { TeamBadgeComponent } from '../team-badge/team-badge';
 import { Match, MatchEvent } from '../../models/types';
 import { EventImportance } from '../../models/enums';
+import { rankThreeStars, MatchStarEntry } from '../../models/match-stars';
 
 const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
 
@@ -31,6 +32,29 @@ export class MatchSummaryComponent {
   // Expose enum for template
   EventImportance = EventImportance;
   showExpandedMoments = signal(false);
+
+  matchStars = computed((): MatchStarEntry[] => {
+    const report = this.match().matchReport;
+    if (!report?.homePlayerStats?.length && !report?.awayPlayerStats?.length) return [];
+    const homeScore = this.match().homeScore ?? 0;
+    const awayScore = this.match().awayScore ?? 0;
+    const winningTeamId = homeScore > awayScore
+      ? this.match().homeTeamId
+      : awayScore > homeScore
+        ? this.match().awayTeamId
+        : null;
+    return rankThreeStars(
+      report.homePlayerStats ?? [],
+      report.awayPlayerStats ?? [],
+      winningTeamId,
+      this.match().homeTeamId,
+      this.match().awayTeamId
+    );
+  });
+
+  formatRating(rating: number): string {
+    return (rating / 10).toFixed(1);
+  }
 
   private baseKeyEvents = computed(() => {
     const events = this.match().keyEvents ?? [];

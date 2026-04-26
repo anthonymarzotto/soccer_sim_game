@@ -3,12 +3,42 @@ import { MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchStatistics, Team, Player, PlayerStatistics } from '../models/types';
 import { EventType, Position } from '../models/enums';
 import { resolveTeamPlayers } from '../models/team-players';
-import { getCurrentPlayerSeasonAttributes } from '../models/season-history';
+
+
+export interface PlayerRatingBreakdownItem {
+  label: string;
+  count: number;
+  points: number;
+}
+
+export interface PlayerRatingBreakdown {
+  positiveItems: PlayerRatingBreakdownItem[];
+  negativeItems: PlayerRatingBreakdownItem[];
+  positiveTotal: number;
+  negativeTotal: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class StatisticsService {
+  private static readonly MAX_SUCCESSFUL_PASS_BONUS = 6;
+  static readonly RATING_WEIGHTS = {
+    goal: 10,
+    assist: 5,
+    save: 4,
+    interception: 2,
+    shotOnTarget: 1,
+    corner: 0.5,
+    freeKick: 0.5,
+    penalty: 3,
+    foulSuffered: 0.5,
+    tackle: 1,
+    miss: 1,
+    foul: 2,
+    yellowCard: 5,
+    redCard: 15,
+  } as const;
   
   generateMatchStatistics(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchStatistics {
     const homeEvents = matchState.events.filter(e => this.isHomeTeamEvent(e, homeTeam));
@@ -60,35 +90,51 @@ export class StatisticsService {
     };
   }
 
-  generatePlayerStatistics(matchState: MatchState, team: Team, players: Player[], seasonYear: number): PlayerStatistics[] {
+  generatePlayerStatistics(matchState: MatchState, team: Team, players: Player[]): PlayerStatistics[] {
     const playerStats: PlayerStatistics[] = [];
     const teamPlayers = resolveTeamPlayers(team, players);
+    const starterIds = new Set(Object.values(team.formationAssignments));
+    const teamPlayerIds = new Set(teamPlayers.map(player => player.id));
+    const assistsByPlayer = this.calculateAssistsByPlayer(matchState.events, teamPlayerIds);
 
     teamPlayers.forEach(player => {
+      const isStarter = starterIds.has(player.id);
       const playerEvents = matchState.events.filter(e => e.playerIds.includes(player.id));
       const primaryPlayerEvents = playerEvents.filter(e => e.playerIds[0] === player.id);
       const passEvents = playerEvents.filter(e => e.type === EventType.PASS && e.playerIds[0] === player.id);
-      
+      const tackleEvents = primaryPlayerEvents.filter(e => e.type === EventType.TACKLE);
+      const interceptionEvents = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION);
+      const minutesPlayed = this.calculateMinutesPlayed(
+        player.id,
+        matchState.events,
+        matchState.currentMinute,
+        isStarter
+      );
+      const hasEnteredMatch = this.hasEnteredMatch(player.id, matchState.events, isStarter);
+
       const stats: PlayerStatistics = {
         playerId: player.id,
         playerName: player.name,
         position: player.position,
-        minutesPlayed: matchState.currentMinute,
+        minutesPlayed,
         passes: passEvents.length,
         passesSuccessful: passEvents.filter(e => e.success).length,
-        shots: playerEvents.filter(e => e.type === EventType.SHOT).length,
-        shotsOnTarget: playerEvents.filter(e => e.type === EventType.SHOT && e.success).length,
+        shots: primaryPlayerEvents.filter(e => e.type === EventType.GOAL || e.type === EventType.SAVE || e.type === EventType.MISS).length,
+        shotsOnTarget: primaryPlayerEvents.filter(e => e.type === EventType.GOAL || e.type === EventType.SAVE).length,
+        misses: primaryPlayerEvents.filter(e => e.type === EventType.MISS).length,
         goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
-        assists: this.calculateAssists(playerEvents, matchState.events),
-        tackles: player.position === Position.GOALKEEPER ? 0 : playerEvents.filter(e => e.type === EventType.TACKLE).length,
-        tacklesSuccessful: player.position === Position.GOALKEEPER ? 0 : playerEvents.filter(e => e.type === EventType.TACKLE && e.success).length,
-        interceptions: playerEvents.filter(e => e.type === EventType.INTERCEPTION).length,
+        assists: assistsByPlayer.get(player.id) ?? 0,
+        tackles: player.position === Position.GOALKEEPER ? 0 : tackleEvents.length,
+        tacklesSuccessful: player.position === Position.GOALKEEPER ? 0 : tackleEvents.filter(e => e.success).length,
+        interceptions: interceptionEvents.length,
         fouls: primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length,
         foulsSuffered: playerEvents.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length,
         yellowCards: primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
         redCards: primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length,
         saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
-        rating: this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, seasonYear)
+        rating: !hasEnteredMatch
+          ? 0
+          : this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, assistsByPlayer.get(player.id) ?? 0)
       };
 
       playerStats.push(stats);
@@ -208,45 +254,173 @@ export class StatisticsService {
     return events.filter(e => e.type === EventType.SAVE).length;
   }
 
-  private calculateAssists(playerEvents: PlayByPlayEvent[], allEvents: PlayByPlayEvent[]): number {
-    let assists = 0;
-    
-    playerEvents.forEach(event => {
-      if (event.type === EventType.PASS && event.success) {
-        // Check if next goal was assisted by this pass
-        const goalEvent = allEvents.find(e => 
-          e.time > event.time && 
-          e.type === EventType.GOAL && 
-          e.playerIds[0] !== event.playerIds[0]
-        );
-        
-        if (goalEvent) assists++;
+  private calculateAssistsByPlayer(allEvents: PlayByPlayEvent[], teamPlayerIds: Set<string>): Map<string, number> {
+    const assistsByPlayer = new Map<string, number>();
+
+    allEvents.forEach((event, index) => {
+      if (event.type !== EventType.GOAL) {
+        return;
+      }
+
+      const scorerId = event.playerIds[0];
+      if (!scorerId || !teamPlayerIds.has(scorerId)) {
+        return;
+      }
+
+      for (let i = index - 1; i >= 0; i--) {
+        const priorEvent = allEvents[i];
+        if (priorEvent.type !== EventType.PASS || !priorEvent.success) {
+          continue;
+        }
+
+        const passerId = priorEvent.playerIds[0];
+        const receiverId = priorEvent.playerIds[1];
+        if (!passerId || !receiverId) {
+          continue;
+        }
+
+        if (receiverId === scorerId && passerId !== scorerId && teamPlayerIds.has(passerId)) {
+          assistsByPlayer.set(passerId, (assistsByPlayer.get(passerId) ?? 0) + 1);
+        }
+
+        // The last successful pass to the scorer is the only eligible assist event.
+        break;
       }
     });
 
-    return assists;
+    return assistsByPlayer;
   }
 
-  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], seasonYear: number): number {
-    const seasonAttrs = getCurrentPlayerSeasonAttributes(player, seasonYear);
-    let rating = seasonAttrs.overall.value;
+  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], assists: number): number {
+    let rating = 50; // fixed base — event-driven, no ability anchor
 
     // Positive contributions
     const goals = events.filter(e => e.type === EventType.GOAL).length;
-    const assists = this.calculateAssists(events, events);
     const successfulPasses = events.filter(e => e.type === EventType.PASS && e.success && e.playerIds[0] === player.id).length;
-    const tackles = player.position === Position.GOALKEEPER ? 0 : events.filter(e => e.type === EventType.TACKLE && e.success).length;
+    const tackles = player.position === Position.GOALKEEPER ? 0 : primaryPlayerEvents.filter(e => e.type === EventType.TACKLE && e.success).length;
+    const saves = player.position === Position.GOALKEEPER
+      ? events.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length
+      : 0;
+    const interceptions = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION).length;
+    const shotsOnTarget = events.filter(e => (e.type === EventType.GOAL || e.type === EventType.SAVE) && e.playerIds[0] === player.id).length;
+    const corners = events.filter(e => e.type === EventType.CORNER && e.playerIds[0] === player.id).length;
+    const freeKicks = events.filter(e => e.type === EventType.FREE_KICK && e.playerIds[0] === player.id).length;
+    const penalties = events.filter(e => e.type === EventType.PENALTY && e.playerIds[0] === player.id).length;
+    const successfulPassBonus = this.getSuccessfulPassBonus(successfulPasses);
 
     // Negative contributions
+    const misses = primaryPlayerEvents.filter(e => e.type === EventType.MISS).length;
     const fouls = primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length;
     const yellowCards = primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length;
     const redCards = primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length;
 
-    // Rating calculation
-    rating += (goals * 10) + (assists * 5) + (successfulPasses * 0.1) + (tackles * 2);
-    rating -= (fouls * 2) + (yellowCards * 5) + (redCards * 15);
+    // Victim contributions
+    const foulsSuffered = events.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length;
+
+    const W = StatisticsService.RATING_WEIGHTS;
+    rating += (goals * W.goal) + (assists * W.assist) + successfulPassBonus + (tackles * W.tackle);
+    rating += (saves * W.save) + (interceptions * W.interception) + (shotsOnTarget * W.shotOnTarget) + (corners * W.corner) + (freeKicks * W.freeKick) + (penalties * W.penalty);
+    rating += (foulsSuffered * W.foulSuffered);
+    rating -= (misses * W.miss) + (fouls * W.foul) + (yellowCards * W.yellowCard) + (redCards * W.redCard);
 
     return Math.max(1, Math.min(100, Math.round(rating)));
+  }
+
+  computeRatingBreakdown(stats: PlayerStatistics): PlayerRatingBreakdown {
+    const passBonus = this.getSuccessfulPassBonus(stats.passesSuccessful);
+    const W = StatisticsService.RATING_WEIGHTS;
+
+    const positiveItems: PlayerRatingBreakdownItem[] = [
+      { label: 'Goals', count: stats.goals, points: stats.goals * W.goal },
+      { label: 'Assists', count: stats.assists, points: stats.assists * W.assist },
+      { label: 'Passes', count: stats.passesSuccessful, points: passBonus },
+      { label: 'Tackles', count: stats.tacklesSuccessful, points: stats.tacklesSuccessful * W.tackle },
+      { label: 'Saves', count: stats.saves, points: stats.saves * W.save },
+      { label: 'Interceptions', count: stats.interceptions, points: stats.interceptions * W.interception },
+      { label: 'Shots On Target', count: stats.shotsOnTarget, points: stats.shotsOnTarget * W.shotOnTarget },
+      { label: 'Fouls Won', count: stats.foulsSuffered, points: stats.foulsSuffered * W.foulSuffered },
+    ];
+    const negativeItems: PlayerRatingBreakdownItem[] = [
+      { label: 'Misses', count: stats.misses, points: stats.misses * W.miss },
+      { label: 'Fouls', count: stats.fouls, points: stats.fouls * W.foul },
+      { label: 'Yellow Cards', count: stats.yellowCards, points: stats.yellowCards * W.yellowCard },
+      { label: 'Red Cards', count: stats.redCards, points: stats.redCards * W.redCard },
+    ];
+
+    return {
+      positiveItems,
+      negativeItems,
+      positiveTotal: positiveItems.reduce((sum, item) => sum + item.points, 0),
+      negativeTotal: negativeItems.reduce((sum, item) => sum + item.points, 0),
+    };
+  }
+
+  getSuccessfulPassBonus(successfulPasses: number): number {
+    if (successfulPasses <= 0) {
+      return 0;
+    }
+
+    // Keep passing meaningful while preventing high-tempo possessions from saturating ratings too early.
+    const linearComponent = successfulPasses * 0.03;
+    const volumeComponent = Math.log10(successfulPasses + 1) * 1.6;
+    return Math.min(StatisticsService.MAX_SUCCESSFUL_PASS_BONUS, linearComponent + volumeComponent);
+  }
+
+  private hasEnteredMatch(
+    playerId: string,
+    allEvents: PlayByPlayEvent[],
+    isStarter: boolean
+  ): boolean {
+    if (isStarter) {
+      return true;
+    }
+
+    return allEvents.some(
+      e => e.type === EventType.SUBSTITUTION && e.playerIds[1] === playerId
+    );
+  }
+
+  private calculateMinutesPlayed(
+    playerId: string,
+    allEvents: PlayByPlayEvent[],
+    matchCurrentMinute: number,
+    isStarter: boolean
+  ): number {
+    // Starter substituted off
+    const subOffEvent = allEvents.find(
+      e => e.type === EventType.SUBSTITUTION && e.playerIds[0] === playerId
+    );
+    if (subOffEvent) {
+      return subOffEvent.time;
+    }
+
+    // Player came on as substitute
+    const subOnEvent = allEvents.find(
+      e => e.type === EventType.SUBSTITUTION && e.playerIds[1] === playerId
+    );
+    if (subOnEvent) {
+      const redCardAfterSub = allEvents.find(
+        e => e.type === EventType.RED_CARD && e.playerIds[0] === playerId && e.time > subOnEvent.time
+      );
+      if (redCardAfterSub) {
+        return redCardAfterSub.time - subOnEvent.time;
+      }
+      return matchCurrentMinute - subOnEvent.time;
+    }
+
+    if (isStarter) {
+      // Starter who played until sent off or end of match
+      const redCardEvent = allEvents.find(
+        e => e.type === EventType.RED_CARD && e.playerIds[0] === playerId
+      );
+      if (redCardEvent) {
+        return redCardEvent.time;
+      }
+      return matchCurrentMinute;
+    }
+
+    // Bench player who never entered
+    return 0;
   }
 
   private getMatchResult(matchState: MatchState, teamId: string): 'W' | 'D' | 'L' {

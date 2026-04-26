@@ -127,6 +127,7 @@
                   <th scope="col" class="px-6 py-4 font-medium">Player</th>
                   @if (viewMode() === ViewMode.BIO) {
                     <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
+                    <th scope="col" class="px-4 py-4 font-medium text-center w-24">Rating</th>
                     <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
                     <th scope="col" class="px-4 py-4 font-medium text-center w-24">Nat</th>
                   } @else {
@@ -186,6 +187,13 @@
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ row.player ? getPlayerOverall(row.player) : '--' }}</td>
+                      @let sStatsB = getRowStats(row.player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                        <span class="text-amber-400 font-mono">{{ formatAvgRating(sStatsB) }}</span>
+                        @if (sStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ sStatsB.starNominations.first }}</span>}
+                        @if (sStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ sStatsB.starNominations.second }}</span>}
+                        @if (sStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ sStatsB.starNominations.third }}</span>}
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {
@@ -247,6 +255,13 @@
                     }
                     @if (viewMode() === ViewMode.BIO) {
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ row.player ? getPlayerOverall(row.player) : '--' }}</td>
+                      @let bStatsB = getRowStats(row.player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                        <span class="text-amber-400 font-mono">{{ formatAvgRating(bStatsB) }}</span>
+                        @if (bStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ bStatsB.starNominations.first }}</span>}
+                        @if (bStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ bStatsB.starNominations.second }}</span>}
+                        @if (bStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ bStatsB.starNominations.third }}</span>}
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {
@@ -303,6 +318,13 @@
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ getPlayerOverall(player) }}</td>
+                      @let rStats = getCurrentSeasonStats(player);
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                        <span class="text-amber-400 font-mono">{{ formatAvgRating(rStats) }}</span>
+                        @if (rStats.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ rStats.starNominations.first }}</span>}
+                        @if (rStats.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ rStats.starNominations.second }}</span>}
+                        @if (rStats.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ rStats.starNominations.third }}</span>}
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--' }}</td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                     } @else {

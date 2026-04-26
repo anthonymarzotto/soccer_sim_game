@@ -71,7 +71,7 @@ describe('CommentaryService', () => {
   });
 
   it('describes tackled pass failures without misattributing a defensive actor', () => {
-    const event = createEvent(EventType.TACKLE, ['home-mid'], false, {
+    const event = createEvent(EventType.TACKLE, ['away-def', 'home-mid'], false, {
       passFailure: 'TACKLED',
       passIntent: 'PROGRESSION'
     });
@@ -85,12 +85,32 @@ describe('CommentaryService', () => {
     );
 
     expect(commentary).toContain('Home Mid');
+    expect(commentary).toContain('Away Def');
+    expect(commentary).toContain('wins it from');
     expect(commentary).toContain('progressive pass');
-    expect(commentary).toContain('Possession turns over');
+  });
+
+  it('describes lane-cut interceptions with both the winner and passer', () => {
+    const event = createEvent(EventType.INTERCEPTION, ['away-mid', 'home-mid'], false, {
+      passFailure: 'LANE_CUT_OUT',
+      passIntent: 'THROUGH_BALL'
+    });
+
+    const commentary = service.generateEventCommentary(
+      event,
+      homeTeam,
+      awayTeam,
+      CommentaryStyle.DETAILED,
+      { homePlayers, awayPlayers }
+    );
+
+    expect(commentary).toContain('Away Mid');
+    expect(commentary).toContain('Home Mid');
+    expect(commentary).toContain("cuts out Home Mid's through ball");
   });
 
   it('describes overhit pass failures for interception events', () => {
-    const event = createEvent(EventType.INTERCEPTION, ['home-mid'], false, {
+    const event = createEvent(EventType.INTERCEPTION, ['away-mid', 'home-mid'], false, {
       passFailure: 'OVERHIT',
       passIntent: 'CROSS'
     });
@@ -104,12 +124,14 @@ describe('CommentaryService', () => {
     );
 
     expect(commentary).toContain('Home Mid');
+    expect(commentary).toContain('Away Mid');
     expect(commentary).toContain('overhits');
     expect(commentary).toContain('cross');
+    expect(commentary).toContain('gathers');
   });
 
   it('describes carry dispossession as a contested event without pass intent', () => {
-    const event = createEvent(EventType.TACKLE, ['home-mid'], false, {
+    const event = createEvent(EventType.TACKLE, ['away-def', 'home-mid'], false, {
       carryResult: 'DISPOSSESSED'
     });
 
@@ -122,7 +144,8 @@ describe('CommentaryService', () => {
     );
 
     expect(commentary).toContain('Home Mid');
-    expect(commentary).toMatch(/loses the ball|dispossessed|gives away possession|caught out of possession/);
+    expect(commentary).toContain('Away Def');
+    expect(commentary).toContain('wins it from');
     expect(commentary).not.toContain('pass');
   });
 });

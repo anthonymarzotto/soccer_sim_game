@@ -130,4 +130,28 @@
       </div>
     </div>
   }
+
+  <!-- Stars of the Game -->
+  @if (showStats() && matchStars().length > 0) {
+    <div class="mt-4 pt-4 border-t border-zinc-800">
+      <h5 class="text-sm font-semibold text-zinc-300 mb-3">Stars of the Game</h5>
+      <div class="flex flex-col gap-2">
+        @for (star of matchStars(); track star.stats.playerId) {
+          <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
+            <span class="text-xl w-7 text-center">{{ star.rank === 1 ? '🥇' : star.rank === 2 ? '🥈' : '🥉' }}</span>
+            <app-team-badge [teamId]="star.teamId" size="sm"></app-team-badge>
+            <a [routerLink]="['/player', star.stats.playerId]" class="flex-1 text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:underline">
+              {{ star.stats.playerName }}
+            </a>
+            <span class="text-xs text-zinc-500 font-mono">
+              @if (star.stats.goals > 0) { ⚽{{ star.stats.goals }} }
+              @if (star.stats.assists > 0) { 🤝{{ star.stats.assists }} }
+              @if (star.stats.saves > 0) { 🧤{{ star.stats.saves }} }
+            </span>
+            <span class="text-sm font-mono font-bold text-white">{{ formatRating(star.stats.rating) }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>
