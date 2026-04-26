@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { FieldService } from '../../services/field.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
@@ -31,6 +31,7 @@ export class TeamDetailsComponent {
   private static readonly BENCH_SLOT_COUNT = 9;
 
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private gameService = inject(GameService);
   private fieldService = inject(FieldService);
   private formationLibrary = inject(FormationLibraryService);
@@ -47,12 +48,18 @@ export class TeamDetailsComponent {
   draggedPlayerId = signal<string | null>(null);
   dragOverTargetId = signal<string | null>(null);
 
-  private teamId = computed(() => this.route.snapshot.paramMap.get('id'));
+  teamId = computed(() => this.route.snapshot.paramMap.get('id'));
 
   isUserTeam = computed(() => {
     const l = this.gameService.league();
     return l?.userTeamId === this.teamId();
   });
+
+  allTeamsSorted = computed(() =>
+    [...(this.gameService.league()?.teams ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  );
+
+  userTeamId = computed(() => this.gameService.league()?.userTeamId);
 
   team = computed(() => {
     const id = this.teamId();
@@ -309,6 +316,10 @@ export class TeamDetailsComponent {
     const team = this.team();
     if (!team) return;
     this.gameService.changeTeamFormation(team.id, formationId);
+  }
+
+  onTeamChange(teamId: string) {
+    this.router.navigate(['/team', teamId]);
   }
 
   setViewMode(mode: TeamDetailsViewMode) {
