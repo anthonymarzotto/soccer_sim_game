@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 import { Position } from '../../models/enums';
@@ -18,6 +18,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 })
 export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   gameService = inject(GameService);
   private settingsService = inject(SettingsService);
 
@@ -26,7 +27,7 @@ export class PlayerProfileComponent {
   badgeStyle = this.settingsService.badgeStyle;
   isDev = isDevMode();
 
-  private playerId = computed(() => this.route.snapshot.paramMap.get('id'));
+  playerId = computed(() => this.route.snapshot.paramMap.get('id'));
 
   player = computed(() => {
     const id = this.playerId();
@@ -57,6 +58,27 @@ export class PlayerProfileComponent {
     if (!p) return undefined;
     return this.gameService.getTeam(p.teamId);
   });
+
+  allPlayersOnTeamSorted = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    const positionOrder: Record<string, number> = {
+      [Position.GOALKEEPER]: 1,
+      [Position.DEFENDER]: 2,
+      [Position.MIDFIELDER]: 3,
+      [Position.FORWARD]: 4,
+    };
+    return this.gameService.getPlayersForTeam(t.id)
+      .slice()
+      .sort((a, b) => {
+        const posDiff = (positionOrder[a.position] ?? 5) - (positionOrder[b.position] ?? 5);
+        return posDiff !== 0 ? posDiff : a.name.localeCompare(b.name);
+      });
+  });
+
+  onPlayerChange(playerId: string) {
+    this.router.navigate(['/player', playerId]);
+  }
 
   // Toggle states for each skill section
   mentalView = signal<'list' | 'chart'>('list');
