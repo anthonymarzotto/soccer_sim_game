@@ -335,6 +335,49 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
+  simulateWholeSeason(): void {
+    if (!this.canMutateLeagueState()) return;
+    if (this.isSeasonComplete() || this.isAnySimulationInProgress()) return;
+
+    if (this.weekSimulationUnlockTimer) {
+      clearTimeout(this.weekSimulationUnlockTimer);
+      this.weekSimulationUnlockTimer = null;
+    }
+
+    this.isSimulatingWeekState.set(true);
+
+    try {
+      while (!this.isSeasonComplete()) {
+        const league = this.leagueState()!;
+        const matches = league.schedule.filter(
+          m => m.week === league.currentWeek && m.seasonYear === league.currentSeasonYear && !m.played
+        );
+
+        matches.forEach(match => {
+          const homeTeam = league.teams.find(t => t.id === match.homeTeamId);
+          const awayTeam = league.teams.find(t => t.id === match.awayTeamId);
+          if (!homeTeam || !awayTeam) return;
+
+          this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
+            enablePlayByPlay: false,
+            enableSpatialTracking: false,
+            enableTactics: true,
+            enableFatigue: true,
+            skipCommentary: true,
+            simulationVariant: 'B'
+          }, { bypassWeekSimulationLock: true });
+        });
+
+        this.advanceWeek();
+      }
+    } finally {
+      this.weekSimulationUnlockTimer = setTimeout(() => {
+        this.isSimulatingWeekState.set(false);
+        this.weekSimulationUnlockTimer = null;
+      }, GameService.WEEK_SIMULATION_LOCK_MS);
+    }
+  }
+
   simulateCurrentWeek(config?: Partial<SimulationConfig>) {
     if (!this.canMutateLeagueState()) return;
 

@@ -198,10 +198,13 @@ export class GeneratorService {
   }
 
   private randomStat(min = 20, max = 90, teamQuality = 1.0): number {
-    const baseValue = Math.floor(Math.random() * (max - min + 1)) + min;
-    // Apply team quality multiplier and keep values inside the caller's requested range.
-    const adjustedValue = Math.floor(baseValue * teamQuality);
-    return Math.max(Math.min(adjustedValue, max), min);
+    const range = max - min;
+    // Scale position within [min, max] rather than scaling the absolute value.
+    // quality < 1.0 lowers the ceiling; quality > 1.0 raises the floor.
+    // This preserves real variance even for high-floor ranges (e.g. GK handling min=60).
+    const qualityMax = Math.round(min + range * Math.min(teamQuality, 1.0));
+    const qualityMin = Math.round(min + range * Math.max(teamQuality - 1.0, 0));
+    return Math.floor(Math.random() * (qualityMax - qualityMin + 1)) + qualityMin;
   }
 
   private generateSchedule(teams: Team[], currentSeasonYear: number): Match[] {
