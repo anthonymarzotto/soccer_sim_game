@@ -1,6 +1,7 @@
 {
     "chat.tools.terminal.autoApprove": {
         "uniq": true,
-        "bd": true
+        "bd": true,
+        "printf": true
     }
 }
