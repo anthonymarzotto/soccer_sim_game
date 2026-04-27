@@ -13,7 +13,27 @@
         }
         <div>
           <div class="flex items-center gap-3">
-            <h1 class="text-3xl font-bold tracking-tight text-white">{{ p?.name }}</h1>
+            <select
+              id="player-select"
+              [value]="playerId()"
+              (change)="onPlayerChange($any($event.target).value)"
+              class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg -ml-1 px-1">
+              <optgroup label="Starting XI" class="bg-zinc-900">
+                @for (pl of startersOnTeam(); track pl.id) {
+                  <option [value]="pl.id" [selected]="pl.id === playerId()" class="bg-zinc-900 text-white text-base font-normal">{{ pl.name }}</option>
+                }
+              </optgroup>
+              <optgroup label="Bench" class="bg-zinc-900">
+                @for (pl of benchOnTeam(); track pl.id) {
+                  <option [value]="pl.id" [selected]="pl.id === playerId()" class="bg-zinc-900 text-white text-base font-normal">{{ pl.name }}</option>
+                }
+              </optgroup>
+              <optgroup label="Reserves" class="bg-zinc-900">
+                @for (pl of reservesOnTeam(); track pl.id) {
+                  <option [value]="pl.id" [selected]="pl.id === playerId()" class="bg-zinc-900 text-white text-base font-normal">{{ pl.name }}</option>
+                }
+              </optgroup>
+            </select>
             <span class="px-2 py-1 rounded text-xs font-bold font-mono"
                   [class.bg-yellow-500/20]="p?.position === Position.GOALKEEPER"
                   [class.text-yellow-400]="p?.position === Position.GOALKEEPER"
@@ -25,18 +45,6 @@
                   [class.text-red-400]="p?.position === Position.FORWARD">
               {{ p?.position }}
             </span>
-          </div>
-          <div class="flex items-center gap-2 mt-1">
-            <label for="player-select" class="text-zinc-400 text-xs">Viewing:</label>
-            <select
-              id="player-select"
-              [value]="playerId()"
-              (change)="onPlayerChange($any($event.target).value)"
-              class="bg-zinc-800 border border-zinc-700 text-white rounded px-2 py-0.5 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors">
-              @for (pl of allPlayersOnTeamSorted(); track pl.id) {
-                <option [value]="pl.id">{{ pl.position }} – {{ pl.name }}</option>
-              }
-            </select>
           </div>
           <p class="text-zinc-400 mt-1 flex items-center gap-2">
             @if (badgeStyle() === 'text') {

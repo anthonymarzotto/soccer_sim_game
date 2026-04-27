@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
-import { Position } from '../../models/enums';
+import { Position, Role } from '../../models/enums';
 import { PlayerCareerStats, PlayerSeasonAttributes, StatKey } from '../../models/types';
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
@@ -27,7 +29,7 @@ export class PlayerProfileComponent {
   badgeStyle = this.settingsService.badgeStyle;
   isDev = isDevMode();
 
-  playerId = computed(() => this.route.snapshot.paramMap.get('id'));
+  playerId = toSignal(this.route.paramMap.pipe(map(params => params.get('id'))), { initialValue: null });
 
   player = computed(() => {
     const id = this.playerId();
@@ -59,21 +61,39 @@ export class PlayerProfileComponent {
     return this.gameService.getTeam(p.teamId);
   });
 
-  allPlayersOnTeamSorted = computed(() => {
+  private positionWeight(pos: string): number {
+    switch (pos) {
+      case Position.GOALKEEPER: return 1;
+      case Position.DEFENDER: return 2;
+      case Position.MIDFIELDER: return 3;
+      case Position.FORWARD: return 4;
+      default: return 5;
+    }
+  }
+
+  private sortedByPosition<T extends { position: string; name: string }>(players: T[]): T[] {
+    return players.slice().sort((a, b) => {
+      const posDiff = this.positionWeight(a.position) - this.positionWeight(b.position);
+      return posDiff !== 0 ? posDiff : a.name.localeCompare(b.name);
+    });
+  }
+
+  startersOnTeam = computed(() => {
     const t = this.team();
     if (!t) return [];
-    const positionOrder: Record<string, number> = {
-      [Position.GOALKEEPER]: 1,
-      [Position.DEFENDER]: 2,
-      [Position.MIDFIELDER]: 3,
-      [Position.FORWARD]: 4,
-    };
-    return this.gameService.getPlayersForTeam(t.id)
-      .slice()
-      .sort((a, b) => {
-        const posDiff = (positionOrder[a.position] ?? 5) - (positionOrder[b.position] ?? 5);
-        return posDiff !== 0 ? posDiff : a.name.localeCompare(b.name);
-      });
+    return this.sortedByPosition(this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.STARTER));
+  });
+
+  benchOnTeam = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    return this.sortedByPosition(this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH));
+  });
+
+  reservesOnTeam = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    return this.sortedByPosition(this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE));
   });
 
   onPlayerChange(playerId: string) {
