@@ -695,62 +695,105 @@ export class GameService {
 
   private dressBestPlayers(teams: Team[]): Team[] {
     const userTeamId = this.leagueState()?.userTeamId;
-    
+    const predefinedFormations = this.formationLibrary.listPredefinedFormations();
+    const fallbackFormationId = this.formationLibrary.getDefaultFormationId();
+
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
 
-      if (resolveTeamPlayers(team).length === 0) {
-        return team;
+      const teamPlayers = resolveTeamPlayers(team);
+      if (teamPlayers.length === 0) return team;
+
+      const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
+      const overallOf = (player: Player) => this.getCurrentSeasonPlayerAttributes(player).overall.value;
+
+      // Sort players by position + overall descending; these arrays share object refs with `players`
+      const byPosition = new Map<Position, Player[]>([
+        [Position.GOALKEEPER, players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => overallOf(b) - overallOf(a))],
+        [Position.DEFENDER,   players.filter(p => p.position === Position.DEFENDER).sort((a, b) => overallOf(b) - overallOf(a))],
+        [Position.MIDFIELDER, players.filter(p => p.position === Position.MIDFIELDER).sort((a, b) => overallOf(b) - overallOf(a))],
+        [Position.FORWARD,    players.filter(p => p.position === Position.FORWARD).sort((a, b) => overallOf(b) - overallOf(a))],
+      ]);
+
+      // Evaluate each formation: score = sum of overalls of best-fit starters per slot
+      let bestScore = -1;
+      let bestFormationId = fallbackFormationId;
+      let bestSlotAssignments: Record<string, string> | null = null;
+
+      for (const formation of predefinedFormations) {
+        // Group slot IDs by preferredPosition
+        const slotsByPos = new Map<Position, string[]>();
+        for (const slot of formation.slots) {
+          const ids = slotsByPos.get(slot.preferredPosition) ?? [];
+          ids.push(slot.slotId);
+          slotsByPos.set(slot.preferredPosition, ids);
+        }
+
+        // Viable only if the team has enough players to fill every slot in the formation
+        const viable = [...slotsByPos].every(([pos, slotIds]) => (byPosition.get(pos)?.length ?? 0) >= slotIds.length);
+        if (!viable) continue;
+
+        // Score this formation and build its slot assignment map
+        let score = 0;
+        const slotAssignments: Record<string, string> = {};
+        for (const [pos, slotIds] of slotsByPos) {
+          const available = byPosition.get(pos) ?? [];
+          for (let i = 0; i < slotIds.length; i++) {
+            slotAssignments[slotIds[i]] = available[i].id;
+            score += overallOf(available[i]);
+          }
+        }
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestFormationId = formation.id;
+          bestSlotAssignments = slotAssignments;
+        }
       }
 
-      const players = resolveTeamPlayers(team).map(p => ({ ...p, role: Role.RESERVE }));
+      // Build final formationAssignments, falling back to hardcoded 4-4-2 heuristic
+      let formationAssignments: Record<string, string>;
+      if (bestSlotAssignments) {
+        formationAssignments = bestSlotAssignments;
+      } else {
+        const gks  = byPosition.get(Position.GOALKEEPER) ?? [];
+        const defs = byPosition.get(Position.DEFENDER)   ?? [];
+        const mids = byPosition.get(Position.MIDFIELDER) ?? [];
+        const fwds = byPosition.get(Position.FORWARD)    ?? [];
 
-      const overallOf = (player: Player) => this.getCurrentSeasonPlayerAttributes(player).overall.value;
-      const gks = players
-        .filter(p => p.position === Position.GOALKEEPER)
-        .sort((a, b) => overallOf(b) - overallOf(a));
-      const defs = players
-        .filter(p => p.position === Position.DEFENDER)
-        .sort((a, b) => overallOf(b) - overallOf(a));
-      const mids = players
-        .filter(p => p.position === Position.MIDFIELDER)
-        .sort((a, b) => overallOf(b) - overallOf(a));
-      const fwds = players
-        .filter(p => p.position === Position.FORWARD)
-        .sort((a, b) => overallOf(b) - overallOf(a));
+        formationAssignments = {
+          gk_1:   gks[0]?.id  ?? '',
+          def_l:  defs[0]?.id ?? '',
+          def_lc: defs[1]?.id ?? '',
+          def_rc: defs[2]?.id ?? '',
+          def_r:  defs[3]?.id ?? '',
+          mid_l:  mids[0]?.id ?? '',
+          mid_lc: mids[1]?.id ?? '',
+          mid_rc: mids[2]?.id ?? '',
+          mid_r:  mids[3]?.id ?? '',
+          att_l:  fwds[0]?.id ?? '',
+          att_r:  fwds[1]?.id ?? '',
+        };
+      }
 
-      if (gks.length > 0) gks[0].role = Role.STARTER;
-      for (let i = 0; i < Math.min(4, defs.length); i++) defs[i].role = Role.STARTER;
-      for (let i = 0; i < Math.min(4, mids.length); i++) mids[i].role = Role.STARTER;
-      for (let i = 0; i < Math.min(2, fwds.length); i++) fwds[i].role = Role.STARTER;
+      // Mark starters (mutates shared object refs, updating `players` in place)
+      const starterIds = new Set(Object.values(formationAssignments).filter(id => id !== ''));
+      for (const player of players) {
+        if (starterIds.has(player.id)) player.role = Role.STARTER;
+      }
 
-      if (gks.length > 1) gks[1].role = Role.BENCH;
-      for (let i = 4; i < Math.min(6, defs.length); i++) defs[i].role = Role.BENCH;
-      for (let i = 4; i < Math.min(8, mids.length); i++) mids[i].role = Role.BENCH;
-      for (let i = 2; i < Math.min(4, fwds.length); i++) fwds[i].role = Role.BENCH;
+      // Mark bench: next best available players per position not already starting
+      const benchGks  = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
+      const benchDefs = (byPosition.get(Position.DEFENDER)   ?? []).filter(p => !starterIds.has(p.id));
+      const benchMids = (byPosition.get(Position.MIDFIELDER) ?? []).filter(p => !starterIds.has(p.id));
+      const benchFwds = (byPosition.get(Position.FORWARD)    ?? []).filter(p => !starterIds.has(p.id));
 
-      const startersByPosition = {
-        [Position.GOALKEEPER]: players.filter(p => p.role === Role.STARTER && p.position === Position.GOALKEEPER),
-        [Position.DEFENDER]: players.filter(p => p.role === Role.STARTER && p.position === Position.DEFENDER),
-        [Position.MIDFIELDER]: players.filter(p => p.role === Role.STARTER && p.position === Position.MIDFIELDER),
-        [Position.FORWARD]: players.filter(p => p.role === Role.STARTER && p.position === Position.FORWARD)
-      };
+      if (benchGks.length > 0) benchGks[0].role = Role.BENCH;
+      for (let i = 0; i < Math.min(2, benchDefs.length); i++) benchDefs[i].role = Role.BENCH;
+      for (let i = 0; i < Math.min(4, benchMids.length); i++) benchMids[i].role = Role.BENCH;
+      for (let i = 0; i < Math.min(2, benchFwds.length); i++) benchFwds[i].role = Role.BENCH;
 
-      const formationAssignments: Record<string, string> = {
-        gk_1: startersByPosition[Position.GOALKEEPER][0]?.id ?? '',
-        def_l: startersByPosition[Position.DEFENDER][0]?.id ?? '',
-        def_lc: startersByPosition[Position.DEFENDER][1]?.id ?? '',
-        def_rc: startersByPosition[Position.DEFENDER][2]?.id ?? '',
-        def_r: startersByPosition[Position.DEFENDER][3]?.id ?? '',
-        mid_l: startersByPosition[Position.MIDFIELDER][0]?.id ?? '',
-        mid_lc: startersByPosition[Position.MIDFIELDER][1]?.id ?? '',
-        mid_rc: startersByPosition[Position.MIDFIELDER][2]?.id ?? '',
-        mid_r: startersByPosition[Position.MIDFIELDER][3]?.id ?? '',
-        att_l: startersByPosition[Position.FORWARD][0]?.id ?? '',
-        att_r: startersByPosition[Position.FORWARD][1]?.id ?? ''
-      };
-
-      return this.withSyncedPlayerIds({ ...team, players, formationAssignments });
+      return this.withSyncedPlayerIds({ ...team, selectedFormationId: bestFormationId, players, formationAssignments });
     });
   }
 

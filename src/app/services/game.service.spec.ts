@@ -14,7 +14,7 @@ import { DataSchemaVersionService } from './data-schema-version.service';
 import { CommentaryStyle, EventType, FieldZone, MatchPhase, MatchResult, PlayingStyle, Position, Role } from '../models/enums';
 import { League, MatchStatistics, Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
-import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs } from '../testing/test-player-fixtures';
+import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs, createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('GameService persistence integration', () => {
   function ensureSeasonSnapshots(storedLeague: League | null): League | null {
@@ -69,8 +69,11 @@ describe('GameService persistence integration', () => {
       saveMatchResult: vi.fn().mockResolvedValue(undefined)
     };
 
-    const formationLibrarySpy: Pick<FormationLibraryService, 'getFormationSlots'> = {
-      getFormationSlots: vi.fn().mockReturnValue(undefined)
+    const formationLibrarySpy: Pick<FormationLibraryService, 'getFormationSlots' | 'listPredefinedFormations' | 'getAllFormations' | 'getDefaultFormationId'> = {
+      getFormationSlots: vi.fn().mockReturnValue(undefined),
+      listPredefinedFormations: vi.fn().mockReturnValue([]),
+      getAllFormations: vi.fn().mockReturnValue([]),
+      getDefaultFormationId: vi.fn().mockReturnValue('formation_4_4_2')
     };
 
     TestBed.configureTestingModule({
@@ -1492,7 +1495,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: {} }
+        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1547,7 +1550,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: {} }
+        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1592,7 +1595,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: {} }
+        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1641,7 +1644,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: statisticsSpy },
         { provide: PostMatchAnalysisService, useValue: reportSpy },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: {} }
+        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1663,6 +1666,305 @@ describe('GameService simulation engine', () => {
       expect.objectContaining({ id: 'away' }),
       expect.objectContaining({ simulationVariant: 'B' })
     );
+  });
+});
+
+describe('GameService dressBestPlayers', () => {
+  const SEASON_YEAR = 2026;
+
+  function makePlayer(id: string, position: Position, overall: number): Player {
+    return createTestPlayer({ id, position, role: Role.RESERVE, seasonYear: SEASON_YEAR, stats: { overall } });
+  }
+
+  function makeTeam(id: string, players: Player[]): Team {
+    return {
+      id,
+      name: id,
+      players,
+      playerIds: players.map(p => p.id),
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: {},
+      seasonSnapshots: [{ seasonYear: SEASON_YEAR, playerIds: players.map(p => p.id), stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }]
+    };
+  }
+
+  function buildService(predefinedFormations: unknown[], allFormations = predefinedFormations) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: DataSchemaVersionService, useValue: { hasPersistedDataSchemaVersionMismatch: signal(false).asReadonly() } },
+        { provide: MatchSimulationVariantBService, useValue: {} },
+        { provide: CommentaryService, useValue: {} },
+        { provide: StatisticsService, useValue: { generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
+        { provide: PostMatchAnalysisService, useValue: {} },
+        { provide: FieldService, useValue: {} },
+        {
+          provide: FormationLibraryService,
+          useValue: {
+            listPredefinedFormations: () => predefinedFormations,
+            getAllFormations: () => allFormations,
+            getDefaultFormationId: () => 'formation_4_4_2'
+          }
+        }
+      ]
+    });
+    return TestBed.inject(GameService);
+  }
+
+  function callDressBestPlayers(service: GameService, teams: Team[]): Team[] {
+    return (service as unknown as { dressBestPlayers: (t: Team[]) => Team[] }).dressBestPlayers(teams);
+  }
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('uses 4-4-2 hardcoded fallback keys when no formations are available', () => {
+    const players = [
+      makePlayer('gk1', Position.GOALKEEPER, 80),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('mid1', Position.MIDFIELDER, 80),
+      makePlayer('mid2', Position.MIDFIELDER, 80),
+      makePlayer('mid3', Position.MIDFIELDER, 80),
+      makePlayer('mid4', Position.MIDFIELDER, 80),
+      makePlayer('fwd1', Position.FORWARD, 80),
+      makePlayer('fwd2', Position.FORWARD, 80),
+    ];
+    const service = buildService([]);
+    const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
+
+    expect(result.selectedFormationId).toBe('formation_4_4_2');
+    expect(result.formationAssignments['gk_1']).toBe('gk1');
+    expect(result.formationAssignments['att_l']).toBe('fwd1');
+    expect(result.formationAssignments['att_r']).toBe('fwd2');
+    // All 11 hardcoded keys must be present
+    const expectedKeys = ['gk_1', 'def_l', 'def_lc', 'def_rc', 'def_r', 'mid_l', 'mid_lc', 'mid_rc', 'mid_r', 'att_l', 'att_r'];
+    expect(Object.keys(result.formationAssignments).sort()).toEqual(expectedKeys.sort());
+  });
+
+  it('falls back to 4-4-2 hardcoded keys when the only available formation cannot be filled', () => {
+    // Formation requires 3 FWD, but team has only 2 → not viable
+    const formation433 = {
+      id: 'formation_4_3_3',
+      name: '4-3-3',
+      shortCode: '4-3-3',
+      isUserDefined: false,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+      ]
+    };
+    const players = [
+      makePlayer('gk1', Position.GOALKEEPER, 80),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('mid1', Position.MIDFIELDER, 80),
+      makePlayer('mid2', Position.MIDFIELDER, 80),
+      makePlayer('mid3', Position.MIDFIELDER, 80),
+      makePlayer('fwd1', Position.FORWARD, 80),
+      makePlayer('fwd2', Position.FORWARD, 80),
+      makePlayer('mid4', Position.MIDFIELDER, 80), // only 2 FWD, not 3
+    ];
+    const service = buildService([formation433]);
+    const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
+
+    // 4-3-3 is not viable → hardcoded 4-4-2 fallback
+    expect(result.selectedFormationId).toBe('formation_4_4_2');
+    const expectedKeys = ['gk_1', 'def_l', 'def_lc', 'def_rc', 'def_r', 'mid_l', 'mid_lc', 'mid_rc', 'mid_r', 'att_l', 'att_r'];
+    expect(Object.keys(result.formationAssignments).sort()).toEqual(expectedKeys.sort());
+  });
+
+  it('selects a viable formation and assigns the best players to its slots', () => {
+    const formation433 = {
+      id: 'formation_4_3_3',
+      name: '4-3-3',
+      shortCode: '4-3-3',
+      isUserDefined: false,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+      ]
+    };
+    const players = [
+      makePlayer('gk1', Position.GOALKEEPER, 85),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('mid1', Position.MIDFIELDER, 80),
+      makePlayer('mid2', Position.MIDFIELDER, 80),
+      makePlayer('mid3', Position.MIDFIELDER, 80),
+      makePlayer('fwd1', Position.FORWARD, 80),
+      makePlayer('fwd2', Position.FORWARD, 80),
+      makePlayer('fwd3', Position.FORWARD, 80),
+    ];
+    const service = buildService([formation433]);
+    const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
+
+    expect(result.selectedFormationId).toBe('formation_4_3_3');
+    // All 11 formation slots must be filled
+    const formationSlotIds = formation433.slots.map(s => s.slotId).sort();
+    expect(Object.keys(result.formationAssignments).sort()).toEqual(formationSlotIds);
+    // The GK should be assigned
+    expect(result.formationAssignments['gk_1']).toBe('gk1');
+    // Assigned players must be marked STARTER
+    const assignedIds = new Set(Object.values(result.formationAssignments));
+    const starters = result.players.filter(p => p.role === Role.STARTER);
+    expect(starters.map(p => p.id).sort()).toEqual([...assignedIds].sort());
+  });
+
+  it('picks the higher-scoring formation when multiple are viable', () => {
+    // 4-4-2: sums 4 MID (90 each) + 2 FWD (70 each) = 360 + 140 = 500 for non-GK/DEF part
+    // 4-3-3: sums 3 MID (90 each) + 3 FWD (70 each) = 270 + 210 = 480 for non-GK/DEF part
+    // → 4-4-2 scores higher
+    const formation442 = {
+      id: 'formation_4_4_2',
+      name: '4-4-2',
+      shortCode: '4-4-2',
+      isUserDefined: false,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_l', preferredPosition: Position.MIDFIELDER, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_r', preferredPosition: Position.MIDFIELDER, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
+      ]
+    };
+    const formation433 = {
+      id: 'formation_4_3_3',
+      name: '4-3-3',
+      shortCode: '4-3-3',
+      isUserDefined: false,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+      ]
+    };
+    const players = [
+      makePlayer('gk1', Position.GOALKEEPER, 80),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('mid1', Position.MIDFIELDER, 90),
+      makePlayer('mid2', Position.MIDFIELDER, 90),
+      makePlayer('mid3', Position.MIDFIELDER, 90),
+      makePlayer('mid4', Position.MIDFIELDER, 90),
+      makePlayer('fwd1', Position.FORWARD, 70),
+      makePlayer('fwd2', Position.FORWARD, 70),
+      makePlayer('fwd3', Position.FORWARD, 70),
+    ];
+    const service = buildService([formation433, formation442]);
+    const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
+
+    expect(result.selectedFormationId).toBe('formation_4_4_2');
+  });
+
+  it('ignores user-defined formations when selecting CPU lineups', () => {
+    const predefined442 = {
+      id: 'formation_4_4_2',
+      name: '4-4-2',
+      shortCode: '4-4-2',
+      isUserDefined: false,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_l', preferredPosition: Position.MIDFIELDER, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_r', preferredPosition: Position.MIDFIELDER, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
+      ]
+    };
+    const userDefined433 = {
+      id: 'user_4_3_3',
+      name: 'User 4-3-3',
+      shortCode: '4-3-3',
+      isUserDefined: true,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+      ]
+    };
+    const players = [
+      makePlayer('gk1', Position.GOALKEEPER, 80),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('mid1', Position.MIDFIELDER, 70),
+      makePlayer('mid2', Position.MIDFIELDER, 70),
+      makePlayer('mid3', Position.MIDFIELDER, 70),
+      makePlayer('mid4', Position.MIDFIELDER, 70),
+      makePlayer('fwd1', Position.FORWARD, 90),
+      makePlayer('fwd2', Position.FORWARD, 90),
+      makePlayer('fwd3', Position.FORWARD, 90),
+    ];
+    const service = buildService([predefined442], [userDefined433, predefined442]);
+    const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
+
+    expect(result.selectedFormationId).toBe('formation_4_4_2');
+    expect(result.formationAssignments['att_l']).toBe('fwd1');
+    expect(result.formationAssignments['att_r']).toBe('fwd2');
   });
 });
 
