@@ -26,6 +26,18 @@
               {{ p?.position }}
             </span>
           </div>
+          <div class="flex items-center gap-2 mt-1">
+            <label for="player-select" class="text-zinc-400 text-xs">Viewing:</label>
+            <select
+              id="player-select"
+              [value]="playerId()"
+              (change)="onPlayerChange($any($event.target).value)"
+              class="bg-zinc-800 border border-zinc-700 text-white rounded px-2 py-0.5 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors">
+              @for (pl of allPlayersOnTeamSorted(); track pl.id) {
+                <option [value]="pl.id">{{ pl.position }} – {{ pl.name }}</option>
+              }
+            </select>
+          </div>
           <p class="text-zinc-400 mt-1 flex items-center gap-2">
             @if (badgeStyle() === 'text') {
               <app-team-badge [teamId]="p?.teamId ?? ''" size="sm" [link]="true" />• 
