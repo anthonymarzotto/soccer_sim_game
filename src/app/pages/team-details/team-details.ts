@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { FieldService } from '../../services/field.service';
@@ -48,7 +50,7 @@ export class TeamDetailsComponent {
   draggedPlayerId = signal<string | null>(null);
   dragOverTargetId = signal<string | null>(null);
 
-  teamId = computed(() => this.route.snapshot.paramMap.get('id'));
+  teamId = toSignal(this.route.paramMap.pipe(map(params => params.get('id'))), { initialValue: null });
 
   isUserTeam = computed(() => {
     const l = this.gameService.league();
