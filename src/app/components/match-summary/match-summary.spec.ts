@@ -93,6 +93,41 @@ describe('MatchSummaryComponent', () => {
 
     expect(component.visibleMoments().map(item => item.event.id)).toEqual(['k-early', 'x-early']);
   });
+
+  it('renders injury key events from injury metadata', () => {
+    const fixture = TestBed.createComponent(MatchSummaryComponent);
+
+    fixture.componentRef.setInput('match', createMatch({
+      keyEvents: [
+        createMoment('injury-active', EventType.INJURY, 54, EventImportance.HIGH, {
+          additionalData: {
+            injury: {
+              definitionId: 'hamstring_pull',
+              totalWeeks: 5,
+              weeksRemaining: 3
+            }
+          }
+        }),
+        createMoment('injury-knock', EventType.INJURY, 71, EventImportance.HIGH, {
+          additionalData: {
+            injury: {
+              definitionId: 'knock',
+              totalWeeks: 0,
+              weeksRemaining: 0
+            }
+          }
+        })
+      ],
+      expandedMoments: []
+    }));
+    fixture.componentRef.setInput('showEvents', true);
+
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+    expect(text).toContain('home-p1 — Hamstring Pull, out 3 weeks');
+    expect(text).toContain('home-p1 — Knock, back next game');
+  });
 });
 
 function createMatch(input: { keyEvents: MatchEvent[]; expandedMoments: MatchEvent[] }): Match {
@@ -146,7 +181,13 @@ function createMatch(input: { keyEvents: MatchEvent[]; expandedMoments: MatchEve
   };
 }
 
-function createMoment(id: string, type: EventType, time: number, importance: EventImportance): MatchEvent {
+function createMoment(
+  id: string,
+  type: EventType,
+  time: number,
+  importance: EventImportance,
+  overrides: Partial<MatchEvent> = {}
+): MatchEvent {
   return {
     id,
     type,
@@ -155,7 +196,8 @@ function createMoment(id: string, type: EventType, time: number, importance: Eve
     playerIds: ['home-p1'],
     icon: '•',
     importance,
-    location: { x: 50, y: 50 }
+    location: { x: 50, y: 50 },
+    ...overrides
   };
 }
 

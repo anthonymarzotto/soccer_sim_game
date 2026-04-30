@@ -9,7 +9,8 @@ import { PlayerCareerStats, PlayerSeasonAttributes, StatKey } from '../../models
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating } from '../../models/player-career-stats';
-import { getCurrentPlayerSeasonAttributes } from '../../models/season-history';
+import { getCurrentPlayerSeasonAttributes, getActiveInjury } from '../../models/season-history';
+import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 @Component({
@@ -50,6 +51,31 @@ export class PlayerProfileComponent {
     if (!p || year === undefined) return null;
     return computeAge(p.personal.birthday, seasonAnchorDate(year));
   });
+
+  activeInjury = computed<InjuryRecord | null>(() => {
+    const p = this.player();
+    return p ? getActiveInjury(p) : null;
+  });
+
+  /**
+   * Returns the player's injury records in reverse chronological order
+   * (most recent first). Includes both healed and active records.
+   */
+  injuryHistory = computed<InjuryRecord[]>(() => {
+    const records = this.player()?.injuries ?? [];
+    return [...records].sort((a, b) => {
+      const seasonDiff = b.sustainedInSeason - a.sustainedInSeason;
+      return seasonDiff !== 0 ? seasonDiff : b.sustainedInWeek - a.sustainedInWeek;
+    });
+  });
+
+  getInjuryName(definitionId: string): string {
+    return getInjuryDefinition(definitionId)?.name ?? definitionId;
+  }
+
+  getInjurySeverity(definitionId: string): string {
+    return getInjuryDefinition(definitionId)?.severity ?? '—';
+  }
 
   getStatDescription(key: StatKey): string {
     return STAT_DEFINITIONS[key].description;

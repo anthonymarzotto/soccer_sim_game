@@ -399,22 +399,24 @@ export class StatisticsService {
       e => e.type === EventType.SUBSTITUTION && e.playerIds[1] === playerId
     );
     if (subOnEvent) {
-      const redCardAfterSub = allEvents.find(
-        e => e.type === EventType.RED_CARD && e.playerIds[0] === playerId && e.time > subOnEvent.time
+      const exitAfterSub = allEvents.find(
+        e => (e.type === EventType.RED_CARD || e.type === EventType.INJURY)
+          && e.playerIds[0] === playerId
+          && e.time > subOnEvent.time
       );
-      if (redCardAfterSub) {
-        return redCardAfterSub.time - subOnEvent.time;
+      if (exitAfterSub) {
+        return exitAfterSub.time - subOnEvent.time;
       }
       return matchCurrentMinute - subOnEvent.time;
     }
 
     if (isStarter) {
-      // Starter who played until sent off or end of match
-      const redCardEvent = allEvents.find(
-        e => e.type === EventType.RED_CARD && e.playerIds[0] === playerId
+      // Starter who played until sent off, injured, or end of match.
+      const exitEvent = allEvents.find(
+        e => (e.type === EventType.RED_CARD || e.type === EventType.INJURY) && e.playerIds[0] === playerId
       );
-      if (redCardEvent) {
-        return redCardEvent.time;
+      if (exitEvent) {
+        return exitEvent.time;
       }
       return matchCurrentMinute;
     }

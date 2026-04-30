@@ -54,6 +54,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     const report = await runner.run(iterations, variants, async (variant, seed) => {
       const config: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -140,6 +141,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     for (let i = 0; i < iterations; i++) {
       const config: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -217,6 +219,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     for (let i = 0; i < iterations; i++) {
       const baselineConfig: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -280,6 +283,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     for (let i = 0; i < iterations; i++) {
       const baselineConfig: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -341,6 +345,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     for (let i = 0; i < iterations; i++) {
       const config: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -378,6 +383,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     for (let i = 0; i < iterations; i++) {
       const config: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,

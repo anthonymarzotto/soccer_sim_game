@@ -10,6 +10,8 @@ import { FormationSlot } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating } from '../../models/player-career-stats';
+import { getActiveInjury, isPlayerInjured } from '../../models/season-history';
+import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 
 type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'totalMatchRating' | 'starNominations'>;
 
@@ -62,6 +64,7 @@ export class TeamDetailsComponent {
   );
 
   userTeamId = computed(() => this.gameService.league()?.userTeamId);
+  isSchemaMismatchBlocking = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
 
   team = computed(() => {
     const id = this.teamId();
@@ -81,11 +84,16 @@ export class TeamDetailsComponent {
     return this.fieldService.getFormationSlots(t);
   });
 
-  formationValidationErrors = computed(() => {
+  matchReadiness = computed(() => {
     const t = this.team();
-    if (!t) return [];
-    return this.gameService.getFormationValidationErrors(t);
+    if (!t) {
+      return { isReady: true, issues: [] };
+    }
+    return this.gameService.getMatchReadiness(t.id);
   });
+
+  readinessIssues = computed(() => this.matchReadiness().issues);
+  showQuickFix = computed(() => this.isUserTeam() && this.readinessIssues().length > 0);
 
   starterRows = computed<StarterRow[]>(() => {
     const t = this.team();
@@ -100,10 +108,17 @@ export class TeamDetailsComponent {
 
   starters = computed(() => this.starterRows().map(row => row.player).filter((player): player is Player => player !== null));
 
+  injured = computed(() => {
+    const t = this.team();
+    if (!t) return [];
+    return this.gameService.getPlayersForTeam(t.id).filter(p => isPlayerInjured(p))
+      .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
+  });
+
   bench = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH)
+    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH && !isPlayerInjured(p))
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
@@ -118,7 +133,7 @@ export class TeamDetailsComponent {
   reserves = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE)
+    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE && !isPlayerInjured(p))
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
@@ -176,6 +191,25 @@ export class TeamDetailsComponent {
       case this.Position.FORWARD: return 4;
       default: return 5;
     }
+  }
+
+  isInjured(player: Player | null | undefined): boolean {
+    return !!player && isPlayerInjured(player);
+  }
+
+  getActiveInjuryFor(player: Player | null | undefined): InjuryRecord | null {
+    if (!player) return null;
+    return getActiveInjury(player);
+  }
+
+  getInjuryName(definitionId: string): string {
+    return getInjuryDefinition(definitionId)?.name ?? definitionId;
+  }
+
+  formatWeeksOut(weeksRemaining: number): string {
+    if (weeksRemaining <= 0) return 'Back next game';
+    if (weeksRemaining === 1) return '1 wk';
+    return `${weeksRemaining} wks`;
   }
 
   onDragStart(event: DragEvent, playerId: string) {
@@ -322,6 +356,13 @@ export class TeamDetailsComponent {
 
   onTeamChange(teamId: string) {
     this.router.navigate(['/team', teamId]);
+  }
+
+  runQuickFix() {
+    if (this.isSchemaMismatchBlocking()) {
+      return;
+    }
+    this.gameService.optimizeUserTeamLineup();
   }
 
   setViewMode(mode: TeamDetailsViewMode) {

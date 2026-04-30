@@ -3,7 +3,7 @@ import { ElementRef } from '@angular/core';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { WatchGameComponent } from './watch-game';
-import { EventImportance, EventType, TeamSide, MatchPhase, Position, Role } from '../../models/enums';
+import { EventImportance, EventType, TeamSide, MatchPhase, Position, Role, PlayingStyle } from '../../models/enums';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
 import { FieldService } from '../../services/field.service';
@@ -122,7 +122,7 @@ describe('WatchGameComponent', () => {
             getTeam: () => null,
             isSimulatingMatchWeek: () => false,
             beginSingleMatchSimulationSession: () => undefined,
-            getFormationValidationErrors: () => [],
+            getMatchReadiness: () => ({ isReady: true, issues: [] }),
             simulateMatchWithDetails: () => null
           }
         },
@@ -157,6 +157,32 @@ describe('WatchGameComponent', () => {
         }
       ]
     });
+  });
+
+  it('blocks startSimulation on shared match-readiness issues', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const gameService = TestBed.inject(GameService) as unknown as {
+      league: () => { userTeamId: string; teams: []; schedule: []; currentWeek: number; currentSeasonYear: number } | null;
+      getMatchReadiness: (teamId: string) => { isReady: boolean; issues: { kind: 'formation' | 'injured-starter'; message: string }[] };
+      simulateMatchWithDetails: ReturnType<typeof vi.fn>;
+    };
+
+    component.match.set({ id: 'match-1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false });
+    component.homeTeam.set(createTeam('home', [createPlayer('home-1', 'home', Role.STARTER)]));
+    component.awayTeam.set(createTeam('away', [createPlayer('away-1', 'away', Role.STARTER)]));
+
+    gameService.league = () => ({ userTeamId: 'home', teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    gameService.getMatchReadiness = () => ({
+      isReady: false,
+      issues: [{ kind: 'injured-starter', message: 'home-1 is injured (Hamstring Pull, 3 weeks remaining) and cannot start.' }]
+    });
+    gameService.simulateMatchWithDetails = vi.fn();
+
+    component.startSimulation();
+
+    expect(component.validationError()).toBe('home-1 is injured (Hamstring Pull, 3 weeks remaining) and cannot start.');
+    expect(gameService.simulateMatchWithDetails).not.toHaveBeenCalled();
   });
 
   it('updates currentCommentaryItem as replay advances across consecutive non-halftime items', () => {
@@ -469,6 +495,165 @@ describe('WatchGameComponent', () => {
     expect(generatePlayerStatisticsSpy).toHaveBeenCalledTimes(2);
     expect(component.getLiveRating(homeStarter.id, TeamSide.HOME)).toBe('5.0');
     expect(component.getLiveRating(homeBench.id, TeamSide.HOME)).toBe('--');
+  });
+
+  it('prefers persisted match-report ratings once the replay is no longer live', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const homePlayer = createPlayer('home-starter', 'home', Role.STARTER);
+    const awayPlayer = createPlayer('away-starter', 'away', Role.STARTER);
+
+    component.homeTeam.set(createTeam('home', [homePlayer]));
+    component.awayTeam.set(createTeam('away', [awayPlayer]));
+    component.liveHomePlayerStats.set([createPlayerStats(homePlayer, 61)]);
+    component.liveAwayPlayerStats.set([createPlayerStats(awayPlayer, 58)]);
+    component.displayMatch.set({
+      id: 'match-1',
+      week: 1,
+      homeTeamId: 'home',
+      awayTeamId: 'away',
+      played: true,
+      matchReport: {
+        matchId: 'match-1',
+        finalScore: '2-1',
+        matchStats: {
+          possession: { home: 51, away: 49 },
+          shots: { home: 10, away: 7 },
+          shotsOnTarget: { home: 5, away: 3 },
+          corners: { home: 4, away: 2 },
+          fouls: { home: 8, away: 10 },
+          cards: {
+            home: { yellow: 1, red: 0 },
+            away: { yellow: 2, red: 0 }
+          },
+          passes: { home: 300, away: 280 },
+          tackles: { home: 18, away: 20 },
+          saves: { home: 2, away: 3 }
+        },
+        keyMoments: [],
+        tacticalAnalysis: {
+          homeTeam: {
+            possession: 51,
+            shots: 10,
+            corners: 4,
+            fouls: 8,
+            style: PlayingStyle.POSSESSION,
+            effectiveness: 7
+          },
+          awayTeam: {
+            possession: 49,
+            shots: 7,
+            corners: 2,
+            fouls: 10,
+            style: PlayingStyle.COUNTER_ATTACK,
+            effectiveness: 6
+          },
+          tacticalBattle: 'test'
+        },
+        playerPerformances: {
+          homeTeam: {
+            mvp: createPlayerStats(homePlayer, 73),
+            topPerformers: [createPlayerStats(homePlayer, 73)],
+            strugglers: [],
+            averageRating: 7.3
+          },
+          awayTeam: {
+            mvp: createPlayerStats(awayPlayer, 64),
+            topPerformers: [createPlayerStats(awayPlayer, 64)],
+            strugglers: [],
+            averageRating: 6.4
+          }
+        },
+        matchSummary: 'test',
+        homePlayerStats: [createPlayerStats(homePlayer, 73)],
+        awayPlayerStats: [createPlayerStats(awayPlayer, 64)]
+      }
+    });
+
+    expect(component.getLiveRating(homePlayer.id, TeamSide.HOME)).toBe('7.3');
+    expect(component.getLiveRatingBreakdownData(homePlayer.id, TeamSide.HOME)?.currentRating).toBe(73);
+    expect(component.getLiveStarRank(homePlayer.id)).toBe(1);
+  });
+
+  it('shows star medals for substituted-out players in both sidebars', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const homeStarter = createPlayer('home-starter', 'home', Role.STARTER);
+    const homeSubbedOff = createPlayer('home-subbed-off', 'home', Role.BENCH);
+    const awayStarter = createPlayer('away-starter', 'away', Role.STARTER);
+    const awaySubbedOff = createPlayer('away-subbed-off', 'away', Role.BENCH);
+
+    component.homeTeam.set(createTeam('home', [homeStarter, homeSubbedOff]));
+    component.awayTeam.set(createTeam('away', [awayStarter, awaySubbedOff]));
+    component.homeFormationDots.set([
+      {
+        id: 'home-slot-1',
+        slotId: 'home-slot-1',
+        slotLabel: 'CM',
+        tacticOrder: 0,
+        teamSide: TeamSide.HOME,
+        playerId: homeStarter.id,
+        label: 'HS',
+        fullName: homeStarter.name,
+        x: 50,
+        y: 50,
+        minuteEntered: 0,
+        goalMinutes: [],
+        yellowCardMinutes: [],
+        redCards: 0,
+      }
+    ]);
+    component.awayFormationDots.set([
+      {
+        id: 'away-slot-1',
+        slotId: 'away-slot-1',
+        slotLabel: 'CM',
+        tacticOrder: 0,
+        teamSide: TeamSide.AWAY,
+        playerId: awayStarter.id,
+        label: 'AS',
+        fullName: awayStarter.name,
+        x: 50,
+        y: 50,
+        minuteEntered: 0,
+        goalMinutes: [],
+        yellowCardMinutes: [],
+        redCards: 0,
+      }
+    ]);
+    component['homeRemovedPlayers'].set(new Map([
+      [homeSubbedOff.id, { status: Role.SUBSTITUTED_OUT, fatigue: 74 }]
+    ]));
+    component['awayRemovedPlayers'].set(new Map([
+      [awaySubbedOff.id, { status: Role.SUBSTITUTED_OUT, fatigue: 68 }]
+    ]));
+    component.liveHomePlayerStats.set([
+      createPlayerStats(homeSubbedOff, 92),
+      createPlayerStats(homeStarter, 70)
+    ]);
+    component.liveAwayPlayerStats.set([
+      createPlayerStats(awaySubbedOff, 81),
+      createPlayerStats(awayStarter, 65)
+    ]);
+
+    vi.spyOn(component.gameService, 'getPlayersForTeam').mockImplementation((teamId: string) => {
+      if (teamId === 'home') {
+        return [homeStarter, homeSubbedOff];
+      }
+
+      return [awayStarter, awaySubbedOff];
+    });
+
+    fixture.detectChanges();
+
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('div') as NodeListOf<HTMLDivElement>
+    );
+    const homeRow = rows.find((element) => element.textContent?.includes(homeSubbedOff.name));
+    const awayRow = rows.find((element) => element.textContent?.includes(awaySubbedOff.name));
+
+    expect(homeRow?.textContent).toContain('🥇');
+    expect(awayRow?.textContent).toContain('🥈');
   });
 
   it('builds structured breakdown data for rated players with full negative detail', () => {

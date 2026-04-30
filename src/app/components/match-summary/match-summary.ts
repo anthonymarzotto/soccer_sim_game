@@ -4,10 +4,19 @@ import { GameService } from '../../services/game.service';
 import { SettingsService, ICON_BADGE_STYLES, BadgeStyle } from '../../services/settings.service';
 import { TeamBadgeComponent } from '../team-badge/team-badge';
 import { Match, MatchEvent } from '../../models/types';
-import { EventImportance } from '../../models/enums';
+import { EventImportance, EventType } from '../../models/enums';
 import { rankThreeStars, MatchStarEntry } from '../../models/match-stars';
+import { getInjuryDefinition } from '../../data/injuries';
 
 const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
+
+interface InjuryMomentSummary {
+  playerId: string;
+  playerName: string;
+  teamId: string;
+  injuryName: string;
+  availabilityText: string;
+}
 
 @Component({
   selector: 'app-match-summary',
@@ -131,6 +140,37 @@ export class MatchSummaryComponent {
   getPlayerTeamId(playerId: string): string {
     const player = this.gameService.getPlayer(playerId);
     return player?.teamId || '';
+  }
+
+  getInjuryMomentSummary(event: MatchEvent): InjuryMomentSummary | null {
+    if (event.type !== EventType.INJURY) {
+      return null;
+    }
+
+    const injury = event.additionalData?.injury;
+    const playerId = event.playerIds[0];
+    if (!injury || !playerId) {
+      return null;
+    }
+
+    const player = this.gameService.getPlayer(playerId);
+    return {
+      playerId,
+      playerName: player?.name ?? 'Unknown Player',
+      teamId: player?.teamId ?? '',
+      injuryName: getInjuryDefinition(injury.definitionId)?.name ?? injury.definitionId,
+      availabilityText: this.formatInjuryAvailability(injury.weeksRemaining)
+    };
+  }
+
+  private formatInjuryAvailability(weeksRemaining: number): string {
+    if (weeksRemaining <= 0) {
+      return 'back next game';
+    }
+    if (weeksRemaining === 1) {
+      return 'out 1 week';
+    }
+    return `out ${weeksRemaining} weeks`;
   }
 
   isIconBadgeStyle(): boolean {

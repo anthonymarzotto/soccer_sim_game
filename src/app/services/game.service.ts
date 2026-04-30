@@ -15,13 +15,16 @@ import { normalizeTeamFormation } from '../models/team-migration';
 import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players';
 import {
   createEmptyTeamStats,
+  getActiveInjury,
   getCurrentPlayerSeasonAttributes,
   getPlayerSeasonAttributesForYear,
   getTeamSeasonSnapshotForYear,
+  isPlayerEligible,
   withSortedUniqueSeasons
 } from '../models/season-history';
 import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
+import { getInjuryDefinition, InjuryRecord } from '../data/injuries';
 
 interface SimulateMatchWithDetailsResult {
   matchState: MatchState;
@@ -29,6 +32,21 @@ interface SimulateMatchWithDetailsResult {
   matchReport: MatchReport;
   keyEvents: MatchEvent[];
   commentary: string[];
+}
+
+export interface TeamMatchReadinessIssue {
+  kind: 'formation' | 'injured-starter';
+  message: string;
+  playerId?: string;
+  playerName?: string;
+  injuryDefinitionId?: string;
+  injuryName?: string;
+  weeksRemaining?: number;
+}
+
+export interface TeamMatchReadiness {
+  isReady: boolean;
+  issues: TeamMatchReadinessIssue[];
 }
 
 type CareerStatsAggregate = Omit<PlayerCareerStats, 'seasonYear'> & {
@@ -328,11 +346,78 @@ export class GameService {
 
     const updatedLeague: League = {
       ...league,
-      currentWeek: league.currentWeek + 1
+      currentWeek: league.currentWeek + 1,
+      teams: this.decrementInjuryWeeks(league.teams)
     };
 
     this.leagueState.set(updatedLeague);
     this.persistLeagueMetadata(updatedLeague);
+  }
+
+  /**
+   * Decrements `weeksRemaining` on every player's active injury (if any).
+   * Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as
+   * historical records.
+   */
+  private decrementInjuryWeeks(teams: Team[]): Team[] {
+    return teams.map(team => {
+      if (!team.players) return team;
+      const players = team.players.map(player => {
+        if (!player.injuries || player.injuries.length === 0) return player;
+        let mutated = false;
+        const updated = player.injuries.map(record => {
+          if (record.weeksRemaining <= 0) return record;
+          mutated = true;
+          return { ...record, weeksRemaining: record.weeksRemaining - 1 };
+        });
+        return mutated ? { ...player, injuries: updated } : player;
+      });
+      return { ...team, players };
+    });
+  }
+
+  /**
+   * Scans the completed match's events for INJURY entries and appends an
+   * `InjuryRecord` to each affected player's `injuries` array. Returns a new
+   * Team[] with the affected players replaced; untouched teams/players are
+   * referentially preserved.
+   */
+  private applyPostMatchInjuries(
+    teams: Team[],
+    matchState: MatchState,
+    seasonYear: number,
+    week: number
+  ): Team[] {
+    const injuryByPlayerId = new Map<string, InjuryRecord>();
+    for (const event of matchState.events) {
+      if (event.type !== EventType.INJURY) continue;
+      const meta = event.additionalData?.injury;
+      const playerId = event.playerIds[0];
+      if (!meta || !playerId) continue;
+      // If a player somehow has multiple INJURY events in a single match, keep the first.
+      if (injuryByPlayerId.has(playerId)) continue;
+      injuryByPlayerId.set(playerId, {
+        definitionId: meta.definitionId,
+        totalWeeks: meta.totalWeeks,
+        weeksRemaining: meta.weeksRemaining,
+        sustainedInSeason: seasonYear,
+        sustainedInWeek: week
+      });
+    }
+
+    if (injuryByPlayerId.size === 0) return teams;
+
+    return teams.map(team => {
+      if (!team.players) return team;
+      let teamMutated = false;
+      const players = team.players.map(player => {
+        const record = injuryByPlayerId.get(player.id);
+        if (!record) return player;
+        teamMutated = true;
+        return { ...player, injuries: [...(player.injuries ?? []), record] };
+      });
+      return teamMutated ? { ...team, players } : team;
+    });
   }
 
   simulateWholeSeason(): void {
@@ -588,8 +673,72 @@ export class GameService {
     this.persistChangedTeams(l.teams, updatedLeague.teams);
   }
 
+  private buildMatchReadiness(team: Team): TeamMatchReadiness {
+    const players = resolveTeamPlayers(team);
+    const issues: TeamMatchReadinessIssue[] = this.fieldService
+      .validateFormationAssignments(team, players)
+      .errors
+      .map(message => ({ kind: 'formation', message }));
+
+    const playersById = new Map(players.map(player => [player.id, player]));
+    const seenInjuredAssignedPlayers = new Set<string>();
+
+    for (const assignedPlayerId of Object.values(team.formationAssignments ?? {})) {
+      if (!assignedPlayerId || seenInjuredAssignedPlayers.has(assignedPlayerId)) {
+        continue;
+      }
+
+      const assigned = playersById.get(assignedPlayerId);
+      if (!assigned) {
+        continue;
+      }
+
+      const activeInjury = getActiveInjury(assigned);
+      if (!activeInjury) {
+        continue;
+      }
+
+      seenInjuredAssignedPlayers.add(assignedPlayerId);
+      const injuryName = getInjuryDefinition(activeInjury.definitionId)?.name ?? activeInjury.definitionId;
+      issues.push({
+        kind: 'injured-starter',
+        message: `${assigned.name} is injured (${injuryName}, ${this.formatReadinessWeeksRemaining(activeInjury.weeksRemaining)}) and cannot start.`,
+        playerId: assigned.id,
+        playerName: assigned.name,
+        injuryDefinitionId: activeInjury.definitionId,
+        injuryName,
+        weeksRemaining: activeInjury.weeksRemaining
+      });
+    }
+
+    return {
+      isReady: issues.length === 0,
+      issues
+    };
+  }
+
+  private formatReadinessWeeksRemaining(weeksRemaining: number): string {
+    return weeksRemaining === 1 ? '1 week remaining' : `${weeksRemaining} weeks remaining`;
+  }
+
   getFormationValidationErrors(team: Team): string[] {
-    return this.fieldService.validateFormationAssignments(team, resolveTeamPlayers(team)).errors;
+    return this.buildMatchReadiness(team).issues
+      .filter(issue => issue.kind === 'formation')
+      .map(issue => issue.message);
+  }
+
+  getMatchReadiness(teamId: string): TeamMatchReadiness {
+    const league = this.leagueState();
+    if (!league) {
+      return { isReady: true, issues: [] };
+    }
+
+    const team = league.teams.find(candidate => candidate.id === teamId);
+    if (!team) {
+      return { isReady: true, issues: [] };
+    }
+
+    return this.buildMatchReadiness(team);
   }
 
   private formationLibrary = inject(FormationLibraryService);
@@ -695,106 +844,169 @@ export class GameService {
 
   private dressBestPlayers(teams: Team[]): Team[] {
     const userTeamId = this.leagueState()?.userTeamId;
+    return teams.map(team => {
+      if (team.id === userTeamId) return team; // Skip optimizing the user's team
+      return this.dressTeamLineup(team);
+    });
+  }
+
+  /**
+   * Picks the best available formation + starters/bench for a single team.
+   * Ineligible players (currently injured) are excluded from selection and
+   * keep their existing role (typically RESERVE).
+   *
+   * Used by the CPU lineup refresher (`dressBestPlayers`) and by the user-team
+   * "Quick Fix" entry point (`optimizeUserTeamLineup`).
+   */
+  private dressTeamLineup(team: Team): Team {
     const predefinedFormations = this.formationLibrary.listPredefinedFormations();
     const fallbackFormationId = this.formationLibrary.getDefaultFormationId();
 
-    return teams.map(team => {
-      if (team.id === userTeamId) return team; // Skip optimizing the user's team
+    const teamPlayers = resolveTeamPlayers(team);
+    if (teamPlayers.length === 0) return team;
 
-      const teamPlayers = resolveTeamPlayers(team);
-      if (teamPlayers.length === 0) return team;
+    const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
+    const overallOf = (player: Player) => this.getCurrentSeasonPlayerAttributes(player).overall.value;
 
-      const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
-      const overallOf = (player: Player) => this.getCurrentSeasonPlayerAttributes(player).overall.value;
+    // Eligibility gate: injured players are not selectable.
+    const eligible = (player: Player) => isPlayerEligible(player);
 
-      // Sort players by position + overall descending; these arrays share object refs with `players`
-      const byPosition = new Map<Position, Player[]>([
-        [Position.GOALKEEPER, players.filter(p => p.position === Position.GOALKEEPER).sort((a, b) => overallOf(b) - overallOf(a))],
-        [Position.DEFENDER,   players.filter(p => p.position === Position.DEFENDER).sort((a, b) => overallOf(b) - overallOf(a))],
-        [Position.MIDFIELDER, players.filter(p => p.position === Position.MIDFIELDER).sort((a, b) => overallOf(b) - overallOf(a))],
-        [Position.FORWARD,    players.filter(p => p.position === Position.FORWARD).sort((a, b) => overallOf(b) - overallOf(a))],
-      ]);
+    // Sort players by position + overall descending; these arrays share object refs with `players`
+    const byPosition = new Map<Position, Player[]>([
+      [Position.GOALKEEPER, players.filter(p => p.position === Position.GOALKEEPER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.DEFENDER,   players.filter(p => p.position === Position.DEFENDER   && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.MIDFIELDER, players.filter(p => p.position === Position.MIDFIELDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.FORWARD,    players.filter(p => p.position === Position.FORWARD    && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+    ]);
 
-      // Evaluate each formation: score = sum of overalls of best-fit starters per slot
-      let bestScore = -1;
-      let bestFormationId = fallbackFormationId;
-      let bestSlotAssignments: Record<string, string> | null = null;
+    // Evaluate each formation: score = sum of overalls of best-fit starters per slot
+    let bestScore = -1;
+    let bestFormationId = fallbackFormationId;
+    let bestSlotAssignments: Record<string, string> | null = null;
 
-      for (const formation of predefinedFormations) {
-        // Group slot IDs by preferredPosition
-        const slotsByPos = new Map<Position, string[]>();
-        for (const slot of formation.slots) {
-          const ids = slotsByPos.get(slot.preferredPosition) ?? [];
-          ids.push(slot.slotId);
-          slotsByPos.set(slot.preferredPosition, ids);
-        }
+    for (const formation of predefinedFormations) {
+      // Group slot IDs by preferredPosition
+      const slotsByPos = new Map<Position, string[]>();
+      for (const slot of formation.slots) {
+        const ids = slotsByPos.get(slot.preferredPosition) ?? [];
+        ids.push(slot.slotId);
+        slotsByPos.set(slot.preferredPosition, ids);
+      }
 
-        // Viable only if the team has enough players to fill every slot in the formation
-        const viable = [...slotsByPos].every(([pos, slotIds]) => (byPosition.get(pos)?.length ?? 0) >= slotIds.length);
-        if (!viable) continue;
+      // Viable only if the team has enough eligible players to fill every slot in the formation
+      const viable = [...slotsByPos].every(([pos, slotIds]) => (byPosition.get(pos)?.length ?? 0) >= slotIds.length);
+      if (!viable) continue;
 
-        // Score this formation and build its slot assignment map
-        let score = 0;
-        const slotAssignments: Record<string, string> = {};
-        for (const [pos, slotIds] of slotsByPos) {
-          const available = byPosition.get(pos) ?? [];
-          for (let i = 0; i < slotIds.length; i++) {
-            slotAssignments[slotIds[i]] = available[i].id;
-            score += overallOf(available[i]);
-          }
-        }
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestFormationId = formation.id;
-          bestSlotAssignments = slotAssignments;
+      // Score this formation and build its slot assignment map
+      let score = 0;
+      const slotAssignments: Record<string, string> = {};
+      for (const [pos, slotIds] of slotsByPos) {
+        const available = byPosition.get(pos) ?? [];
+        for (let i = 0; i < slotIds.length; i++) {
+          slotAssignments[slotIds[i]] = available[i].id;
+          score += overallOf(available[i]);
         }
       }
 
-      // Build final formationAssignments, falling back to hardcoded 4-4-2 heuristic
-      let formationAssignments: Record<string, string>;
-      if (bestSlotAssignments) {
-        formationAssignments = bestSlotAssignments;
-      } else {
-        const gks  = byPosition.get(Position.GOALKEEPER) ?? [];
-        const defs = byPosition.get(Position.DEFENDER)   ?? [];
-        const mids = byPosition.get(Position.MIDFIELDER) ?? [];
-        const fwds = byPosition.get(Position.FORWARD)    ?? [];
-
-        formationAssignments = {
-          gk_1:   gks[0]?.id  ?? '',
-          def_l:  defs[0]?.id ?? '',
-          def_lc: defs[1]?.id ?? '',
-          def_rc: defs[2]?.id ?? '',
-          def_r:  defs[3]?.id ?? '',
-          mid_l:  mids[0]?.id ?? '',
-          mid_lc: mids[1]?.id ?? '',
-          mid_rc: mids[2]?.id ?? '',
-          mid_r:  mids[3]?.id ?? '',
-          att_l:  fwds[0]?.id ?? '',
-          att_r:  fwds[1]?.id ?? '',
-        };
+      if (score > bestScore) {
+        bestScore = score;
+        bestFormationId = formation.id;
+        bestSlotAssignments = slotAssignments;
       }
+    }
 
-      // Mark starters (mutates shared object refs, updating `players` in place)
-      const starterIds = new Set(Object.values(formationAssignments).filter(id => id !== ''));
-      for (const player of players) {
-        if (starterIds.has(player.id)) player.role = Role.STARTER;
+    // Build final formationAssignments, falling back to hardcoded 4-4-2 heuristic
+    let formationAssignments: Record<string, string>;
+    if (bestSlotAssignments) {
+      formationAssignments = bestSlotAssignments;
+    } else {
+      const gks  = byPosition.get(Position.GOALKEEPER) ?? [];
+      const defs = byPosition.get(Position.DEFENDER)   ?? [];
+      const mids = byPosition.get(Position.MIDFIELDER) ?? [];
+      const fwds = byPosition.get(Position.FORWARD)    ?? [];
+
+      formationAssignments = {
+        gk_1:   gks[0]?.id  ?? '',
+        def_l:  defs[0]?.id ?? '',
+        def_lc: defs[1]?.id ?? '',
+        def_rc: defs[2]?.id ?? '',
+        def_r:  defs[3]?.id ?? '',
+        mid_l:  mids[0]?.id ?? '',
+        mid_lc: mids[1]?.id ?? '',
+        mid_rc: mids[2]?.id ?? '',
+        mid_r:  mids[3]?.id ?? '',
+        att_l:  fwds[0]?.id ?? '',
+        att_r:  fwds[1]?.id ?? '',
+      };
+    }
+
+    // Mark starters (mutates shared object refs, updating `players` in place)
+    const starterIds = new Set(Object.values(formationAssignments).filter(id => id !== ''));
+    for (const player of players) {
+      if (starterIds.has(player.id)) player.role = Role.STARTER;
+    }
+
+    // Mark bench: next best available players per position not already starting
+    const benchGks  = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
+    const benchDefs = (byPosition.get(Position.DEFENDER)   ?? []).filter(p => !starterIds.has(p.id));
+    const benchMids = (byPosition.get(Position.MIDFIELDER) ?? []).filter(p => !starterIds.has(p.id));
+    const benchFwds = (byPosition.get(Position.FORWARD)    ?? []).filter(p => !starterIds.has(p.id));
+
+    if (benchGks.length > 0) benchGks[0].role = Role.BENCH;
+    for (let i = 0; i < Math.min(2, benchDefs.length); i++) benchDefs[i].role = Role.BENCH;
+    for (let i = 0; i < Math.min(4, benchMids.length); i++) benchMids[i].role = Role.BENCH;
+    for (let i = 0; i < Math.min(2, benchFwds.length); i++) benchFwds[i].role = Role.BENCH;
+
+    // Backfill: if any of the 9 bench spots are still open (e.g. due to positional
+    // injuries leaving one position pool empty), promote the best remaining eligible
+    // non-starters regardless of position until the bench is full.
+    const MAX_BENCH_SIZE = 9;
+    const benchedIds = new Set(players.filter(p => p.role === Role.BENCH).map(p => p.id));
+    const openSpots = MAX_BENCH_SIZE - benchedIds.size;
+    if (openSpots > 0) {
+      const remainingEligible = players
+        .filter(p => !starterIds.has(p.id) && !benchedIds.has(p.id) && eligible(p))
+        .sort((a, b) => overallOf(b) - overallOf(a));
+      for (let i = 0; i < Math.min(openSpots, remainingEligible.length); i++) {
+        remainingEligible[i].role = Role.BENCH;
       }
+    }
 
-      // Mark bench: next best available players per position not already starting
-      const benchGks  = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
-      const benchDefs = (byPosition.get(Position.DEFENDER)   ?? []).filter(p => !starterIds.has(p.id));
-      const benchMids = (byPosition.get(Position.MIDFIELDER) ?? []).filter(p => !starterIds.has(p.id));
-      const benchFwds = (byPosition.get(Position.FORWARD)    ?? []).filter(p => !starterIds.has(p.id));
+    return this.withSyncedPlayerIds({ ...team, selectedFormationId: bestFormationId, players, formationAssignments });
+  }
 
-      if (benchGks.length > 0) benchGks[0].role = Role.BENCH;
-      for (let i = 0; i < Math.min(2, benchDefs.length); i++) benchDefs[i].role = Role.BENCH;
-      for (let i = 0; i < Math.min(4, benchMids.length); i++) benchMids[i].role = Role.BENCH;
-      for (let i = 0; i < Math.min(2, benchFwds.length); i++) benchFwds[i].role = Role.BENCH;
+  /**
+   * Re-runs the lineup optimizer on the user's team. Use this as a "Quick Fix"
+   * action when the user team's lineup contains injured players or has open
+   * slots after a multi-week injury.
+   */
+  optimizeUserTeamLineup(): boolean {
+    if (!this.canMutateLeagueState()) return false;
+    const league = this.leagueState();
+    if (!league?.userTeamId) return false;
 
-      return this.withSyncedPlayerIds({ ...team, selectedFormationId: bestFormationId, players, formationAssignments });
-    });
+    const userTeam = league.teams.find(team => team.id === league.userTeamId);
+    if (!userTeam) return false;
+
+    const optimized = this.dressTeamLineup(userTeam);
+    const updatedTeams = league.teams.map(team => team.id === userTeam.id ? optimized : team);
+    const updatedLeague: League = { ...league, teams: updatedTeams };
+    this.leagueState.set(updatedLeague);
+    this.persistChangedTeamsAndPlayers(league.teams, updatedTeams);
+    return true;
+  }
+
+  /**
+   * Returns a list of human-readable readiness issues blocking this team from
+   * playing a match. Empty array means the team is ready.
+   *
+   * Issues currently checked:
+   * - Any player marked as STARTER/BENCH/SUBSTITUTED_OUT/DISMISSED who is
+   *   currently injured (data-integrity case).
+   * - formationAssignments references an injured or missing player.
+   */
+  getMatchReadinessIssues(teamId: string): string[] {
+    return this.getMatchReadiness(teamId).issues.map(issue => issue.message);
   }
 
   private areFormationAssignmentsEqual(left: Record<string, string>, right: Record<string, string>): boolean {
@@ -1126,7 +1338,10 @@ export class GameService {
       this.updatePlayerCareerStats(matchState, homeTeam, awayTeam, matchReport.homePlayerStats, matchReport.awayPlayerStats);
     }
 
-    const finalizedTeams = this.dressBestPlayers(updatedTeams);
+    // Persist injuries sustained during the match onto the team rosters.
+    const teamsWithInjuries = this.applyPostMatchInjuries(updatedTeams, matchState, l.currentSeasonYear, l.currentWeek);
+
+    const finalizedTeams = this.dressBestPlayers(teamsWithInjuries);
 
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.
@@ -1261,10 +1476,10 @@ export class GameService {
     });
 
     // Compute exact minutes played using on/off intervals.
-    // Starters begin on the pitch at minute 0; players can leave via substitution or red card.
+    // Starters begin on the pitch at minute 0; players can leave via substitution, red card, or injury.
     const matchLength = 90;
     const substitutionsAndDismissals = events
-      .filter(e => e.type === EventType.SUBSTITUTION || e.type === EventType.RED_CARD)
+      .filter(e => e.type === EventType.SUBSTITUTION || e.type === EventType.RED_CARD || e.type === EventType.INJURY)
       .sort((left, right) => left.time - right.time);
     const minutesOnPitch = new Map<string, number>();
     const activeSince = new Map<string, number | null>();
@@ -1396,6 +1611,11 @@ export class GameService {
           icon = '🟥';
           description = `Red card for ${event.playerIds[0]} at ${event.time}'`;
           break;
+        case EventType.INJURY:
+          importance = EventImportance.HIGH;
+          icon = '🩹';
+          description = `Injury to ${event.playerIds[0]} at ${event.time}'`;
+          break;
         case EventType.YELLOW_CARD:
           importance = EventImportance.MEDIUM;
           icon = '🟨';
@@ -1415,7 +1635,7 @@ export class GameService {
           break;
       }
 
-      if (importance !== EventImportance.LOW || event.type === EventType.GOAL || event.type === EventType.RED_CARD) {
+      if (importance !== EventImportance.LOW || event.type === EventType.GOAL || event.type === EventType.RED_CARD || event.type === EventType.INJURY) {
         keyEvents.push({
           id: event.id,
           type: event.type,

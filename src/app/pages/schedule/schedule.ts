@@ -56,6 +56,16 @@ export class ScheduleComponent {
 
     if (!homeTeam || !awayTeam) return;
 
+    const userTeamId = l.userTeamId;
+    const userTeamForMatch = homeTeam.id === userTeamId ? homeTeam : awayTeam.id === userTeamId ? awayTeam : null;
+    if (userTeamForMatch) {
+      const readiness = this.gameService.getMatchReadiness(userTeamForMatch.id);
+      if (!readiness.isReady) {
+        // Block CPU-style quick-sim from playing a match the user team isn't ready for.
+        return;
+      }
+    }
+
     const result = this.gameService.simulateMatchWithDetails(match, homeTeam, awayTeam, { skipCommentary: true });
     if (!result) {
       return;

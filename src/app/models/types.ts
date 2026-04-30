@@ -1,5 +1,6 @@
 import { Position, Role, MatchResult, EventImportance, EventType, PlayingStyle } from './enums';
 import { Coordinates, PlayByPlayEventAdditionalData } from './simulation.types';
+import { InjuryRecord } from '../data/injuries';
 
 // Re-export the enums for backward compatibility
 export { Position, Role, MatchResult, EventImportance };
@@ -76,6 +77,9 @@ export interface Player {
   careerStats: PlayerCareerStats[];
   mood: number;
   fatigue: number;
+  // All injuries, past and present. There is no separate `currentInjury` field.
+  // Current availability is derived via `isPlayerEligible(player)` in season-history.
+  injuries: InjuryRecord[];
 }
 
 export interface PlayerCareerStats {

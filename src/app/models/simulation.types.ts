@@ -61,6 +61,12 @@ export type PassFailureMetadata = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
 
 export type CarryResultMetadata = 'DISPOSSESSED';
 
+export interface InjuryEventMetadata {
+  definitionId: string;
+  totalWeeks: number;
+  weeksRemaining: number;
+}
+
 export interface PlayByPlayEventAdditionalData {
   variantBReplay?: VariantBReplayMetadata;
   formationSnapshot?: VariantBMatchShapeSnapshot;
@@ -68,6 +74,7 @@ export interface PlayByPlayEventAdditionalData {
   passIntent?: PassIntentMetadata;
   passFailure?: PassFailureMetadata;
   carryResult?: CarryResultMetadata;
+  injury?: InjuryEventMetadata;
 }
 
 export interface Possession {
@@ -172,6 +179,10 @@ export interface SimulationConfig {
   seed?: string;
   skipCommentary?: boolean;
   variantBTuning?: Partial<VariantBTuningConfig>;
+  // When true, the engine never rolls injuries. Used by calibration / scenario
+  // guardrail tests that pre-date the injury system and need stable goal/shot
+  // distributions independent of injury-driven manpower changes.
+  disableInjuries?: boolean;
 }
 
 export interface TacticalSetup {

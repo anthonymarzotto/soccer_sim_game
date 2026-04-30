@@ -55,8 +55,17 @@ interface TeamLineupEntry {
   name: string;
   onField: boolean;
   fatigue: number;
-  playerStatus: Role;
+  playerStatus: RemovedPlayerStatus | Role.STARTER | Role.BENCH;
 }
+
+/**
+ * Status assigned to a player who has left the pitch during the current
+ * match. Mirrors the simulation's reasons for withdrawal:
+ *  - `Role.SUBSTITUTED_OUT` — tactical / fatigue / injury substitution off
+ *  - `Role.DISMISSED` — sent off (red card)
+ *  - `'INJURED'` — withdrew due to an INJURY event (not a domain Role)
+ */
+type RemovedPlayerStatus = Role.SUBSTITUTED_OUT | Role.DISMISSED | 'INJURED';
 
 interface LiveRatingBreakdown {
   currentRating: number;
@@ -107,6 +116,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   statisticsService = inject(StatisticsService);
   TeamSide = TeamSide;
   Role = Role;
+  readonly INJURED_STATUS = 'INJURED' as const;
   readonly showDevRatingTooltip = isDevMode();
 
   // Match data
@@ -140,15 +150,15 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   matchStats = signal<MatchStatistics | null>(null);
   keyEvents = signal<MatchEvent[]>([]);
 
-  // Live player rating signals — recomputed on every commentary tick
+  // Replay player rating signals — recomputed on every commentary tick while live.
   liveHomePlayerStats = signal<PlayerStatistics[]>([]);
   liveAwayPlayerStats = signal<PlayerStatistics[]>([]);
 
   liveStars = computed((): MatchStarEntry[] => {
     const home = this.homeTeam();
     const away = this.awayTeam();
-    const homeStats = this.liveHomePlayerStats();
-    const awayStats = this.liveAwayPlayerStats();
+    const homeStats = this.getDisplayedPlayerStats(TeamSide.HOME);
+    const awayStats = this.getDisplayedPlayerStats(TeamSide.AWAY);
     if (!home || !away || (homeStats.length === 0 && awayStats.length === 0)) return [];
     const homeScore = this.homeScore();
     const awayScore = this.awayScore();
@@ -180,8 +190,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private finalMatchStats: MatchStatistics | null = null;
   private playerTeamLookup = new Map<string, TeamSide>();
   private finalFormationSnapshotKey = '';
-  private homeRemovedPlayers = signal<Map<string, { status: Role; fatigue: number }>>(new Map());
-  private awayRemovedPlayers = signal<Map<string, { status: Role; fatigue: number }>>(new Map());
+  private homeRemovedPlayers = signal<Map<string, { status: RemovedPlayerStatus; fatigue: number }>>(new Map());
+  private awayRemovedPlayers = signal<Map<string, { status: RemovedPlayerStatus; fatigue: number }>>(new Map());
 
   constructor() {
     // Effect to load match data when matchId changes
@@ -290,9 +300,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const userTeamId = this.gameService.league()?.userTeamId;
     const userTeam = home.id === userTeamId ? home : away.id === userTeamId ? away : null;
     if (userTeam) {
-      const errors = this.gameService.getFormationValidationErrors(userTeam);
-      if (errors.length > 0) {
-        this.validationError.set(errors[0]);
+      const readiness = this.gameService.getMatchReadiness(userTeam.id);
+      if (!readiness.isReady) {
+        this.validationError.set(readiness.issues[0]?.message ?? 'This team is not ready to play.');
         return;
       }
     }
@@ -1150,7 +1160,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       .map((player: Player) => {
         const dot = onFieldByPlayerId.get(player.id);
         const removed = removedPlayers.get(player.id);
-        let playerStatus: Role;
+        let playerStatus: TeamLineupEntry['playerStatus'];
         let fatigue: number;
 
         if (dot) {
@@ -1228,10 +1238,19 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       .toUpperCase();
   }
 
-  getLiveRating(playerId: string, side: TeamSide): string {
-    const stats = side === TeamSide.HOME
+  private getDisplayedPlayerStats(side: TeamSide): PlayerStatistics[] {
+    const report = this.displayMatch()?.matchReport ?? this.match()?.matchReport;
+    if (!this.isSimulating() && report) {
+      return side === TeamSide.HOME ? report.homePlayerStats : report.awayPlayerStats;
+    }
+
+    return side === TeamSide.HOME
       ? this.liveHomePlayerStats()
       : this.liveAwayPlayerStats();
+  }
+
+  getLiveRating(playerId: string, side: TeamSide): string {
+    const stats = this.getDisplayedPlayerStats(side);
     const entry = stats.find(s => s.playerId === playerId);
     if (!entry || entry.rating === 0) return '--';
     return (entry.rating / 10).toFixed(1);
@@ -1259,9 +1278,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   getLiveRatingBreakdownData(playerId: string, side: TeamSide): LiveRatingBreakdown | null {
-    const stats = side === TeamSide.HOME
-      ? this.liveHomePlayerStats()
-      : this.liveAwayPlayerStats();
+    const stats = this.getDisplayedPlayerStats(side);
     const entry = stats.find((s) => s.playerId === playerId);
 
     if (!entry) {
@@ -1384,6 +1401,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         this.incrementDotCounter(item.teamSide, primaryPlayerId, 'redCards');
         this.dismissPlayerFromPitch(item.teamSide, primaryPlayerId);
         break;
+      case EventType.INJURY:
+        this.injurePlayerOnPitch(item.teamSide, primaryPlayerId);
+        break;
     }
   }
 
@@ -1397,6 +1417,21 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const fatigue = this.getDotFatigue(dot);
     const removedSignal = teamSide === TeamSide.HOME ? this.homeRemovedPlayers : this.awayRemovedPlayers;
     removedSignal.update((m) => new Map([...m, [playerId, { status: Role.DISMISSED, fatigue }]]));
+
+    const targetSignal = teamSide === TeamSide.HOME ? this.homeFormationDots : this.awayFormationDots;
+    targetSignal.update((dots) => dots.filter((d) => d.playerId !== playerId));
+  }
+
+  private injurePlayerOnPitch(teamSide: TeamSide, playerId: string) {
+    const currentDots = teamSide === TeamSide.HOME ? this.homeFormationDots() : this.awayFormationDots();
+    const dot = currentDots.find((d) => d.playerId === playerId);
+    if (!dot) {
+      return;
+    }
+
+    const fatigue = this.getDotFatigue(dot);
+    const removedSignal = teamSide === TeamSide.HOME ? this.homeRemovedPlayers : this.awayRemovedPlayers;
+    removedSignal.update((m) => new Map([...m, [playerId, { status: 'INJURED', fatigue }]]));
 
     const targetSignal = teamSide === TeamSide.HOME ? this.homeFormationDots : this.awayFormationDots;
     targetSignal.update((dots) => dots.filter((d) => d.playerId !== playerId));
@@ -1500,7 +1535,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         }
 
         const existing = nextRemoved.get(dot.playerId);
-        if (existing?.status === Role.DISMISSED) {
+        if (existing?.status === Role.DISMISSED || existing?.status === 'INJURED') {
           return;
         }
 
@@ -1569,6 +1604,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       case EventType.SAVE: return '🧤';
       case EventType.CORNER: return '📐';
       case EventType.FOUL: return '⚠️';
+      case EventType.INJURY: return '🩹';
       default: return '';
     }
   }

@@ -1,6 +1,61 @@
 # Plan: Player Injury System
 
-**Status:** Draft v3 (architecture-reviewed)
+**Status:** Implementing — Round 1–6 complete (data layer, simulation rolls, persistence, readiness, UI including player-profile injury banner / history and watch-game injured badge, design docs). Round 7 (first-pass calibration measurement) pending.
+
+### Implementation log
+
+- **Round 1 (Steps 1–3, data layer)** ✅
+    - Added `src/app/data/injuries.ts` with `InjurySeverity`, `InjuryDefinition`, `InjuryRecord`, `INJURY_DEFINITIONS` (25 entries matching the revised table), `pickInjuryDefinition`, `rollInjuryDurationWeeks`.
+    - Added required `injuries: InjuryRecord[]` to `Player`, initialized in `generator.service`, `test-player-fixtures`, `startNewSeason` (carries forward via `...player` spread), `league-assembly` (serialize + hydrate with `?? []` fallback), and `PersistedPlayerRecord`.
+    - Added `getActiveInjury`, `isPlayerInjured`, `isPlayerEligible`, `getInjuredPlayers` selectors to `season-history.ts`.
+    - Added `InjuryEventMetadata` to `simulation.types.ts` and `injury?: InjuryEventMetadata` on `PlayByPlayEventAdditionalData`.
+    - Bumped `dataSchemaVersion` F → G and synced generated constant.
+
+- **Round 2 (Steps 4–5, simulation rolls)** ✅
+    - Added per-match `injuredPlayerIds` set and `pendingInjuryReplacements` queue in `MatchSimulationVariantBService`. Both reset in `simulateMatch`.
+    - Added `tryRollInjury`, `handleInjuryWithdrawal`, `tryPendingInjuryReplacement` private helpers. Withdrawal reuses `rebalanceShapeAfterDismissal` and sets role to `SUBSTITUTED_OUT` (no role enum change). Replacement is capped at 5 substitutions per team.
+    - Wired roll sites: FOUL (offender + victim, 1.5× contact), TACKLE / dispossessed-carry (winner + loser, 1.25× contact), pass-failure TACKLED (passer + winner, 1.25× contact), pass-failure INTERCEPTION (winner, non-contact), successful PASS (passer, non-contact), CARRY quiet progression (carrier, non-contact), GOAL (scorer, non-contact), MISS (shooter, non-contact), SAVE (goalkeeper, contact).
+    - `tryPendingInjuryReplacement` runs in `processMinuteSubstitutions` after tactical / fatigue substitutions.
+    - Added `InjuryRollKind` enum (`CONTACT` / `NON_CONTACT`) in `enums.ts`; `tryRollInjury` callers and the internal base-chance branch use it instead of string literals.
+    - Added `disableInjuries: boolean` to `SimulationConfig` so calibration / scenario tests can opt out of the new manpower variance.
+
+- **Round 3 (Steps 6 & 8, persistence)** ✅
+    - Added `applyPostMatchInjuries` in `game.service`: scans `matchState.events` for `INJURY` and appends `InjuryRecord` (with `sustainedInSeason` / `sustainedInWeek`) to each affected player. Runs before `dressBestPlayers` so CPU lineups can react immediately.
+    - Added `decrementInjuryWeeks` in `advanceWeek`: decrements `weeksRemaining` for every active injury once per week.
+    - `startNewSeason` already preserves `injuries` via the existing `...player` spread.
+    - Updated minutes-played computation in both `game.service` and `statistics.service` to treat `INJURY` as a player-exit (parallel to `RED_CARD`).
+
+- **Round 4 (Step 7, readiness)** ✅
+    - Extracted `dressTeamLineup(team)` from `dressBestPlayers`; both code paths now filter selectable players by `isPlayerEligible` so injured players are never auto-assigned to starter or bench slots.
+  - Added `optimizeUserTeamLineup()` Quick Fix entry point (reuses `dressTeamLineup` for the user team) and wired a `Quick Fix` button into the Team Details readiness warning card for the user team.
+  - Added centralized `getMatchReadiness(teamId)` returning structured readiness issues (formation validation plus injured assigned starters with injury name / weeks remaining) and kept `getMatchReadinessIssues(teamId)` as the string wrapper.
+  - Wired the shared readiness payload into `team-details` warnings, `watch-game.startSimulation` (blocks live sim with the first issue), and `schedule.simulateMatch` (silently blocks quick-sim when the user team is in the match).
+
+- **Round 5 (Step 9, UI / reporting / stats)** ✅
+    - `watch-game.getEventIcon` returns 🩹 for `EventType.INJURY`.
+    - `team-details` adds an `injured()` computed (sorted by position); bench / reserves now filter out injured players via `isPlayerInjured`. The roster table renders an `Unavailable` section listing each injured player with a 🩹 injury-name badge and "Out: N wks" status, and any injured starter still assigned to a formation slot now shows an inline 🩹 weeks-remaining badge next to their name (assignment-driven, not silently hidden).
+    - `extractKeyEvents` in `game.service` includes INJURY as a HIGH-importance event with the 🩹 icon so injuries appear in the post-match key-events feed.
+  - `match-summary` now formats injury key events from `additionalData.injury`, showing the injured player plus injury name and recovery text (`back next game` / `out N weeks`) instead of falling back to the generic key-event description.
+    - Added `RemovedPlayerStatus` union (`Role.SUBSTITUTED_OUT | Role.DISMISSED | 'INJURED'`) to `watch-game.ts`. INJURY commentary events now withdraw the dot via `injurePlayerOnPitch` and the bench list shows a red 🩹 badge in place of the role label. Formation-snapshot rebuilds preserve INJURED just like DISMISSED, so the marker survives subsequent SUBSTITUTION snapshots.
+    - Player profile gains an "Active Injury" red banner (severity, weeks remaining, original duration, sustained week) when `getActiveInjury` returns a record, plus an "Injury History" table after Career Stats listing every record (most recent first, healed vs active).
+
+- **Round 6 (Step 10, design docs)** ✅
+    - `public/design-docs/player-season-attributes-usage.html`: moved `injuryRate` out of the Unused section into the Live read table with the `tryRollInjury` formula and roll-site context; updated chip counts (13→14 read, 8→7 unused).
+    - `public/design-docs/simulation-flow.html`: added `INJ_ROLL` decision after each contact / non-contact action node, branching to `INJURY_EVENT` (pick definition + duration, withdraw + rebalance) and then `INJ_REPLACE` (subs-cap + bench-eligibility) → `INJ_SUB` (counts toward the 5-sub cap) before continuing to `NEXT_TICK`.
+
+- **Round 7 (Step 11, validation)** 🟡 Pending — measure observed injury rate against the 19 injuries / 52 games-missed target and re-tune `INJURY_CONTACT_BASE_CHANCE` / `INJURY_NON_CONTACT_BASE_CHANCE` if the first-pass numbers diverge.
+
+### Validation status
+
+- `npm run build` ✅ (pre-existing budget warning only)
+- `npm run test -- --watch=false --include src/app/services/**/*.spec.ts` ✅ (197 / 197 passing)
+- `npm run test -- --watch=false --include 'src/app/pages/watch-game/watch-game.spec.ts'` ✅ (18 / 18 passing)
+- `npm run test -- --watch=false --include src/app/pages/watch-game/watch-game.spec.ts --include src/app/services/game.service.spec.ts` ✅ (51 / 51 passing)
+- Spec compatibility: `league-assembly.service.spec.ts` updated to include `injuries: []` in its inline player literal. The `as unknown as League` cast pattern in `game.service.spec.ts` absorbs the rest. Calibration / AB / substitution specs opt out of injuries via `disableInjuries: true` to keep their pre-injury guardrail bands meaningful.
+
+### Known follow-ups
+
+- First-pass injury calibration measurement (Step 11): observe a few simulated seasons and re-tune base chances if the 2.74-week-per-injury / 19-per-team targets are off.
 
 ---
 

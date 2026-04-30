@@ -42,6 +42,7 @@ export interface PersistedPlayerRecord {
   careerStats: Player['careerStats'];
   mood: number;
   fatigue: number;
+  injuries: Player['injuries'];
 }
 
 export type PersistedMatchRecord = Match;

@@ -1,5 +1,5 @@
-import { Injectable, inject } from '@angular/core';
-import { Match, Team, Player } from '../models/types';
+import { Injectable, inject } from "@angular/core";
+import { Match, Team, Player } from "../models/types";
 import {
   MatchState,
   SimulationConfig,
@@ -12,13 +12,27 @@ import {
   PlayByPlayEventAdditionalData,
   VariantBMatchShapeSnapshot,
   MinuteFatigueSnapshot,
-  PlayerFatigueSnapshot
-} from '../models/simulation.types';
-import { FieldService } from './field.service';
-import { RngService } from './rng.service';
-import { EventType, FieldZone, MatchPhase, PlayingStyle, Position as PositionEnum, Role, TeamSide } from '../models/enums';
-import { resolveTeamPlayers } from '../models/team-players';
-import { getCurrentPlayerSeasonAttributes } from '../models/season-history';
+  PlayerFatigueSnapshot,
+} from "../models/simulation.types";
+import { FieldService } from "./field.service";
+import { RngService } from "./rng.service";
+import {
+  EventType,
+  FieldZone,
+  InjuryRollKind,
+  MatchPhase,
+  PlayingStyle,
+  Position as PositionEnum,
+  Role,
+  TeamSide,
+} from "../models/enums";
+import { resolveTeamPlayers } from "../models/team-players";
+import { getCurrentPlayerSeasonAttributes } from "../models/season-history";
+import {
+  InjuryDefinition,
+  pickInjuryDefinition,
+  rollInjuryDurationWeeks,
+} from "../data/injuries";
 
 interface ResolvedRosters {
   homePlayers: Player[];
@@ -48,26 +62,41 @@ interface MatchAction {
 }
 
 const PASS_INTENT = {
-  RECYCLE: 'RECYCLE',
-  PROGRESSION: 'PROGRESSION',
-  THROUGH_BALL: 'THROUGH_BALL',
-  CROSS: 'CROSS'
+  RECYCLE: "RECYCLE",
+  PROGRESSION: "PROGRESSION",
+  THROUGH_BALL: "THROUGH_BALL",
+  CROSS: "CROSS",
 } as const;
 type PassIntent = (typeof PASS_INTENT)[keyof typeof PASS_INTENT];
 
 const PASS_FAILURE_MODE = {
-  TACKLED: 'TACKLED',
-  LANE_CUT_OUT: 'LANE_CUT_OUT',
-  OVERHIT: 'OVERHIT'
+  TACKLED: "TACKLED",
+  LANE_CUT_OUT: "LANE_CUT_OUT",
+  OVERHIT: "OVERHIT",
 } as const;
-type PassFailureMode = (typeof PASS_FAILURE_MODE)[keyof typeof PASS_FAILURE_MODE];
+type PassFailureMode =
+  (typeof PASS_FAILURE_MODE)[keyof typeof PASS_FAILURE_MODE];
 
 const LATE_GAME_SCORELINE = {
-  LEADING: 'LEADING',
-  TRAILING: 'TRAILING',
-  LEVEL: 'LEVEL'
+  LEADING: "LEADING",
+  TRAILING: "TRAILING",
+  LEVEL: "LEVEL",
 } as const;
-type LateGameScoreLine = (typeof LATE_GAME_SCORELINE)[keyof typeof LATE_GAME_SCORELINE];
+type LateGameScoreLine =
+  (typeof LATE_GAME_SCORELINE)[keyof typeof LATE_GAME_SCORELINE];
+
+// --- Injury tuning -------------------------------------------------------
+// Calibration target: ~19 injuries / team / 30 matches with ~2.74 games
+// missed per injury (~52 games missed / team / season).
+// See plans/player-injuries.md for derivation.
+const INJURY_CONTACT_BASE_CHANCE = 0.002;
+const INJURY_NON_CONTACT_BASE_CHANCE = 0.00033;
+const INJURY_FOUL_VICTIM_MODIFIER = 1.5;
+const INJURY_FOUL_OFFENDER_MODIFIER = 1.5;
+const INJURY_TACKLE_MODIFIER = 1.25;
+// `injuryRate` is a season attribute centered around 50; use it as a linear
+// scaling factor against the base chance above.
+const INJURY_REFERENCE_RATE = 50;
 
 const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   baseTickMin: 1,
@@ -101,11 +130,11 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   goalChanceMin: 0.1,
   goalChanceMax: 0.55,
 
-  homeAdvantageGoalBonus: 0.04
+  homeAdvantageGoalBonus: 0.04,
 };
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class MatchSimulationVariantBService {
   private fieldService = inject(FieldService);
@@ -115,7 +144,15 @@ export class MatchSimulationVariantBService {
 
   private activeTuning: VariantBTuningConfig = DEFAULT_VARIANT_B_TUNING;
   private activeMatchShape: MatchShapeState | null = null;
-  private pendingTacticalSubstitutions: TeamSubstitutionUsage = { home: 0, away: 0 };
+  private pendingTacticalSubstitutions: TeamSubstitutionUsage = {
+    home: 0,
+    away: 0,
+  };
+  private injuredPlayerIds = new Set<string>();
+  private pendingInjuryReplacements: Record<TeamSide, string | null> = {
+    home: null,
+    away: null,
+  };
   private lastSimulationForfeit: TeamSide | null = null;
   private currentSeasonYear = new Date().getFullYear();
 
@@ -123,12 +160,17 @@ export class MatchSimulationVariantBService {
     return this.lastSimulationForfeit !== null;
   }
 
-  simulateMatch(match: Match, homeTeam: Team, awayTeam: Team, config: SimulationConfig): MatchState {
+  simulateMatch(
+    match: Match,
+    homeTeam: Team,
+    awayTeam: Team,
+    config: SimulationConfig,
+  ): MatchState {
     this.currentSeasonYear = match.seasonYear ?? new Date().getFullYear();
     this.rng.beginSimulation(config.seed);
     this.activeTuning = {
       ...DEFAULT_VARIANT_B_TUNING,
-      ...(config.variantBTuning ?? {})
+      ...(config.variantBTuning ?? {}),
     };
 
     // Simulate against isolated copies so in-match mutations never leak into canonical league state.
@@ -137,34 +179,49 @@ export class MatchSimulationVariantBService {
 
     const rosters: ResolvedRosters = {
       homePlayers: resolveTeamPlayers(simulatedHomeTeam),
-      awayPlayers: resolveTeamPlayers(simulatedAwayTeam)
+      awayPlayers: resolveTeamPlayers(simulatedAwayTeam),
     };
 
     const tactics = this.calculateTeamTactics(
       simulatedHomeTeam,
       simulatedAwayTeam,
       rosters.homePlayers,
-      rosters.awayPlayers
+      rosters.awayPlayers,
     );
     const fatigue = this.initializeFatigue(
       simulatedHomeTeam,
       simulatedAwayTeam,
       rosters.homePlayers,
-      rosters.awayPlayers
+      rosters.awayPlayers,
     );
 
-    let currentState = this.initializeMatchState(match, simulatedHomeTeam, rosters.homePlayers);
+    let currentState = this.initializeMatchState(
+      match,
+      simulatedHomeTeam,
+      rosters.homePlayers,
+    );
     this.recordFatigueSnapshot(currentState, 0, fatigue);
     const substitutionsUsed: TeamSubstitutionUsage = { home: 0, away: 0 };
-    this.activeMatchShape = this.initializeMatchShape(simulatedHomeTeam, simulatedAwayTeam);
+    this.activeMatchShape = this.initializeMatchShape(
+      simulatedHomeTeam,
+      simulatedAwayTeam,
+    );
     this.pendingTacticalSubstitutions = { home: 0, away: 0 };
+    this.injuredPlayerIds = new Set();
+    this.pendingInjuryReplacements = { home: null, away: null };
     this.lastSimulationForfeit = null;
 
     // Variant B increases dynamism with adaptive ticks per minute.
     for (let minute = 1; minute <= 95; minute++) {
       const preMinuteForfeit = this.checkForfeitCondition();
       if (preMinuteForfeit) {
-        currentState = this.applyForfeitScoreline(currentState, preMinuteForfeit, minute, simulatedHomeTeam.id, simulatedAwayTeam.id);
+        currentState = this.applyForfeitScoreline(
+          currentState,
+          preMinuteForfeit,
+          minute,
+          simulatedHomeTeam.id,
+          simulatedAwayTeam.id,
+        );
         break;
       }
 
@@ -180,11 +237,17 @@ export class MatchSimulationVariantBService {
           simulatedAwayTeam,
           minute,
           config,
-          rosters
+          rosters,
         );
 
         if (this.lastSimulationForfeit) {
-          currentState = this.applyForfeitScoreline(currentState, this.lastSimulationForfeit, minute, simulatedHomeTeam.id, simulatedAwayTeam.id);
+          currentState = this.applyForfeitScoreline(
+            currentState,
+            this.lastSimulationForfeit,
+            minute,
+            simulatedHomeTeam.id,
+            simulatedAwayTeam.id,
+          );
           forfeited = true;
           break;
         }
@@ -203,7 +266,7 @@ export class MatchSimulationVariantBService {
         minute,
         config,
         rosters,
-        substitutionsUsed
+        substitutionsUsed,
       );
 
       this.normalizeFatigueForTickCount(fatigue, ticks, rosters);
@@ -212,6 +275,8 @@ export class MatchSimulationVariantBService {
 
     this.activeMatchShape = null;
     this.pendingTacticalSubstitutions = { home: 0, away: 0 };
+    this.injuredPlayerIds = new Set();
+    this.pendingInjuryReplacements = { home: null, away: null };
 
     return currentState;
   }
@@ -224,22 +289,36 @@ export class MatchSimulationVariantBService {
     awayTeam: Team,
     minute: number,
     config: SimulationConfig,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
   ): MatchState {
     const newState = { ...state };
     newState.currentMinute = minute;
 
     this.updateFatigue(fatigue, minute, rosters);
 
-    const currentTeam = newState.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
-    const teamPlayers = currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const currentTeam =
+      newState.ballPossession.teamId === homeTeam.id
+        ? TeamSide.HOME
+        : TeamSide.AWAY;
+    const teamPlayers =
+      currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
 
-    const carrier = this.getBallCarrier(newState.ballPossession.playerWithBall, teamPlayers);
+    const carrier = this.getBallCarrier(
+      newState.ballPossession.playerWithBall,
+      teamPlayers,
+    );
     const locationBeforeMove = { ...newState.ballPossession.location };
     this.applyCarrierMovement(newState, carrier, currentTeam, minute);
     const locationBeforeAction = { ...newState.ballPossession.location };
 
-    const action = this.determineCarrierAction(newState, carrier, tactics, fatigue, currentTeam, minute);
+    const action = this.determineCarrierAction(
+      newState,
+      carrier,
+      tactics,
+      fatigue,
+      currentTeam,
+      minute,
+    );
     const eventCreated = this.executeVariantBAction(
       newState,
       action,
@@ -249,17 +328,31 @@ export class MatchSimulationVariantBService {
       awayTeam,
       minute,
       config,
-      rosters
+      rosters,
     );
     const locationAfterAction = { ...newState.ballPossession.location };
 
     if (eventCreated) {
-      const replayActionType = this.resolveReplayActionType(newState, minute, action.type);
-      const replayActorPlayerId = this.resolveReplayActorPlayerId(newState, minute, carrier.id);
+      const replayActionType = this.resolveReplayActionType(
+        newState,
+        minute,
+        action.type,
+      );
+      const replayActorPlayerId = this.resolveReplayActorPlayerId(
+        newState,
+        minute,
+        carrier.id,
+      );
       this.attachVariantBReplayMetadata(
         newState,
         minute,
-        this.createReplayMetadata(replayActorPlayerId, replayActionType, locationBeforeMove, locationBeforeAction, locationAfterAction)
+        this.createReplayMetadata(
+          replayActorPlayerId,
+          replayActionType,
+          locationBeforeMove,
+          locationBeforeAction,
+          locationAfterAction,
+        ),
       );
     }
 
@@ -267,7 +360,11 @@ export class MatchSimulationVariantBService {
     return newState;
   }
 
-  private initializeMatchState(_match: Match, homeTeam: Team, homePlayers: Player[]): MatchState {
+  private initializeMatchState(
+    _match: Match,
+    homeTeam: Team,
+    homePlayers: Player[],
+  ): MatchState {
     return {
       ballPossession: {
         teamId: homeTeam.id,
@@ -275,7 +372,7 @@ export class MatchSimulationVariantBService {
         location: { x: 50, y: 50 },
         phase: MatchPhase.BUILD_UP,
         passes: 0,
-        timeElapsed: 0
+        timeElapsed: 0,
       },
       events: [],
       fatigueTimeline: [],
@@ -295,7 +392,7 @@ export class MatchSimulationVariantBService {
       homeYellowCards: 0,
       awayYellowCards: 0,
       homeRedCards: 0,
-      awayRedCards: 0
+      awayRedCards: 0,
     };
   }
 
@@ -303,11 +400,19 @@ export class MatchSimulationVariantBService {
     homeTeam: Team,
     awayTeam: Team,
     homePlayers: Player[],
-    awayPlayers: Player[]
+    awayPlayers: Player[],
   ): { home: TacticalSetup; away: TacticalSetup } {
     return {
-      home: this.fieldService.calculateTeamTactics(homeTeam, this.currentSeasonYear, homePlayers),
-      away: this.fieldService.calculateTeamTactics(awayTeam, this.currentSeasonYear, awayPlayers)
+      home: this.fieldService.calculateTeamTactics(
+        homeTeam,
+        this.currentSeasonYear,
+        homePlayers,
+      ),
+      away: this.fieldService.calculateTeamTactics(
+        awayTeam,
+        this.currentSeasonYear,
+        awayPlayers,
+      ),
     };
   }
 
@@ -315,34 +420,34 @@ export class MatchSimulationVariantBService {
     _homeTeam: Team,
     _awayTeam: Team,
     homePlayers: Player[],
-    awayPlayers: Player[]
+    awayPlayers: Player[],
   ): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
     const createFatigue = (players: Player[]): PlayerFatigue[] => {
-      return players.map(player => ({
+      return players.map((player) => ({
         playerId: player.id,
         currentStamina: 100,
         fatigueLevel: 0,
-        performanceModifier: 1
+        performanceModifier: 1,
       }));
     };
 
     return {
       home: createFatigue(homePlayers),
-      away: createFatigue(awayPlayers)
+      away: createFatigue(awayPlayers),
     };
   }
 
   private recordFatigueSnapshot(
     state: MatchState,
     minute: number,
-    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] }
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
   ): void {
     const players: PlayerFatigueSnapshot[] = [];
     const append = (entries: PlayerFatigue[]) => {
       entries.forEach((entry) => {
         players.push({
           playerId: entry.playerId,
-          stamina: Math.round(this.clamp(entry.currentStamina, 0, 100))
+          stamina: Math.round(this.clamp(entry.currentStamina, 0, 100)),
         });
       });
     };
@@ -352,9 +457,11 @@ export class MatchSimulationVariantBService {
 
     const timelineEntry: MinuteFatigueSnapshot = {
       minute,
-      players
+      players,
     };
-    const existingIndex = state.fatigueTimeline.findIndex((entry) => entry.minute === minute);
+    const existingIndex = state.fatigueTimeline.findIndex(
+      (entry) => entry.minute === minute,
+    );
     if (existingIndex >= 0) {
       state.fatigueTimeline[existingIndex] = timelineEntry;
       return;
@@ -364,7 +471,9 @@ export class MatchSimulationVariantBService {
   }
 
   private determineTicksForMinute(state: MatchState, minute: number): number {
-    const zone = this.fieldService.getZoneFromY(state.ballPossession.location.y);
+    const zone = this.fieldService.getZoneFromY(
+      state.ballPossession.location.y,
+    );
     const scoreDelta = Math.abs(state.homeScore - state.awayScore);
     const lateGame = minute >= 75;
 
@@ -392,12 +501,14 @@ export class MatchSimulationVariantBService {
   }
 
   private getBallCarrier(playerId: string, teamPlayers: Player[]): Player {
-    const carrier = teamPlayers.find(player => player.id === playerId);
+    const carrier = teamPlayers.find((player) => player.id === playerId);
     if (carrier) {
       return carrier;
     }
 
-    const starters = teamPlayers.filter(player => player.role === Role.STARTER);
+    const starters = teamPlayers.filter(
+      (player) => player.role === Role.STARTER,
+    );
     return starters[0] ?? teamPlayers[0];
   }
 
@@ -405,7 +516,7 @@ export class MatchSimulationVariantBService {
     state: MatchState,
     carrier: Player,
     currentTeam: TeamSide,
-    minute: number
+    minute: number,
   ): void {
     const attackingBias = currentTeam === TeamSide.HOME ? 1 : -1;
     const urgency = minute >= 75 ? this.activeTuning.lateUrgencyMultiplier : 1;
@@ -416,12 +527,20 @@ export class MatchSimulationVariantBService {
           ? 1
           : 0.8;
 
-    const yStep = (this.activeTuning.movementStepBase + (this.rng.random() * this.activeTuning.movementStepRandom)) * urgency * roleBias;
+    const yStep =
+      (this.activeTuning.movementStepBase +
+        this.rng.random() * this.activeTuning.movementStepRandom) *
+      urgency *
+      roleBias;
     const xStep = (this.rng.random() - 0.5) * 5;
 
     state.ballPossession.location = {
       x: this.clamp(state.ballPossession.location.x + xStep, 0, 100),
-      y: this.clamp(state.ballPossession.location.y + (yStep * attackingBias), 0, 100)
+      y: this.clamp(
+        state.ballPossession.location.y + yStep * attackingBias,
+        0,
+        100,
+      ),
     };
   }
 
@@ -431,15 +550,24 @@ export class MatchSimulationVariantBService {
     tactics: { home: TacticalSetup; away: TacticalSetup },
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     currentTeam: TeamSide,
-    minute: number
+    minute: number,
   ): MatchAction {
     const location = state.ballPossession.location;
     const zone = this.fieldService.getZoneFromY(location.y);
     const shootingWindow = this.isInShootingWindow(currentTeam, location.y);
     const teamTactics = tactics[currentTeam];
-    const teamFatigue = fatigue[currentTeam].find(entry => entry.playerId === carrier.id);
-    const chainQuality = this.calculatePossessionChainQuality(state, currentTeam);
-    const scorelineState = this.getLateGameScorelineState(state, currentTeam, minute);
+    const teamFatigue = fatigue[currentTeam].find(
+      (entry) => entry.playerId === carrier.id,
+    );
+    const chainQuality = this.calculatePossessionChainQuality(
+      state,
+      currentTeam,
+    );
+    const scorelineState = this.getLateGameScorelineState(
+      state,
+      currentTeam,
+      minute,
+    );
 
     let passWeight = this.activeTuning.passWeightBase;
     let carryWeight = this.activeTuning.carryWeightBase;
@@ -523,7 +651,10 @@ export class MatchSimulationVariantBService {
 
     passWeight = Math.max(0.2, passWeight);
     carryWeight = Math.max(0.04, carryWeight);
-    shotWeight = carrier.position === PositionEnum.GOALKEEPER ? 0 : Math.max(0.005, shotWeight);
+    shotWeight =
+      carrier.position === PositionEnum.GOALKEEPER
+        ? 0
+        : Math.max(0.005, shotWeight);
     foulWeight = Math.max(0.01, foulWeight);
 
     const totalWeight = passWeight + carryWeight + shotWeight + foulWeight;
@@ -537,7 +668,14 @@ export class MatchSimulationVariantBService {
       return {
         type: EventType.PASS,
         player: carrier,
-        passIntent: this.selectPassIntent(state, carrier, currentTeam, teamTactics, minute, teamFatigue)
+        passIntent: this.selectPassIntent(
+          state,
+          carrier,
+          currentTeam,
+          teamTactics,
+          minute,
+          teamFatigue,
+        ),
       };
     }
 
@@ -561,7 +699,7 @@ export class MatchSimulationVariantBService {
     awayTeam: Team,
     minute: number,
     config: SimulationConfig,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
   ): boolean {
     if (action.type === EventType.CARRY) {
       return this.handleCarry(
@@ -573,7 +711,7 @@ export class MatchSimulationVariantBService {
         awayTeam,
         minute,
         config,
-        rosters
+        rosters,
       );
     }
 
@@ -588,7 +726,7 @@ export class MatchSimulationVariantBService {
         minute,
         config,
         rosters.homePlayers,
-        rosters.awayPlayers
+        rosters.awayPlayers,
       );
       return true;
     }
@@ -603,7 +741,7 @@ export class MatchSimulationVariantBService {
         awayTeam,
         minute,
         config,
-        rosters
+        rosters,
       );
       return true;
     }
@@ -618,7 +756,7 @@ export class MatchSimulationVariantBService {
         minute,
         config,
         rosters.homePlayers,
-        rosters.awayPlayers
+        rosters.awayPlayers,
       );
       return true;
     }
@@ -635,12 +773,27 @@ export class MatchSimulationVariantBService {
     awayTeam: Team,
     minute: number,
     config: SimulationConfig,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
   ): boolean {
-    const currentTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
-    const teamFatigue = fatigue[currentTeam].find(entry => entry.playerId === action.player.id);
-    const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
-    const successChance = this.calculateCarrySuccessChance(state, action.player, currentTeam, teamFatigue, pressure);
+    const currentTeam =
+      state.ballPossession.teamId === homeTeam.id
+        ? TeamSide.HOME
+        : TeamSide.AWAY;
+    const teamFatigue = fatigue[currentTeam].find(
+      (entry) => entry.playerId === action.player.id,
+    );
+    const pressure = this.calculateDefensivePressure(
+      state,
+      currentTeam,
+      tactics,
+    );
+    const successChance = this.calculateCarrySuccessChance(
+      state,
+      action.player,
+      currentTeam,
+      teamFatigue,
+      pressure,
+    );
 
     if (this.rng.random() >= successChance) {
       const turnoverWinnerId = this.createTurnoverEvent(
@@ -648,24 +801,93 @@ export class MatchSimulationVariantBService {
         EventType.TACKLE,
         { ...state.ballPossession.location },
         currentTeam,
-        currentTeam === TeamSide.HOME ? rosters.awayPlayers : rosters.homePlayers,
+        currentTeam === TeamSide.HOME
+          ? rosters.awayPlayers
+          : rosters.homePlayers,
         action.player.id,
         minute,
         true,
         config,
-        { carryResult: 'DISPOSSESSED' }
+        { carryResult: "DISPOSSESSED" },
       );
 
-      state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+      state.ballPossession.teamId =
+        currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
       state.ballPossession.playerWithBall = turnoverWinnerId;
       state.ballPossession.passes = 0;
 
-      const newPossessionTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
-      state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, newPossessionTeam);
+      const newPossessionTeam =
+        state.ballPossession.teamId === homeTeam.id
+          ? TeamSide.HOME
+          : TeamSide.AWAY;
+      state.ballPossession.phase = this.getPhaseFromLocation(
+        state.ballPossession.location,
+        newPossessionTeam,
+      );
+
+      // Tackle injuries: roll on both the dispossessed carrier and the winner.
+      const winnerTeamPlayers =
+        currentTeam === TeamSide.HOME
+          ? rosters.awayPlayers
+          : rosters.homePlayers;
+      const winnerKey: TeamSide =
+        currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      const loserPlayers =
+        currentTeam === TeamSide.HOME
+          ? rosters.homePlayers
+          : rosters.awayPlayers;
+      this.tryRollInjury(
+        action.player,
+        currentTeam,
+        InjuryRollKind.CONTACT,
+        INJURY_TACKLE_MODIFIER,
+        state,
+        minute,
+        config,
+        loserPlayers,
+        tactics,
+      );
+      const winnerPlayer = winnerTeamPlayers.find(
+        (player) => player.id === turnoverWinnerId,
+      );
+      if (winnerPlayer) {
+        this.tryRollInjury(
+          winnerPlayer,
+          winnerKey,
+          InjuryRollKind.CONTACT,
+          INJURY_TACKLE_MODIFIER,
+          state,
+          minute,
+          config,
+          winnerTeamPlayers,
+          tactics,
+        );
+      }
       return true;
     }
 
-    this.applyQuietProgression(state, action.player, homeTeam, awayTeam, rosters, pressure);
+    this.applyQuietProgression(
+      state,
+      action.player,
+      homeTeam,
+      awayTeam,
+      rosters,
+      pressure,
+    );
+    // Non-contact carry injuries on the successful carrier.
+    const carrierTeamPlayers =
+      currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    this.tryRollInjury(
+      action.player,
+      currentTeam,
+      InjuryRollKind.NON_CONTACT,
+      1,
+      state,
+      minute,
+      config,
+      carrierTeamPlayers,
+      tactics,
+    );
     return false;
   }
 
@@ -674,7 +896,7 @@ export class MatchSimulationVariantBService {
     carrier: Player,
     currentTeam: TeamSide,
     carrierFatigue: PlayerFatigue | undefined,
-    pressure: number
+    pressure: number,
   ): number {
     let successChance = 0.72;
 
@@ -686,13 +908,17 @@ export class MatchSimulationVariantBService {
       successChance -= 0.05;
     }
 
-    const carrierAttrs = getCurrentPlayerSeasonAttributes(carrier, this.currentSeasonYear);
+    const carrierAttrs = getCurrentPlayerSeasonAttributes(
+      carrier,
+      this.currentSeasonYear,
+    );
     successChance += (carrierAttrs.speed.value - 70) * 0.002;
     successChance += (carrierAttrs.flair.value - 70) * 0.0015;
 
-    const attackingY = currentTeam === TeamSide.HOME
-      ? state.ballPossession.location.y
-      : 100 - state.ballPossession.location.y;
+    const attackingY =
+      currentTeam === TeamSide.HOME
+        ? state.ballPossession.location.y
+        : 100 - state.ballPossession.location.y;
 
     if (attackingY < 55) {
       successChance += 0.04;
@@ -714,7 +940,7 @@ export class MatchSimulationVariantBService {
   private normalizeFatigueForTickCount(
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     ticks: number,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
   ): void {
     if (ticks <= 1) {
       return;
@@ -724,20 +950,40 @@ export class MatchSimulationVariantBService {
     const fatiguePerTick = 0.5;
     const staminaPerTick = 0.3;
 
-    const homeById = new Map(rosters.homePlayers.map(player => [player.id, player]));
-    const awayById = new Map(rosters.awayPlayers.map(player => [player.id, player]));
+    const homeById = new Map(
+      rosters.homePlayers.map((player) => [player.id, player]),
+    );
+    const awayById = new Map(
+      rosters.awayPlayers.map((player) => [player.id, player]),
+    );
 
-    const normalize = (entries: PlayerFatigue[], playersById: Map<string, Player>) => {
+    const normalize = (
+      entries: PlayerFatigue[],
+      playersById: Map<string, Player>,
+    ) => {
       for (const entry of entries) {
         const player = playersById.get(entry.playerId);
         if (!player || player.role !== Role.STARTER) {
           continue;
         }
 
-        const staminaMultiplier = player.position === PositionEnum.GOALKEEPER ? this.goalkeeperStaminaDrainMultiplier : 1;
-        entry.fatigueLevel = Math.max(0, entry.fatigueLevel - (fatiguePerTick * excessTicks));
-        entry.currentStamina = Math.min(100, entry.currentStamina + (staminaPerTick * staminaMultiplier * excessTicks));
-        entry.performanceModifier = Math.max(0.5, 1.0 - (entry.fatigueLevel / 200));
+        const staminaMultiplier =
+          player.position === PositionEnum.GOALKEEPER
+            ? this.goalkeeperStaminaDrainMultiplier
+            : 1;
+        entry.fatigueLevel = Math.max(
+          0,
+          entry.fatigueLevel - fatiguePerTick * excessTicks,
+        );
+        entry.currentStamina = Math.min(
+          100,
+          entry.currentStamina +
+            staminaPerTick * staminaMultiplier * excessTicks,
+        );
+        entry.performanceModifier = Math.max(
+          0.5,
+          1.0 - entry.fatigueLevel / 200,
+        );
       }
     };
 
@@ -755,19 +1001,43 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     homePlayers: Player[],
-    awayPlayers: Player[]
+    awayPlayers: Player[],
   ): void {
     const passer = action.player;
-    const currentTeam = state.ballPossession.teamId === tactics.home.teamId ? TeamSide.HOME : TeamSide.AWAY;
-    const teamPlayers = currentTeam === TeamSide.HOME ? homePlayers : awayPlayers;
-    const opponentPlayers = currentTeam === TeamSide.HOME ? awayPlayers : homePlayers;
+    const currentTeam =
+      state.ballPossession.teamId === tactics.home.teamId
+        ? TeamSide.HOME
+        : TeamSide.AWAY;
+    const teamPlayers =
+      currentTeam === TeamSide.HOME ? homePlayers : awayPlayers;
+    const opponentPlayers =
+      currentTeam === TeamSide.HOME ? awayPlayers : homePlayers;
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam];
-    const passIntent = action.passIntent
-      ?? this.selectPassIntent(state, passer, currentTeam, teamTactics, minute, teamFatigue.find(entry => entry.playerId === passer.id));
-    const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
+    const passIntent =
+      action.passIntent ??
+      this.selectPassIntent(
+        state,
+        passer,
+        currentTeam,
+        teamTactics,
+        minute,
+        teamFatigue.find((entry) => entry.playerId === passer.id),
+      );
+    const pressure = this.calculateDefensivePressure(
+      state,
+      currentTeam,
+      tactics,
+    );
 
-    const targetPlayer = this.findPassTarget(passer, teamPlayers, teamTactics, state.ballPossession.location, currentTeam, passIntent);
+    const targetPlayer = this.findPassTarget(
+      passer,
+      teamPlayers,
+      teamTactics,
+      state.ballPossession.location,
+      currentTeam,
+      passIntent,
+    );
 
     if (!targetPlayer) {
       const turnoverWinnerId = this.createTurnoverEvent(
@@ -779,21 +1049,66 @@ export class MatchSimulationVariantBService {
         passer.id,
         minute,
         false,
-        config
+        config,
       );
-      state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+      state.ballPossession.teamId =
+        currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
       state.ballPossession.playerWithBall = turnoverWinnerId;
       state.ballPossession.passes = 0;
-      const newPossessionTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
-      state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, newPossessionTeam);
+      const newPossessionTeam =
+        state.ballPossession.teamId === homeTeam.id
+          ? TeamSide.HOME
+          : TeamSide.AWAY;
+      state.ballPossession.phase = this.getPhaseFromLocation(
+        state.ballPossession.location,
+        newPossessionTeam,
+      );
+
+      // Tackle injuries on both passer (loser) and turnover winner.
+      const winnerKey: TeamSide =
+        currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      this.tryRollInjury(
+        passer,
+        currentTeam,
+        InjuryRollKind.CONTACT,
+        INJURY_TACKLE_MODIFIER,
+        state,
+        minute,
+        config,
+        teamPlayers,
+        tactics,
+      );
+      const winner = opponentPlayers.find(
+        (player) => player.id === turnoverWinnerId,
+      );
+      if (winner) {
+        this.tryRollInjury(
+          winner,
+          winnerKey,
+          InjuryRollKind.CONTACT,
+          INJURY_TACKLE_MODIFIER,
+          state,
+          minute,
+          config,
+          opponentPlayers,
+          tactics,
+        );
+      }
       return;
     }
 
-    const targetPosition = this.fieldService.getStartingPositionForPlayer(targetPlayer, teamTactics.formation);
-    const passDistance = this.fieldService.getDistance(state.ballPossession.location, targetPosition);
-    const progression = currentTeam === TeamSide.HOME
-      ? targetPosition.y - state.ballPossession.location.y
-      : state.ballPossession.location.y - targetPosition.y;
+    const targetPosition = this.fieldService.getStartingPositionForPlayer(
+      targetPlayer,
+      teamTactics.formation,
+    );
+    const passDistance = this.fieldService.getDistance(
+      state.ballPossession.location,
+      targetPosition,
+    );
+    const progression =
+      currentTeam === TeamSide.HOME
+        ? targetPosition.y - state.ballPossession.location.y
+        : state.ballPossession.location.y - targetPosition.y;
 
     const passSuccess = this.calculatePassSuccess(
       passer,
@@ -803,13 +1118,16 @@ export class MatchSimulationVariantBService {
       state.ballPossession.location,
       currentTeam,
       passIntent,
-      pressure
+      pressure,
     );
 
     if (passSuccess) {
       state.ballPossession.playerWithBall = targetPlayer.id;
       state.ballPossession.passes++;
-      state.ballPossession.location = this.calculateNewBallPosition(state.ballPossession.location, targetPosition);
+      state.ballPossession.location = this.calculateNewBallPosition(
+        state.ballPossession.location,
+        targetPosition,
+      );
       this.createEvent(
         state,
         EventType.PASS,
@@ -818,7 +1136,19 @@ export class MatchSimulationVariantBService {
         minute,
         true,
         config,
-        { passIntent }
+        { passIntent },
+      );
+      // Non-contact injury roll on the passer.
+      this.tryRollInjury(
+        passer,
+        currentTeam,
+        InjuryRollKind.NON_CONTACT,
+        1,
+        state,
+        minute,
+        config,
+        teamPlayers,
+        tactics,
       );
       return;
     }
@@ -829,7 +1159,7 @@ export class MatchSimulationVariantBService {
       passIntent,
       pressure,
       passDistance,
-      progression
+      progression,
     );
     const turnoverWinnerId = this.createPassFailureEvent(
       state,
@@ -840,11 +1170,57 @@ export class MatchSimulationVariantBService {
       passer.id,
       passIntent,
       minute,
-      config
+      config,
     );
-    state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+    state.ballPossession.teamId =
+      currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
     state.ballPossession.playerWithBall = turnoverWinnerId;
     state.ballPossession.passes = 0;
+
+    // TACKLED is contact (both passer and winner); intercept paths are non-contact (winner only).
+    const winnerKey: TeamSide =
+      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const winner = opponentPlayers.find(
+      (player) => player.id === turnoverWinnerId,
+    );
+    if (failureMode === PASS_FAILURE_MODE.TACKLED) {
+      this.tryRollInjury(
+        passer,
+        currentTeam,
+        InjuryRollKind.CONTACT,
+        INJURY_TACKLE_MODIFIER,
+        state,
+        minute,
+        config,
+        teamPlayers,
+        tactics,
+      );
+      if (winner) {
+        this.tryRollInjury(
+          winner,
+          winnerKey,
+          InjuryRollKind.CONTACT,
+          INJURY_TACKLE_MODIFIER,
+          state,
+          minute,
+          config,
+          opponentPlayers,
+          tactics,
+        );
+      }
+    } else if (winner) {
+      this.tryRollInjury(
+        winner,
+        winnerKey,
+        InjuryRollKind.NON_CONTACT,
+        1,
+        state,
+        minute,
+        config,
+        opponentPlayers,
+        tactics,
+      );
+    }
   }
 
   private determinePassFailureMode(
@@ -853,17 +1229,27 @@ export class MatchSimulationVariantBService {
     passIntent: PassIntent,
     pressure: number,
     passDistance: number,
-    progression: number
+    progression: number,
   ): PassFailureMode {
-    const context = this.getDefendingShapeContextForLocation(currentLocation, currentTeam);
+    const context = this.getDefendingShapeContextForLocation(
+      currentLocation,
+      currentTeam,
+    );
     const uncoveredChannel = context?.channelSlots.length === 0;
-    const denseCentralCoverage = !context?.wideChannel && (context?.centralSlots.length ?? 0) >= 2 && (context?.zoneCoverage ?? 0) >= 0.75;
+    const denseCentralCoverage =
+      !context?.wideChannel &&
+      (context?.centralSlots.length ?? 0) >= 2 &&
+      (context?.zoneCoverage ?? 0) >= 0.75;
 
     if (pressure >= 0.6 && passDistance <= 24 && !uncoveredChannel) {
       return PASS_FAILURE_MODE.TACKLED;
     }
 
-    if ((passIntent === PASS_INTENT.THROUGH_BALL || passIntent === PASS_INTENT.CROSS) && passDistance >= 30) {
+    if (
+      (passIntent === PASS_INTENT.THROUGH_BALL ||
+        passIntent === PASS_INTENT.CROSS) &&
+      passDistance >= 30
+    ) {
       if (passIntent === PASS_INTENT.THROUGH_BALL && denseCentralCoverage) {
         return PASS_FAILURE_MODE.LANE_CUT_OUT;
       }
@@ -875,11 +1261,19 @@ export class MatchSimulationVariantBService {
       return PASS_FAILURE_MODE.OVERHIT;
     }
 
-    if (passIntent === PASS_INTENT.THROUGH_BALL && denseCentralCoverage && progression >= 8) {
+    if (
+      passIntent === PASS_INTENT.THROUGH_BALL &&
+      denseCentralCoverage &&
+      progression >= 8
+    ) {
       return PASS_FAILURE_MODE.LANE_CUT_OUT;
     }
 
-    if (uncoveredChannel && passDistance >= 26 && passIntent !== PASS_INTENT.RECYCLE) {
+    if (
+      uncoveredChannel &&
+      passDistance >= 26 &&
+      passIntent !== PASS_INTENT.RECYCLE
+    ) {
       return PASS_FAILURE_MODE.OVERHIT;
     }
 
@@ -899,7 +1293,7 @@ export class MatchSimulationVariantBService {
     passerId: string,
     passIntent: PassIntent,
     minute: number,
-    config: SimulationConfig
+    config: SimulationConfig,
   ): string {
     if (mode === PASS_FAILURE_MODE.TACKLED) {
       return this.createTurnoverEvent(
@@ -912,7 +1306,7 @@ export class MatchSimulationVariantBService {
         minute,
         true,
         config,
-        { passFailure: mode, passIntent }
+        { passFailure: mode, passIntent },
       );
     }
 
@@ -926,7 +1320,7 @@ export class MatchSimulationVariantBService {
       minute,
       false,
       config,
-      { passFailure: mode, passIntent }
+      { passFailure: mode, passIntent },
     );
   }
 
@@ -938,9 +1332,13 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     homePlayers: Player[],
-    awayPlayers: Player[]
+    awayPlayers: Player[],
+    tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
-    const currentTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
+    const currentTeam =
+      state.ballPossession.teamId === homeTeam.id
+        ? TeamSide.HOME
+        : TeamSide.AWAY;
 
     if (currentTeam === TeamSide.HOME) {
       state.homeScore++;
@@ -948,13 +1346,37 @@ export class MatchSimulationVariantBService {
       state.awayScore++;
     }
 
-    this.createEvent(state, EventType.GOAL, [action.player.id], state.ballPossession.location, minute, true, config);
-    state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+    this.createEvent(
+      state,
+      EventType.GOAL,
+      [action.player.id],
+      state.ballPossession.location,
+      minute,
+      true,
+      config,
+    );
+    state.ballPossession.teamId =
+      currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
     state.ballPossession.playerWithBall = this.getRandomPlayerId(
-      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers
+      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers,
     );
     state.ballPossession.location = { x: 50, y: 50 };
     state.ballPossession.passes = 0;
+
+    // Non-contact injury roll on the scorer (resolved against their own team's roster).
+    const scorerTeamPlayers =
+      currentTeam === TeamSide.HOME ? homePlayers : awayPlayers;
+    this.tryRollInjury(
+      action.player,
+      currentTeam,
+      InjuryRollKind.NON_CONTACT,
+      1,
+      state,
+      minute,
+      config,
+      scorerTeamPlayers,
+      tactics,
+    );
   }
 
   private handleFoul(
@@ -966,11 +1388,16 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     homePlayers: Player[],
-    awayPlayers: Player[]
+    awayPlayers: Player[],
   ): void {
-    const attackingTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
-    const defendingTeam = attackingTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
-    const defendingPlayers = defendingTeam === TeamSide.HOME ? homePlayers : awayPlayers;
+    const attackingTeam =
+      state.ballPossession.teamId === homeTeam.id
+        ? TeamSide.HOME
+        : TeamSide.AWAY;
+    const defendingTeam =
+      attackingTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const defendingPlayers =
+      defendingTeam === TeamSide.HOME ? homePlayers : awayPlayers;
     const victim = action.player;
     const offender = this.selectFoulOffender(defendingPlayers);
 
@@ -987,7 +1414,7 @@ export class MatchSimulationVariantBService {
       { ...state.ballPossession.location },
       minute,
       false,
-      config
+      config,
     );
 
     let offenderSentOff = false;
@@ -1003,7 +1430,7 @@ export class MatchSimulationVariantBService {
           minute,
           false,
           config,
-          { cardReason: 'DIRECT_RED' }
+          { cardReason: "DIRECT_RED" },
         );
         this.incrementCardCount(state, defendingTeam, EventType.RED_CARD);
         offenderSentOff = true;
@@ -1015,11 +1442,13 @@ export class MatchSimulationVariantBService {
           { ...state.ballPossession.location },
           minute,
           false,
-          config
+          config,
         );
         this.incrementCardCount(state, defendingTeam, EventType.YELLOW_CARD);
 
-        if (this.countPlayerEvents(state, offender.id, EventType.YELLOW_CARD) >= 2) {
+        if (
+          this.countPlayerEvents(state, offender.id, EventType.YELLOW_CARD) >= 2
+        ) {
           this.createEvent(
             state,
             EventType.RED_CARD,
@@ -1028,7 +1457,7 @@ export class MatchSimulationVariantBService {
             minute,
             false,
             config,
-            { cardReason: 'SECOND_YELLOW' }
+            { cardReason: "SECOND_YELLOW" },
           );
           this.incrementCardCount(state, defendingTeam, EventType.RED_CARD);
           offenderSentOff = true;
@@ -1040,24 +1469,69 @@ export class MatchSimulationVariantBService {
       this.dismissPlayer(defendingTeam, offender.id, defendingPlayers, tactics);
     }
 
-    state.ballPossession.teamId = attackingTeam === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+    state.ballPossession.teamId =
+      attackingTeam === TeamSide.HOME ? homeTeam.id : awayTeam.id;
     state.ballPossession.playerWithBall = victim.id;
-    state.ballPossession.location = this.getFoulRestartLocation(attackingTeam, state.ballPossession.location);
+    state.ballPossession.location = this.getFoulRestartLocation(
+      attackingTeam,
+      state.ballPossession.location,
+    );
     state.ballPossession.passes = 0;
+
+    // Foul injuries: roll on both offender and victim with a 1.5x contact modifier.
+    // tryRollInjury is a no-op if the offender was just sent off (role !== STARTER).
+    const attackingPlayers =
+      attackingTeam === TeamSide.HOME ? homePlayers : awayPlayers;
+    this.tryRollInjury(
+      offender,
+      defendingTeam,
+      InjuryRollKind.CONTACT,
+      INJURY_FOUL_OFFENDER_MODIFIER,
+      state,
+      minute,
+      config,
+      defendingPlayers,
+      tactics,
+    );
+    this.tryRollInjury(
+      victim,
+      attackingTeam,
+      InjuryRollKind.CONTACT,
+      INJURY_FOUL_VICTIM_MODIFIER,
+      state,
+      minute,
+      config,
+      attackingPlayers,
+      tactics,
+    );
   }
 
-  private getFoulRestartLocation(attackingTeam: TeamSide, currentLocation: Coordinates): Coordinates {
-    const attackingY = attackingTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
+  private getFoulRestartLocation(
+    attackingTeam: TeamSide,
+    currentLocation: Coordinates,
+  ): Coordinates {
+    const attackingY =
+      attackingTeam === TeamSide.HOME
+        ? currentLocation.y
+        : 100 - currentLocation.y;
     let restartAttackingY = attackingY;
     let restartX = currentLocation.x;
 
     // Keep advanced fouls dangerous, while deeper fouls reset play further from goal.
     if (attackingY >= 78) {
       restartAttackingY = this.clamp(attackingY + 1, 0, 90);
-      restartX = this.clamp(currentLocation.x + ((50 - currentLocation.x) * 0.2), 0, 100);
+      restartX = this.clamp(
+        currentLocation.x + (50 - currentLocation.x) * 0.2,
+        0,
+        100,
+      );
     } else if (attackingY >= 60) {
       restartAttackingY = this.clamp(attackingY - 2, 0, 100);
-      restartX = this.clamp(currentLocation.x + ((50 - currentLocation.x) * 0.2), 0, 100);
+      restartX = this.clamp(
+        currentLocation.x + (50 - currentLocation.x) * 0.2,
+        0,
+        100,
+      );
     } else {
       restartAttackingY = this.clamp(attackingY - 8, 0, 100);
     }
@@ -1068,18 +1542,36 @@ export class MatchSimulationVariantBService {
   }
 
   private selectFoulOffender(teamPlayers: Player[]): Player {
-    const starters = teamPlayers.filter(player => player.role === Role.STARTER);
+    const starters = teamPlayers.filter(
+      (player) => player.role === Role.STARTER,
+    );
     const activePlayers = starters.length > 0 ? starters : teamPlayers;
     const preferredPlayers = activePlayers.filter(
-      player => player.position === PositionEnum.DEFENDER || player.position === PositionEnum.MIDFIELDER
+      (player) =>
+        player.position === PositionEnum.DEFENDER ||
+        player.position === PositionEnum.MIDFIELDER,
     );
-    const outfieldPlayers = activePlayers.filter(player => player.position !== PositionEnum.GOALKEEPER);
-    const candidatePool = preferredPlayers.length > 0 ? preferredPlayers : outfieldPlayers.length > 0 ? outfieldPlayers : activePlayers;
+    const outfieldPlayers = activePlayers.filter(
+      (player) => player.position !== PositionEnum.GOALKEEPER,
+    );
+    const candidatePool =
+      preferredPlayers.length > 0
+        ? preferredPlayers
+        : outfieldPlayers.length > 0
+          ? outfieldPlayers
+          : activePlayers;
 
-    return candidatePool[Math.floor(this.rng.random() * candidatePool.length)] ?? teamPlayers[0];
+    return (
+      candidatePool[Math.floor(this.rng.random() * candidatePool.length)] ??
+      teamPlayers[0]
+    );
   }
 
-  private incrementCardCount(state: MatchState, team: TeamSide, cardType: EventType.YELLOW_CARD | EventType.RED_CARD): void {
+  private incrementCardCount(
+    state: MatchState,
+    team: TeamSide,
+    cardType: EventType.YELLOW_CARD | EventType.RED_CARD,
+  ): void {
     if (cardType === EventType.YELLOW_CARD) {
       if (team === TeamSide.HOME) {
         state.homeYellowCards++;
@@ -1096,20 +1588,33 @@ export class MatchSimulationVariantBService {
     }
   }
 
-  private countPlayerEvents(state: MatchState, playerId: string, eventType: EventType): number {
-    return state.events.filter(event => event.type === eventType && event.playerIds[0] === playerId).length;
+  private countPlayerEvents(
+    state: MatchState,
+    playerId: string,
+    eventType: EventType,
+  ): number {
+    return state.events.filter(
+      (event) => event.type === eventType && event.playerIds[0] === playerId,
+    ).length;
   }
 
   private dismissPlayer(
     teamKey: TeamSide,
     playerId: string,
     teamPlayers: Player[],
-    tactics: { home: TacticalSetup; away: TacticalSetup }
+    tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
-    const dismissedPlayer = teamPlayers.find(player => player.id === playerId);
+    const dismissedPlayer = teamPlayers.find(
+      (player) => player.id === playerId,
+    );
     if (dismissedPlayer) {
       dismissedPlayer.role = Role.DISMISSED;
-      this.rebalanceShapeAfterDismissal(teamKey, teamPlayers, playerId, tactics);
+      this.rebalanceShapeAfterDismissal(
+        teamKey,
+        teamPlayers,
+        playerId,
+        tactics,
+      );
       this.pendingTacticalSubstitutions[teamKey] = 1;
 
       const forfeitingTeam = this.checkForfeitCondition();
@@ -1117,6 +1622,189 @@ export class MatchSimulationVariantBService {
         this.lastSimulationForfeit = forfeitingTeam;
       }
     }
+  }
+
+  // Returns true if the player sustained an injury this roll. Callers may use
+  // this to short-circuit follow-up logic (e.g. avoid double-rolling on the
+  // same player within a single tick).
+  private tryRollInjury(
+    player: Player,
+    teamKey: TeamSide,
+    kind: InjuryRollKind,
+    modifier: number,
+    state: MatchState,
+    minute: number,
+    config: SimulationConfig,
+    teamPlayers: Player[],
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+  ): boolean {
+    if (config.disableInjuries) {
+      return false;
+    }
+    if (this.injuredPlayerIds.has(player.id)) {
+      return false;
+    }
+    if (player.role !== Role.STARTER) {
+      return false;
+    }
+
+    const attrs = getCurrentPlayerSeasonAttributes(
+      player,
+      this.currentSeasonYear,
+    );
+    const rate = Math.max(attrs.injuryRate?.value ?? INJURY_REFERENCE_RATE, 1);
+    const baseChance =
+      kind === InjuryRollKind.CONTACT
+        ? INJURY_CONTACT_BASE_CHANCE
+        : INJURY_NON_CONTACT_BASE_CHANCE;
+    const finalChance = baseChance * (rate / INJURY_REFERENCE_RATE) * modifier;
+
+    if (this.rng.random() >= finalChance) {
+      return false;
+    }
+
+    const definition: InjuryDefinition = pickInjuryDefinition(
+      this.rng.random(),
+    );
+    const totalWeeks = rollInjuryDurationWeeks(definition, this.rng.random());
+
+    this.injuredPlayerIds.add(player.id);
+    this.createEvent(
+      state,
+      EventType.INJURY,
+      [player.id],
+      { ...state.ballPossession.location },
+      minute,
+      true,
+      config,
+      {
+        injury: {
+          definitionId: definition.id,
+          totalWeeks,
+          weeksRemaining: totalWeeks,
+        },
+      },
+    );
+
+    this.handleInjuryWithdrawal(
+      teamKey,
+      player.id,
+      teamPlayers,
+      tactics,
+      state,
+    );
+    this.pendingInjuryReplacements[teamKey] = player.id;
+    return true;
+  }
+
+  private handleInjuryWithdrawal(
+    teamKey: TeamSide,
+    playerId: string,
+    teamPlayers: Player[],
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    state: MatchState,
+  ): void {
+    const injured = teamPlayers.find((player) => player.id === playerId);
+    if (!injured) {
+      return;
+    }
+    // Mark the player as off the pitch using the existing substitution role.
+    // We deliberately do NOT use Role.DISMISSED so this isn't counted as a
+    // forfeit/red card, and we don't persist a new role state.
+    injured.role = Role.SUBSTITUTED_OUT;
+    this.rebalanceShapeAfterDismissal(teamKey, teamPlayers, playerId, tactics);
+
+    if (state.ballPossession.playerWithBall === playerId) {
+      const remainingStarter = teamPlayers.find(
+        (candidate) =>
+          candidate.role === Role.STARTER && candidate.id !== playerId,
+      );
+      if (remainingStarter) {
+        state.ballPossession.playerWithBall = remainingStarter.id;
+      }
+    }
+
+    const forfeitingTeam = this.checkForfeitCondition();
+    if (forfeitingTeam) {
+      this.lastSimulationForfeit = forfeitingTeam;
+    }
+  }
+
+  private tryPendingInjuryReplacement(
+    teamKey: TeamSide,
+    state: MatchState,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    substitutionsUsed: TeamSubstitutionUsage,
+  ): boolean {
+    const injuredId = this.pendingInjuryReplacements[teamKey];
+    if (!injuredId) {
+      return false;
+    }
+    this.pendingInjuryReplacements[teamKey] = null;
+
+    if (
+      substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam ||
+      !this.activeMatchShape
+    ) {
+      // Out of substitutions: the team plays a player short for the remainder.
+      return false;
+    }
+
+    const teamPlayers =
+      teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const injuredPlayer = teamPlayers.find((player) => player.id === injuredId);
+    const incomingPosition = injuredPlayer?.position ?? PositionEnum.MIDFIELDER;
+    const incoming = this.selectSubstitutionIncomingPlayer(
+      teamPlayers,
+      incomingPosition,
+    );
+    if (!incoming) {
+      return false;
+    }
+
+    incoming.role = Role.STARTER;
+    substitutionsUsed[teamKey] += 1;
+
+    const currentShape = this.activeMatchShape[teamKey];
+    const activePlayers = teamPlayers.filter(
+      (player) => player.role === Role.STARTER,
+    );
+    const rebalancedShape = this.rebalanceShapeForPlayers(
+      currentShape,
+      activePlayers,
+    );
+    this.activeMatchShape = {
+      ...this.activeMatchShape,
+      [teamKey]: rebalancedShape,
+    };
+    this.rebuildFormationFromShape(teamKey, tactics);
+
+    const teamId = teamKey === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+    if (
+      state.ballPossession.teamId === teamId &&
+      state.ballPossession.playerWithBall === injuredId
+    ) {
+      state.ballPossession.playerWithBall = incoming.id;
+    }
+
+    this.createEvent(
+      state,
+      EventType.SUBSTITUTION,
+      [injuredId, incoming.id],
+      { ...state.ballPossession.location },
+      minute,
+      true,
+      config,
+      {
+        formationSnapshot: this.createFormationSnapshot(),
+      },
+    );
+    return true;
   }
 
   private calculatePassSuccess(
@@ -1127,13 +1815,17 @@ export class MatchSimulationVariantBService {
     currentLocation: Coordinates,
     currentTeam: TeamSide,
     passIntent: PassIntent,
-    pressure: number
+    pressure: number,
   ): boolean {
-    const passerFatigue = fatigue.find(entry => entry.playerId === passer.id);
-    const targetFatigue = fatigue.find(entry => entry.playerId === target.id);
+    const passerFatigue = fatigue.find((entry) => entry.playerId === passer.id);
+    const targetFatigue = fatigue.find((entry) => entry.playerId === target.id);
 
-    const passerAttrs = getCurrentPlayerSeasonAttributes(passer, this.currentSeasonYear);
-    let baseChance = (passerAttrs.shortPassing.value + passerAttrs.longPassing.value) / 2;
+    const passerAttrs = getCurrentPlayerSeasonAttributes(
+      passer,
+      this.currentSeasonYear,
+    );
+    let baseChance =
+      (passerAttrs.shortPassing.value + passerAttrs.longPassing.value) / 2;
 
     if (passerFatigue) {
       baseChance *= passerFatigue.performanceModifier;
@@ -1158,7 +1850,11 @@ export class MatchSimulationVariantBService {
     }
 
     baseChance -= pressure * 4;
-    baseChance += this.calculatePassShapeModifier(currentLocation, currentTeam, passIntent);
+    baseChance += this.calculatePassShapeModifier(
+      currentLocation,
+      currentTeam,
+      passIntent,
+    );
 
     baseChance = this.clamp(baseChance, 20, 95);
 
@@ -1168,9 +1864,12 @@ export class MatchSimulationVariantBService {
   private calculatePassShapeModifier(
     currentLocation: Coordinates,
     currentTeam: TeamSide,
-    passIntent: PassIntent
+    passIntent: PassIntent,
   ): number {
-    const context = this.getDefendingShapeContextForLocation(currentLocation, currentTeam);
+    const context = this.getDefendingShapeContextForLocation(
+      currentLocation,
+      currentTeam,
+    );
     if (!context) {
       return 0;
     }
@@ -1191,7 +1890,10 @@ export class MatchSimulationVariantBService {
     return modifier;
   }
 
-  private calculatePossessionChainQuality(state: MatchState, currentTeam: TeamSide): number {
+  private calculatePossessionChainQuality(
+    state: MatchState,
+    currentTeam: TeamSide,
+  ): number {
     const passes = state.ballPossession.passes;
     const y = state.ballPossession.location.y;
     const attackingY = currentTeam === TeamSide.HOME ? y : 100 - y;
@@ -1200,7 +1902,8 @@ export class MatchSimulationVariantBService {
     const depthSignal = this.clamp((attackingY - 35) / 40, 0, 1);
     const finalThirdSignal = attackingY >= 67 ? 1 : 0;
 
-    const score = (sequenceSignal * 0.45) + (depthSignal * 0.35) + (finalThirdSignal * 0.2);
+    const score =
+      sequenceSignal * 0.45 + depthSignal * 0.35 + finalThirdSignal * 0.2;
     return this.clamp(score, 0, 1);
   }
 
@@ -1210,27 +1913,48 @@ export class MatchSimulationVariantBService {
     currentTeam: TeamSide,
     teamTactics: TacticalSetup,
     minute: number,
-    passerFatigue?: PlayerFatigue
+    passerFatigue?: PlayerFatigue,
   ): PassIntent {
     const y = state.ballPossession.location.y;
     const x = state.ballPossession.location.x;
     const attackingY = currentTeam === TeamSide.HOME ? y : 100 - y;
     const wideChannel = Math.abs(x - 50) >= 18;
-    const scorelineState = this.getLateGameScorelineState(state, currentTeam, minute);
+    const scorelineState = this.getLateGameScorelineState(
+      state,
+      currentTeam,
+      minute,
+    );
 
-    if ((passer.position === PositionEnum.DEFENDER || (passerFatigue?.fatigueLevel ?? 0) > 75) && attackingY < 78) {
+    if (
+      (passer.position === PositionEnum.DEFENDER ||
+        (passerFatigue?.fatigueLevel ?? 0) > 75) &&
+      attackingY < 78
+    ) {
       return PASS_INTENT.RECYCLE;
     }
 
-    if (attackingY >= 82 && wideChannel && (passer.position === PositionEnum.MIDFIELDER || passer.position === PositionEnum.FORWARD)) {
+    if (
+      attackingY >= 82 &&
+      wideChannel &&
+      (passer.position === PositionEnum.MIDFIELDER ||
+        passer.position === PositionEnum.FORWARD)
+    ) {
       return PASS_INTENT.CROSS;
     }
 
-    if (attackingY >= 78 && !wideChannel && (passer.position === PositionEnum.MIDFIELDER || passer.position === PositionEnum.FORWARD)) {
+    if (
+      attackingY >= 78 &&
+      !wideChannel &&
+      (passer.position === PositionEnum.MIDFIELDER ||
+        passer.position === PositionEnum.FORWARD)
+    ) {
       return PASS_INTENT.THROUGH_BALL;
     }
 
-    if (teamTactics.playingStyle === PlayingStyle.POSSESSION && attackingY < 60) {
+    if (
+      teamTactics.playingStyle === PlayingStyle.POSSESSION &&
+      attackingY < 60
+    ) {
       return PASS_INTENT.RECYCLE;
     }
 
@@ -1252,14 +1976,18 @@ export class MatchSimulationVariantBService {
   private calculateDefensivePressure(
     state: MatchState,
     currentTeam: TeamSide,
-    tactics: { home: TacticalSetup; away: TacticalSetup }
+    tactics: { home: TacticalSetup; away: TacticalSetup },
   ): number {
-    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const defendingTeam =
+      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
     const defendingTactics = tactics[defendingTeam];
-    const zone = this.fieldService.getZoneFromY(state.ballPossession.location.y);
-    const attackingZone = currentTeam === TeamSide.HOME
-      ? zone === FieldZone.ATTACK
-      : zone === FieldZone.DEFENSE;
+    const zone = this.fieldService.getZoneFromY(
+      state.ballPossession.location.y,
+    );
+    const attackingZone =
+      currentTeam === TeamSide.HOME
+        ? zone === FieldZone.ATTACK
+        : zone === FieldZone.DEFENSE;
     const midfieldZone = zone === FieldZone.MIDFIELD;
 
     let pressure = defendingTactics.pressingIntensity / 100;
@@ -1284,14 +2012,16 @@ export class MatchSimulationVariantBService {
   private getLateGameScorelineState(
     state: MatchState,
     currentTeam: TeamSide,
-    minute: number
+    minute: number,
   ): LateGameScoreLine {
     if (minute < 80) {
       return LATE_GAME_SCORELINE.LEVEL;
     }
 
-    const teamScore = currentTeam === TeamSide.HOME ? state.homeScore : state.awayScore;
-    const opponentScore = currentTeam === TeamSide.HOME ? state.awayScore : state.homeScore;
+    const teamScore =
+      currentTeam === TeamSide.HOME ? state.homeScore : state.awayScore;
+    const opponentScore =
+      currentTeam === TeamSide.HOME ? state.awayScore : state.homeScore;
 
     if (teamScore > opponentScore) {
       return LATE_GAME_SCORELINE.LEADING;
@@ -1313,7 +2043,7 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     rosters: ResolvedRosters,
-    substitutionsUsed: TeamSubstitutionUsage
+    substitutionsUsed: TeamSubstitutionUsage,
   ): void {
     const homeUsedTacticalSub = this.tryPendingTacticalSubstitution(
       TeamSide.HOME,
@@ -1325,7 +2055,7 @@ export class MatchSimulationVariantBService {
       minute,
       config,
       rosters,
-      substitutionsUsed
+      substitutionsUsed,
     );
     const awayUsedTacticalSub = this.tryPendingTacticalSubstitution(
       TeamSide.AWAY,
@@ -1337,15 +2067,60 @@ export class MatchSimulationVariantBService {
       minute,
       config,
       rosters,
-      substitutionsUsed
+      substitutionsUsed,
     );
 
     if (!homeUsedTacticalSub) {
-      this.tryTeamSubstitution(TeamSide.HOME, state, tactics, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+      this.tryTeamSubstitution(
+        TeamSide.HOME,
+        state,
+        tactics,
+        homeTeam,
+        awayTeam,
+        fatigue,
+        minute,
+        config,
+        rosters,
+        substitutionsUsed,
+      );
     }
     if (!awayUsedTacticalSub) {
-      this.tryTeamSubstitution(TeamSide.AWAY, state, tactics, homeTeam, awayTeam, fatigue, minute, config, rosters, substitutionsUsed);
+      this.tryTeamSubstitution(
+        TeamSide.AWAY,
+        state,
+        tactics,
+        homeTeam,
+        awayTeam,
+        fatigue,
+        minute,
+        config,
+        rosters,
+        substitutionsUsed,
+      );
     }
+
+    this.tryPendingInjuryReplacement(
+      TeamSide.HOME,
+      state,
+      tactics,
+      homeTeam,
+      awayTeam,
+      minute,
+      config,
+      rosters,
+      substitutionsUsed,
+    );
+    this.tryPendingInjuryReplacement(
+      TeamSide.AWAY,
+      state,
+      tactics,
+      homeTeam,
+      awayTeam,
+      minute,
+      config,
+      rosters,
+      substitutionsUsed,
+    );
   }
 
   private tryPendingTacticalSubstitution(
@@ -1358,7 +2133,7 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     rosters: ResolvedRosters,
-    substitutionsUsed: TeamSubstitutionUsage
+    substitutionsUsed: TeamSubstitutionUsage,
   ): boolean {
     if (this.pendingTacticalSubstitutions[teamKey] === 0) {
       return false;
@@ -1366,16 +2141,27 @@ export class MatchSimulationVariantBService {
 
     this.pendingTacticalSubstitutions[teamKey] = 0;
 
-    if (substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam || !this.activeMatchShape) {
+    if (
+      substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam ||
+      !this.activeMatchShape
+    ) {
       return false;
     }
 
-    const teamPlayers = teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const teamPlayers =
+      teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     const currentShape = this.activeMatchShape[teamKey];
-    const currentQuality = this.calculateShapeQuality(currentShape, teamPlayers);
-    const benchPlayers = teamPlayers.filter(player => player.role === Role.BENCH);
+    const currentQuality = this.calculateShapeQuality(
+      currentShape,
+      teamPlayers,
+    );
+    const benchPlayers = teamPlayers.filter(
+      (player) => player.role === Role.BENCH,
+    );
     const starterOutfield = teamPlayers.filter(
-      player => player.role === Role.STARTER && player.position !== PositionEnum.GOALKEEPER
+      (player) =>
+        player.role === Role.STARTER &&
+        player.position !== PositionEnum.GOALKEEPER,
     );
 
     let bestCandidate: {
@@ -1388,19 +2174,25 @@ export class MatchSimulationVariantBService {
     for (const incoming of benchPlayers) {
       for (const outgoing of starterOutfield) {
         const simulatedActivePlayers = teamPlayers.filter(
-          player => player.role === Role.STARTER && player.id !== outgoing.id
+          (player) => player.role === Role.STARTER && player.id !== outgoing.id,
         );
         simulatedActivePlayers.push({ ...incoming, role: Role.STARTER });
 
-        const candidateShape = this.rebalanceShapeForPlayers(currentShape, simulatedActivePlayers);
-        const candidateQuality = this.calculateShapeQuality(candidateShape, teamPlayers);
+        const candidateShape = this.rebalanceShapeForPlayers(
+          currentShape,
+          simulatedActivePlayers,
+        );
+        const candidateQuality = this.calculateShapeQuality(
+          candidateShape,
+          teamPlayers,
+        );
 
         if (!bestCandidate || candidateQuality > bestCandidate.quality) {
           bestCandidate = {
             incoming,
             outgoing,
             quality: candidateQuality,
-            shape: candidateShape
+            shape: candidateShape,
           };
         }
       }
@@ -1415,12 +2207,15 @@ export class MatchSimulationVariantBService {
     substitutionsUsed[teamKey] += 1;
     this.activeMatchShape = {
       ...this.activeMatchShape,
-      [teamKey]: bestCandidate.shape
+      [teamKey]: bestCandidate.shape,
     };
     this.rebuildFormationFromShape(teamKey, tactics);
 
     const teamId = teamKey === TeamSide.HOME ? homeTeam.id : awayTeam.id;
-    if (state.ballPossession.teamId === teamId && state.ballPossession.playerWithBall === bestCandidate.outgoing.id) {
+    if (
+      state.ballPossession.teamId === teamId &&
+      state.ballPossession.playerWithBall === bestCandidate.outgoing.id
+    ) {
       state.ballPossession.playerWithBall = bestCandidate.incoming.id;
     }
 
@@ -1433,8 +2228,8 @@ export class MatchSimulationVariantBService {
       true,
       config,
       {
-        formationSnapshot: this.createFormationSnapshot()
-      }
+        formationSnapshot: this.createFormationSnapshot(),
+      },
     );
 
     return true;
@@ -1450,7 +2245,7 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     rosters: ResolvedRosters,
-    substitutionsUsed: TeamSubstitutionUsage
+    substitutionsUsed: TeamSubstitutionUsage,
   ): void {
     if (substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam) {
       return;
@@ -1460,19 +2255,30 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    const teamPlayers = teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const teamPlayers =
+      teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     const teamFatigue = fatigue[teamKey];
-    const triggerChance = this.calculateSubstitutionTriggerChance(teamPlayers, teamFatigue, minute);
+    const triggerChance = this.calculateSubstitutionTriggerChance(
+      teamPlayers,
+      teamFatigue,
+      minute,
+    );
     if (this.rng.random() >= triggerChance) {
       return;
     }
 
-    const outgoingPlayer = this.selectSubstitutionOutgoingPlayer(teamPlayers, teamFatigue);
+    const outgoingPlayer = this.selectSubstitutionOutgoingPlayer(
+      teamPlayers,
+      teamFatigue,
+    );
     if (!outgoingPlayer) {
       return;
     }
 
-    const incomingPlayer = this.selectSubstitutionIncomingPlayer(teamPlayers, outgoingPlayer.position);
+    const incomingPlayer = this.selectSubstitutionIncomingPlayer(
+      teamPlayers,
+      outgoingPlayer.position,
+    );
     if (!incomingPlayer) {
       return;
     }
@@ -1480,10 +2286,18 @@ export class MatchSimulationVariantBService {
     outgoingPlayer.role = Role.SUBSTITUTED_OUT;
     incomingPlayer.role = Role.STARTER;
     substitutionsUsed[teamKey] += 1;
-    this.applyShapeSubstitution(teamKey, outgoingPlayer.id, incomingPlayer.id, tactics);
+    this.applyShapeSubstitution(
+      teamKey,
+      outgoingPlayer.id,
+      incomingPlayer.id,
+      tactics,
+    );
 
     const teamId = teamKey === TeamSide.HOME ? homeTeam.id : awayTeam.id;
-    if (state.ballPossession.teamId === teamId && state.ballPossession.playerWithBall === outgoingPlayer.id) {
+    if (
+      state.ballPossession.teamId === teamId &&
+      state.ballPossession.playerWithBall === outgoingPlayer.id
+    ) {
       state.ballPossession.playerWithBall = incomingPlayer.id;
     }
 
@@ -1496,30 +2310,42 @@ export class MatchSimulationVariantBService {
       true,
       config,
       {
-        formationSnapshot: this.createFormationSnapshot()
-      }
+        formationSnapshot: this.createFormationSnapshot(),
+      },
     );
   }
 
   private calculateSubstitutionTriggerChance(
     teamPlayers: Player[],
     teamFatigue: PlayerFatigue[],
-    minute: number
+    minute: number,
   ): number {
     let baseChance = minute >= 82 ? 0.38 : minute >= 72 ? 0.24 : 0.14;
-    const fatigueByPlayer = new Map(teamFatigue.map(entry => [entry.playerId, entry.fatigueLevel]));
+    const fatigueByPlayer = new Map(
+      teamFatigue.map((entry) => [entry.playerId, entry.fatigueLevel]),
+    );
     const fatiguedStarters = teamPlayers.filter(
-      player => player.role === Role.STARTER && player.position !== PositionEnum.GOALKEEPER && (fatigueByPlayer.get(player.id) ?? 0) >= 62
+      (player) =>
+        player.role === Role.STARTER &&
+        player.position !== PositionEnum.GOALKEEPER &&
+        (fatigueByPlayer.get(player.id) ?? 0) >= 62,
     ).length;
 
     baseChance += this.clamp((fatiguedStarters - 1) * 0.06, 0, 0.24);
     return this.clamp(baseChance, 0.08, 0.72);
   }
 
-  private selectSubstitutionOutgoingPlayer(teamPlayers: Player[], teamFatigue: PlayerFatigue[]): Player | null {
-    const fatigueByPlayer = new Map(teamFatigue.map(entry => [entry.playerId, entry.fatigueLevel]));
+  private selectSubstitutionOutgoingPlayer(
+    teamPlayers: Player[],
+    teamFatigue: PlayerFatigue[],
+  ): Player | null {
+    const fatigueByPlayer = new Map(
+      teamFatigue.map((entry) => [entry.playerId, entry.fatigueLevel]),
+    );
     const starterOutfield = teamPlayers.filter(
-      player => player.role === Role.STARTER && player.position !== PositionEnum.GOALKEEPER
+      (player) =>
+        player.role === Role.STARTER &&
+        player.position !== PositionEnum.GOALKEEPER,
     );
 
     if (starterOutfield.length === 0) {
@@ -1527,26 +2353,49 @@ export class MatchSimulationVariantBService {
     }
 
     const sortedByFatigue = [...starterOutfield].sort(
-      (left, right) => (fatigueByPlayer.get(right.id) ?? 0) - (fatigueByPlayer.get(left.id) ?? 0)
+      (left, right) =>
+        (fatigueByPlayer.get(right.id) ?? 0) -
+        (fatigueByPlayer.get(left.id) ?? 0),
     );
 
-    const topCandidates = sortedByFatigue.slice(0, Math.min(3, sortedByFatigue.length));
-    return topCandidates[Math.floor(this.rng.random() * topCandidates.length)] ?? sortedByFatigue[0] ?? null;
+    const topCandidates = sortedByFatigue.slice(
+      0,
+      Math.min(3, sortedByFatigue.length),
+    );
+    return (
+      topCandidates[Math.floor(this.rng.random() * topCandidates.length)] ??
+      sortedByFatigue[0] ??
+      null
+    );
   }
 
-  private selectSubstitutionIncomingPlayer(teamPlayers: Player[], outgoingPosition: PositionEnum): Player | null {
-    const benchPlayers = teamPlayers.filter(player => player.role === Role.BENCH);
+  private selectSubstitutionIncomingPlayer(
+    teamPlayers: Player[],
+    outgoingPosition: PositionEnum,
+  ): Player | null {
+    const benchPlayers = teamPlayers.filter(
+      (player) => player.role === Role.BENCH,
+    );
 
     if (benchPlayers.length === 0) {
       return null;
     }
 
-    const samePositionPool = benchPlayers.filter(player => player.position === outgoingPosition);
-    const candidatePool = samePositionPool.length > 0 ? samePositionPool : benchPlayers;
+    const samePositionPool = benchPlayers.filter(
+      (player) => player.position === outgoingPosition,
+    );
+    const candidatePool =
+      samePositionPool.length > 0 ? samePositionPool : benchPlayers;
 
     const sortedByQuality = [...candidatePool].sort((left, right) => {
-      const leftAttrs = getCurrentPlayerSeasonAttributes(left, this.currentSeasonYear);
-      const rightAttrs = getCurrentPlayerSeasonAttributes(right, this.currentSeasonYear);
+      const leftAttrs = getCurrentPlayerSeasonAttributes(
+        left,
+        this.currentSeasonYear,
+      );
+      const rightAttrs = getCurrentPlayerSeasonAttributes(
+        right,
+        this.currentSeasonYear,
+      );
       if (rightAttrs.overall.value === leftAttrs.overall.value) {
         return rightAttrs.endurance.value - leftAttrs.endurance.value;
       }
@@ -1560,22 +2409,35 @@ export class MatchSimulationVariantBService {
   private updateFatigue(
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     _minute: number,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
   ): void {
-    const homeById = new Map(rosters.homePlayers.map(player => [player.id, player]));
-    const awayById = new Map(rosters.awayPlayers.map(player => [player.id, player]));
+    const homeById = new Map(
+      rosters.homePlayers.map((player) => [player.id, player]),
+    );
+    const awayById = new Map(
+      rosters.awayPlayers.map((player) => [player.id, player]),
+    );
 
-    const applyFatigue = (teamFatigue: PlayerFatigue[], playersById: Map<string, Player>) => {
-      teamFatigue.forEach(entry => {
+    const applyFatigue = (
+      teamFatigue: PlayerFatigue[],
+      playersById: Map<string, Player>,
+    ) => {
+      teamFatigue.forEach((entry) => {
         const player = playersById.get(entry.playerId);
         if (!player || player.role !== Role.STARTER) {
           return;
         }
 
-        const staminaMultiplier = player.position === PositionEnum.GOALKEEPER ? this.goalkeeperStaminaDrainMultiplier : 1;
+        const staminaMultiplier =
+          player.position === PositionEnum.GOALKEEPER
+            ? this.goalkeeperStaminaDrainMultiplier
+            : 1;
         entry.fatigueLevel = Math.min(100, entry.fatigueLevel + 0.5);
-        entry.currentStamina = Math.max(0, entry.currentStamina - (0.3 * staminaMultiplier));
-        entry.performanceModifier = Math.max(0.5, 1 - (entry.fatigueLevel / 200));
+        entry.currentStamina = Math.max(
+          0,
+          entry.currentStamina - 0.3 * staminaMultiplier,
+        );
+        entry.performanceModifier = Math.max(0.5, 1 - entry.fatigueLevel / 200);
       });
     };
 
@@ -1583,14 +2445,19 @@ export class MatchSimulationVariantBService {
     applyFatigue(fatigue.away, awayById);
   }
 
-  private updatePossessionStats(state: MatchState, homePlayers: Player[]): void {
+  private updatePossessionStats(
+    state: MatchState,
+    homePlayers: Player[],
+  ): void {
     const totalEvents = state.events.length;
     if (totalEvents <= 0) {
       return;
     }
 
-    const homeEvents = state.events.filter(event => {
-      return event.playerIds.some(playerId => this.findPlayerById(playerId, homePlayers) !== null);
+    const homeEvents = state.events.filter((event) => {
+      return event.playerIds.some(
+        (playerId) => this.findPlayerById(playerId, homePlayers) !== null,
+      );
     });
 
     const homeEventRatio = homeEvents.length / totalEvents;
@@ -1606,17 +2473,17 @@ export class MatchSimulationVariantBService {
     time: number,
     success: boolean,
     _config: SimulationConfig,
-    additionalData?: PlayByPlayEventAdditionalData
+    additionalData?: PlayByPlayEventAdditionalData,
   ): void {
     state.events.push({
       id: this.createRandomId(),
       type,
-      description: '',
+      description: "",
       playerIds,
       location,
       time,
       success,
-      additionalData
+      additionalData,
     });
   }
 
@@ -1637,21 +2504,43 @@ export class MatchSimulationVariantBService {
     awayTeam: Team,
     minute: number,
     config: SimulationConfig,
-    rosters: ResolvedRosters
+    rosters: ResolvedRosters,
   ): void {
     const shooter = action.player;
     const isHomeInPossession = state.ballPossession.teamId === homeTeam.id;
-    const attackingY = isHomeInPossession ? state.ballPossession.location.y : 100 - state.ballPossession.location.y;
+    const attackingY = isHomeInPossession
+      ? state.ballPossession.location.y
+      : 100 - state.ballPossession.location.y;
     const lateralDistance = Math.abs(state.ballPossession.location.x - 50);
-    const opponentPlayers = isHomeInPossession ? rosters.awayPlayers : rosters.homePlayers;
-    const onFieldOpponentPlayers = opponentPlayers.filter(player => player.role === Role.STARTER);
-    const goalkeeper = onFieldOpponentPlayers.find(player => player.position === PositionEnum.GOALKEEPER);
+    const opponentPlayers = isHomeInPossession
+      ? rosters.awayPlayers
+      : rosters.homePlayers;
+    const onFieldOpponentPlayers = opponentPlayers.filter(
+      (player) => player.role === Role.STARTER,
+    );
+    const goalkeeper = onFieldOpponentPlayers.find(
+      (player) => player.position === PositionEnum.GOALKEEPER,
+    );
     const fatigueBucket = isHomeInPossession ? fatigue.home : fatigue.away;
-    const shooterFatigue = fatigueBucket.find(entry => entry.playerId === shooter.id);
-    const currentTeam: TeamSide = isHomeInPossession ? TeamSide.HOME : TeamSide.AWAY;
-    const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
-    const chainQuality = this.calculatePossessionChainQuality(state, currentTeam);
-    const shotShapeModifier = this.calculateShotShapeModifier(state, currentTeam);
+    const shooterFatigue = fatigueBucket.find(
+      (entry) => entry.playerId === shooter.id,
+    );
+    const currentTeam: TeamSide = isHomeInPossession
+      ? TeamSide.HOME
+      : TeamSide.AWAY;
+    const pressure = this.calculateDefensivePressure(
+      state,
+      currentTeam,
+      tactics,
+    );
+    const chainQuality = this.calculatePossessionChainQuality(
+      state,
+      currentTeam,
+    );
+    const shotShapeModifier = this.calculateShotShapeModifier(
+      state,
+      currentTeam,
+    );
 
     if (isHomeInPossession) {
       state.homeShots++;
@@ -1659,8 +2548,13 @@ export class MatchSimulationVariantBService {
       state.awayShots++;
     }
 
-    const shooterAttrs = getCurrentPlayerSeasonAttributes(shooter, this.currentSeasonYear);
-    let onTargetChance = this.activeTuning.onTargetBase + ((shooterAttrs.shooting.value - 70) * this.activeTuning.onTargetSkillScale);
+    const shooterAttrs = getCurrentPlayerSeasonAttributes(
+      shooter,
+      this.currentSeasonYear,
+    );
+    let onTargetChance =
+      this.activeTuning.onTargetBase +
+      (shooterAttrs.shooting.value - 70) * this.activeTuning.onTargetSkillScale;
     if (attackingY >= 85) {
       onTargetChance += 0.28;
     } else if (attackingY >= 75) {
@@ -1671,7 +2565,8 @@ export class MatchSimulationVariantBService {
       onTargetChance -= 0.02;
     }
 
-    onTargetChance -= (lateralDistance / 50) * this.activeTuning.onTargetWidePenalty;
+    onTargetChance -=
+      (lateralDistance / 50) * this.activeTuning.onTargetWidePenalty;
     if (shooterFatigue && shooterFatigue.fatigueLevel > 75) {
       onTargetChance -= this.activeTuning.onTargetFatiguePenalty;
     }
@@ -1679,7 +2574,11 @@ export class MatchSimulationVariantBService {
     onTargetChance += chainQuality * 0.02;
     onTargetChance += shotShapeModifier.onTargetBonus;
 
-    onTargetChance = this.clampChance(onTargetChance, this.activeTuning.onTargetMin, this.activeTuning.onTargetMax);
+    onTargetChance = this.clampChance(
+      onTargetChance,
+      this.activeTuning.onTargetMin,
+      this.activeTuning.onTargetMax,
+    );
     const onTarget = this.rng.random() < onTargetChance;
 
     if (!onTarget) {
@@ -1690,7 +2589,22 @@ export class MatchSimulationVariantBService {
         { ...state.ballPossession.location },
         minute,
         false,
-        config
+        config,
+      );
+      // Non-contact injury roll on the shooter.
+      const shooterTeamPlayers = isHomeInPossession
+        ? rosters.homePlayers
+        : rosters.awayPlayers;
+      this.tryRollInjury(
+        shooter,
+        currentTeam,
+        InjuryRollKind.NON_CONTACT,
+        1,
+        state,
+        minute,
+        config,
+        shooterTeamPlayers,
+        tactics,
       );
       return;
     }
@@ -1707,7 +2621,10 @@ export class MatchSimulationVariantBService {
     const keeperSkill = keeperAttrs
       ? (keeperAttrs.handling.value + keeperAttrs.reflexes.value) / 2
       : 70;
-    let goalChance = this.activeTuning.goalChanceBase + ((shooterAttrs.shooting.value - keeperSkill) * this.activeTuning.goalChanceSkillVsKeeperScale);
+    let goalChance =
+      this.activeTuning.goalChanceBase +
+      (shooterAttrs.shooting.value - keeperSkill) *
+        this.activeTuning.goalChanceSkillVsKeeperScale;
 
     if (attackingY >= 85) {
       goalChance += 0.2;
@@ -1717,14 +2634,19 @@ export class MatchSimulationVariantBService {
       goalChance += 0.02;
     }
 
-    goalChance -= (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
+    goalChance -=
+      (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
     goalChance -= pressure * 0.015;
     goalChance += chainQuality * 0.015;
     goalChance += shotShapeModifier.goalChanceBonus;
     if (isHomeInPossession) {
       goalChance += this.activeTuning.homeAdvantageGoalBonus;
     }
-    goalChance = this.clampChance(goalChance, this.activeTuning.goalChanceMin, this.activeTuning.goalChanceMax);
+    goalChance = this.clampChance(
+      goalChance,
+      this.activeTuning.goalChanceMin,
+      this.activeTuning.goalChanceMax,
+    );
 
     if (this.rng.random() < goalChance) {
       this.handleGoal(
@@ -1735,7 +2657,8 @@ export class MatchSimulationVariantBService {
         minute,
         config,
         rosters.homePlayers,
-        rosters.awayPlayers
+        rosters.awayPlayers,
+        tactics,
       );
       return;
     }
@@ -1747,14 +2670,46 @@ export class MatchSimulationVariantBService {
       { ...state.ballPossession.location },
       minute,
       true,
-      config
+      config,
     );
 
-    state.ballPossession.teamId = isHomeInPossession ? awayTeam.id : homeTeam.id;
-    const newOwnerPool = state.ballPossession.teamId === homeTeam.id ? rosters.homePlayers : rosters.awayPlayers;
-    const starters = newOwnerPool.filter(player => player.role === Role.STARTER);
+    // Contact injury roll on the goalkeeper (point-blank save physical contact).
+    if (goalkeeper) {
+      const keeperTeamKey: TeamSide = isHomeInPossession
+        ? TeamSide.AWAY
+        : TeamSide.HOME;
+      const keeperTeamPlayers =
+        keeperTeamKey === TeamSide.HOME
+          ? rosters.homePlayers
+          : rosters.awayPlayers;
+      this.tryRollInjury(
+        goalkeeper,
+        keeperTeamKey,
+        InjuryRollKind.CONTACT,
+        1,
+        state,
+        minute,
+        config,
+        keeperTeamPlayers,
+        tactics,
+      );
+    }
+
+    state.ballPossession.teamId = isHomeInPossession
+      ? awayTeam.id
+      : homeTeam.id;
+    const newOwnerPool =
+      state.ballPossession.teamId === homeTeam.id
+        ? rosters.homePlayers
+        : rosters.awayPlayers;
+    const starters = newOwnerPool.filter(
+      (player) => player.role === Role.STARTER,
+    );
     const selectablePlayers = starters.length > 0 ? starters : newOwnerPool;
-    const newOwner = selectablePlayers[Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))] ?? newOwnerPool[0];
+    const newOwner =
+      selectablePlayers[
+        Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))
+      ] ?? newOwnerPool[0];
     state.ballPossession.playerWithBall = newOwner.id;
     state.ballPossession.passes = 0;
   }
@@ -1769,55 +2724,84 @@ export class MatchSimulationVariantBService {
     homeTeam: Team,
     awayTeam: Team,
     rosters: ResolvedRosters,
-    pressure: number
+    pressure: number,
   ): void {
-    const currentTeam = state.ballPossession.teamId === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
-    const currentPlayers = currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const currentTeam =
+      state.ballPossession.teamId === homeTeam.id
+        ? TeamSide.HOME
+        : TeamSide.AWAY;
+    const currentPlayers =
+      currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     const attackDirection = currentTeam === TeamSide.HOME ? 1 : -1;
     const carryAdvance = this.calculateCarryAdvanceDistance(carrier, pressure);
 
     state.ballPossession.location = {
-      x: this.clamp(state.ballPossession.location.x + ((this.rng.random() - 0.5) * 2.5), 0, 100),
-      y: this.clamp(state.ballPossession.location.y + (carryAdvance * attackDirection), 0, 100)
+      x: this.clamp(
+        state.ballPossession.location.x + (this.rng.random() - 0.5) * 2.5,
+        0,
+        100,
+      ),
+      y: this.clamp(
+        state.ballPossession.location.y + carryAdvance * attackDirection,
+        0,
+        100,
+      ),
     };
 
     const sameRolePlayers = currentPlayers.filter(
-      player => player.id !== carrier.id && player.role === Role.STARTER && player.position === carrier.position
+      (player) =>
+        player.id !== carrier.id &&
+        player.role === Role.STARTER &&
+        player.position === carrier.position,
     );
-    const fallbackPlayers = currentPlayers.filter(player => player.id !== carrier.id && player.role === Role.STARTER);
-    const candidatePool = sameRolePlayers.length > 0 ? sameRolePlayers : fallbackPlayers;
+    const fallbackPlayers = currentPlayers.filter(
+      (player) => player.id !== carrier.id && player.role === Role.STARTER,
+    );
+    const candidatePool =
+      sameRolePlayers.length > 0 ? sameRolePlayers : fallbackPlayers;
 
     if (candidatePool.length > 0 && this.rng.random() < 0.35) {
-      const nextCarrier = candidatePool[Math.floor(this.rng.random() * candidatePool.length)];
+      const nextCarrier =
+        candidatePool[Math.floor(this.rng.random() * candidatePool.length)];
       state.ballPossession.playerWithBall = nextCarrier.id;
     }
 
     state.ballPossession.passes += 1;
-    state.ballPossession.phase = this.getPhaseFromLocation(state.ballPossession.location, currentTeam);
+    state.ballPossession.phase = this.getPhaseFromLocation(
+      state.ballPossession.location,
+      currentTeam,
+    );
   }
 
-  private calculateCarryAdvanceDistance(carrier: Player, pressure: number): number {
-    const baseAdvance = 1.0 + (this.rng.random() * 2.0);
+  private calculateCarryAdvanceDistance(
+    carrier: Player,
+    pressure: number,
+  ): number {
+    const baseAdvance = 1.0 + this.rng.random() * 2.0;
     const roleMultiplier =
       carrier.position === PositionEnum.FORWARD
         ? 1.15
         : carrier.position === PositionEnum.MIDFIELDER
           ? 1
           : 0.85;
-    const pressureMultiplier = this.clamp(1 - (pressure * 0.65), 0.35, 1);
+    const pressureMultiplier = this.clamp(1 - pressure * 0.65, 0.35, 1);
 
     return baseAdvance * roleMultiplier * pressureMultiplier;
   }
 
-  private getPhaseFromLocation(location: Coordinates, currentTeam: TeamSide): MatchPhase {
-    const attackingY = currentTeam === TeamSide.HOME ? location.y : 100 - location.y;
+  private getPhaseFromLocation(
+    location: Coordinates,
+    currentTeam: TeamSide,
+  ): MatchPhase {
+    const attackingY =
+      currentTeam === TeamSide.HOME ? location.y : 100 - location.y;
     return attackingY >= 67 ? MatchPhase.ATTACKING : MatchPhase.BUILD_UP;
   }
 
   private resolveReplayActionType(
     state: MatchState,
     minute: number,
-    actionType: MatchAction['type']
+    actionType: MatchAction["type"],
   ): EventType {
     if (actionType !== EventType.CARRY) {
       return actionType;
@@ -1831,7 +2815,11 @@ export class MatchSimulationVariantBService {
     return EventType.PASS;
   }
 
-  private resolveReplayActorPlayerId(state: MatchState, minute: number, fallbackPlayerId: string): string {
+  private resolveReplayActorPlayerId(
+    state: MatchState,
+    minute: number,
+    fallbackPlayerId: string,
+  ): string {
     const latestEventIndex = this.findLatestEventIndexForMinute(state, minute);
     if (latestEventIndex >= 0) {
       return state.events[latestEventIndex].playerIds[0] ?? fallbackPlayerId;
@@ -1845,7 +2833,7 @@ export class MatchSimulationVariantBService {
     actionType: EventType,
     beforeMove: Coordinates,
     beforeAction: Coordinates,
-    afterAction: Coordinates
+    afterAction: Coordinates,
   ): VariantBReplayMetadata {
     return {
       actorPlayerId,
@@ -1854,12 +2842,16 @@ export class MatchSimulationVariantBService {
       keyframes: [
         { timestampMs: 0, ballLocation: beforeMove },
         { timestampMs: 400, ballLocation: beforeAction },
-        { timestampMs: 1400, ballLocation: afterAction }
-      ]
+        { timestampMs: 1400, ballLocation: afterAction },
+      ],
     };
   }
 
-  private attachVariantBReplayMetadata(state: MatchState, minute: number, metadata: VariantBReplayMetadata): void {
+  private attachVariantBReplayMetadata(
+    state: MatchState,
+    minute: number,
+    metadata: VariantBReplayMetadata,
+  ): void {
     const eventIndex = this.findLatestEventIndexForMinute(state, minute);
     if (eventIndex < 0) {
       return;
@@ -1868,11 +2860,14 @@ export class MatchSimulationVariantBService {
     const event = state.events[eventIndex];
     event.additionalData = {
       ...(event.additionalData ?? {}),
-      variantBReplay: metadata
+      variantBReplay: metadata,
     };
   }
 
-  private findLatestEventIndexForMinute(state: MatchState, minute: number): number {
+  private findLatestEventIndexForMinute(
+    state: MatchState,
+    minute: number,
+  ): number {
     for (let index = state.events.length - 1; index >= 0; index--) {
       if (state.events[index].time === minute) {
         return index;
@@ -1883,7 +2878,7 @@ export class MatchSimulationVariantBService {
   }
 
   private findPlayerById(playerId: string, players: Player[]): Player | null {
-    return players.find(player => player.id === playerId) ?? null;
+    return players.find((player) => player.id === playerId) ?? null;
   }
 
   private createTurnoverEvent(
@@ -1896,10 +2891,15 @@ export class MatchSimulationVariantBService {
     minute: number,
     success: boolean,
     config: SimulationConfig,
-    additionalData?: PlayByPlayEventAdditionalData
+    additionalData?: PlayByPlayEventAdditionalData,
   ): string {
-    const turnoverWinnerId = this.selectTurnoverWinner(eventType, currentLocation, currentTeam, opponentPlayers)?.id
-      ?? this.getRandomPlayerId(opponentPlayers);
+    const turnoverWinnerId =
+      this.selectTurnoverWinner(
+        eventType,
+        currentLocation,
+        currentTeam,
+        opponentPlayers,
+      )?.id ?? this.getRandomPlayerId(opponentPlayers);
 
     this.createEvent(
       state,
@@ -1909,7 +2909,7 @@ export class MatchSimulationVariantBService {
       minute,
       success,
       config,
-      additionalData
+      additionalData,
     );
 
     return turnoverWinnerId;
@@ -1919,17 +2919,47 @@ export class MatchSimulationVariantBService {
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
     currentLocation: Coordinates,
     currentTeam: TeamSide,
-    opponentPlayers: Player[]
+    opponentPlayers: Player[],
   ): Player | null {
     const seenPlayerIds = new Set<string>();
-    const context = this.getDefendingShapeContextForLocation(currentLocation, currentTeam);
-    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const context = this.getDefendingShapeContextForLocation(
+      currentLocation,
+      currentTeam,
+    );
+    const defendingTeam =
+      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
 
-    return this.findBestTurnoverShapePlayer(context?.channelSlots ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
-      ?? this.findBestTurnoverShapePlayer(context?.centralSlots ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
-      ?? this.findBestTurnoverShapePlayer(context?.staffedZoneSlots ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
-      ?? this.findBestTurnoverShapePlayer(this.activeMatchShape?.[defendingTeam] ?? [], eventType, currentLocation, opponentPlayers, seenPlayerIds)
-      ?? null;
+    return (
+      this.findBestTurnoverShapePlayer(
+        context?.channelSlots ?? [],
+        eventType,
+        currentLocation,
+        opponentPlayers,
+        seenPlayerIds,
+      ) ??
+      this.findBestTurnoverShapePlayer(
+        context?.centralSlots ?? [],
+        eventType,
+        currentLocation,
+        opponentPlayers,
+        seenPlayerIds,
+      ) ??
+      this.findBestTurnoverShapePlayer(
+        context?.staffedZoneSlots ?? [],
+        eventType,
+        currentLocation,
+        opponentPlayers,
+        seenPlayerIds,
+      ) ??
+      this.findBestTurnoverShapePlayer(
+        this.activeMatchShape?.[defendingTeam] ?? [],
+        eventType,
+        currentLocation,
+        opponentPlayers,
+        seenPlayerIds,
+      ) ??
+      null
+    );
   }
 
   private findBestTurnoverShapePlayer(
@@ -1937,25 +2967,37 @@ export class MatchSimulationVariantBService {
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
     currentLocation: Coordinates,
     players: Player[],
-    seenPlayerIds: Set<string>
+    seenPlayerIds: Set<string>,
   ): Player | null {
     const rankedCandidates = slots
-      .filter((slot): slot is ActiveShapeSlot & { playerId: string } => typeof slot.playerId === 'string' && !seenPlayerIds.has(slot.playerId))
-      .map(slot => {
+      .filter(
+        (slot): slot is ActiveShapeSlot & { playerId: string } =>
+          typeof slot.playerId === "string" &&
+          !seenPlayerIds.has(slot.playerId),
+      )
+      .map((slot) => {
         seenPlayerIds.add(slot.playerId);
         const player = this.findPlayerById(slot.playerId, players);
         if (!player) {
           return null;
         }
 
-        const distance = this.fieldService.getDistance(currentLocation, slot.coordinates);
+        const distance = this.fieldService.getDistance(
+          currentLocation,
+          slot.coordinates,
+        );
         return {
           distance,
           player,
-          score: this.scoreTurnoverWinnerCandidate(player, eventType, distance)
+          score: this.scoreTurnoverWinnerCandidate(player, eventType, distance),
         };
       })
-      .filter((candidate): candidate is { distance: number; player: Player; score: number } => candidate !== null)
+      .filter(
+        (
+          candidate,
+        ): candidate is { distance: number; player: Player; score: number } =>
+          candidate !== null,
+      )
       .sort((left, right) => {
         const scoreDelta = right.score - left.score;
         if (scoreDelta !== 0) {
@@ -1976,24 +3018,31 @@ export class MatchSimulationVariantBService {
   private scoreTurnoverWinnerCandidate(
     player: Player,
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
-    distance: number
+    distance: number,
   ): number {
-    const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
+    const attrs = getCurrentPlayerSeasonAttributes(
+      player,
+      this.currentSeasonYear,
+    );
     const proximityScore = Math.max(0, 30 - distance) * 2.5;
 
     if (eventType === EventType.TACKLE) {
-      return proximityScore
-        + attrs.tackling.value
-        + (attrs.strength.value * 0.5)
-        + (attrs.determination.value * 0.35)
-        + (attrs.speed.value * 0.2);
+      return (
+        proximityScore +
+        attrs.tackling.value +
+        attrs.strength.value * 0.5 +
+        attrs.determination.value * 0.35 +
+        attrs.speed.value * 0.2
+      );
     }
 
-    return proximityScore
-      + attrs.vision.value
-      + (attrs.tackling.value * 0.5)
-      + (attrs.determination.value * 0.35)
-      + (attrs.speed.value * 0.2);
+    return (
+      proximityScore +
+      attrs.vision.value +
+      attrs.tackling.value * 0.5 +
+      attrs.determination.value * 0.35 +
+      attrs.speed.value * 0.2
+    );
   }
 
   private findPassTarget(
@@ -2002,21 +3051,30 @@ export class MatchSimulationVariantBService {
     tactics: TacticalSetup,
     currentLocation: Coordinates,
     currentTeam: TeamSide,
-    passIntent: PassIntent
+    passIntent: PassIntent,
   ): Player | null {
-    const potentialTargets = teamPlayers.filter(player => player.id !== passer.id && player.role === Role.STARTER);
+    const potentialTargets = teamPlayers.filter(
+      (player) => player.id !== passer.id && player.role === Role.STARTER,
+    );
 
     if (potentialTargets.length === 0) {
       return null;
     }
 
     const scoredTargets = potentialTargets
-      .map(target => {
-        const targetPosition = this.fieldService.getStartingPositionForPlayer(target, tactics.formation);
-        const distance = this.fieldService.getDistance(currentLocation, targetPosition);
-        const progression = currentTeam === TeamSide.HOME
-          ? targetPosition.y - currentLocation.y
-          : currentLocation.y - targetPosition.y;
+      .map((target) => {
+        const targetPosition = this.fieldService.getStartingPositionForPlayer(
+          target,
+          tactics.formation,
+        );
+        const distance = this.fieldService.getDistance(
+          currentLocation,
+          targetPosition,
+        );
+        const progression =
+          currentTeam === TeamSide.HOME
+            ? targetPosition.y - currentLocation.y
+            : currentLocation.y - targetPosition.y;
         const lateralDistance = Math.abs(targetPosition.x - currentLocation.x);
         const centrality = 50 - Math.abs(targetPosition.x - 50);
 
@@ -2027,7 +3085,10 @@ export class MatchSimulationVariantBService {
           score -= Math.max(0, progression - 6) * 1.2;
           score -= Math.max(0, -progression) * 0.3;
           score -= Math.max(0, lateralDistance - 24) * 0.3;
-          if (target.position === PositionEnum.DEFENDER || target.position === PositionEnum.MIDFIELDER) {
+          if (
+            target.position === PositionEnum.DEFENDER ||
+            target.position === PositionEnum.MIDFIELDER
+          ) {
             score += 7;
           }
         } else if (passIntent === PASS_INTENT.PROGRESSION) {
@@ -2056,16 +3117,27 @@ export class MatchSimulationVariantBService {
           }
         }
 
-        if (tactics.playingStyle === PlayingStyle.POSSESSION && passIntent !== PASS_INTENT.THROUGH_BALL) {
+        if (
+          tactics.playingStyle === PlayingStyle.POSSESSION &&
+          passIntent !== PASS_INTENT.THROUGH_BALL
+        ) {
           score += (34 - Math.min(distance, 34)) * 0.2;
         }
 
-        if (tactics.playingStyle === PlayingStyle.COUNTER_ATTACK && passIntent !== PASS_INTENT.RECYCLE) {
+        if (
+          tactics.playingStyle === PlayingStyle.COUNTER_ATTACK &&
+          passIntent !== PASS_INTENT.RECYCLE
+        ) {
           score += Math.max(0, progression) * 0.35;
         }
 
         if (target.position === PositionEnum.GOALKEEPER) {
-          const keeperRecycleAllowed = this.isGoalkeeperRecycleTargetAllowed(passer, currentLocation, currentTeam, passIntent);
+          const keeperRecycleAllowed = this.isGoalkeeperRecycleTargetAllowed(
+            passer,
+            currentLocation,
+            currentTeam,
+            passIntent,
+          );
           score += keeperRecycleAllowed ? 2 : -6;
         }
 
@@ -2083,7 +3155,10 @@ export class MatchSimulationVariantBService {
       return null;
     }
 
-    const topCandidates = scoredTargets.slice(0, Math.min(2, scoredTargets.length));
+    const topCandidates = scoredTargets.slice(
+      0,
+      Math.min(2, scoredTargets.length),
+    );
 
     if (topCandidates.length === 1) {
       return topCandidates[0].target;
@@ -2097,37 +3172,48 @@ export class MatchSimulationVariantBService {
 
       return {
         target: candidate.target,
-        weight: scoreWeight * rankWeight
+        weight: scoreWeight * rankWeight,
       };
     });
 
-    return this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target;
+    return (
+      this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target
+    );
   }
 
   private isGoalkeeperRecycleTargetAllowed(
     passer: Player,
     currentLocation: Coordinates,
     currentTeam: TeamSide,
-    passIntent: PassIntent
+    passIntent: PassIntent,
   ): boolean {
     if (passIntent !== PASS_INTENT.RECYCLE) {
       return false;
     }
 
-    if (passer.position !== PositionEnum.DEFENDER && passer.position !== PositionEnum.MIDFIELDER) {
+    if (
+      passer.position !== PositionEnum.DEFENDER &&
+      passer.position !== PositionEnum.MIDFIELDER
+    ) {
       return false;
     }
 
-    const attackingY = currentTeam === TeamSide.HOME
-      ? currentLocation.y
-      : 100 - currentLocation.y;
+    const attackingY =
+      currentTeam === TeamSide.HOME
+        ? currentLocation.y
+        : 100 - currentLocation.y;
 
     // Build-from-back recycle only; never use keeper as a forward outlet.
     return attackingY <= 58;
   }
 
-  private pickWeightedTarget(candidates: { target: Player; weight: number }[]): Player | null {
-    const totalWeight = candidates.reduce((sum, entry) => sum + Math.max(0, entry.weight), 0);
+  private pickWeightedTarget(
+    candidates: { target: Player; weight: number }[],
+  ): Player | null {
+    const totalWeight = candidates.reduce(
+      (sum, entry) => sum + Math.max(0, entry.weight),
+      0,
+    );
     if (totalWeight <= 0) {
       return candidates[0]?.target ?? null;
     }
@@ -2144,39 +3230,49 @@ export class MatchSimulationVariantBService {
     return candidates[candidates.length - 1]?.target ?? null;
   }
 
-  private calculateNewBallPosition(current: Coordinates, target: Coordinates): Coordinates {
+  private calculateNewBallPosition(
+    current: Coordinates,
+    target: Coordinates,
+  ): Coordinates {
     return {
       x: (current.x + target.x) / 2,
-      y: (current.y + target.y) / 2
+      y: (current.y + target.y) / 2,
     };
   }
 
   private getRandomPlayerId(teamPlayers: Player[]): string {
-    const starters = teamPlayers.filter(player => player.role === Role.STARTER);
+    const starters = teamPlayers.filter(
+      (player) => player.role === Role.STARTER,
+    );
     const selectablePlayers = starters.length > 0 ? starters : teamPlayers;
-    return selectablePlayers[Math.floor(this.rng.random() * selectablePlayers.length)].id;
+    return selectablePlayers[
+      Math.floor(this.rng.random() * selectablePlayers.length)
+    ].id;
   }
 
   private createRandomId(): string {
     return this.rng.random().toString(36).substring(2, 9);
   }
 
-  private initializeMatchShape(homeTeam: Team, awayTeam: Team): MatchShapeState {
+  private initializeMatchShape(
+    homeTeam: Team,
+    awayTeam: Team,
+  ): MatchShapeState {
     return {
       home: this.buildShapeSlots(homeTeam),
-      away: this.buildShapeSlots(awayTeam)
+      away: this.buildShapeSlots(awayTeam),
     };
   }
 
   private buildShapeSlots(team: Team): ActiveShapeSlot[] {
     // Match-time shape starts from the saved formation assignments, then diverges in-memory after dismissals and tactical rebalances.
-    return this.fieldService.getFormationSlots(team).map(slot => ({
+    return this.fieldService.getFormationSlots(team).map((slot) => ({
       slotId: slot.slotId,
       playerId: team.formationAssignments[slot.slotId] || null,
       coordinates: { ...slot.coordinates },
       zone: slot.zone,
       role: slot.label,
-      preferredPosition: slot.position
+      preferredPosition: slot.position,
     }));
   }
 
@@ -2197,12 +3293,12 @@ export class MatchSimulationVariantBService {
   }
 
   private getOnFieldPlayerCount(shape: ActiveShapeSlot[]): number {
-    return shape.filter(slot => slot.playerId !== null).length;
+    return shape.filter((slot) => slot.playerId !== null).length;
   }
 
   private calculateShapePressureModifier(
     state: MatchState,
-    currentTeam: TeamSide
+    currentTeam: TeamSide,
   ): number {
     const context = this.getDefendingShapeContext(state, currentTeam);
     if (!context || context.zoneSlots.length === 0) {
@@ -2225,7 +3321,7 @@ export class MatchSimulationVariantBService {
 
   private calculateCarryShapeModifier(
     state: MatchState,
-    currentTeam: TeamSide
+    currentTeam: TeamSide,
   ): number {
     const context = this.getDefendingShapeContext(state, currentTeam);
     if (!context) {
@@ -2247,7 +3343,7 @@ export class MatchSimulationVariantBService {
 
   private calculateShotShapeModifier(
     state: MatchState,
-    currentTeam: TeamSide
+    currentTeam: TeamSide,
   ): { onTargetBonus: number; goalChanceBonus: number } {
     const context = this.getDefendingShapeContext(state, currentTeam);
     if (!context) {
@@ -2272,7 +3368,7 @@ export class MatchSimulationVariantBService {
 
   private getDefendingShapeContext(
     state: MatchState,
-    currentTeam: TeamSide
+    currentTeam: TeamSide,
   ): {
     zoneSlots: ActiveShapeSlot[];
     staffedZoneSlots: ActiveShapeSlot[];
@@ -2285,12 +3381,15 @@ export class MatchSimulationVariantBService {
       return null;
     }
 
-    return this.getDefendingShapeContextForLocation(state.ballPossession.location, currentTeam);
+    return this.getDefendingShapeContextForLocation(
+      state.ballPossession.location,
+      currentTeam,
+    );
   }
 
   private getDefendingShapeContextForLocation(
     location: Coordinates,
-    currentTeam: TeamSide
+    currentTeam: TeamSide,
   ): {
     zoneSlots: ActiveShapeSlot[];
     staffedZoneSlots: ActiveShapeSlot[];
@@ -2304,20 +3403,27 @@ export class MatchSimulationVariantBService {
     }
 
     // Evaluate coverage from the defending side's perspective so depleted lines and empty channels soften resistance naturally.
-    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const defendingTeam =
+      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
     const defendingShape = this.activeMatchShape[defendingTeam];
     const zone = this.fieldService.getZoneFromY(location.y);
     const defendingZone = this.resolveDefendingShapeZone(currentTeam, zone);
-    const zoneSlots = defendingShape.filter(slot => slot.zone === defendingZone);
-    const staffedZoneSlots = zoneSlots.filter(slot => slot.playerId !== null);
+    const zoneSlots = defendingShape.filter(
+      (slot) => slot.zone === defendingZone,
+    );
+    const staffedZoneSlots = zoneSlots.filter((slot) => slot.playerId !== null);
 
     if (zoneSlots.length === 0) {
       return null;
     }
 
     const wideChannel = Math.abs(location.x - 50) >= 18;
-    const channelSlots = staffedZoneSlots.filter(slot => this.isSlotRelevantToBallChannel(slot, location.x, wideChannel));
-    const centralSlots = staffedZoneSlots.filter(slot => Math.abs(slot.coordinates.x - 50) <= 16);
+    const channelSlots = staffedZoneSlots.filter((slot) =>
+      this.isSlotRelevantToBallChannel(slot, location.x, wideChannel),
+    );
+    const centralSlots = staffedZoneSlots.filter(
+      (slot) => Math.abs(slot.coordinates.x - 50) <= 16,
+    );
 
     return {
       zoneSlots,
@@ -2325,11 +3431,14 @@ export class MatchSimulationVariantBService {
       zoneCoverage: staffedZoneSlots.length / zoneSlots.length,
       wideChannel,
       channelSlots,
-      centralSlots
+      centralSlots,
     };
   }
 
-  private resolveDefendingShapeZone(currentTeam: TeamSide, zone: FieldZone): FieldZone {
+  private resolveDefendingShapeZone(
+    currentTeam: TeamSide,
+    zone: FieldZone,
+  ): FieldZone {
     if (currentTeam === TeamSide.AWAY) {
       return zone;
     }
@@ -2345,7 +3454,11 @@ export class MatchSimulationVariantBService {
     return FieldZone.MIDFIELD;
   }
 
-  private isSlotRelevantToBallChannel(slot: ActiveShapeSlot, ballX: number, wideChannel: boolean): boolean {
+  private isSlotRelevantToBallChannel(
+    slot: ActiveShapeSlot,
+    ballX: number,
+    wideChannel: boolean,
+  ): boolean {
     const slotOffset = Math.abs(slot.coordinates.x - 50);
 
     if (!wideChannel) {
@@ -2364,7 +3477,7 @@ export class MatchSimulationVariantBService {
     forfeitingTeam: TeamSide,
     minute: number,
     homeTeamId: string,
-    awayTeamId: string
+    awayTeamId: string,
   ): MatchState {
     const homeForfeits = forfeitingTeam === TeamSide.HOME;
 
@@ -2390,12 +3503,12 @@ export class MatchSimulationVariantBService {
       awayRedCards: 0,
       ballPossession: {
         teamId: homeForfeits ? awayTeamId : homeTeamId,
-        playerWithBall: '',
+        playerWithBall: "",
         location: { x: 50, y: 50 },
         phase: MatchPhase.BUILD_UP,
         passes: 0,
-        timeElapsed: 0
-      }
+        timeElapsed: 0,
+      },
     };
   }
 
@@ -2403,60 +3516,83 @@ export class MatchSimulationVariantBService {
     teamKey: TeamSide,
     teamPlayers: Player[],
     dismissedPlayerId: string,
-    tactics: { home: TacticalSetup; away: TacticalSetup }
+    tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
     if (!this.activeMatchShape) {
       return;
     }
 
-    const currentShape = this.activeMatchShape[teamKey].map(slot => ({
+    const currentShape = this.activeMatchShape[teamKey].map((slot) => ({
       ...slot,
-      playerId: slot.playerId === dismissedPlayerId ? null : slot.playerId
+      playerId: slot.playerId === dismissedPlayerId ? null : slot.playerId,
     }));
-    const activePlayers = teamPlayers.filter(player => player.role === Role.STARTER && player.id !== dismissedPlayerId);
-    const rebalancedShape = this.rebalanceShapeForPlayers(currentShape, activePlayers);
+    const activePlayers = teamPlayers.filter(
+      (player) =>
+        player.role === Role.STARTER && player.id !== dismissedPlayerId,
+    );
+    const rebalancedShape = this.rebalanceShapeForPlayers(
+      currentShape,
+      activePlayers,
+    );
 
     this.activeMatchShape = {
       ...this.activeMatchShape,
-      [teamKey]: rebalancedShape
+      [teamKey]: rebalancedShape,
     };
     this.rebuildFormationFromShape(teamKey, tactics);
   }
 
-  private rebalanceShapeForPlayers(shape: ActiveShapeSlot[], activePlayers: Player[]): ActiveShapeSlot[] {
-    const clearedShape = shape.map(slot => ({ ...slot, playerId: null }));
+  private rebalanceShapeForPlayers(
+    shape: ActiveShapeSlot[],
+    activePlayers: Player[],
+  ): ActiveShapeSlot[] {
+    const clearedShape = shape.map((slot) => ({ ...slot, playerId: null }));
     // Staff the highest-priority slots first so the team preserves its spine before wide or advanced roles.
     const slotsToStaff = [...clearedShape]
-      .sort((left, right) => this.getShapeSlotPriority(right) - this.getShapeSlotPriority(left))
+      .sort(
+        (left, right) =>
+          this.getShapeSlotPriority(right) - this.getShapeSlotPriority(left),
+      )
       .slice(0, Math.min(activePlayers.length, clearedShape.length));
-    const assignments = this.assignPlayersToShapeSlots(activePlayers, slotsToStaff, shape);
+    const assignments = this.assignPlayersToShapeSlots(
+      activePlayers,
+      slotsToStaff,
+      shape,
+    );
 
-    return clearedShape.map(slot => ({
+    return clearedShape.map((slot) => ({
       ...slot,
-      playerId: assignments.get(slot.slotId) ?? null
+      playerId: assignments.get(slot.slotId) ?? null,
     }));
   }
 
   private assignPlayersToShapeSlots(
     activePlayers: Player[],
     slotsToStaff: ActiveShapeSlot[],
-    previousShape: ActiveShapeSlot[]
+    previousShape: ActiveShapeSlot[],
   ): Map<string, string> {
     const assignments = new Map<string, string>();
     const remainingPlayers = [...activePlayers];
     const previousSlotsByPlayer = new Map(
       previousShape
-        .filter(slot => slot.playerId !== null)
-        .map(slot => [slot.playerId as string, slot])
+        .filter((slot) => slot.playerId !== null)
+        .map((slot) => [slot.playerId as string, slot]),
     );
 
     // Favor minimal disruption: keep players near their old slots and in compatible roles when rebuilding a reduced shape.
-    for (const slot of slotsToStaff.sort((left, right) => this.getShapeSlotPriority(right) - this.getShapeSlotPriority(left))) {
+    for (const slot of slotsToStaff.sort(
+      (left, right) =>
+        this.getShapeSlotPriority(right) - this.getShapeSlotPriority(left),
+    )) {
       let bestIndex = -1;
       let bestScore = Number.NEGATIVE_INFINITY;
 
       remainingPlayers.forEach((player, index) => {
-        const score = this.getPlayerSlotFitScore(player, slot, previousSlotsByPlayer.get(player.id));
+        const score = this.getPlayerSlotFitScore(
+          player,
+          slot,
+          previousSlotsByPlayer.get(player.id),
+        );
         if (score > bestScore) {
           bestScore = score;
           bestIndex = index;
@@ -2475,10 +3611,16 @@ export class MatchSimulationVariantBService {
   private getPlayerSlotFitScore(
     player: Player,
     slot: ActiveShapeSlot,
-    previousSlot?: ActiveShapeSlot
+    previousSlot?: ActiveShapeSlot,
   ): number {
-    const seasonAttrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
-    let score = this.getPositionCompatibilityScore(player.position, slot.preferredPosition);
+    const seasonAttrs = getCurrentPlayerSeasonAttributes(
+      player,
+      this.currentSeasonYear,
+    );
+    let score = this.getPositionCompatibilityScore(
+      player.position,
+      slot.preferredPosition,
+    );
     score += this.getShapeSlotPriority(slot) * 0.08;
     score += seasonAttrs.overall.value * 0.2;
 
@@ -2491,42 +3633,70 @@ export class MatchSimulationVariantBService {
     }
 
     if (previousSlot) {
-      score -= this.fieldService.getDistance(previousSlot.coordinates, slot.coordinates) * 0.4;
+      score -=
+        this.fieldService.getDistance(
+          previousSlot.coordinates,
+          slot.coordinates,
+        ) * 0.4;
     }
 
     return score;
   }
 
-  private getPositionCompatibilityScore(playerPosition: PositionEnum, slotPosition: PositionEnum): number {
+  private getPositionCompatibilityScore(
+    playerPosition: PositionEnum,
+    slotPosition: PositionEnum,
+  ): number {
     if (playerPosition === slotPosition) {
       return 140;
     }
 
-    if (playerPosition === PositionEnum.GOALKEEPER || slotPosition === PositionEnum.GOALKEEPER) {
+    if (
+      playerPosition === PositionEnum.GOALKEEPER ||
+      slotPosition === PositionEnum.GOALKEEPER
+    ) {
       return -1000;
     }
 
-    if (playerPosition === PositionEnum.DEFENDER && slotPosition === PositionEnum.MIDFIELDER) {
+    if (
+      playerPosition === PositionEnum.DEFENDER &&
+      slotPosition === PositionEnum.MIDFIELDER
+    ) {
       return 72;
     }
 
-    if (playerPosition === PositionEnum.MIDFIELDER && slotPosition === PositionEnum.DEFENDER) {
+    if (
+      playerPosition === PositionEnum.MIDFIELDER &&
+      slotPosition === PositionEnum.DEFENDER
+    ) {
       return 68;
     }
 
-    if (playerPosition === PositionEnum.MIDFIELDER && slotPosition === PositionEnum.FORWARD) {
+    if (
+      playerPosition === PositionEnum.MIDFIELDER &&
+      slotPosition === PositionEnum.FORWARD
+    ) {
       return 62;
     }
 
-    if (playerPosition === PositionEnum.FORWARD && slotPosition === PositionEnum.MIDFIELDER) {
+    if (
+      playerPosition === PositionEnum.FORWARD &&
+      slotPosition === PositionEnum.MIDFIELDER
+    ) {
       return 58;
     }
 
-    if (playerPosition === PositionEnum.DEFENDER && slotPosition === PositionEnum.FORWARD) {
+    if (
+      playerPosition === PositionEnum.DEFENDER &&
+      slotPosition === PositionEnum.FORWARD
+    ) {
       return 20;
     }
 
-    if (playerPosition === PositionEnum.FORWARD && slotPosition === PositionEnum.DEFENDER) {
+    if (
+      playerPosition === PositionEnum.FORWARD &&
+      slotPosition === PositionEnum.DEFENDER
+    ) {
       return 10;
     }
 
@@ -2541,19 +3711,19 @@ export class MatchSimulationVariantBService {
     }
 
     if (slot.preferredPosition === PositionEnum.DEFENDER) {
-      return 330 + (centrality * 2) + (slot.zone === FieldZone.DEFENSE ? 40 : 0);
+      return 330 + centrality * 2 + (slot.zone === FieldZone.DEFENSE ? 40 : 0);
     }
 
     if (slot.preferredPosition === PositionEnum.MIDFIELDER) {
       return 230 + centrality + (slot.zone === FieldZone.MIDFIELD ? 25 : 0);
     }
 
-    return 140 + (centrality * 0.6) + (slot.zone === FieldZone.ATTACK ? 10 : 0);
+    return 140 + centrality * 0.6 + (slot.zone === FieldZone.ATTACK ? 10 : 0);
   }
 
   private rebuildFormationFromShape(
     teamKey: TeamSide,
-    tactics: { home: TacticalSetup; away: TacticalSetup }
+    tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
     if (!this.activeMatchShape) {
       return;
@@ -2561,23 +3731,31 @@ export class MatchSimulationVariantBService {
 
     tactics[teamKey] = {
       ...tactics[teamKey],
-      formation: this.buildTeamFormationFromShape(this.activeMatchShape[teamKey], tactics[teamKey].formation)
+      formation: this.buildTeamFormationFromShape(
+        this.activeMatchShape[teamKey],
+        tactics[teamKey].formation,
+      ),
     };
   }
 
-  private buildTeamFormationFromShape(shape: ActiveShapeSlot[], originalFormation: TeamFormation): TeamFormation {
+  private buildTeamFormationFromShape(
+    shape: ActiveShapeSlot[],
+    originalFormation: TeamFormation,
+  ): TeamFormation {
     return {
       name: originalFormation.name,
-      positions: originalFormation.positions.map(position => {
-        const shapeSlot = shape.find(slot => slot.slotId === position.slotId);
+      positions: originalFormation.positions.map((position) => {
+        const shapeSlot = shape.find((slot) => slot.slotId === position.slotId);
         return {
           ...position,
-          playerId: shapeSlot?.playerId ?? '',
-          coordinates: shapeSlot ? { ...shapeSlot.coordinates } : { ...position.coordinates },
+          playerId: shapeSlot?.playerId ?? "",
+          coordinates: shapeSlot
+            ? { ...shapeSlot.coordinates }
+            : { ...position.coordinates },
           zone: shapeSlot?.zone ?? position.zone,
-          role: shapeSlot?.role ?? position.role
+          role: shapeSlot?.role ?? position.role,
         };
-      })
+      }),
     };
   }
 
@@ -2587,20 +3765,20 @@ export class MatchSimulationVariantBService {
     }
 
     return {
-      home: this.activeMatchShape.home.map(slot => ({
+      home: this.activeMatchShape.home.map((slot) => ({
         slotId: slot.slotId,
         playerId: slot.playerId,
         coordinates: { ...slot.coordinates },
         zone: slot.zone,
-        role: slot.role
+        role: slot.role,
       })),
-      away: this.activeMatchShape.away.map(slot => ({
+      away: this.activeMatchShape.away.map((slot) => ({
         slotId: slot.slotId,
         playerId: slot.playerId,
         coordinates: { ...slot.coordinates },
         zone: slot.zone,
-        role: slot.role
-      }))
+        role: slot.role,
+      })),
     };
   }
 
@@ -2608,13 +3786,13 @@ export class MatchSimulationVariantBService {
     teamKey: TeamSide,
     outgoingPlayerId: string,
     incomingPlayerId: string,
-    tactics: { home: TacticalSetup; away: TacticalSetup }
+    tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
     if (!this.activeMatchShape) {
       return;
     }
 
-    const updatedShape = this.activeMatchShape[teamKey].map(slot => {
+    const updatedShape = this.activeMatchShape[teamKey].map((slot) => {
       if (slot.playerId === outgoingPlayerId) {
         return { ...slot, playerId: incomingPlayerId };
       }
@@ -2624,13 +3802,18 @@ export class MatchSimulationVariantBService {
 
     this.activeMatchShape = {
       ...this.activeMatchShape,
-      [teamKey]: updatedShape
+      [teamKey]: updatedShape,
     };
     this.rebuildFormationFromShape(teamKey, tactics);
   }
 
-  private calculateShapeQuality(shape: ActiveShapeSlot[], teamPlayers: Player[]): number {
-    const playersById = new Map(teamPlayers.map(player => [player.id, player]));
+  private calculateShapeQuality(
+    shape: ActiveShapeSlot[],
+    teamPlayers: Player[],
+  ): number {
+    const playersById = new Map(
+      teamPlayers.map((player) => [player.id, player]),
+    );
 
     return shape.reduce((total, slot) => {
       if (!slot.playerId) {
@@ -2642,8 +3825,14 @@ export class MatchSimulationVariantBService {
         return total;
       }
 
-      return total + this.getShapeSlotPriority(slot) + this.getPositionCompatibilityScore(player.position, slot.preferredPosition);
+      return (
+        total +
+        this.getShapeSlotPriority(slot) +
+        this.getPositionCompatibilityScore(
+          player.position,
+          slot.preferredPosition,
+        )
+      );
     }, 0);
   }
-
 }

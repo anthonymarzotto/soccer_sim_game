@@ -1,5 +1,6 @@
 import { isDevMode } from '@angular/core';
 import { Player, PlayerSeasonAttributes, Stat, StatKey, Team, TeamSeasonSnapshot, TeamStats } from './types';
+import { InjuryRecord } from '../data/injuries';
 
 export function createEmptyTeamStats(): TeamStats {
   return {
@@ -54,6 +55,37 @@ export function getLatestTeamSeasonSnapshot(team: Team): TeamSeasonSnapshot | nu
 
 export function getTeamSeasonSnapshotForYear(team: Team, seasonYear: number): TeamSeasonSnapshot | null {
   return (team.seasonSnapshots ?? []).find(snapshot => snapshot.seasonYear === seasonYear) ?? null;
+}
+
+/**
+ * Returns the active InjuryRecord for a player (the latest record with
+ * `weeksRemaining > 0`), or null if the player is healthy.
+ */
+export function getActiveInjury(player: Player): InjuryRecord | null {
+  const injuries = player.injuries ?? [];
+  for (let i = injuries.length - 1; i >= 0; i--) {
+    const record = injuries[i];
+    if (record.weeksRemaining > 0) {
+      return record;
+    }
+  }
+  return null;
+}
+
+export function isPlayerInjured(player: Player): boolean {
+  return getActiveInjury(player) !== null;
+}
+
+/**
+ * Authoritative gate for selection / readiness. Returns false when the player
+ * has an active multi-week injury and should not appear on the pitch or bench.
+ */
+export function isPlayerEligible(player: Player): boolean {
+  return !isPlayerInjured(player);
+}
+
+export function getInjuredPlayers(players: Player[]): Player[] {
+  return players.filter(isPlayerInjured);
 }
 
 export function withSortedUniqueSeasons<T extends { seasonYear: number }>(records: T[]): T[] {

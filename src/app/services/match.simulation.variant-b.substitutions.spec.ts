@@ -530,7 +530,10 @@ function createSimulationConfig(): SimulationConfig {
     enableTactics: true,
     enableFatigue: true,
     commentaryStyle: CommentaryStyle.DETAILED,
-    simulationVariant: 'B'
+    simulationVariant: 'B',
+    // Substitution tests assert on specific event sequences; injuries are
+    // covered by their own dedicated tests.
+    disableInjuries: true
   };
 }
 

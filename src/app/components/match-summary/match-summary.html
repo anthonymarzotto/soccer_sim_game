@@ -61,12 +61,23 @@
       
       <div class="space-y-2">
         @for (moment of visibleMoments(); track moment.event.id) {
+          @let injurySummary = getInjuryMomentSummary(moment.event);
           <div class="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg">
             <div class="text-xs text-zinc-400 font-mono w-8 text-right">{{ moment.event.time }}'</div>
             <span class="text-lg">{{ moment.event.icon || '•' }}</span>
             <div class="flex-1">
               <div class="text-sm font-medium text-white">
-                @if (!moment.isExpanded && moment.event.playerIds && moment.event.playerIds.length > 0) {
+                @if (injurySummary) {
+                  <span class="inline-flex items-center gap-1">
+                    @if (injurySummary.teamId) {
+                      <app-team-badge [teamId]="injurySummary.teamId" size="sm" [link]="true"></app-team-badge>
+                    }
+                    <a [routerLink]="['/player', injurySummary.playerId]" class="text-emerald-400 hover:text-emerald-300 hover:underline">
+                      {{ injurySummary.playerName }}
+                    </a>
+                  </span>
+                  <span class="text-zinc-400"> — {{ injurySummary.injuryName }}, {{ injurySummary.availabilityText }}</span>
+                } @else if (!moment.isExpanded && moment.event.playerIds && moment.event.playerIds.length > 0) {
                   @for (player of getPlayerLinks(moment.event.playerIds); track player.playerId) {
                     <span class="inline-flex items-center gap-1">
                       <app-team-badge [teamId]="getPlayerTeamId(player.playerId)" size="sm" [link]="true"></app-team-badge>
