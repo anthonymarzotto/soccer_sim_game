@@ -656,6 +656,45 @@ describe('WatchGameComponent', () => {
     expect(awayRow?.textContent).toContain('🥈');
   });
 
+  it('keeps replay lineups tied to the match teams instead of the live league roster', () => {
+    const fixture = TestBed.createComponent(WatchGameComponent);
+    const component = fixture.componentInstance;
+    const replayStarter = createPlayer('home-starter', 'home', Role.STARTER);
+    const replayInjured = createPlayer('home-injured', 'home', Role.STARTER);
+    const liveLeagueReplacement = createPlayer('home-replacement', 'home', Role.BENCH);
+
+    component.homeTeam.set(createTeam('home', [replayStarter, replayInjured]));
+    component.awayTeam.set(createTeam('away', []));
+    component.homeFormationDots.set([
+      {
+        id: 'home-slot-1',
+        slotId: 'home-slot-1',
+        slotLabel: 'CM',
+        tacticOrder: 0,
+        teamSide: TeamSide.HOME,
+        playerId: replayStarter.id,
+        label: 'HS',
+        fullName: replayStarter.name,
+        x: 50,
+        y: 50,
+        minuteEntered: 0,
+        goalMinutes: [],
+        yellowCardMinutes: [],
+        redCards: 0,
+      }
+    ]);
+    component['homeRemovedPlayers'].set(new Map([
+      [replayInjured.id, { status: 'INJURED', fatigue: 61 }]
+    ]));
+
+    vi.spyOn(component.gameService, 'getPlayersForTeam').mockReturnValue([replayStarter, liveLeagueReplacement]);
+
+    const lineup = component.getTeamLineup(TeamSide.HOME);
+
+    expect(lineup.map((entry) => entry.playerId)).toContain(replayInjured.id);
+    expect(lineup.map((entry) => entry.playerId)).not.toContain(liveLeagueReplacement.id);
+  });
+
   it('builds structured breakdown data for rated players with full negative detail', () => {
     const fixture = TestBed.createComponent(WatchGameComponent);
     const component = fixture.componentInstance;

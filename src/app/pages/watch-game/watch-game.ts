@@ -1021,7 +1021,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       return [];
     }
 
-    const playersById = new Map(this.gameService.getPlayersForTeam(team.id).map((player) => [player.id, player]));
+    const playersById = new Map(this.getReplayPlayersForTeam(team).map((player) => [player.id, player]));
 
     return formation.positions
       .map((position, index) => {
@@ -1154,9 +1154,8 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const onFieldByPlayerId = new Map(onFieldDots.map((dot) => [dot.playerId, dot]));
     const removedPlayers = side === TeamSide.HOME ? this.homeRemovedPlayers() : this.awayRemovedPlayers();
 
-    return this.gameService
-      .getPlayersForTeam(team.id)
-      .filter((player) => player.role !== Role.RESERVE)
+    return this.getReplayPlayersForTeam(team)
+      .filter((player) => player.role !== Role.RESERVE || removedPlayers.has(player.id))
       .map((player: Player) => {
         const dot = onFieldByPlayerId.get(player.id);
         const removed = removedPlayers.get(player.id);
@@ -1506,7 +1505,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const player = this.gameService.getPlayer(slot.playerId);
+      const player = this.getReplayPlayer(slot.playerId);
       const previousDot = previousByPlayerId.get(slot.playerId);
       const fullName = player?.name ?? templateDot.fullName;
 
@@ -1560,6 +1559,43 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private updateDotsForTeam(teamSide: TeamSide, updater: (dot: FormationDot) => FormationDot) {
     const targetSignal = teamSide === TeamSide.HOME ? this.homeFormationDots : this.awayFormationDots;
     targetSignal.update((dots) => dots.map(updater));
+  }
+
+  private getReplayPlayersForTeam(team: Team): Player[] {
+    const players = team.players ?? [];
+    const playersById = new Map(players.map((player) => [player.id, player]));
+    const orderedPlayers: Player[] = [];
+    const orderedIds = new Set<string>();
+
+    for (const playerId of team.playerIds ?? []) {
+      const player = playersById.get(playerId);
+      if (!player || orderedIds.has(playerId)) {
+        continue;
+      }
+
+      orderedPlayers.push(player);
+      orderedIds.add(playerId);
+    }
+
+    const extraPlayers = players.filter((player) => !orderedIds.has(player.id));
+    return [...orderedPlayers, ...extraPlayers];
+  }
+
+  private getReplayPlayer(playerId: string): Player | undefined {
+    const home = this.homeTeam();
+    if (home) {
+      const homePlayer = this.getReplayPlayersForTeam(home).find((player) => player.id === playerId);
+      if (homePlayer) {
+        return homePlayer;
+      }
+    }
+
+    const away = this.awayTeam();
+    if (!away) {
+      return undefined;
+    }
+
+    return this.getReplayPlayersForTeam(away).find((player) => player.id === playerId);
   }
 
   private toInitials(name: string): string {

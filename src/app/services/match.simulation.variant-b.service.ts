@@ -27,7 +27,7 @@ import {
   TeamSide,
 } from "../models/enums";
 import { resolveTeamPlayers } from "../models/team-players";
-import { getCurrentPlayerSeasonAttributes } from "../models/season-history";
+import { getCurrentPlayerSeasonAttributes, isPlayerEligible } from "../models/season-history";
 import {
   InjuryDefinition,
   pickInjuryDefinition,
@@ -149,9 +149,9 @@ export class MatchSimulationVariantBService {
     away: 0,
   };
   private injuredPlayerIds = new Set<string>();
-  private pendingInjuryReplacements: Record<TeamSide, string | null> = {
-    home: null,
-    away: null,
+  private pendingInjuryReplacements: Record<TeamSide, string[]> = {
+    home: [],
+    away: [],
   };
   private lastSimulationForfeit: TeamSide | null = null;
   private currentSeasonYear = new Date().getFullYear();
@@ -208,7 +208,7 @@ export class MatchSimulationVariantBService {
     );
     this.pendingTacticalSubstitutions = { home: 0, away: 0 };
     this.injuredPlayerIds = new Set();
-    this.pendingInjuryReplacements = { home: null, away: null };
+    this.pendingInjuryReplacements = { home: [], away: [] };
     this.lastSimulationForfeit = null;
 
     // Variant B increases dynamism with adaptive ticks per minute.
@@ -276,7 +276,7 @@ export class MatchSimulationVariantBService {
     this.activeMatchShape = null;
     this.pendingTacticalSubstitutions = { home: 0, away: 0 };
     this.injuredPlayerIds = new Set();
-    this.pendingInjuryReplacements = { home: null, away: null };
+    this.pendingInjuryReplacements = { home: [], away: [] };
 
     return currentState;
   }
@@ -1693,7 +1693,7 @@ export class MatchSimulationVariantBService {
       tactics,
       state,
     );
-    this.pendingInjuryReplacements[teamKey] = player.id;
+    this.pendingInjuryReplacements[teamKey].push(player.id);
     return true;
   }
 
@@ -1712,7 +1712,20 @@ export class MatchSimulationVariantBService {
     // We deliberately do NOT use Role.DISMISSED so this isn't counted as a
     // forfeit/red card, and we don't persist a new role state.
     injured.role = Role.SUBSTITUTED_OUT;
-    this.rebalanceShapeAfterDismissal(teamKey, teamPlayers, playerId, tactics);
+     // For injury withdrawals, do NOT rebalance the entire shape here.
+     // Instead, just clear the injured player's slot and let the replacement logic
+     // rebalance once when the sub comes on. This avoids cascading position changes
+     // that disrupt non-4-4-2 formations and create visual noise.
+     if (this.activeMatchShape) {
+       const currentShape = this.activeMatchShape[teamKey];
+       this.activeMatchShape = {
+         ...this.activeMatchShape,
+         [teamKey]: currentShape.map((slot) => ({
+           ...slot,
+           playerId: slot.playerId === playerId ? null : slot.playerId,
+         })),
+       };
+     }
 
     if (state.ballPossession.playerWithBall === playerId) {
       const remainingStarter = teamPlayers.find(
@@ -1741,70 +1754,76 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     substitutionsUsed: TeamSubstitutionUsage,
   ): boolean {
-    const injuredId = this.pendingInjuryReplacements[teamKey];
-    if (!injuredId) {
+    const pendingInjuredIds = [...this.pendingInjuryReplacements[teamKey]];
+    if (pendingInjuredIds.length === 0) {
       return false;
     }
-    this.pendingInjuryReplacements[teamKey] = null;
-
-    if (
-      substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam ||
-      !this.activeMatchShape
-    ) {
-      // Out of substitutions: the team plays a player short for the remainder.
-      return false;
-    }
+    this.pendingInjuryReplacements[teamKey] = [];
 
     const teamPlayers =
       teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
-    const injuredPlayer = teamPlayers.find((player) => player.id === injuredId);
-    const incomingPosition = injuredPlayer?.position ?? PositionEnum.MIDFIELDER;
-    const incoming = this.selectSubstitutionIncomingPlayer(
-      teamPlayers,
-      incomingPosition,
-    );
-    if (!incoming) {
-      return false;
+    let processedReplacement = false;
+
+    for (const injuredId of pendingInjuredIds) {
+      if (
+        substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam ||
+        !this.activeMatchShape
+      ) {
+        // Out of substitutions: the team plays short for the remaining queued injuries.
+        break;
+      }
+
+      const injuredPlayer = teamPlayers.find((player) => player.id === injuredId);
+      const incomingPosition = injuredPlayer?.position ?? PositionEnum.MIDFIELDER;
+      const incoming = this.selectSubstitutionIncomingPlayer(
+        teamPlayers,
+        incomingPosition,
+      );
+      if (!incoming) {
+        continue;
+      }
+
+      incoming.role = Role.STARTER;
+      substitutionsUsed[teamKey] += 1;
+
+      const currentShape = this.activeMatchShape[teamKey];
+      const activePlayers = teamPlayers.filter(
+        (player) => player.role === Role.STARTER,
+      );
+      const rebalancedShape = this.rebalanceShapeForPlayers(
+        currentShape,
+        activePlayers,
+      );
+      this.activeMatchShape = {
+        ...this.activeMatchShape,
+        [teamKey]: rebalancedShape,
+      };
+      this.rebuildFormationFromShape(teamKey, tactics);
+
+      const teamId = teamKey === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+      if (
+        state.ballPossession.teamId === teamId &&
+        state.ballPossession.playerWithBall === injuredId
+      ) {
+        state.ballPossession.playerWithBall = incoming.id;
+      }
+
+      this.createEvent(
+        state,
+        EventType.SUBSTITUTION,
+        [injuredId, incoming.id],
+        { ...state.ballPossession.location },
+        minute,
+        true,
+        config,
+        {
+          formationSnapshot: this.createFormationSnapshot(),
+        },
+      );
+      processedReplacement = true;
     }
 
-    incoming.role = Role.STARTER;
-    substitutionsUsed[teamKey] += 1;
-
-    const currentShape = this.activeMatchShape[teamKey];
-    const activePlayers = teamPlayers.filter(
-      (player) => player.role === Role.STARTER,
-    );
-    const rebalancedShape = this.rebalanceShapeForPlayers(
-      currentShape,
-      activePlayers,
-    );
-    this.activeMatchShape = {
-      ...this.activeMatchShape,
-      [teamKey]: rebalancedShape,
-    };
-    this.rebuildFormationFromShape(teamKey, tactics);
-
-    const teamId = teamKey === TeamSide.HOME ? homeTeam.id : awayTeam.id;
-    if (
-      state.ballPossession.teamId === teamId &&
-      state.ballPossession.playerWithBall === injuredId
-    ) {
-      state.ballPossession.playerWithBall = incoming.id;
-    }
-
-    this.createEvent(
-      state,
-      EventType.SUBSTITUTION,
-      [injuredId, incoming.id],
-      { ...state.ballPossession.location },
-      minute,
-      true,
-      config,
-      {
-        formationSnapshot: this.createFormationSnapshot(),
-      },
-    );
-    return true;
+    return processedReplacement;
   }
 
   private calculatePassSuccess(
@@ -2045,32 +2064,41 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     substitutionsUsed: TeamSubstitutionUsage,
   ): void {
-    const homeUsedTacticalSub = this.tryPendingTacticalSubstitution(
-      TeamSide.HOME,
-      state,
-      tactics,
-      homeTeam,
-      awayTeam,
-      fatigue,
-      minute,
-      config,
-      rosters,
-      substitutionsUsed,
-    );
-    const awayUsedTacticalSub = this.tryPendingTacticalSubstitution(
-      TeamSide.AWAY,
-      state,
-      tactics,
-      homeTeam,
-      awayTeam,
-      fatigue,
-      minute,
-      config,
-      rosters,
-      substitutionsUsed,
-    );
+    const homeHasPendingInjuryReplacement =
+      this.pendingInjuryReplacements[TeamSide.HOME].length > 0;
+    const awayHasPendingInjuryReplacement =
+      this.pendingInjuryReplacements[TeamSide.AWAY].length > 0;
 
-    if (!homeUsedTacticalSub) {
+    const homeUsedTacticalSub = homeHasPendingInjuryReplacement
+      ? false
+      : this.tryPendingTacticalSubstitution(
+          TeamSide.HOME,
+          state,
+          tactics,
+          homeTeam,
+          awayTeam,
+          fatigue,
+          minute,
+          config,
+          rosters,
+          substitutionsUsed,
+        );
+    const awayUsedTacticalSub = awayHasPendingInjuryReplacement
+      ? false
+      : this.tryPendingTacticalSubstitution(
+          TeamSide.AWAY,
+          state,
+          tactics,
+          homeTeam,
+          awayTeam,
+          fatigue,
+          minute,
+          config,
+          rosters,
+          substitutionsUsed,
+        );
+
+    if (!homeHasPendingInjuryReplacement && !homeUsedTacticalSub) {
       this.tryTeamSubstitution(
         TeamSide.HOME,
         state,
@@ -2084,7 +2112,7 @@ export class MatchSimulationVariantBService {
         substitutionsUsed,
       );
     }
-    if (!awayUsedTacticalSub) {
+    if (!awayHasPendingInjuryReplacement && !awayUsedTacticalSub) {
       this.tryTeamSubstitution(
         TeamSide.AWAY,
         state,
@@ -2374,7 +2402,7 @@ export class MatchSimulationVariantBService {
     outgoingPosition: PositionEnum,
   ): Player | null {
     const benchPlayers = teamPlayers.filter(
-      (player) => player.role === Role.BENCH,
+      (player) => player.role === Role.BENCH && isPlayerEligible(player),
     );
 
     if (benchPlayers.length === 0) {

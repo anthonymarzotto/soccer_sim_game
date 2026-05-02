@@ -347,32 +347,45 @@ export class GameService {
     const updatedLeague: League = {
       ...league,
       currentWeek: league.currentWeek + 1,
-      teams: this.decrementInjuryWeeks(league.teams)
+      teams: this.decrementInjuryWeeks(league.teams, league.currentSeasonYear, league.currentWeek)
     };
 
     this.leagueState.set(updatedLeague);
+    this.persistChangedTeamsAndPlayers(league.teams, updatedLeague.teams);
     this.persistLeagueMetadata(updatedLeague);
   }
 
   /**
-   * Decrements `weeksRemaining` on every player's active injury (if any).
+   * Decrements `weeksRemaining` on every player's active injury once the player
+   * has completed at least one full future match week on the sideline.
    * Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as
    * historical records.
    */
-  private decrementInjuryWeeks(teams: Team[]): Team[] {
+  private decrementInjuryWeeks(teams: Team[], currentSeasonYear: number, currentWeek: number): Team[] {
     return teams.map(team => {
       if (!team.players) return team;
+      let teamMutated = false;
       const players = team.players.map(player => {
         if (!player.injuries || player.injuries.length === 0) return player;
-        let mutated = false;
+        let playerMutated = false;
         const updated = player.injuries.map(record => {
           if (record.weeksRemaining <= 0) return record;
-          mutated = true;
+          const wasAlreadyActiveBeforeThisWeek =
+            record.sustainedInSeason < currentSeasonYear
+            || record.sustainedInWeek < currentWeek;
+          if (!wasAlreadyActiveBeforeThisWeek) {
+            return record;
+          }
+          playerMutated = true;
           return { ...record, weeksRemaining: record.weeksRemaining - 1 };
         });
-        return mutated ? { ...player, injuries: updated } : player;
+        if (!playerMutated) {
+          return player;
+        }
+        teamMutated = true;
+        return { ...player, injuries: updated };
       });
-      return { ...team, players };
+      return teamMutated ? { ...team, players } : team;
     });
   }
 
@@ -559,6 +572,9 @@ export class GameService {
       const teamPlayers = resolveTeamPlayers(team);
       const playerIndex = teamPlayers.findIndex(p => p.id === playerId);
       if (playerIndex !== -1) {
+        if (!this.canAssignPlayerToRole(teamPlayers[playerIndex], newRole)) {
+          return team;
+        }
         const updatedPlayers = [...teamPlayers];
         updatedPlayers[playerIndex] = { ...updatedPlayers[playerIndex], role: newRole };
         return this.withSyncedPlayerIds({ ...team, players: updatedPlayers });
@@ -585,7 +601,7 @@ export class GameService {
       const teamPlayers = resolveTeamPlayers(team);
 
       const player = teamPlayers.find(p => p.id === playerId);
-      if (!player) return team;
+      if (!player || !isPlayerEligible(player)) return team;
 
       const updatedPlayers = teamPlayers.map(p =>
         p.id === playerId ? { ...p, role: Role.STARTER } : p
@@ -624,7 +640,7 @@ export class GameService {
 
       const teamPlayers = resolveTeamPlayers(team);
       const player = teamPlayers.find(p => p.id === playerId);
-      if (!player) return team;
+      if (!player || !this.canAssignPlayerToRole(player, Role.BENCH)) return team;
 
       const updatedPlayers = teamPlayers.map(p =>
         p.id === playerId ? { ...p, role: Role.BENCH } : p
@@ -681,10 +697,24 @@ export class GameService {
       .map(message => ({ kind: 'formation', message }));
 
     const playersById = new Map(players.map(player => [player.id, player]));
-    const seenInjuredAssignedPlayers = new Set<string>();
+    const seenInjuredPlayers = new Set<string>();
+
+    for (const player of players) {
+      if (player.role === Role.RESERVE) {
+        continue;
+      }
+
+      const activeInjury = getActiveInjury(player);
+      if (!activeInjury) {
+        continue;
+      }
+
+      seenInjuredPlayers.add(player.id);
+      issues.push(this.createInjuryReadinessIssue(player, activeInjury));
+    }
 
     for (const assignedPlayerId of Object.values(team.formationAssignments ?? {})) {
-      if (!assignedPlayerId || seenInjuredAssignedPlayers.has(assignedPlayerId)) {
+      if (!assignedPlayerId || seenInjuredPlayers.has(assignedPlayerId)) {
         continue;
       }
 
@@ -698,17 +728,8 @@ export class GameService {
         continue;
       }
 
-      seenInjuredAssignedPlayers.add(assignedPlayerId);
-      const injuryName = getInjuryDefinition(activeInjury.definitionId)?.name ?? activeInjury.definitionId;
-      issues.push({
-        kind: 'injured-starter',
-        message: `${assigned.name} is injured (${injuryName}, ${this.formatReadinessWeeksRemaining(activeInjury.weeksRemaining)}) and cannot start.`,
-        playerId: assigned.id,
-        playerName: assigned.name,
-        injuryDefinitionId: activeInjury.definitionId,
-        injuryName,
-        weeksRemaining: activeInjury.weeksRemaining
-      });
+      seenInjuredPlayers.add(assignedPlayerId);
+      issues.push(this.createInjuryReadinessIssue(assigned, activeInjury));
     }
 
     return {
@@ -719,6 +740,28 @@ export class GameService {
 
   private formatReadinessWeeksRemaining(weeksRemaining: number): string {
     return weeksRemaining === 1 ? '1 week remaining' : `${weeksRemaining} weeks remaining`;
+  }
+
+  private canAssignPlayerToRole(player: Player, role: Role): boolean {
+    return role === Role.RESERVE || isPlayerEligible(player);
+  }
+
+  private createInjuryReadinessIssue(player: Player, activeInjury: InjuryRecord): TeamMatchReadinessIssue {
+    const injuryName = getInjuryDefinition(activeInjury.definitionId)?.name ?? activeInjury.definitionId;
+    const availability = this.formatReadinessWeeksRemaining(activeInjury.weeksRemaining);
+    const message = player.role === Role.BENCH
+      ? `${player.name} is injured (${injuryName}, ${availability}) and cannot be on the bench.`
+      : `${player.name} is injured (${injuryName}, ${availability}) and cannot start.`;
+
+    return {
+      kind: 'injured-starter',
+      message,
+      playerId: player.id,
+      playerName: player.name,
+      injuryDefinitionId: activeInjury.definitionId,
+      injuryName,
+      weeksRemaining: activeInjury.weeksRemaining
+    };
   }
 
   getFormationValidationErrors(team: Team): string[] {
@@ -802,6 +845,12 @@ export class GameService {
         const updatedPlayers = [...teamPlayers];
         const player1Role = updatedPlayers[player1Index].role;
         const player2Role = updatedPlayers[player2Index].role;
+        if (
+          !this.canAssignPlayerToRole(updatedPlayers[player1Index], player2Role)
+          || !this.canAssignPlayerToRole(updatedPlayers[player2Index], player1Role)
+        ) {
+          return team;
+        }
         const updatedAssignments = { ...team.formationAssignments };
         const player1SlotId = this.findAssignedSlotId(updatedAssignments, playerId1);
         const player2SlotId = this.findAssignedSlotId(updatedAssignments, playerId2);

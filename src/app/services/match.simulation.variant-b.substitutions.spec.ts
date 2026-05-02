@@ -14,6 +14,19 @@ type TeamSubstitutionUsage = Record<TeamSide, number>;
 
 interface VariantBSubstitutionInternals {
   rng: { random: () => number };
+  activeMatchShape: unknown;
+  pendingInjuryReplacements: Record<TeamSide, string[]>;
+  processMinuteSubstitutions: (
+    state: MatchState,
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: { homePlayers: Player[]; awayPlayers: Player[] },
+    substitutionsUsed: TeamSubstitutionUsage,
+  ) => void;
   getDefendingShapeContextForLocation: (
     location: { x: number; y: number },
     currentTeam: TeamSide
@@ -76,6 +89,29 @@ interface VariantBSubstitutionInternals {
     config: SimulationConfig,
     rosters: { homePlayers: Player[]; awayPlayers: Player[] }
   ) => void;
+  selectSubstitutionIncomingPlayer: (
+    teamPlayers: Player[],
+    outgoingPosition: PositionEnum,
+  ) => Player | null;
+  initializeMatchShape: (homeTeam: Team, awayTeam: Team) => unknown;
+  handleInjuryWithdrawal: (
+    teamKey: TeamSide,
+    playerId: string,
+    teamPlayers: Player[],
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
+    state: MatchState,
+  ) => void;
+  tryPendingInjuryReplacement: (
+    teamKey: TeamSide,
+    state: MatchState,
+    tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: { homePlayers: Player[]; awayPlayers: Player[] },
+    substitutionsUsed: TeamSubstitutionUsage,
+  ) => boolean;
 }
 
 interface TestShapeSlot {
@@ -382,6 +418,112 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     expect(state.events.length).toBe(1);
     expect(cappedUsage.home).toBe(5);
+  });
+
+  it('should not pick injured bench players as substitution candidates', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const injuredBenchMid = homePlayers.find(player => player.id === 'home-midb1');
+    if (injuredBenchMid) {
+      injuredBenchMid.injuries = [{
+        definitionId: 'hamstring_pull',
+        totalWeeks: 3,
+        weeksRemaining: 2,
+        sustainedInSeason: 2026,
+        sustainedInWeek: 10
+      }];
+    }
+
+    const incoming = internals.selectSubstitutionIncomingPlayer(
+      homePlayers,
+      PositionEnum.MIDFIELDER
+    );
+
+    expect(incoming?.id).toBe('home-defb1');
+  });
+
+  it('should process multiple queued injury replacements for the same team in order', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-mid1');
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
+    };
+    const substitutionsUsed: TeamSubstitutionUsage = { [TeamSide.HOME]: 0, [TeamSide.AWAY]: 0 };
+
+    internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
+    internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid1', homePlayers, tactics, state);
+    internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid2', homePlayers, tactics, state);
+    internals.pendingInjuryReplacements = {
+      [TeamSide.HOME]: ['home-mid1', 'home-mid2'],
+      [TeamSide.AWAY]: []
+    };
+
+    const replacedAny = internals.tryPendingInjuryReplacement(
+      TeamSide.HOME,
+      state,
+      tactics,
+      homeTeam,
+      awayTeam,
+      61,
+      config,
+      { homePlayers, awayPlayers },
+      substitutionsUsed
+    );
+
+    expect(replacedAny).toBe(true);
+    expect(substitutionsUsed.home).toBe(2);
+    expect(state.events.filter(event => event.type === EventType.SUBSTITUTION).map(event => event.playerIds)).toEqual([
+      ['home-mid1', 'home-midb1'],
+      ['home-mid2', 'home-defb1']
+    ]);
+    expect(internals.pendingInjuryReplacements.home).toEqual([]);
+  });
+
+  it('should prioritize an injury replacement over an ordinary substitution in the same minute', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+    const config = createSimulationConfig();
+    const state = createMatchState(homeTeam.id, 'home-mid1');
+    const fatigue = createFatigueState(homePlayers, awayPlayers, 45);
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
+    };
+    const substitutionsUsed: TeamSubstitutionUsage = { [TeamSide.HOME]: 0, [TeamSide.AWAY]: 0 };
+
+    internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
+    internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid1', homePlayers, tactics, state);
+    internals.pendingInjuryReplacements = {
+      [TeamSide.HOME]: ['home-mid1'],
+      [TeamSide.AWAY]: []
+    };
+
+    setFatigue(fatigue.home, 'home-mid2', 92);
+    setFatigue(fatigue.home, 'home-mid3', 88);
+
+    vi.spyOn(internals.rng, 'random').mockReturnValue(0);
+
+    internals.processMinuteSubstitutions(
+      state,
+      tactics,
+      fatigue,
+      homeTeam,
+      awayTeam,
+      82,
+      config,
+      { homePlayers, awayPlayers },
+      substitutionsUsed
+    );
+
+    expect(substitutionsUsed.home).toBe(1);
+    const homeSubstitutions = state.events
+      .filter((event) => event.type === EventType.SUBSTITUTION)
+      .filter((event) => event.playerIds[0]?.startsWith('home-'))
+      .map((event) => event.playerIds);
+    expect(homeSubstitutions).toEqual([
+      ['home-mid1', 'home-midb1']
+    ]);
+    expect(homePlayers.find((player) => player.id === 'home-mid2')?.role).toBe(Role.STARTER);
   });
 
   it('should not allow a subbed-off player to come back on later', () => {
