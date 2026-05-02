@@ -716,6 +716,7 @@ describe('GameService persistence integration', () => {
     expect(readiness.issues.map(issue => issue.message)).toContain(
       'Ben Hart is injured (Hamstring Pull, 3 weeks remaining) and cannot be on the bench.'
     );
+    expect(readiness.issues.find(issue => issue.playerId === 'player-2')?.kind).toBe('injured-bench');
   });
 
   it('should move starters with dropped slots to reserves when changing formation', async () => {

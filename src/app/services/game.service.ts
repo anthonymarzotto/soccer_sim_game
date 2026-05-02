@@ -35,7 +35,7 @@ interface SimulateMatchWithDetailsResult {
 }
 
 export interface TeamMatchReadinessIssue {
-  kind: 'formation' | 'injured-starter';
+  kind: 'formation' | 'injured-starter' | 'injured-bench';
   message: string;
   playerId?: string;
   playerName?: string;
@@ -749,12 +749,13 @@ export class GameService {
   private createInjuryReadinessIssue(player: Player, activeInjury: InjuryRecord): TeamMatchReadinessIssue {
     const injuryName = getInjuryDefinition(activeInjury.definitionId)?.name ?? activeInjury.definitionId;
     const availability = this.formatReadinessWeeksRemaining(activeInjury.weeksRemaining);
+    const issueKind = player.role === Role.BENCH ? 'injured-bench' : 'injured-starter';
     const message = player.role === Role.BENCH
       ? `${player.name} is injured (${injuryName}, ${availability}) and cannot be on the bench.`
       : `${player.name} is injured (${injuryName}, ${availability}) and cannot start.`;
 
     return {
-      kind: 'injured-starter',
+      kind: issueKind,
       message,
       playerId: player.id,
       playerName: player.name,
@@ -901,8 +902,9 @@ export class GameService {
 
   /**
    * Picks the best available formation + starters/bench for a single team.
-   * Ineligible players (currently injured) are excluded from selection and
-   * keep their existing role (typically RESERVE).
+    * Starts by resetting every player role to `RESERVE`, then assigns starters
+    * and bench from the eligible (non-injured) pool.
+    * Ineligible players are excluded from selection and remain `RESERVE`.
    *
    * Used by the CPU lineup refresher (`dressBestPlayers`) and by the user-team
    * "Quick Fix" entry point (`optimizeUserTeamLineup`).

@@ -164,7 +164,7 @@ describe('WatchGameComponent', () => {
     const component = fixture.componentInstance;
     const gameService = TestBed.inject(GameService) as unknown as {
       league: () => { userTeamId: string; teams: []; schedule: []; currentWeek: number; currentSeasonYear: number } | null;
-      getMatchReadiness: (teamId: string) => { isReady: boolean; issues: { kind: 'formation' | 'injured-starter'; message: string }[] };
+      getMatchReadiness: (teamId: string) => { isReady: boolean; issues: { kind: 'formation' | 'injured-starter' | 'injured-bench'; message: string }[] };
       simulateMatchWithDetails: ReturnType<typeof vi.fn>;
     };
 
