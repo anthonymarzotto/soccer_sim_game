@@ -47,7 +47,8 @@ describe('LeagueAssemblyService', () => {
               }
             ],
             mood: 73,
-            fatigue: 61
+            fatigue: 61,
+            injuries: []
           }
         ],
         playerIds: ['player-1'],

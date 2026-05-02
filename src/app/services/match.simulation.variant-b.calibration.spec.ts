@@ -156,6 +156,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     const report = await runner.run(iterations, variants, async (variant, seed) => {
       const config: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -275,6 +276,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     for (let i = 0; i < iterations; i++) {
       const baselineConfig: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,
@@ -341,6 +343,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     for (let i = 0; i < iterations; i++) {
       const baselineConfig: SimulationConfig = {
         enablePlayByPlay: true,
+        disableInjuries: true,
         enableSpatialTracking: true,
         enableTactics: true,
         enableFatigue: true,

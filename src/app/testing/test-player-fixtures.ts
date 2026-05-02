@@ -68,7 +68,8 @@ export function createTestPlayer(opts: {
     ],
     careerStats: [],
     mood: 100,
-    fatigue: 100
+    fatigue: 100,
+    injuries: []
   };
 }
 

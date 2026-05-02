@@ -119,7 +119,8 @@ export class LeagueAssemblyService {
         seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
         careerStats: player.careerStats,
         mood: player.mood,
-        fatigue: player.fatigue
+        fatigue: player.fatigue,
+        injuries: player.injuries ?? []
       };
     }));
   }
@@ -284,7 +285,8 @@ export class LeagueAssemblyService {
       seasonAttributes,
       careerStats: record.careerStats,
       mood,
-      fatigue
+      fatigue,
+      injuries: record.injuries ?? []
     };
   }
 

@@ -23,6 +23,13 @@ export enum EventType {
   INJURY = 'INJURY',
 }
 
+// Distinguishes contact vs non-contact injury roll sites in the simulation
+// engine. Drives which base chance constant is applied in `tryRollInjury`.
+export enum InjuryRollKind {
+  CONTACT = 'CONTACT',
+  NON_CONTACT = 'NON_CONTACT',
+}
+
 // Position Types
 export enum Position {
   GOALKEEPER = 'GK',

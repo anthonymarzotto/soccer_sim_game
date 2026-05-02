@@ -47,7 +47,12 @@ describe('GameService persistence integration', () => {
     };
   }
 
-  function setup(storedLeague: League | null = null) {
+  function setup(
+    storedLeague: League | null = null,
+    options: {
+      fieldServiceSpy?: Pick<FieldService, 'validateFormationAssignments'>;
+    } = {}
+  ) {
     TestBed.resetTestingModule();
     const hydratedLeague = ensureSeasonSnapshots(storedLeague);
 
@@ -76,6 +81,10 @@ describe('GameService persistence integration', () => {
       getDefaultFormationId: vi.fn().mockReturnValue('formation_4_4_2')
     };
 
+    const fieldServiceSpy = options.fieldServiceSpy ?? {
+      validateFormationAssignments: vi.fn().mockReturnValue({ isValid: true, errors: [] })
+    };
+
     TestBed.configureTestingModule({
       providers: [
         GameService,
@@ -91,13 +100,13 @@ describe('GameService persistence integration', () => {
         { provide: CommentaryService, useValue: {} },
         { provide: StatisticsService, useValue: { generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: {} },
-        { provide: FieldService, useValue: {} },
+        { provide: FieldService, useValue: fieldServiceSpy as FieldService },
         { provide: FormationLibraryService, useValue: formationLibrarySpy as FormationLibraryService }
       ]
     });
 
     const service = TestBed.inject(GameService);
-    return { service, generatorSpy, persistenceSpy, formationLibrarySpy, hasSchemaMismatch };
+    return { service, generatorSpy, persistenceSpy, formationLibrarySpy, fieldServiceSpy, hasSchemaMismatch };
   }
 
   afterEach(() => TestBed.resetTestingModule());
@@ -146,6 +155,92 @@ describe('GameService persistence integration', () => {
         currentSeasonYear: 2026
       })
     );
+    expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
+  });
+
+  it('should persist changed teams when advancing week heals or progresses injuries', async () => {
+    const injuredPlayer = createTestPlayer({ id: 'player-1', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 });
+    injuredPlayer.injuries = [{
+      definitionId: 'hamstring_pull',
+      totalWeeks: 4,
+      weeksRemaining: 2,
+      sustainedInSeason: 2026,
+      sustainedInWeek: 3
+    }];
+
+    const healthyPlayer = createTestPlayer({ id: 'player-2', teamId: 'team-1', role: Role.BENCH, seasonYear: 2026 });
+    const team: Team = {
+      id: 'team-1',
+      name: 'Team One',
+      players: [injuredPlayer, healthyPlayer],
+      playerIds: ['player-1', 'player-2'],
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { gk_1: 'player-1' },
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: ['player-1', 'player-2'],
+        stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }
+      }]
+    };
+
+    const { service, persistenceSpy } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    await service.ensureHydrated();
+
+    service.advanceWeek();
+
+    expect(service.league()?.currentWeek).toBe(5);
+    expect(service.getPlayer('player-1')?.injuries[0]?.weeksRemaining).toBe(1);
+    expect(persistenceSpy.saveTeam).toHaveBeenCalledTimes(1);
+    expect(persistenceSpy.saveTeam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'team-1',
+        players: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'player-1',
+            injuries: expect.arrayContaining([
+              expect.objectContaining({ weeksRemaining: 1 })
+            ])
+          })
+        ])
+      }),
+      2026
+    );
+  });
+
+  it('should not decrement injuries that were sustained during the week that just ended', async () => {
+    const injuredPlayer = createTestPlayer({ id: 'player-1', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 });
+    injuredPlayer.injuries = [{
+      definitionId: 'hamstring_pull',
+      totalWeeks: 1,
+      weeksRemaining: 1,
+      sustainedInSeason: 2026,
+      sustainedInWeek: 4
+    }];
+
+    const team: Team = {
+      id: 'team-1',
+      name: 'Team One',
+      players: [injuredPlayer],
+      playerIds: ['player-1'],
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { gk_1: 'player-1' },
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: ['player-1'],
+        stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }
+      }]
+    };
+
+    const { service, persistenceSpy } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    await service.ensureHydrated();
+
+    service.advanceWeek();
+
+    expect(service.league()?.currentWeek).toBe(5);
+    expect(service.getPlayer('player-1')?.injuries[0]?.weeksRemaining).toBe(1);
+    expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
   });
 
   it('should block mutating league operations while schema mismatch is active', async () => {
@@ -184,6 +279,62 @@ describe('GameService persistence integration', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('should return structured readiness issues for formation and injured starters', async () => {
+    const injuredStarter: Player = {
+      ...createTestPlayer({ id: 'player-1', name: 'Alex Vale', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 }),
+      injuries: [{
+        definitionId: 'hamstring_pull',
+        totalWeeks: 4,
+        weeksRemaining: 3,
+        sustainedInSeason: 2026,
+        sustainedInWeek: 7
+      }]
+    };
+    const benchPlayer = createTestPlayer({ id: 'player-2', name: 'Ben Hart', teamId: 'team-1', role: Role.BENCH, seasonYear: 2026 });
+    const team: Team = {
+      id: 'team-1',
+      name: 'Team One',
+      players: [injuredStarter, benchPlayer],
+      playerIds: ['player-1', 'player-2'],
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { gk_1: 'player-1' },
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: ['player-1', 'player-2'],
+        stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }
+      }]
+    };
+
+    const { service } = setup(
+      { teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026 },
+      {
+        fieldServiceSpy: {
+          validateFormationAssignments: vi.fn().mockReturnValue({
+            isValid: false,
+            errors: ['Missing assignment for ST']
+          })
+        }
+      }
+    );
+    await service.ensureHydrated();
+
+    const readiness = service.getMatchReadiness('team-1');
+
+    expect(readiness.isReady).toBe(false);
+    expect(readiness.issues.map(issue => issue.message)).toEqual([
+      'Missing assignment for ST',
+      'Alex Vale is injured (Hamstring Pull, 3 weeks remaining) and cannot start.'
+    ]);
+    expect(readiness.issues[1]).toMatchObject({
+      kind: 'injured-starter',
+      playerId: 'player-1',
+      injuryDefinitionId: 'hamstring_pull',
+      injuryName: 'Hamstring Pull',
+      weeksRemaining: 3
+    });
   });
 
   it('should mark the season complete and block week simulation once all scheduled matches are played', async () => {
@@ -460,6 +611,112 @@ describe('GameService persistence integration', () => {
 
     expect(updatedTeam.formationAssignments['gk_1']).toBe('');
     expect(movedPlayer?.role).toBe(Role.BENCH);
+  });
+
+  it('should not move an injured starter onto the bench to bypass readiness', async () => {
+    const injuredStarter = createTestPlayer({ id: 'p1', name: 'Player One', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 });
+    injuredStarter.injuries = [{
+      definitionId: 'hamstring_pull',
+      totalWeeks: 4,
+      weeksRemaining: 3,
+      sustainedInSeason: 2026,
+      sustainedInWeek: 1
+    }];
+
+    const benchPlayer = createTestPlayer({ id: 'p2', name: 'Player Two', teamId: 'team-1', role: Role.BENCH, seasonYear: 2026 });
+
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [injuredStarter, benchPlayer],
+          playerIds: ['p1', 'p2'],
+          stats: {
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            last5: [MatchResult.DRAW]
+          },
+          selectedFormationId: 'formation_4_4_2',
+          formationAssignments: {
+            gk_1: 'p1'
+          },
+          seasonSnapshots: [{
+            seasonYear: 2026,
+            playerIds: ['p1', 'p2'],
+            stats: {
+              played: 0,
+              won: 0,
+              drawn: 0,
+              lost: 0,
+              goalsFor: 0,
+              goalsAgainst: 0,
+              points: 0,
+              last5: [MatchResult.DRAW]
+            }
+          }]
+        }
+      ],
+      schedule: [],
+      currentWeek: 1, currentSeasonYear: 2026 };
+
+    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    await service.ensureHydrated();
+
+    service.movePlayerToBench('team-1', 'p1');
+
+    const updatedTeam = service.getTeam('team-1') as Team;
+    const injuredPlayer = service.getPlayersForTeam('team-1').find(player => player.id === 'p1');
+    const readiness = service.getMatchReadiness('team-1');
+
+    expect(updatedTeam.formationAssignments['gk_1']).toBe('p1');
+    expect(injuredPlayer?.role).toBe(Role.STARTER);
+    expect(readiness.issues.map(issue => issue.message)).toContain(
+      'Player One is injured (Hamstring Pull, 3 weeks remaining) and cannot start.'
+    );
+  });
+
+  it('should report injured bench players as match-readiness issues', async () => {
+    const healthyStarter = createTestPlayer({ id: 'player-1', name: 'Alex Vale', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 });
+    const injuredBench = createTestPlayer({ id: 'player-2', name: 'Ben Hart', teamId: 'team-1', role: Role.BENCH, seasonYear: 2026 });
+    injuredBench.injuries = [{
+      definitionId: 'hamstring_pull',
+      totalWeeks: 4,
+      weeksRemaining: 3,
+      sustainedInSeason: 2026,
+      sustainedInWeek: 7
+    }];
+
+    const team: Team = {
+      id: 'team-1',
+      name: 'Team One',
+      players: [healthyStarter, injuredBench],
+      playerIds: ['player-1', 'player-2'],
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: { gk_1: 'player-1' },
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      seasonSnapshots: [{
+        seasonYear: 2026,
+        playerIds: ['player-1', 'player-2'],
+        stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }
+      }]
+    };
+
+    const { service } = setup({ teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026 });
+    await service.ensureHydrated();
+
+    const readiness = service.getMatchReadiness('team-1');
+
+    expect(readiness.isReady).toBe(false);
+    expect(readiness.issues.map(issue => issue.message)).toContain(
+      'Ben Hart is injured (Hamstring Pull, 3 weeks remaining) and cannot be on the bench.'
+    );
+    expect(readiness.issues.find(issue => issue.playerId === 'player-2')?.kind).toBe('injured-bench');
   });
 
   it('should move starters with dropped slots to reserves when changing formation', async () => {
@@ -1486,6 +1743,7 @@ describe('GameService simulation engine', () => {
               currentWeek: 1,
               currentSeasonYear: 2026
             }),
+            saveTeam: vi.fn().mockResolvedValue(undefined),
             saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
             saveMatchResult: vi.fn().mockResolvedValue(undefined)
           }
@@ -1541,6 +1799,7 @@ describe('GameService simulation engine', () => {
               currentWeek: 1,
               currentSeasonYear: 2026
             }),
+            saveTeam: vi.fn().mockResolvedValue(undefined),
             saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
             saveMatchResult: vi.fn().mockResolvedValue(undefined)
           }
@@ -1965,6 +2224,75 @@ describe('GameService dressBestPlayers', () => {
     expect(result.selectedFormationId).toBe('formation_4_4_2');
     expect(result.formationAssignments['att_l']).toBe('fwd1');
     expect(result.formationAssignments['att_r']).toBe('fwd2');
+  });
+
+  it('backfills open bench spots with available reserves when position injuries leave gaps', () => {
+    // Team has the minimum viable 4-4-2 squad, but both bench-eligible midfielders
+    // are injured. The 2 extra defenders (who would otherwise sit in Reserves) should
+    // be promoted to fill those open bench spots.
+    const formation442 = {
+      id: 'formation_4_4_2',
+      name: '4-4-2',
+      shortCode: '4-4-2',
+      isUserDefined: false,
+      createdAt: 0,
+      slots: [
+        { slotId: 'gk_1',   preferredPosition: Position.GOALKEEPER, label: 'GK',  coordinates: { x: 50, y: 5  }, zone: FieldZone.DEFENSE  },
+        { slotId: 'def_l',  preferredPosition: Position.DEFENDER,   label: 'LB',  coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE  },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER,   label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE  },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER,   label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE  },
+        { slotId: 'def_r',  preferredPosition: Position.DEFENDER,   label: 'RB',  coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE  },
+        { slotId: 'mid_l',  preferredPosition: Position.MIDFIELDER, label: 'LM',  coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_r',  preferredPosition: Position.MIDFIELDER, label: 'RM',  coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l',  preferredPosition: Position.FORWARD,    label: 'LS',  coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK   },
+        { slotId: 'att_r',  preferredPosition: Position.FORWARD,    label: 'RS',  coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK   },
+      ]
+    };
+
+    const injuredMid = (id: string): Player => ({
+      ...makePlayer(id, Position.MIDFIELDER, 75),
+      injuries: [{ definitionId: 'hamstring_pull', totalWeeks: 3, weeksRemaining: 3, sustainedInSeason: 2026, sustainedInWeek: 1 }]
+    });
+
+    const players = [
+      makePlayer('gk1',   Position.GOALKEEPER, 80),
+      makePlayer('def1',  Position.DEFENDER,   80),
+      makePlayer('def2',  Position.DEFENDER,   80),
+      makePlayer('def3',  Position.DEFENDER,   80),
+      makePlayer('def4',  Position.DEFENDER,   80),
+      // 2 extra healthy defenders that should backfill the bench
+      makePlayer('def5',  Position.DEFENDER,   75),
+      makePlayer('def6',  Position.DEFENDER,   74),
+      makePlayer('mid1',  Position.MIDFIELDER, 80),
+      makePlayer('mid2',  Position.MIDFIELDER, 80),
+      makePlayer('mid3',  Position.MIDFIELDER, 80),
+      makePlayer('mid4',  Position.MIDFIELDER, 80),
+      // 2 bench-eligible midfielders who are injured → leave 2 open bench slots
+      injuredMid('mid5'),
+      injuredMid('mid6'),
+      makePlayer('fwd1',  Position.FORWARD,    80),
+      makePlayer('fwd2',  Position.FORWARD,    80),
+    ];
+
+    const service = buildService([formation442]);
+    const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
+
+    const benchPlayers = result.players.filter(p => p.role === Role.BENCH);
+    const reservePlayers = result.players.filter(p => p.role === Role.RESERVE);
+
+    // The 2 injured midfielders must not be on the bench
+    expect(benchPlayers.map(p => p.id)).not.toContain('mid5');
+    expect(benchPlayers.map(p => p.id)).not.toContain('mid6');
+
+    // def5 and def6 should have backfilled the 2 open bench spots
+    expect(benchPlayers.map(p => p.id)).toContain('def5');
+    expect(benchPlayers.map(p => p.id)).toContain('def6');
+
+    // Injured players should be in reserves
+    expect(reservePlayers.map(p => p.id)).toContain('mid5');
+    expect(reservePlayers.map(p => p.id)).toContain('mid6');
   });
 });
 
