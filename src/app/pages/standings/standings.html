@@ -171,17 +171,18 @@
                                 <div
                                     class="flex items-center justify-center gap-1"
                                 >
-                                    @for (result of stats.last5; track $index) {
+                                    @for (entry of stats.last5; track $index) {
                                     <span
-                                        class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold"
-                                        [class.bg-emerald-500]="result === MatchResult.WIN"
-                                        [class.text-emerald-950]="result === MatchResult.WIN"
-                                        [class.bg-zinc-600]="result === MatchResult.DRAW"
-                                        [class.text-zinc-200]="result === MatchResult.DRAW"
-                                        [class.bg-red-500]="result === MatchResult.LOSS"
-                                        [class.text-red-950]="result === MatchResult.LOSS"
+                                        class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold cursor-default"
+                                        [class.bg-emerald-500]="entry.result === MatchResult.WIN"
+                                        [class.text-emerald-950]="entry.result === MatchResult.WIN"
+                                        [class.bg-zinc-600]="entry.result === MatchResult.DRAW"
+                                        [class.text-zinc-200]="entry.result === MatchResult.DRAW"
+                                        [class.bg-red-500]="entry.result === MatchResult.LOSS"
+                                        [class.text-red-950]="entry.result === MatchResult.LOSS"
+                                        [title]="(entry.isHome ? 'vs ' : '@ ') + entry.opponentName + ' — ' + entry.goalsFor + ' - ' + entry.goalsAgainst"
                                     >
-                                        {{ result }}
+                                        {{ entry.result }}
                                     </span>
                                     } @if (stats.last5.length === 0) {
                                     <span class="text-zinc-600 text-xs">-</span>
