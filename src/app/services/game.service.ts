@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { GeneratorService } from './generator.service';
@@ -1340,7 +1340,7 @@ export class GameService {
           drawn: snapshot.stats.drawn + (matchState.homeScore === matchState.awayScore ? 1 : 0),
           lost: snapshot.stats.lost + (matchState.homeScore < matchState.awayScore ? 1 : 0),
           points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, true),
-          last5: this.updateLast5Array(snapshot.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, true))
+          last5: this.updateLast5Array(snapshot.stats.last5, this.buildRecentMatchResult(matchState.homeScore, matchState.awayScore, true, awayTeam.name))
         };
 
         return {
@@ -1366,7 +1366,7 @@ export class GameService {
           drawn: snapshot.stats.drawn + (matchState.awayScore === matchState.homeScore ? 1 : 0),
           lost: snapshot.stats.lost + (matchState.awayScore < matchState.homeScore ? 1 : 0),
           points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, false),
-          last5: this.updateLast5Array(snapshot.stats.last5, this.getResult(matchState.homeScore, matchState.awayScore, false))
+          last5: this.updateLast5Array(snapshot.stats.last5, this.buildRecentMatchResult(matchState.homeScore, matchState.awayScore, false, homeTeam.name))
         };
 
         return {
@@ -1727,8 +1727,23 @@ export class GameService {
     }
   }
 
-  private updateLast5Array(last5: MatchResult[], result: MatchResult): MatchResult[] {
-    const newLast5 = [result, ...last5];
+  private buildRecentMatchResult(
+    homeScore: number,
+    awayScore: number,
+    isHome: boolean,
+    opponentName: string
+  ): RecentMatchResult {
+    return {
+      result: this.getResult(homeScore, awayScore, isHome),
+      opponentName,
+      goalsFor: isHome ? homeScore : awayScore,
+      goalsAgainst: isHome ? awayScore : homeScore,
+      isHome
+    };
+  }
+
+  private updateLast5Array(last5: RecentMatchResult[], entry: RecentMatchResult): RecentMatchResult[] {
+    const newLast5 = [entry, ...last5];
     if (newLast5.length > 5) {
       newLast5.pop();
     }
@@ -1890,7 +1905,7 @@ export class GameService {
     return commentary;
   }
 
-  getTeamForm(teamId: string): MatchResult[] {
+  getTeamForm(teamId: string): RecentMatchResult[] {
     const l = this.leagueState();
     if (!l) return [];
     

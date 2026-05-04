@@ -39,7 +39,7 @@ describe('team-players', () => {
         goalsFor: 0,
         goalsAgainst: 0,
         points: 0,
-        last5: [MatchResult.DRAW]
+        last5: [{ result: MatchResult.DRAW, opponentName: 'Opponent', goalsFor: 0, goalsAgainst: 0, isHome: true }]
       },
       selectedFormationId: 'formation_4_4_2',
       formationAssignments: {},
@@ -54,7 +54,7 @@ describe('team-players', () => {
           goalsFor: 0,
           goalsAgainst: 0,
           points: 0,
-          last5: [MatchResult.DRAW]
+          last5: [{ result: MatchResult.DRAW, opponentName: 'Opponent', goalsFor: 0, goalsAgainst: 0, isHome: true }]
         }
       }]
     };

@@ -60,7 +60,10 @@ describe('LeagueAssemblyService', () => {
           goalsFor: 3,
           goalsAgainst: 1,
           points: 4,
-          last5: [MatchResult.DRAW, MatchResult.WIN]
+          last5: [
+            { result: MatchResult.DRAW, opponentName: 'Opponent A', goalsFor: 1, goalsAgainst: 1, isHome: true },
+            { result: MatchResult.WIN, opponentName: 'Opponent B', goalsFor: 2, goalsAgainst: 0, isHome: false }
+          ]
         },
         selectedFormationId: 'formation_4_4_2',
         formationAssignments: {
@@ -77,7 +80,10 @@ describe('LeagueAssemblyService', () => {
             goalsFor: 3,
             goalsAgainst: 1,
             points: 4,
-            last5: [MatchResult.DRAW, MatchResult.WIN]
+            last5: [
+              { result: MatchResult.DRAW, opponentName: 'Opponent A', goalsFor: 1, goalsAgainst: 1, isHome: true },
+              { result: MatchResult.WIN, opponentName: 'Opponent B', goalsFor: 2, goalsAgainst: 0, isHome: false }
+            ]
           }
         }]
       }

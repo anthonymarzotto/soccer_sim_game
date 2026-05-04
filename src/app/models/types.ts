@@ -104,6 +104,17 @@ export interface PlayerCareerStats {
   starNominations: { first: number; second: number; third: number };
 }
 
+/**
+ * This type represents the recent form of a team based on their last 5 matches.
+ */
+export interface RecentMatchResult {
+  result: MatchResult;
+  opponentName: string;
+  goalsFor: number;
+  goalsAgainst: number;
+  isHome: boolean;
+}
+
 export interface TeamStats {
   played: number;
   won: number;
@@ -112,7 +123,7 @@ export interface TeamStats {
   goalsFor: number;
   goalsAgainst: number;
   points: number;
-  last5: MatchResult[];
+  last5: RecentMatchResult[];
 }
 
 export interface TeamSeasonSnapshot {
