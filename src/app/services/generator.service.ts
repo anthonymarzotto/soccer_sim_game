@@ -101,7 +101,7 @@ export class GeneratorService {
   }
 
   public generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear()): Player {
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = crypto.randomUUID();
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
     const name = `${firstName} ${lastName}`;

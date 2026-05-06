@@ -1939,24 +1939,24 @@ export class GameService {
     const team = l.teams.find(t => t.id === teamId);
     if (!team) return null;
 
-    // Get all matches involving this team
-    const teamMatches = l.schedule.filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId);
+    // Get all matches involving this team that have been played
+    const playedMatches = l.schedule.filter(m => (m.homeTeamId === teamId || m.awayTeamId === teamId) && m.played);
 
     // Calculate advanced statistics
-    const totalMatches = teamMatches.length;
-    const wins = teamMatches.filter(m =>
+    const totalMatches = playedMatches.length;
+    const wins = playedMatches.filter(m =>
       (m.homeTeamId === teamId && m.homeScore! > m.awayScore!) ||
       (m.awayTeamId === teamId && m.awayScore! > m.homeScore!)
     ).length;
 
-    const draws = teamMatches.filter(m => m.homeScore === m.awayScore).length;
+    const draws = playedMatches.filter(m => m.homeScore === m.awayScore).length;
     const losses = totalMatches - wins - draws;
 
-    const goalsFor = teamMatches.reduce((sum, m) =>
+    const goalsFor = playedMatches.reduce((sum, m) =>
       sum + (m.homeTeamId === teamId ? m.homeScore! : m.awayScore!), 0
     );
 
-    const goalsAgainst = teamMatches.reduce((sum, m) =>
+    const goalsAgainst = playedMatches.reduce((sum, m) =>
       sum + (m.homeTeamId === teamId ? m.awayScore! : m.homeScore!), 0
     );
 
