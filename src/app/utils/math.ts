@@ -7,7 +7,7 @@ export interface GaussianParams {
  * Generates a normally distributed random number using the Box-Muller transform.
  */
 export function gaussianRandom({ mean, variance }: GaussianParams): number {
-  const stdev = Math.sqrt(variance);
+  const stdev = Math.sqrt(Math.max(0, variance));
   const u = 1 - Math.random(); // Converting [0,1) to (0,1]
   const v = Math.random();
   const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
