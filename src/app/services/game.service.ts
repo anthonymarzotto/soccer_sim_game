@@ -1,7 +1,10 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
+import { computeAge, seasonAnchorDate } from '../models/player-age';
+import { gaussianRandom, clamp } from '../utils/math';
+import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall } from '../models/player-progression';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
@@ -75,9 +78,9 @@ export class GameService {
     const league = this.leagueState();
     return Boolean(league && league.schedule.length > 0 && league.schedule.every(match => match.played));
   });
-  
+
   public hasLeague = computed(() => this.leagueState() !== null);
-  
+
   public standings = computed(() => {
     const l = this.leagueState();
     if (!l) return [];
@@ -841,7 +844,7 @@ export class GameService {
       const teamPlayers = resolveTeamPlayers(team);
       const player1Index = teamPlayers.findIndex(p => p.id === playerId1);
       const player2Index = teamPlayers.findIndex(p => p.id === playerId2);
-      
+
       if (player1Index !== -1 && player2Index !== -1) {
         const updatedPlayers = [...teamPlayers];
         const player1Role = updatedPlayers[player1Index].role;
@@ -855,7 +858,7 @@ export class GameService {
         const updatedAssignments = { ...team.formationAssignments };
         const player1SlotId = this.findAssignedSlotId(updatedAssignments, playerId1);
         const player2SlotId = this.findAssignedSlotId(updatedAssignments, playerId2);
-        
+
         updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: player2Role };
         updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: player1Role };
 
@@ -867,7 +870,7 @@ export class GameService {
         } else if (player2SlotId) {
           updatedAssignments[player2SlotId] = playerId1;
         }
-        
+
         return {
           ...team,
           players: updatedPlayers,
@@ -925,9 +928,9 @@ export class GameService {
     // Sort players by position + overall descending; these arrays share object refs with `players`
     const byPosition = new Map<Position, Player[]>([
       [Position.GOALKEEPER, players.filter(p => p.position === Position.GOALKEEPER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.DEFENDER,   players.filter(p => p.position === Position.DEFENDER   && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.DEFENDER, players.filter(p => p.position === Position.DEFENDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
       [Position.MIDFIELDER, players.filter(p => p.position === Position.MIDFIELDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.FORWARD,    players.filter(p => p.position === Position.FORWARD    && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.FORWARD, players.filter(p => p.position === Position.FORWARD && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
     ]);
 
     // Evaluate each formation: score = sum of overalls of best-fit starters per slot
@@ -971,23 +974,23 @@ export class GameService {
     if (bestSlotAssignments) {
       formationAssignments = bestSlotAssignments;
     } else {
-      const gks  = byPosition.get(Position.GOALKEEPER) ?? [];
-      const defs = byPosition.get(Position.DEFENDER)   ?? [];
+      const gks = byPosition.get(Position.GOALKEEPER) ?? [];
+      const defs = byPosition.get(Position.DEFENDER) ?? [];
       const mids = byPosition.get(Position.MIDFIELDER) ?? [];
-      const fwds = byPosition.get(Position.FORWARD)    ?? [];
+      const fwds = byPosition.get(Position.FORWARD) ?? [];
 
       formationAssignments = {
-        gk_1:   gks[0]?.id  ?? '',
-        def_l:  defs[0]?.id ?? '',
+        gk_1: gks[0]?.id ?? '',
+        def_l: defs[0]?.id ?? '',
         def_lc: defs[1]?.id ?? '',
         def_rc: defs[2]?.id ?? '',
-        def_r:  defs[3]?.id ?? '',
-        mid_l:  mids[0]?.id ?? '',
+        def_r: defs[3]?.id ?? '',
+        mid_l: mids[0]?.id ?? '',
         mid_lc: mids[1]?.id ?? '',
         mid_rc: mids[2]?.id ?? '',
-        mid_r:  mids[3]?.id ?? '',
-        att_l:  fwds[0]?.id ?? '',
-        att_r:  fwds[1]?.id ?? '',
+        mid_r: mids[3]?.id ?? '',
+        att_l: fwds[0]?.id ?? '',
+        att_r: fwds[1]?.id ?? '',
       };
     }
 
@@ -998,10 +1001,10 @@ export class GameService {
     }
 
     // Mark bench: next best available players per position not already starting
-    const benchGks  = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
-    const benchDefs = (byPosition.get(Position.DEFENDER)   ?? []).filter(p => !starterIds.has(p.id));
+    const benchGks = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
+    const benchDefs = (byPosition.get(Position.DEFENDER) ?? []).filter(p => !starterIds.has(p.id));
     const benchMids = (byPosition.get(Position.MIDFIELDER) ?? []).filter(p => !starterIds.has(p.id));
-    const benchFwds = (byPosition.get(Position.FORWARD)    ?? []).filter(p => !starterIds.has(p.id));
+    const benchFwds = (byPosition.get(Position.FORWARD) ?? []).filter(p => !starterIds.has(p.id));
 
     if (benchGks.length > 0) benchGks[0].role = Role.BENCH;
     for (let i = 0; i < Math.min(2, benchDefs.length); i++) benchDefs[i].role = Role.BENCH;
@@ -1274,19 +1277,19 @@ export class GameService {
     const endedByForfeit = (this.matchSimulationVariantBService as unknown as {
       didLastSimulationEndByForfeit?: () => boolean;
     }).didLastSimulationEndByForfeit?.() ?? false;
-    
+
     // Generate statistics
     const matchStats = this.statisticsService.generateMatchStatistics(matchState, preparedHomeTeam, preparedAwayTeam);
 
     // Generate post-match analysis
     const matchReport = this.postMatchAnalysisService.generateMatchReport(matchState, preparedHomeTeam, preparedAwayTeam);
-    
+
     // Extract key events from match state
     const keyEvents = this.extractKeyEvents(matchState.events);
-    
+
     // Update league state with results
     this.updateLeagueWithMatchResult(match, matchState, preparedHomeTeam, preparedAwayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
-    
+
     return {
       matchState,
       matchStats,
@@ -1310,18 +1313,18 @@ export class GameService {
     if (!l) return;
 
     // Update match in schedule
-    const updatedSchedule = l.schedule.map(m => 
-      m.id === match.id 
-        ? { 
-            ...m, 
+    const updatedSchedule = l.schedule.map(m =>
+      m.id === match.id
+        ? {
+          ...m,
           seasonYear: m.seasonYear ?? l.currentSeasonYear,
-            homeScore: matchState.homeScore, 
-            awayScore: matchState.awayScore, 
-            played: true,
-            keyEvents,
-            matchStats,
-            matchReport
-          }
+          homeScore: matchState.homeScore,
+          awayScore: matchState.awayScore,
+          played: true,
+          keyEvents,
+          matchStats,
+          matchReport
+        }
         : m
     );
 
@@ -1420,13 +1423,13 @@ export class GameService {
   private getOrCreateCurrentSeasonStats(player: Player, teamId: string): PlayerCareerStats {
     const currentSeasonYear = this.getCurrentLeagueSeasonYear();
     let statsEntry = player.careerStats.find(stats => stats.seasonYear === currentSeasonYear);
-    
+
     if (!statsEntry) {
       // Create new entry for current season using factory
       statsEntry = createEmptyPlayerCareerStats(currentSeasonYear, teamId);
       player.careerStats.push(statsEntry);
     }
-    
+
     return statsEntry;
   }
 
@@ -1769,34 +1772,7 @@ export class GameService {
       };
 
       const seededPlayers = resolveTeamPlayers(team).map(player => {
-        const currentAttributes = this.getCurrentSeasonPlayerAttributes(player);
-        const seededSeasonAttributes: PlayerSeasonAttributes = {
-          ...currentAttributes,
-          seasonYear: nextSeasonYear,
-          speed: { ...currentAttributes.speed },
-          strength: { ...currentAttributes.strength },
-          endurance: { ...currentAttributes.endurance },
-          flair: { ...currentAttributes.flair },
-          vision: { ...currentAttributes.vision },
-          determination: { ...currentAttributes.determination },
-          tackling: { ...currentAttributes.tackling },
-          shooting: { ...currentAttributes.shooting },
-          heading: { ...currentAttributes.heading },
-          longPassing: { ...currentAttributes.longPassing },
-          shortPassing: { ...currentAttributes.shortPassing },
-          handling: { ...currentAttributes.handling },
-          reflexes: { ...currentAttributes.reflexes },
-          commandOfArea: { ...currentAttributes.commandOfArea },
-          clutch: { ...currentAttributes.clutch },
-          composure: { ...currentAttributes.composure },
-          morale: { ...currentAttributes.morale },
-          consistency: { ...currentAttributes.consistency },
-          aggressiveness: { ...currentAttributes.aggressiveness },
-          fitness: { ...currentAttributes.fitness },
-          luck: { ...currentAttributes.luck },
-          injuryRate: { ...currentAttributes.injuryRate },
-          overall: { ...currentAttributes.overall }
-        };
+        const seededSeasonAttributes = this.generateNextSeasonAttributes(player, nextSeasonYear);
 
         const hasSeededAttributes = (player.seasonAttributes ?? []).some(attributes => attributes.seasonYear === nextSeasonYear);
         const nextCareerStatsExists = player.careerStats.some(stats => stats.seasonYear === nextSeasonYear);
@@ -1843,6 +1819,48 @@ export class GameService {
     return true;
   }
 
+  public generateNextSeasonAttributes(player: Player, nextSeasonYear: number): PlayerSeasonAttributes {
+    const currentAttrs = this.getCurrentSeasonPlayerAttributes(player);
+    const newAttrs: PlayerSeasonAttributes = JSON.parse(JSON.stringify(currentAttrs));
+    newAttrs.seasonYear = nextSeasonYear;
+
+    if (!player.progression) {
+      return newAttrs; // Fallback for legacy players without progression data
+    }
+
+    const currentAge = computeAge(player.personal.birthday, seasonAnchorDate(nextSeasonYear));
+    const phase = derivePhase(currentAge, player);
+    const headroom = Math.max(0, player.progression.potential - currentAttrs.overall.value);
+
+    const outcomeRoll = gaussianRandom({
+      mean: player.progression.professionalism / 100,
+      variance: 1 - (player.progression.temperament / 100)
+    });
+
+    for (const group of ['physical', 'skill', 'goalkeeping', 'mental']) {
+      const growthWeight = phaseGrowthWeight(group, phase);
+      const decayWeight = phaseDecayWeight(group, phase);
+
+      for (const key of getStatKeysForCategory(group)) {
+        if (Math.random() < 0.60) {
+          // Base math resolves to small decimals (0.0 to 1.0); apply a multiplier to get meaningful stat points.
+          const STAT_CHANGE_MULTIPLIER = 20;
+          const growth = outcomeRoll * growthWeight * Math.sqrt(headroom / 100) * STAT_CHANGE_MULTIPLIER;
+          const decay = decayWeight * Math.random() * STAT_CHANGE_MULTIPLIER;
+          const delta = growth - decay;
+
+          const statKey = key as StatKey;
+          if (newAttrs[statKey] && typeof newAttrs[statKey] === 'object' && 'value' in newAttrs[statKey]) {
+            newAttrs[statKey].value = clamp(currentAttrs[statKey].value + Math.round(delta), 1, 100);
+          }
+        }
+      }
+    }
+
+    newAttrs.overall.value = calculateOverall(newAttrs, player.position);
+    return newAttrs;
+  }
+
   private pruneScheduleBySeasonBuckets(schedule: Match[], cap: number, fallbackSeasonYear: number): Match[] {
     if (schedule.length <= cap) {
       return schedule;
@@ -1874,13 +1892,13 @@ export class GameService {
     const commentary: string[] = [];
     const homePlayers = resolveTeamPlayers(homeTeam);
     const awayPlayers = resolveTeamPlayers(awayTeam);
-    
+
     // Starting XI
     commentary.push(...this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam, {
       homePlayers,
       awayPlayers
     }));
-    
+
     // Key events
     matchState.events.forEach((event: PlayByPlayEvent) => {
       const eventCommentary = this.commentaryService.generateEventCommentary(
@@ -1895,20 +1913,20 @@ export class GameService {
       );
       commentary.push(`${event.time}': ${eventCommentary}`);
     });
-    
+
     // Half-time
     commentary.push(this.commentaryService.generateHalfTimeCommentary(matchState.homeScore, matchState.awayScore, matchState.events));
-    
+
     // Full-time
     commentary.push(this.commentaryService.generateFullTimeCommentary(matchState.homeScore, matchState.awayScore, matchState.events));
-    
+
     return commentary;
   }
 
   getTeamForm(teamId: string): RecentMatchResult[] {
     const l = this.leagueState();
     if (!l) return [];
-    
+
     const team = l.teams.find(t => t.id === teamId);
     if (!team) return [];
     return this.getTeamSnapshotForSeason(team, l.currentSeasonYear).stats.last5;
@@ -1917,31 +1935,31 @@ export class GameService {
   getTeamStatistics(teamId: string) {
     const l = this.leagueState();
     if (!l) return null;
-    
+
     const team = l.teams.find(t => t.id === teamId);
     if (!team) return null;
-    
+
     // Get all matches involving this team
     const teamMatches = l.schedule.filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId);
-    
+
     // Calculate advanced statistics
     const totalMatches = teamMatches.length;
-    const wins = teamMatches.filter(m => 
+    const wins = teamMatches.filter(m =>
       (m.homeTeamId === teamId && m.homeScore! > m.awayScore!) ||
       (m.awayTeamId === teamId && m.awayScore! > m.homeScore!)
     ).length;
-    
+
     const draws = teamMatches.filter(m => m.homeScore === m.awayScore).length;
     const losses = totalMatches - wins - draws;
-    
-    const goalsFor = teamMatches.reduce((sum, m) => 
+
+    const goalsFor = teamMatches.reduce((sum, m) =>
       sum + (m.homeTeamId === teamId ? m.homeScore! : m.awayScore!), 0
     );
-    
-    const goalsAgainst = teamMatches.reduce((sum, m) => 
+
+    const goalsAgainst = teamMatches.reduce((sum, m) =>
       sum + (m.homeTeamId === teamId ? m.awayScore! : m.homeScore!), 0
     );
-    
+
     return {
       team,
       matchesPlayed: totalMatches,

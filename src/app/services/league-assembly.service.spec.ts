@@ -48,7 +48,8 @@ describe('LeagueAssemblyService', () => {
             ],
             mood: 73,
             fatigue: 61,
-            injuries: []
+            injuries: [],
+            progression: { potential: 90, professionalism: 50, temperament: 50, juniorEndAge: 22, peakEndAge: 28, seniorEndAge: 32 }
           }
         ],
         playerIds: ['player-1'],

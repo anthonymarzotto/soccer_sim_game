@@ -25,6 +25,15 @@ export type StatKey =
   | 'luck' | 'injuryRate'
   | 'overall';
 
+export interface PlayerProgression {
+  potential: number;         // 1-100, softly caps growth via headroom
+  professionalism: number;   // 1-100, scales outcomes and extends career longevity
+  temperament: number;       // 1-100, low = high variance in development
+  juniorEndAge: number;
+  peakEndAge: number;
+  seniorEndAge: number;
+}
+
 export interface Stat {
   value: number;
   type: StatCategory;
@@ -80,6 +89,7 @@ export interface Player {
   // All injuries, past and present. There is no separate `currentInjury` field.
   // Current availability is derived via `isPlayerEligible(player)` in season-history.
   injuries: InjuryRecord[];
+  progression: PlayerProgression;
 }
 
 export interface PlayerCareerStats {

@@ -82,6 +82,14 @@ export enum MatchPhase {
   COUNTER_ATTACK = 'COUNTER_ATTACK'
 }
 
+// Player Progression Phases
+export enum Phase {
+  Junior = 'JUNIOR',
+  Peak = 'PEAK',
+  Senior = 'SENIOR',
+  Decline = 'DECLINE'
+}
+
 // Match Result Types
 export enum MatchResult {
   WIN = 'W',

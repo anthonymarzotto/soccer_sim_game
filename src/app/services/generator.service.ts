@@ -6,6 +6,8 @@ import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createEmptyTeamStats } from '../models/season-history';
 import { buildStat } from '../models/stat-definitions';
 import { birthdayForAge } from '../models/player-age';
+import { calculateOverall } from '../models/player-progression';
+import { clamp } from '../utils/math';
 
 @Injectable({
   providedIn: 'root'
@@ -98,7 +100,7 @@ export class GeneratorService {
     };
   }
 
-  private generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear()): Player {
+  public generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear()): Player {
     const id = Math.random().toString(36).substring(2, 9);
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
@@ -150,11 +152,29 @@ export class GeneratorService {
       values.flair = this.randomStat(60, 99, teamQuality);
     }
 
-    values.overall = Math.floor((
-      values.speed + values.strength + values.flair + values.vision + values.determination +
-      values.tackling + values.shooting + values.heading + values.longPassing + values.shortPassing +
-      (position === PositionEnum.GOALKEEPER ? values.handling * 2 + values.reflexes * 2 + values.commandOfArea : 0)
-    ) / (position === PositionEnum.GOALKEEPER ? 15 : 10));
+    values.overall = calculateOverall(values, position);
+
+    const potential = clamp(values.overall + Math.floor(Math.random() * (100 - values.overall)) + 1, values.overall + 1, 100);
+    const professionalism = Math.floor(Math.random() * 100) + 1;
+    const temperament = Math.floor(Math.random() * 100) + 1;
+
+    let baseJuniorEnd = 22, basePeakEnd = 28, baseSeniorEnd = 32;
+    if (position === PositionEnum.GOALKEEPER) { baseJuniorEnd = 23; basePeakEnd = 32; baseSeniorEnd = 36; }
+    else if (position === PositionEnum.DEFENDER) { baseJuniorEnd = 22; basePeakEnd = 29; baseSeniorEnd = 33; }
+    else if (position === PositionEnum.FORWARD) { baseJuniorEnd = 21; basePeakEnd = 27; baseSeniorEnd = 32; }
+
+    const juniorEndAge = baseJuniorEnd + clamp(Math.floor((potential - 50) / 10), -3, 3);
+    const peakEndAge   = basePeakEnd   + clamp(Math.floor((professionalism - 50) / 10), -3, 3);
+    const seniorEndAge = baseSeniorEnd + clamp(Math.floor((professionalism - 50) / 20), -3, 3);
+
+    const progression = {
+      potential,
+      professionalism,
+      temperament,
+      juniorEndAge,
+      peakEndAge,
+      seniorEndAge
+    };
 
     const seasonAttributes: PlayerSeasonAttributes = {
       seasonYear: currentSeasonYear,
@@ -194,7 +214,8 @@ export class GeneratorService {
       careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
       mood: 100,
       fatigue: 100,
-      injuries: []
+      injuries: [],
+      progression
     };
   }
 

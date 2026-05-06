@@ -11,6 +11,7 @@ import { WatchGameComponent } from './pages/watch-game/watch-game';
 import { SimulationDebugComponent } from './pages/simulation-debug/simulation-debug';
 import { DesignDocsComponent } from './pages/design-docs/design-docs';
 import { ChangelogComponent } from './pages/changelog/changelog';
+import { DebugPlayerProfileComponent } from './pages/debug-player-profile/debug-player-profile';
 import { GameService } from './services/game.service';
 import { localhostGuardFn } from './services/localhost.guard';
 
@@ -35,6 +36,7 @@ export const routes: Routes = [
   { path: 'schedule', component: ScheduleComponent },
   { path: 'watch/:id', component: WatchGameComponent },
   { path: 'debug/simulation', canActivate: [localhostGuardFn], component: SimulationDebugComponent },
+  { path: 'debug/player-progression', canActivate: [localhostGuardFn], component: DebugPlayerProfileComponent },
   { path: 'design-docs', canActivate: [localhostGuardFn], component: DesignDocsComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'changelog', component: ChangelogComponent },

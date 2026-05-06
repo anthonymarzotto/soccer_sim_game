@@ -117,7 +117,7 @@ function rolloverPlayer(player: Player, nextSeasonYear: number): void {
   const headroom = Math.max(0, player.progression.potential - currentAttrs.overall.value);
   
   const outcomeRoll = gaussianRandom({
-    mean: phaseGrowthChance(phase) * (player.progression.professionalism / 100),
+    mean: player.progression.professionalism / 100,
     variance: 1 - (player.progression.temperament / 100)
   });
 

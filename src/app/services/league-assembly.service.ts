@@ -120,7 +120,8 @@ export class LeagueAssemblyService {
         careerStats: player.careerStats,
         mood: player.mood,
         fatigue: player.fatigue,
-        injuries: player.injuries ?? []
+        injuries: player.injuries ?? [],
+        progression: player.progression
       };
     }));
   }
@@ -286,7 +287,8 @@ export class LeagueAssemblyService {
       careerStats: record.careerStats,
       mood,
       fatigue,
-      injuries: record.injuries ?? []
+      injuries: record.injuries ?? [],
+      progression: record.progression
     };
   }
 
