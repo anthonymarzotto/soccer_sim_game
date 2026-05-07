@@ -145,15 +145,27 @@
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('flair')">Flair</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.flair?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffFlair = getStatDiff('flair');
+                  @if (diffFlair) { <span class="text-xs font-mono" [class.text-emerald-500]="diffFlair > 0" [class.text-red-500]="diffFlair < 0">{{ diffFlair > 0 ? '+' : '' }}{{ diffFlair }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.flair?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('vision')">Vision</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.vision?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffVision = getStatDiff('vision');
+                  @if (diffVision) { <span class="text-xs font-mono" [class.text-emerald-500]="diffVision > 0" [class.text-red-500]="diffVision < 0">{{ diffVision > 0 ? '+' : '' }}{{ diffVision }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.vision?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('determination')">Determination</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.determination?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffDet = getStatDiff('determination');
+                  @if (diffDet) { <span class="text-xs font-mono" [class.text-emerald-500]="diffDet > 0" [class.text-red-500]="diffDet < 0">{{ diffDet > 0 ? '+' : '' }}{{ diffDet }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.determination?.value }}</span>
+                </div>
               </div>
             </div>
           } @else {
@@ -240,15 +252,27 @@
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('speed')">Speed</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.speed?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffSpeed = getStatDiff('speed');
+                  @if (diffSpeed) { <span class="text-xs font-mono" [class.text-emerald-500]="diffSpeed > 0" [class.text-red-500]="diffSpeed < 0">{{ diffSpeed > 0 ? '+' : '' }}{{ diffSpeed }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.speed?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('strength')">Strength</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.strength?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffStrength = getStatDiff('strength');
+                  @if (diffStrength) { <span class="text-xs font-mono" [class.text-emerald-500]="diffStrength > 0" [class.text-red-500]="diffStrength < 0">{{ diffStrength > 0 ? '+' : '' }}{{ diffStrength }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.strength?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('endurance')">Endurance</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.endurance?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffEndurance = getStatDiff('endurance');
+                  @if (diffEndurance) { <span class="text-xs font-mono" [class.text-emerald-500]="diffEndurance > 0" [class.text-red-500]="diffEndurance < 0">{{ diffEndurance > 0 ? '+' : '' }}{{ diffEndurance }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.endurance?.value }}</span>
+                </div>
               </div>
             </div>
           } @else {
@@ -335,23 +359,43 @@
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('tackling')">Tackling</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.tackling?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffTackling = getStatDiff('tackling');
+                  @if (diffTackling) { <span class="text-xs font-mono" [class.text-emerald-500]="diffTackling > 0" [class.text-red-500]="diffTackling < 0">{{ diffTackling > 0 ? '+' : '' }}{{ diffTackling }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.tackling?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('shooting')">Shooting</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.shooting?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffShooting = getStatDiff('shooting');
+                  @if (diffShooting) { <span class="text-xs font-mono" [class.text-emerald-500]="diffShooting > 0" [class.text-red-500]="diffShooting < 0">{{ diffShooting > 0 ? '+' : '' }}{{ diffShooting }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.shooting?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('heading')">Heading</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.heading?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffHeading = getStatDiff('heading');
+                  @if (diffHeading) { <span class="text-xs font-mono" [class.text-emerald-500]="diffHeading > 0" [class.text-red-500]="diffHeading < 0">{{ diffHeading > 0 ? '+' : '' }}{{ diffHeading }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.heading?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('longPassing')">Long Passing</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.longPassing?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffLongP = getStatDiff('longPassing');
+                  @if (diffLongP) { <span class="text-xs font-mono" [class.text-emerald-500]="diffLongP > 0" [class.text-red-500]="diffLongP < 0">{{ diffLongP > 0 ? '+' : '' }}{{ diffLongP }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.longPassing?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('shortPassing')">Short Passing</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.shortPassing?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffShortP = getStatDiff('shortPassing');
+                  @if (diffShortP) { <span class="text-xs font-mono" [class.text-emerald-500]="diffShortP > 0" [class.text-red-500]="diffShortP < 0">{{ diffShortP > 0 ? '+' : '' }}{{ diffShortP }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.shortPassing?.value }}</span>
+                </div>
               </div>
             </div>
           } @else {
@@ -438,15 +482,27 @@
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('handling')">Handling</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.handling?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffHandling = getStatDiff('handling');
+                  @if (diffHandling) { <span class="text-xs font-mono" [class.text-emerald-500]="diffHandling > 0" [class.text-red-500]="diffHandling < 0">{{ diffHandling > 0 ? '+' : '' }}{{ diffHandling }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.handling?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('reflexes')">Reflexes</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.reflexes?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffReflexes = getStatDiff('reflexes');
+                  @if (diffReflexes) { <span class="text-xs font-mono" [class.text-emerald-500]="diffReflexes > 0" [class.text-red-500]="diffReflexes < 0">{{ diffReflexes > 0 ? '+' : '' }}{{ diffReflexes }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.reflexes?.value }}</span>
+                </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
                 <span class="text-zinc-400 text-sm" [title]="getStatDescription('commandOfArea')">Cmd. of Area</span>
-                <span class="font-mono text-sm font-semibold">{{ attrs?.commandOfArea?.value }}</span>
+                <div class="flex items-center gap-2">
+                  @let diffCmd = getStatDiff('commandOfArea');
+                  @if (diffCmd) { <span class="text-xs font-mono" [class.text-emerald-500]="diffCmd > 0" [class.text-red-500]="diffCmd < 0">{{ diffCmd > 0 ? '+' : '' }}{{ diffCmd }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.commandOfArea?.value }}</span>
+                </div>
               </div>
             </div>
           } @else {
@@ -589,6 +645,48 @@
                      [style.width.%]="attrs?.injuryRate?.value ?? 50"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.injuryRate?.value ?? 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            Progression
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-32">Potential</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-500 rounded-full" [style.width.%]="p?.progression?.potential"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.potential }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-32">Professionalism</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="p?.progression?.professionalism"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.professionalism }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-32">Temperament</span>
+              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-purple-500 rounded-full" [style.width.%]="p?.progression?.temperament"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.temperament }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-32">Junior End Age</span>
+              <span class="font-mono text-sm font-medium ml-auto">{{ p?.progression?.juniorEndAge }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-32">Peak End Age</span>
+              <span class="font-mono text-sm font-medium ml-auto">{{ p?.progression?.peakEndAge }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-zinc-500 w-32">Senior End Age</span>
+              <span class="font-mono text-sm font-medium ml-auto">{{ p?.progression?.seniorEndAge }}</span>
             </div>
           </div>
         </div>
@@ -764,6 +862,66 @@
                           <span class="text-emerald-500/80">Healed</span>
                         }
                       </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <!-- Attributes History Table -->
+        @let attrHistory = getAttributesHistory();
+        @if (attrHistory.length > 0) {
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Attributes History
+            </h2>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800">
+                  <tr>
+                    <th class="py-2 pr-4 font-medium sticky left-0 bg-zinc-900">Season</th>
+                    <th class="py-2 px-2 font-medium text-center text-amber-500">OVR</th>
+                    <!-- Physical -->
+                    <th class="py-2 px-2 font-medium text-center text-emerald-500" title="Speed">SPD</th>
+                    <th class="py-2 px-2 font-medium text-center text-emerald-500" title="Strength">STR</th>
+                    <th class="py-2 px-2 font-medium text-center text-emerald-500" title="Endurance">END</th>
+                    <!-- Technical -->
+                    <th class="py-2 px-2 font-medium text-center text-purple-500" title="Tackling">TAK</th>
+                    <th class="py-2 px-2 font-medium text-center text-purple-500" title="Shooting">SHT</th>
+                    <th class="py-2 px-2 font-medium text-center text-purple-500" title="Heading">HED</th>
+                    <th class="py-2 px-2 font-medium text-center text-purple-500" title="Short Passing">PAS</th>
+                    <!-- Mental -->
+                    <th class="py-2 px-2 font-medium text-center text-blue-500" title="Flair">FLR</th>
+                    <th class="py-2 px-2 font-medium text-center text-blue-500" title="Vision">VIS</th>
+                    <th class="py-2 px-2 font-medium text-center text-blue-500" title="Determination">DET</th>
+                    <!-- Goalkeeping -->
+                    <th class="py-2 px-2 font-medium text-center text-yellow-500" title="Handling">HAN</th>
+                    <th class="py-2 px-2 font-medium text-center text-yellow-500" title="Reflexes">REF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (record of attrHistory; track record.seasonYear) {
+                    <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                      <td class="py-2 pr-4 text-white sticky left-0 bg-zinc-900 group-hover:bg-zinc-800/30 transition-colors">{{ record.seasonYear }}</td>
+                      <td class="py-2 px-2 text-center text-amber-400 font-mono font-bold">{{ record.overall.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.speed.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.strength.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.endurance.value }}</td>
+                      
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.tackling.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.shooting.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.heading.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.shortPassing.value }}</td>
+                      
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.flair.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.vision.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.determination.value }}</td>
+                      
+                      <td class="py-2 px-2 text-center text-zinc-400 font-mono">{{ record.handling.value }}</td>
+                      <td class="py-2 px-2 text-center text-zinc-400 font-mono">{{ record.reflexes.value }}</td>
                     </tr>
                   }
                 </tbody>

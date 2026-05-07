@@ -69,7 +69,15 @@ export function createTestPlayer(opts: {
     careerStats: [],
     mood: 100,
     fatigue: 100,
-    injuries: []
+    injuries: [],
+    progression: {
+      potential: 90,
+      professionalism: 50,
+      temperament: 50,
+      juniorEndAge: 22,
+      peakEndAge: 28,
+      seniorEndAge: 32
+    }
   };
 }
 
@@ -121,6 +129,14 @@ export function createTestPersistedPlayer(opts: {
     seasonAttributes: [{ seasonYear, values }],
     careerStats: opts.careerStats ?? [],
     mood: opts.mood ?? 100,
-    fatigue: opts.fatigue ?? 100
+    fatigue: opts.fatigue ?? 100,
+    progression: {
+      potential: 90,
+      professionalism: 50,
+      temperament: 50,
+      juniorEndAge: 22,
+      peakEndAge: 28,
+      seniorEndAge: 32
+    }
   };
 }

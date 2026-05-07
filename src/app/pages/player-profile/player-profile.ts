@@ -45,6 +45,13 @@ export class PlayerProfileComponent {
     return getCurrentPlayerSeasonAttributes(p, year);
   });
 
+  previousSeasonAttributes = computed<PlayerSeasonAttributes | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || year === undefined) return null;
+    return p.seasonAttributes?.find(s => s.seasonYear === year - 1) || null;
+  });
+
   playerAge = computed<number | null>(() => {
     const p = this.player();
     const year = this.gameService.league()?.currentSeasonYear;
@@ -79,6 +86,21 @@ export class PlayerProfileComponent {
 
   getStatDescription(key: StatKey): string {
     return STAT_DEFINITIONS[key].description;
+  }
+
+  getStatDiff(key: StatKey): number | null {
+    const current = this.currentSeasonAttributes();
+    const prev = this.previousSeasonAttributes();
+    if (!current || !prev) return null;
+    
+    const currentVal = current[key]?.value;
+    const prevVal = prev[key]?.value;
+    
+    if (typeof currentVal === 'number' && typeof prevVal === 'number') {
+      const diff = currentVal - prevVal;
+      return diff !== 0 ? diff : null;
+    }
+    return null;
   }
 
   team = computed(() => {
@@ -367,4 +389,10 @@ export class PlayerProfileComponent {
       y: centerY + radius * Math.sin(angle)
     };
   }
+
+  getAttributesHistory = computed(() => {
+    const player = this.player();
+    if (!player || !player.seasonAttributes) return [];
+    return [...player.seasonAttributes].sort((a, b) => b.seasonYear - a.seasonYear);
+  });
 }

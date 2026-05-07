@@ -43,6 +43,7 @@ export interface PersistedPlayerRecord {
   mood: number;
   fatigue: number;
   injuries: Player['injuries'];
+  progression: Player['progression'];
 }
 
 export type PersistedMatchRecord = Match;
