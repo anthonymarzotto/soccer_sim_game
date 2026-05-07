@@ -285,9 +285,9 @@
 
       <div class="chip-row">
         <div class="chip-card"><strong>23</strong><span>Total stats on <code>PlayerSeasonAttributes</code></span></div>
-        <div class="chip-card"><strong>13</strong><span>Read by match setup or Variant B</span></div>
+        <div class="chip-card"><strong>14</strong><span>Read by match setup or Variant B</span></div>
         <div class="chip-card"><strong>2</strong><span>Indirect via generated <code>overall</code></span></div>
-        <div class="chip-card"><strong>8</strong><span>Unused in the current pipeline</span></div>
+        <div class="chip-card"><strong>7</strong><span>Unused in the current pipeline</span></div>
       </div>
     </section>
 
@@ -448,6 +448,16 @@
                 </ul>
               </td>
               <td>Generated once and never recomputed at rollover. Match ratings then add goals/assists/passes/tackles and subtract fouls/cards.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">injuryRate<small>misc</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Linear scaling factor against per-event injury chance in <code>tryRollInjury</code>. Centered at 50 (the reference rate); higher values raise the player's per-roll chance proportionally.
+                <span class="formula">finalChance = baseChance × (injuryRate / 50) × siteModifier</span>
+                <span class="formula" style="color:#71717a">→ baseChance ≈ 0.0104 (contact) / 0.0017 (non-contact); siteModifier 1.5× foul, 1.25× tackle, 1× pass/carry/shot/save</span>
+              </td>
+              <td>Roll site (FOUL victim &amp; offender, TACKLE winner &amp; loser, PASS / CARRY / GOAL / MISS / SAVE / INTERCEPTION). Player must currently be a starter; one injury per player per match. Skipped entirely when <code>SimulationConfig.disableInjuries</code> is set.</td>
             </tr>
           </tbody>
         </table>
@@ -630,7 +640,6 @@
         <div class="stat-card"><div><span class="stat-name">aggressiveness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
         <div class="stat-card"><div><span class="stat-name">fitness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden physical</div><p style="font-size:0.8rem;color:#52525b;margin-top:4px">In-match fatigue is tracked by the transient <code>PlayerFatigue</code> struct (<code>currentStamina</code>, <code>fatigueLevel</code>, <code>performanceModifier</code>), initialised fresh each match and never persisted. This stored stat is a separate field with no current consumer.</p></div>
         <div class="stat-card"><div><span class="stat-name">luck</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — randomness comes from the simulation RNG</div></div>
-        <div class="stat-card"><div><span class="stat-name">injuryRate</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — no injury simulation yet</div></div>
       </div>
 
       <p class="footnote">
