@@ -1,5 +1,5 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { League, Match, Player, PlayerSeasonAttributes, Team } from '../models/types';
+import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
 import {
   getTeamSeasonSnapshotForYear,
@@ -276,6 +276,17 @@ export class LeagueAssemblyService {
       return null;
     }
 
+    const progression = this.rehydratePlayerProgression(record.progression);
+    if (!progression) {
+      const message =
+        `assembleLeague: invalid progression for player "${record.id}" (${record.name}). ` +
+        `Persisted data is incompatible; reset required.`;
+      if (isDevMode()) {
+        throw new Error(message);
+      }
+      return null;
+    }
+
     return {
       id: record.id,
       name: record.name,
@@ -288,7 +299,7 @@ export class LeagueAssemblyService {
       mood,
       fatigue,
       injuries: record.injuries ?? [],
-      progression: record.progression
+      progression
     };
   }
 
@@ -321,6 +332,41 @@ export class LeagueAssemblyService {
       weight: personal.weight,
       nationality: personal.nationality,
       birthday
+    };
+  }
+
+  private rehydratePlayerProgression(progression: {
+    potential: number;
+    professionalism: number;
+    temperament: number;
+    juniorEndAge: number;
+    peakEndAge: number;
+    seniorEndAge: number;
+  }): PlayerProgression | null {
+    if (!progression) {
+      return null;
+    }
+
+    const isValid = (val: unknown) => typeof val === 'number' && Number.isFinite(val) && (val as number) >= 0;
+
+    if (
+      !isValidStatValue(progression.potential) ||
+      !isValidStatValue(progression.professionalism) ||
+      !isValidStatValue(progression.temperament) ||
+      !isValid(progression.juniorEndAge) ||
+      !isValid(progression.peakEndAge) ||
+      !isValid(progression.seniorEndAge)
+    ) {
+      return null;
+    }
+
+    return {
+      potential: progression.potential,
+      professionalism: progression.professionalism,
+      temperament: progression.temperament,
+      juniorEndAge: progression.juniorEndAge,
+      peakEndAge: progression.peakEndAge,
+      seniorEndAge: progression.seniorEndAge
     };
   }
 

@@ -1820,7 +1820,14 @@ export class GameService {
   }
 
   public generateNextSeasonAttributes(player: Player, nextSeasonYear: number): PlayerSeasonAttributes {
-    const currentAttrs = this.getCurrentSeasonPlayerAttributes(player);
+    // Read from the season immediately preceding the one being generated so that
+    // progressions chain correctly (season N-1 → N → N+1 …).
+    // Fall back to the latest available attrs when the exact prior year is absent
+    // (e.g. first rollover, or a legacy player missing intermediate entries).
+    const priorYear = nextSeasonYear - 1;
+    const currentAttrs =
+      getPlayerSeasonAttributesForYear(player, priorYear) ??
+      this.getCurrentSeasonPlayerAttributes(player);
     const newAttrs: PlayerSeasonAttributes = JSON.parse(JSON.stringify(currentAttrs));
     newAttrs.seasonYear = nextSeasonYear;
 
@@ -1832,10 +1839,17 @@ export class GameService {
     const phase = derivePhase(currentAge, player);
     const headroom = Math.max(0, player.progression.potential - currentAttrs.overall.value);
 
-    const outcomeRoll = gaussianRandom({
-      mean: player.progression.professionalism / 100,
-      variance: 1 - (player.progression.temperament / 100)
-    });
+    // Clamp to [0,1]: a bad professionalism roll should reduce growth, not flip it negative and act as extra decay.
+    const outcomeRoll = clamp(
+      gaussianRandom({
+        mean: player.progression.professionalism / 100,
+        variance: 1 - (player.progression.temperament / 100)
+      }),
+      0, 1
+    );
+
+    // Base math resolves to small decimals (0.0 to 1.0); apply a multiplier to get meaningful stat points.
+    const STAT_CHANGE_MULTIPLIER = 20;
 
     for (const group of ['physical', 'skill', 'goalkeeping', 'mental']) {
       const growthWeight = phaseGrowthWeight(group, phase);
@@ -1843,9 +1857,11 @@ export class GameService {
 
       for (const key of getStatKeysForCategory(group)) {
         if (Math.random() < 0.60) {
-          // Base math resolves to small decimals (0.0 to 1.0); apply a multiplier to get meaningful stat points.
-          const STAT_CHANGE_MULTIPLIER = 20;
-          const growth = outcomeRoll * growthWeight * Math.sqrt(headroom / 100) * STAT_CHANGE_MULTIPLIER;
+          // growthThrottle: 1.0 (full speed) when headroom >= 15, tapering to 0 at potential.
+          // This lets players grow freely when they have room, slowing only near their ceiling.
+          const growthThrottle = Math.min(1, headroom / 15);
+          const growth = outcomeRoll * growthWeight * growthThrottle * STAT_CHANGE_MULTIPLIER;
+          // Decay is governed purely by phase — no headroom adjustment needed.
           const decay = decayWeight * Math.random() * STAT_CHANGE_MULTIPLIER;
           const delta = growth - decay;
 
