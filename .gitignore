@@ -9,6 +9,8 @@
 /tmp
 /out-tsc
 /bazel-out
+/temp-skeleton
+/skeleton.d.ts
 
 # Node
 node_modules/
