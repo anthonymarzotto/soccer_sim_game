@@ -7,7 +7,7 @@ import { FormationLibraryService } from '../../services/formation-library.servic
 import { TeamColorsService } from '../../services/team-colors.service';
 import { CommentaryStyle, Position, Role, TeamSide } from '../../models/enums';
 import { Match, Player, Team } from '../../models/types';
-import { MatchState, SimulationConfig, TickTrace, VariantBMatchShapeSnapshot, VariantBShapeSlotSnapshot } from '../../models/simulation.types';
+import { MatchState, SimulationConfig } from '../../models/simulation.types';
 import { normalizeTeamFormation } from '../../models/team-migration';
 import { resolveTeamPlayers } from '../../models/team-players';
 
