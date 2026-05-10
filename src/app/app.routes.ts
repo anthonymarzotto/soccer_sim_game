@@ -12,6 +12,7 @@ import { SimulationDebugComponent } from './pages/simulation-debug/simulation-de
 import { DesignDocsComponent } from './pages/design-docs/design-docs';
 import { ChangelogComponent } from './pages/changelog/changelog';
 import { DebugPlayerProfileComponent } from './pages/debug-player-profile/debug-player-profile';
+import { NewsComponent } from './pages/news/news';
 import { GameService } from './services/game.service';
 import { localhostGuardFn } from './services/localhost.guard';
 
@@ -40,5 +41,6 @@ export const routes: Routes = [
   { path: 'design-docs', canActivate: [localhostGuardFn], component: DesignDocsComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'changelog', component: ChangelogComponent },
+  { path: 'news', component: NewsComponent },
   { path: '**', redirectTo: '' }
 ];

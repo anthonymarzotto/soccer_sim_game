@@ -1,2 +1,2 @@
-export const GENERATED_APP_VERSION = "0.5.0";
-export const GENERATED_APP_DATA_SCHEMA_VERSION = "H";
+export const GENERATED_APP_VERSION = "0.6.0";
+export const GENERATED_APP_DATA_SCHEMA_VERSION = "I";

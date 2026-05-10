@@ -36,4 +36,6 @@ export class NavigationComponent {
     const league = this.gameService.league();
     return league?.userTeamId;
   });
+
+  unreadSeasonTransitionLog = this.gameService.unreadSeasonTransitionLog;
 }

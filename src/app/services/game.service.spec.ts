@@ -63,7 +63,7 @@ describe('GameService persistence integration', () => {
       generateScheduleForSeason: vi.fn().mockReturnValue([])
     };
 
-    const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult'> = {
+    const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult' | 'loadSeasonTransitionLog' | 'saveSeasonTransitionLog'> = {
       loadLeague: vi.fn().mockResolvedValue(hydratedLeague),
       saveLeague: vi.fn().mockResolvedValue(undefined),
       clearLeague: vi.fn().mockResolvedValue(undefined),
@@ -71,7 +71,9 @@ describe('GameService persistence integration', () => {
       saveTeam: vi.fn().mockResolvedValue(undefined),
       saveTeamDefinition: vi.fn().mockResolvedValue(undefined),
       saveMatch: vi.fn().mockResolvedValue(undefined),
-      saveMatchResult: vi.fn().mockResolvedValue(undefined)
+      saveMatchResult: vi.fn().mockResolvedValue(undefined),
+      loadSeasonTransitionLog: vi.fn().mockResolvedValue(null),
+      saveSeasonTransitionLog: vi.fn().mockResolvedValue(undefined)
     };
 
     const formationLibrarySpy: Pick<FormationLibraryService, 'getFormationSlots' | 'listPredefinedFormations' | 'getAllFormations' | 'getDefaultFormationId'> = {
@@ -387,7 +389,18 @@ describe('GameService persistence integration', () => {
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
-              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
+              careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')],
+              progression: {
+                potential: 85,
+                professionalism: 50,
+                temperament: 50,
+                juniorEndAge: 22,
+                peakEndAge: 28,
+                seniorEndAge: 32
+              },
+              mood: 100,
+              fatigue: 100,
+              injuries: []
             }
           ],
           playerIds: ['p1'],
@@ -1745,7 +1758,8 @@ describe('GameService simulation engine', () => {
             }),
             saveTeam: vi.fn().mockResolvedValue(undefined),
             saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
-            saveMatchResult: vi.fn().mockResolvedValue(undefined)
+            saveMatchResult: vi.fn().mockResolvedValue(undefined),
+            loadSeasonTransitionLog: vi.fn().mockResolvedValue(null)
           }
         },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
@@ -1801,7 +1815,8 @@ describe('GameService simulation engine', () => {
             }),
             saveTeam: vi.fn().mockResolvedValue(undefined),
             saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
-            saveMatchResult: vi.fn().mockResolvedValue(undefined)
+            saveMatchResult: vi.fn().mockResolvedValue(undefined),
+            loadSeasonTransitionLog: vi.fn().mockResolvedValue(null)
           }
         },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
@@ -1848,7 +1863,7 @@ describe('GameService simulation engine', () => {
       providers: [
         GameService,
         { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
-        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null), loadSeasonTransitionLog: vi.fn().mockResolvedValue(null) } },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },

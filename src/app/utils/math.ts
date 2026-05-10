@@ -20,3 +20,13 @@ export function gaussianRandom({ mean, variance }: GaussianParams): number {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+/**
+ * Linearly interpolates between a and b by t.
+ * @param a The start value.
+ * @param b The end value.
+ * @param t The interpolation value between 0 and 1.
+ */
+export function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}

@@ -272,3 +272,21 @@ export interface League {
   currentSeasonYear: number;
   userTeamId?: string;
 }
+
+export type SeasonTransitionEventCategory = 'retirement'; // extensible later
+
+export interface SeasonTransitionEvent {
+  category: SeasonTransitionEventCategory;
+  headline: string;
+  detail: string;
+  teamId: string;
+  playerIds: string[];       // [retireeId, replacementId]
+  isUserTeam: boolean;
+}
+
+export interface SeasonTransitionLog {
+  seasonYear: number;        // the season that just ended
+  events: SeasonTransitionEvent[];
+  isRead: boolean;
+  dismissedTeamIds: string[];  // teams whose events have been dismissed from team-details
+}

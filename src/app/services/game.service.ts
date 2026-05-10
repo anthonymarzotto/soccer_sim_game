@@ -1,9 +1,9 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
-import { computeAge, seasonAnchorDate } from '../models/player-age';
-import { gaussianRandom, clamp } from '../utils/math';
+import { computeAge, seasonAnchorDate, birthdayForAge } from '../models/player-age';
+import { gaussianRandom, clamp, lerp } from '../utils/math';
 import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall } from '../models/player-progression';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
@@ -14,6 +14,7 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { DataSchemaVersionService } from './data-schema-version.service';
+import { RngService } from './rng.service';
 import { normalizeTeamFormation } from '../models/team-migration';
 import { normalizeTeamRoster, resolveTeamPlayers } from '../models/team-players';
 import {
@@ -69,8 +70,13 @@ export class GameService {
   private isSimulatingWeekState = signal(false);
   private singleMatchSimulationSessionCount = signal(0);
   private weekSimulationUnlockTimer: ReturnType<typeof setTimeout> | null = null;
+  private seasonTransitionLogState = signal<SeasonTransitionLog | null>(null);
 
   public league = this.leagueState.asReadonly();
+  public unreadSeasonTransitionLog = computed(() => {
+    const log = this.seasonTransitionLogState();
+    return (log && !log.isRead) ? log : null;
+  });
   public isSimulatingMatchWeek = this.isSimulatingWeekState.asReadonly();
   public isSimulatingSingleMatch = computed(() => this.singleMatchSimulationSessionCount() > 0);
   public isAnySimulationInProgress = computed(() => this.isSimulatingMatchWeek() || this.isSimulatingSingleMatch());
@@ -121,6 +127,7 @@ export class GameService {
 
   private generator = inject(GeneratorService);
   private persistenceService = inject(PersistenceService);
+  private rng = inject(RngService);
   private dataSchemaVersionService = inject(DataSchemaVersionService, { optional: true });
   public isMutatingWritesBlockedBySchemaMismatch = computed(
     () => this.dataSchemaVersionService?.hasPersistedDataSchemaVersionMismatch() ?? false
@@ -145,18 +152,46 @@ export class GameService {
 
   private async hydrateFromPersistence(): Promise<void> {
     try {
-      const league = await this.persistenceService.loadLeague();
+      const [league, log] = await Promise.all([
+        this.persistenceService.loadLeague(),
+        this.persistenceService.loadSeasonTransitionLog()
+      ]);
       if (league) {
         this.leagueState.set({
           ...league,
           teams: this.withSyncedPlayerIdsForTeams(league.teams)
         });
+
+        if (log && log.seasonYear === league.currentSeasonYear - 1) {
+          this.seasonTransitionLogState.set(log);
+        } else if (log) {
+          // Stale log from an older season, discard it
+          void this.persistenceService.saveSeasonTransitionLog({ ...log, isRead: true });
+        }
       }
     } catch (error) {
       console.error('Failed to load league:', error);
     } finally {
       this.isHydrating.set(false);
     }
+  }
+
+  markSeasonTransitionLogRead(): void {
+    const log = this.seasonTransitionLogState();
+    if (log && !log.isRead) {
+      const updatedLog = { ...log, isRead: true };
+      this.seasonTransitionLogState.set(updatedLog);
+      void this.persistenceService.saveSeasonTransitionLog(updatedLog);
+    }
+  }
+
+  dismissTeamTransitionEvents(teamId: string): void {
+    const log = this.seasonTransitionLogState();
+    if (!log) return;
+    const dismissedTeamIds = [...log.dismissedTeamIds, teamId];
+    const updatedLog = { ...log, dismissedTeamIds };
+    this.seasonTransitionLogState.set(updatedLog);
+    void this.persistenceService.saveSeasonTransitionLog(updatedLog);
   }
 
   private persistLeague(league: League): void {
@@ -895,11 +930,11 @@ export class GameService {
     return null;
   }
 
-  private dressBestPlayers(teams: Team[]): Team[] {
+  private dressBestPlayers(teams: Team[], seasonYear?: number): Team[] {
     const userTeamId = this.leagueState()?.userTeamId;
     return teams.map(team => {
       if (team.id === userTeamId) return team; // Skip optimizing the user's team
-      return this.dressTeamLineup(team);
+      return this.dressTeamLineup(team, seasonYear);
     });
   }
 
@@ -912,7 +947,7 @@ export class GameService {
    * Used by the CPU lineup refresher (`dressBestPlayers`) and by the user-team
    * "Quick Fix" entry point (`optimizeUserTeamLineup`).
    */
-  private dressTeamLineup(team: Team): Team {
+  private dressTeamLineup(team: Team, seasonYear?: number): Team {
     const predefinedFormations = this.formationLibrary.listPredefinedFormations();
     const fallbackFormationId = this.formationLibrary.getDefaultFormationId();
 
@@ -920,7 +955,8 @@ export class GameService {
     if (teamPlayers.length === 0) return team;
 
     const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
-    const overallOf = (player: Player) => this.getCurrentSeasonPlayerAttributes(player).overall.value;
+    const resolvedSeasonYear = seasonYear ?? this.getCurrentLeagueSeasonYear();
+    const overallOf = (player: Player) => getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
 
     // Eligibility gate: injured players are not selectable.
     const eligible = (player: Player) => isPlayerEligible(player);
@@ -1753,6 +1789,168 @@ export class GameService {
     return newLast5;
   }
 
+  private assessRetirements(
+    teams: Team[],
+    currentSeasonYear: number,
+    nextSeasonYear: number,
+    userTeamId: string | undefined
+  ): { updatedTeams: Team[], transitionLog: SeasonTransitionLog } {
+    const logEvents: SeasonTransitionEvent[] = [];
+    const updatedTeams = teams.map(team => {
+      const players = resolveTeamPlayers(team);
+      const updatedPlayers: Player[] = [];
+      let teamHasRetirements = false;
+
+      for (const player of players) {
+        const age = computeAge(player.personal.birthday, seasonAnchorDate(nextSeasonYear));
+        const phase = derivePhase(age, player);
+
+        let retire = false;
+        let peakOverall = 0;
+        let currentOverall = 0;
+
+        if (phase === 'JUNIOR' || phase === 'PEAK') {
+          retire = false;
+        } else if (age >= 45) {
+          retire = true;
+        } else {
+          // SENIOR or DECLINE phase
+          let baseRate = 0;
+          if (phase === 'SENIOR') {
+            baseRate = lerp(0.01, 0.06, 1 - (player.progression.professionalism / 100));
+          } else if (phase === 'DECLINE') {
+            const yearsIntoDecline = age - player.progression.seniorEndAge;
+            const declineWindowLength = Math.max(1, 45 - player.progression.seniorEndAge);
+            const t = yearsIntoDecline / declineWindowLength;
+            const professionalismDampener = lerp(1.2, 0.8, player.progression.professionalism / 100);
+            baseRate = clamp(t * 0.75 * professionalismDampener, 0, 0.75);
+          }
+
+          // Injury modifier
+          let recentSevereCount = 0;
+          for (const inj of (player.injuries || [])) {
+            if (inj.sustainedInSeason >= currentSeasonYear - 2) {
+              const def = getInjuryDefinition(inj.definitionId);
+              if (def && (def.severity === 'Serious' || def.severity === 'Severe')) {
+                recentSevereCount++;
+              }
+            }
+          }
+          const isStillInjured = getActiveInjury(player) !== null;
+          const injuryMultiplier = clamp(1.0 + (recentSevereCount * 0.3) + (isStillInjured ? 0.2 : 0), 1.0, 2.0);
+
+          // Overall decline bonus
+          for (const attrs of (player.seasonAttributes || [])) {
+            if (attrs.overall.value > peakOverall) peakOverall = attrs.overall.value;
+            if (attrs.seasonYear === currentSeasonYear) currentOverall = attrs.overall.value;
+          }
+          const declineMagnitude = peakOverall - currentOverall;
+          let overallDeclineBonus = 0;
+          if (declineMagnitude >= 25) overallDeclineBonus = 0.20;
+          else if (declineMagnitude >= 15) overallDeclineBonus = 0.12;
+          else if (declineMagnitude >= 5) overallDeclineBonus = 0.05;
+
+          // Mood/professionalism bonus
+          let moodBonus = 0;
+          if (player.progression.professionalism <= 70 && player.mood < 50) {
+            moodBonus = ((50 - player.mood) / 50) * 0.10;
+          }
+
+          // Career ceiling modifier
+          let careerCeilingBonus = 0;
+          if (phase === 'DECLINE') {
+            if (peakOverall < 55) careerCeilingBonus = 0.15;
+            else if (peakOverall <= 64) careerCeilingBonus = 0.08;
+          }
+
+          const rawChance = (baseRate * injuryMultiplier) + overallDeclineBonus + moodBonus + careerCeilingBonus;
+          let dampened = rawChance;
+          if (currentOverall >= 70) dampened *= 0.5;
+          else if (currentOverall >= 65) dampened *= 0.7;
+
+          const finalChance = clamp(dampened, 0, 0.90);
+          retire = this.rng.random() < finalChance;
+        }
+
+        if (retire) {
+          teamHasRetirements = true;
+          const isUserTeam = team.id === userTeamId;
+          const randomFraction = this.rng.random();
+          const replacementAge = 16 + (randomFraction * 2); // 16 to 18
+          const replacementQuality = 0.8 + (this.rng.random() * 0.6); // 0.8 to 1.4
+          const replacement = this.generator.generatePlayer(
+            team.id,
+            player.position,
+            Role.RESERVE,
+            replacementQuality,
+            nextSeasonYear
+          );
+          replacement.personal.birthday = birthdayForAge(replacementAge, nextSeasonYear, this.rng.random());
+
+          updatedPlayers.push(replacement);
+
+          // Build event — emit for every retirement so team-details and news page have full data
+          logEvents.push({
+            category: 'retirement',
+            headline: `${player.name} Retires`,
+            detail: `${player.name} (${age}) has announced their retirement. ${replacement.name} has been signed as a prospect.`,
+            teamId: team.id,
+            playerIds: [player.id, replacement.id],
+            isUserTeam
+          });
+        } else {
+          updatedPlayers.push(player);
+        }
+      }
+
+      if (!teamHasRetirements) {
+        return team;
+      }
+
+      const updatedTeam = this.withSyncedPlayerIds({
+        ...team,
+        players: updatedPlayers
+      });
+
+      // We must update the last season snapshot (which is for nextSeasonYear)
+      // to reflect the new playerIds.
+      if (updatedTeam.seasonSnapshots && updatedTeam.seasonSnapshots.length > 0) {
+        const snapshots = [...updatedTeam.seasonSnapshots];
+        const lastIndex = snapshots.length - 1;
+        if (snapshots[lastIndex].seasonYear === nextSeasonYear) {
+          snapshots[lastIndex] = {
+            ...snapshots[lastIndex],
+            playerIds: updatedTeam.playerIds
+          };
+          updatedTeam.seasonSnapshots = snapshots;
+        }
+      }
+
+      // We also need to clear formationAssignments for any replaced player
+      // or just re-validate later, but it's safer to clear here.
+      const currentPlayersSet = new Set(updatedTeam.playerIds);
+      const newFormationAssignments = { ...updatedTeam.formationAssignments };
+      for (const [slotId, playerId] of Object.entries(newFormationAssignments)) {
+        if (!currentPlayersSet.has(playerId as string)) {
+          newFormationAssignments[slotId] = '';
+        }
+      }
+      updatedTeam.formationAssignments = newFormationAssignments;
+
+      return updatedTeam;
+    });
+
+    return {
+      updatedTeams,
+      transitionLog: {
+        seasonYear: currentSeasonYear,
+        events: logEvents,
+        isRead: false,
+        dismissedTeamIds: []
+      }
+    };
+  }
+
   startNewSeason(): boolean {
     if (!this.canMutateLeagueState()) return false;
 
@@ -1763,7 +1961,8 @@ export class GameService {
 
     const nextSeasonYear = league.currentSeasonYear + 1;
 
-    const seededTeams = league.teams.map(team => {
+    // Step 1: Prep teams with next season's snapshots
+    const teamsWithNextSnapshot = league.teams.map(team => {
       const currentSnapshot = this.getTeamSnapshotForSeason(team, league.currentSeasonYear);
       const nextSnapshot = {
         seasonYear: nextSeasonYear,
@@ -1771,10 +1970,28 @@ export class GameService {
         stats: createEmptyTeamStats()
       };
 
-      const seededPlayers = resolveTeamPlayers(team).map(player => {
-        const seededSeasonAttributes = this.generateNextSeasonAttributes(player, nextSeasonYear);
+      return this.withSyncedPlayerIds({
+        ...team,
+        stats: nextSnapshot.stats,
+        playerIds: [...nextSnapshot.playerIds],
+        seasonSnapshots: withSortedUniqueSeasons([...(team.seasonSnapshots ?? []), nextSnapshot])
+      });
+    });
 
+    // Step 2: Assess Retirements
+    const { updatedTeams: teamsAfterRetirements, transitionLog } = this.assessRetirements(
+      teamsWithNextSnapshot,
+      league.currentSeasonYear,
+      nextSeasonYear,
+      league.userTeamId
+    );
+
+    // Step 3: Seed next season attributes and career stats
+    const seededTeams = teamsAfterRetirements.map(team => {
+      const seededPlayers = resolveTeamPlayers(team).map(player => {
         const hasSeededAttributes = (player.seasonAttributes ?? []).some(attributes => attributes.seasonYear === nextSeasonYear);
+        const seededSeasonAttributes = hasSeededAttributes ? null : this.generateNextSeasonAttributes(player, nextSeasonYear);
+
         const nextCareerStatsExists = player.careerStats.some(stats => stats.seasonYear === nextSeasonYear);
 
         return {
@@ -1783,7 +2000,7 @@ export class GameService {
           fatigue: 100,
           seasonAttributes: hasSeededAttributes
             ? (player.seasonAttributes ?? [])
-            : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes]),
+            : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes!]),
           careerStats: nextCareerStatsExists
             ? player.careerStats
             : [...player.careerStats, createEmptyPlayerCareerStats(nextSeasonYear, team.id)].sort((left, right) => left.seasonYear - right.seasonYear)
@@ -1792,12 +2009,12 @@ export class GameService {
 
       return this.withSyncedPlayerIds({
         ...team,
-        players: seededPlayers,
-        stats: nextSnapshot.stats,
-        playerIds: [...nextSnapshot.playerIds],
-        seasonSnapshots: withSortedUniqueSeasons([...(team.seasonSnapshots ?? []), nextSnapshot])
+        players: seededPlayers
       });
     });
+
+    this.seasonTransitionLogState.set(transitionLog);
+    void this.persistenceService.saveSeasonTransitionLog(transitionLog);
 
     const nextSeasonSchedule = this.generator.generateScheduleForSeason(seededTeams, nextSeasonYear);
     const retainedSchedule = this.pruneScheduleBySeasonBuckets(
@@ -1808,7 +2025,7 @@ export class GameService {
 
     const updatedLeague: League = {
       ...league,
-      teams: this.dressBestPlayers(seededTeams),
+      teams: this.dressBestPlayers(seededTeams, nextSeasonYear),
       schedule: retainedSchedule,
       currentSeasonYear: nextSeasonYear,
       currentWeek: 1
@@ -1832,7 +2049,7 @@ export class GameService {
     newAttrs.seasonYear = nextSeasonYear;
 
     if (!player.progression) {
-      return newAttrs; // Fallback for legacy players without progression data
+      throw new Error(`Player ${player.id} is missing progression data. Cannot generate attributes.`);
     }
 
     const currentAge = computeAge(player.personal.birthday, seasonAnchorDate(nextSeasonYear));
