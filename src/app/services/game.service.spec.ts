@@ -1912,7 +1912,7 @@ describe('GameService simulation engine', () => {
       providers: [
         GameService,
         { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
-        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null), loadSeasonTransitionLog: vi.fn().mockResolvedValue(null) } },
         { provide: MatchSimulationVariantBService, useValue: variantBSpy },
         { provide: CommentaryService, useValue: commentarySpy },
         { provide: StatisticsService, useValue: statisticsSpy },
@@ -1969,7 +1969,7 @@ describe('GameService dressBestPlayers', () => {
       providers: [
         GameService,
         { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
-        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null) } },
+        { provide: PersistenceService, useValue: { loadLeague: vi.fn().mockResolvedValue(null), loadSeasonTransitionLog: vi.fn().mockResolvedValue(null) } },
         { provide: DataSchemaVersionService, useValue: { hasPersistedDataSchemaVersionMismatch: signal(false).asReadonly() } },
         { provide: MatchSimulationVariantBService, useValue: {} },
         { provide: CommentaryService, useValue: {} },

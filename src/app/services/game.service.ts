@@ -5,6 +5,7 @@ import { rankThreeStars } from '../models/match-stars';
 import { computeAge, seasonAnchorDate, birthdayForAge } from '../models/player-age';
 import { gaussianRandom, clamp, lerp } from '../utils/math';
 import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall } from '../models/player-progression';
+import { Phase } from '../models/enums';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
 import { CommentaryService } from './commentary.service';
@@ -1802,6 +1803,10 @@ export class GameService {
       let teamHasRetirements = false;
 
       for (const player of players) {
+        if (!player.progression) {
+          throw new Error(`Player ${player.id} is missing progression data. Cannot assess retirement.`);
+        }
+
         const age = computeAge(player.personal.birthday, seasonAnchorDate(nextSeasonYear));
         const phase = derivePhase(age, player);
 
@@ -1809,16 +1814,16 @@ export class GameService {
         let peakOverall = 0;
         let currentOverall = 0;
 
-        if (phase === 'JUNIOR' || phase === 'PEAK') {
+        if (phase === Phase.Junior || phase === Phase.Peak) {
           retire = false;
         } else if (age >= 45) {
           retire = true;
         } else {
           // SENIOR or DECLINE phase
           let baseRate = 0;
-          if (phase === 'SENIOR') {
+          if (phase === Phase.Senior) {
             baseRate = lerp(0.01, 0.06, 1 - (player.progression.professionalism / 100));
-          } else if (phase === 'DECLINE') {
+          } else if (phase === Phase.Decline) {
             const yearsIntoDecline = age - player.progression.seniorEndAge;
             const declineWindowLength = Math.max(1, 45 - player.progression.seniorEndAge);
             const t = yearsIntoDecline / declineWindowLength;
@@ -1858,7 +1863,7 @@ export class GameService {
 
           // Career ceiling modifier
           let careerCeilingBonus = 0;
-          if (phase === 'DECLINE') {
+          if (phase === Phase.Decline) {
             if (peakOverall < 55) careerCeilingBonus = 0.15;
             else if (peakOverall <= 64) careerCeilingBonus = 0.08;
           }
