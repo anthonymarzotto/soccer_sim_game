@@ -46,15 +46,21 @@ export function getStatValue(player: Player, seasonYear: number, key: StatKey): 
 }
 
 export function getLatestTeamSeasonSnapshot(team: Team): TeamSeasonSnapshot | null {
-  if (!team.seasonSnapshots?.length) {
+  if (!team.seasonSnapshots) {
     return null;
   }
 
-  return team.seasonSnapshots[team.seasonSnapshots.length - 1] ?? null;
+  const keys = Object.keys(team.seasonSnapshots).map(Number);
+  if (keys.length === 0) {
+    return null;
+  }
+
+  const latestYear = Math.max(...keys);
+  return team.seasonSnapshots[latestYear] ?? null;
 }
 
 export function getTeamSeasonSnapshotForYear(team: Team, seasonYear: number): TeamSeasonSnapshot | null {
-  return (team.seasonSnapshots ?? []).find(snapshot => snapshot.seasonYear === seasonYear) ?? null;
+  return team.seasonSnapshots?.[seasonYear] ?? null;
 }
 
 /**

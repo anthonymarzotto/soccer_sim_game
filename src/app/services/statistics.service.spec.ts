@@ -75,7 +75,7 @@ function makeTeam(starters: Player[], bench: Player[] = [], id = 'team-1'): Team
     selectedFormationId: 'test',
     formationAssignments,
     stats,
-    seasonSnapshots: [{ seasonYear: 2026, playerIds, stats }]
+    seasonSnapshots: { 2026: { seasonYear: 2026, playerIds, stats  } }
   };
 }
 

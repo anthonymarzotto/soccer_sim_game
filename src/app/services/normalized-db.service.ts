@@ -176,14 +176,16 @@ export class NormalizedDbService {
       },
       selectedFormationId: '',
       formationAssignments: {},
-      seasonSnapshots: [{
-        seasonYear,
-        playerIds: players.map(p => p.id),
-        stats: {
-          played: 0, won: 0, drawn: 0, lost: 0,
-          goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+      seasonSnapshots: {
+        [seasonYear]: {
+          seasonYear,
+          playerIds: players.map(p => p.id),
+          stats: {
+            played: 0, won: 0, drawn: 0, lost: 0,
+            goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
+          }
         }
-      }]
+      }
     };
     return this.leagueAssembly.extractPlayers([virtualTeam], seasonYear);
   }

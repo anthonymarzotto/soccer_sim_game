@@ -151,7 +151,7 @@ export interface Team {
   stats: TeamStats;
   selectedFormationId: string;  // References a formation schema ID from FormationLibraryService
   formationAssignments: Record<string, string>;  // slotId -> playerId mapping, validated against selectedFormation
-  seasonSnapshots?: TeamSeasonSnapshot[];
+  seasonSnapshots?: Record<number, TeamSeasonSnapshot>;
 }
 
 export interface Match {
