@@ -527,9 +527,6 @@ export class GameService {
         }
 
         // The match result is already updated in the league state by simulateMatchWithDetails
-        console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
-        console.log('Key Events:', result.matchState.events.length);
-        console.log('Commentary Sample:', result.commentary.slice(0, 3));
       });
 
       // Advance to next week
