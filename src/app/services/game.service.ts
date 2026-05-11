@@ -257,8 +257,15 @@ export class GameService {
     return resolveTeamPlayers(team);
   }
 
+  private teamPlayersCache = new WeakMap<Team, Map<string, Player>>();
+
   getPlayerOnTeam(team: Team, playerId: string): Player | undefined {
-    return resolveTeamPlayers(team).find(player => player.id === playerId);
+    let map = this.teamPlayersCache.get(team);
+    if (!map) {
+      map = new Map(resolveTeamPlayers(team).map(player => [player.id, player]));
+      this.teamPlayersCache.set(team, map);
+    }
+    return map.get(playerId);
   }
 
   getMatchesForWeek(week: number): Match[] {
