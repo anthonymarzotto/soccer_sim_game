@@ -611,11 +611,12 @@ export class GameService {
       );
 
       const nextAssignments = { ...team.formationAssignments };
-      Object.keys(nextAssignments).forEach(key => {
-        if (nextAssignments[key] === playerId) {
+      for (const [key, id] of Object.entries(nextAssignments)) {
+        if (id === playerId) {
           nextAssignments[key] = '';
+          break;
         }
-      });
+      }
       nextAssignments[slotId] = playerId;
 
       return {
