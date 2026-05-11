@@ -106,9 +106,18 @@ export class GameService {
     return new Map((l?.teams ?? []).map(team => [team.id, team]));
   });
 
+  private playerByIdCache = new WeakMap<Team, Player[]>();
+
   private playerById = computed(() => {
     const l = this.leagueState();
-    return new Map((l?.teams ?? []).flatMap(team => resolveTeamPlayers(team).map(player => [player.id, player] as const)));
+    return new Map((l?.teams ?? []).flatMap(team => {
+      let players = this.playerByIdCache.get(team);
+      if (!players) {
+        players = resolveTeamPlayers(team);
+        this.playerByIdCache.set(team, players);
+      }
+      return players.map(player => [player.id, player] as const);
+    }));
   });
 
   private withSyncedPlayerIds(team: Team): Team {
