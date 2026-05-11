@@ -1117,8 +1117,7 @@ export class GameService {
     let sum = 0;
     const players = resolveTeamPlayers(team);
 
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i];
+    for (const player of players) {
       if (player.role === Role.STARTER) {
         sum += this.getCurrentSeasonPlayerAttributes(player).overall.value;
         startersCount++;
