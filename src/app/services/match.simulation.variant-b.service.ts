@@ -59,6 +59,7 @@ interface MatchAction {
   type: EventType;
   player: Player;
   passIntent?: PassIntent;
+  actionWeights?: { pass: number; carry: number; shot: number; foul: number };
 }
 
 const PASS_INTENT = {
@@ -319,6 +320,7 @@ export class MatchSimulationVariantBService {
       currentTeam,
       minute,
     );
+    const eventsBefore = newState.events.length;
     const eventCreated = this.executeVariantBAction(
       newState,
       action,
@@ -354,6 +356,27 @@ export class MatchSimulationVariantBService {
           locationAfterAction,
         ),
       );
+    }
+
+    if (config.debugTickTracing) {
+      const coverage = this.getDefendingShapeContextForLocation(locationBeforeAction, currentTeam);
+
+      const eventDetails = eventsBefore < newState.events.length ? newState.events[newState.events.length - 1] : null;
+
+      newState.tickTraces = newState.tickTraces || [];
+      newState.tickTraces.push({
+        minute,
+        tickIndex: newState.tickTraces.length,
+        ballPossession: { ...newState.ballPossession },
+        actionWeights: action.actionWeights || { pass: 0, carry: 0, shot: 0, foul: 0 },
+        channels: {
+          wideChannel: coverage?.wideChannel ?? false,
+          channelSlots: coverage?.channelSlots.length ?? 0,
+          centralSlots: coverage?.centralSlots.length ?? 0
+        },
+        eventCreated: eventDetails,
+        matchShapeSnapshot: this.createFormationSnapshot() ?? null
+      });
     }
 
     this.updatePossessionStats(newState, rosters.homePlayers);
@@ -660,8 +683,15 @@ export class MatchSimulationVariantBService {
     const totalWeight = passWeight + carryWeight + shotWeight + foulWeight;
     const roll = this.rng.random() * totalWeight;
 
+    const actionWeights = {
+      pass: passWeight,
+      carry: carryWeight,
+      shot: shotWeight,
+      foul: foulWeight
+    };
+
     if (roll < carryWeight) {
-      return { type: EventType.CARRY, player: carrier };
+      return { type: EventType.CARRY, player: carrier, actionWeights };
     }
 
     if (roll < carryWeight + passWeight) {
@@ -676,18 +706,19 @@ export class MatchSimulationVariantBService {
           minute,
           teamFatigue,
         ),
+        actionWeights,
       };
     }
 
     if (roll < carryWeight + passWeight + shotWeight) {
-      return { type: EventType.SHOT, player: carrier };
+      return { type: EventType.SHOT, player: carrier, actionWeights };
     }
 
     if (roll < carryWeight + passWeight + shotWeight + foulWeight) {
-      return { type: EventType.FOUL, player: carrier };
+      return { type: EventType.FOUL, player: carrier, actionWeights };
     }
 
-    return { type: EventType.CARRY, player: carrier };
+    return { type: EventType.CARRY, player: carrier, actionWeights };
   }
 
   private executeVariantBAction(

@@ -9,6 +9,7 @@ import { ScheduleComponent } from './pages/schedule/schedule';
 import { SettingsComponent } from './pages/settings/settings';
 import { WatchGameComponent } from './pages/watch-game/watch-game';
 import { SimulationDebugComponent } from './pages/simulation-debug/simulation-debug';
+import { TickDebugComponent } from './pages/tick-debug/tick-debug';
 import { DesignDocsComponent } from './pages/design-docs/design-docs';
 import { ChangelogComponent } from './pages/changelog/changelog';
 import { DebugPlayerProfileComponent } from './pages/debug-player-profile/debug-player-profile';
@@ -36,6 +37,7 @@ export const routes: Routes = [
   { path: 'schedule', component: ScheduleComponent },
   { path: 'watch/:id', component: WatchGameComponent },
   { path: 'debug/simulation', canActivate: [localhostGuardFn], component: SimulationDebugComponent },
+  { path: 'debug/tick', canActivate: [localhostGuardFn], component: TickDebugComponent },
   { path: 'debug/player-progression', canActivate: [localhostGuardFn], component: DebugPlayerProfileComponent },
   { path: 'design-docs', canActivate: [localhostGuardFn], component: DesignDocsComponent },
   { path: 'settings', component: SettingsComponent },
