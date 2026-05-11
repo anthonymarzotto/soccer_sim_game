@@ -461,9 +461,11 @@ export class GameService {
           m => m.week === league.currentWeek && m.seasonYear === league.currentSeasonYear && !m.played
         );
 
+        const teamsById = new Map(league.teams.map(t => [t.id, t]));
+
         matches.forEach(match => {
-          const homeTeam = league.teams.find(t => t.id === match.homeTeamId);
-          const awayTeam = league.teams.find(t => t.id === match.awayTeamId);
+          const homeTeam = teamsById.get(match.homeTeamId);
+          const awayTeam = teamsById.get(match.awayTeamId);
           if (!homeTeam || !awayTeam) return;
 
           this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
@@ -502,11 +504,13 @@ export class GameService {
     try {
       const matches = l.schedule.filter(m => m.week === l.currentWeek && m.seasonYear === l.currentSeasonYear);
 
+      const teamsById = new Map(l.teams.map(t => [t.id, t]));
+
       matches.forEach(match => {
         if (match.played) return;
 
-        const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
-        const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+        const homeTeam = teamsById.get(match.homeTeamId);
+        const awayTeam = teamsById.get(match.awayTeamId);
 
         if (!homeTeam || !awayTeam) return;
 
