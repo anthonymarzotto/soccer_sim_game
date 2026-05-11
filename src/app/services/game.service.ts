@@ -2061,13 +2061,13 @@ export class GameService {
     const phase = derivePhase(currentAge, player);
     const headroom = Math.max(0, player.progression.potential - currentAttrs.overall.value);
 
-    // Clamp to [0,1]: a bad professionalism roll should reduce growth, not flip it negative and act as extra decay.
+    // Clamp to [-0.5,1]: a bad professionalism/temperament roll can flip growth negative, simulating a bust or severe regression.
     const outcomeRoll = clamp(
       gaussianRandom({
         mean: player.progression.professionalism / 100,
         variance: 1 - (player.progression.temperament / 100)
       }),
-      0, 1
+      -0.5, 1
     );
 
     // Base math resolves to small decimals (0.0 to 1.0); apply a multiplier to get meaningful stat points.
