@@ -1113,10 +1113,19 @@ export class GameService {
   }
 
   public calculateTeamOverall(team: Team): number {
-    const starters = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
-    if (starters.length === 0) return 50;
-    const sum = starters.reduce((acc, player) => acc + this.getCurrentSeasonPlayerAttributes(player).overall.value, 0);
-    return Math.round(sum / starters.length);
+    let startersCount = 0;
+    let sum = 0;
+    const players = resolveTeamPlayers(team);
+
+    for (const player of players) {
+      if (player.role === Role.STARTER) {
+        sum += this.getCurrentSeasonPlayerAttributes(player).overall.value;
+        startersCount++;
+      }
+    }
+
+    if (startersCount === 0) return 50;
+    return Math.round(sum / startersCount);
   }
 
   public getTeamOverall(teamId: string): number {
