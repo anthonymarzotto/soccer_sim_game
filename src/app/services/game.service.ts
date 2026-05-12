@@ -923,11 +923,28 @@ export class GameService {
     const eligible = (player: Player) => isPlayerEligible(player);
 
     // Sort players by position + overall descending; these arrays share object refs with `players`
+    const gk: { p: Player; o: number }[] = [];
+    const def: { p: Player; o: number }[] = [];
+    const mid: { p: Player; o: number }[] = [];
+    const fwd: { p: Player; o: number }[] = [];
+
+    for (const p of players) {
+      if (eligible(p)) {
+        const o = overallOf(p);
+        if (p.position === Position.GOALKEEPER) gk.push({ p, o });
+        else if (p.position === Position.DEFENDER) def.push({ p, o });
+        else if (p.position === Position.MIDFIELDER) mid.push({ p, o });
+        else if (p.position === Position.FORWARD) fwd.push({ p, o });
+      }
+    }
+
+    const sortFn = (a: { o: number }, b: { o: number }) => b.o - a.o;
+
     const byPosition = new Map<Position, Player[]>([
-      [Position.GOALKEEPER, players.filter(p => p.position === Position.GOALKEEPER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.DEFENDER, players.filter(p => p.position === Position.DEFENDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.MIDFIELDER, players.filter(p => p.position === Position.MIDFIELDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.FORWARD, players.filter(p => p.position === Position.FORWARD && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.GOALKEEPER, gk.sort(sortFn).map(x => x.p)],
+      [Position.DEFENDER, def.sort(sortFn).map(x => x.p)],
+      [Position.MIDFIELDER, mid.sort(sortFn).map(x => x.p)],
+      [Position.FORWARD, fwd.sort(sortFn).map(x => x.p)],
     ]);
 
     // Evaluate each formation: score = sum of overalls of best-fit starters per slot
