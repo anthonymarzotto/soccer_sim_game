@@ -462,8 +462,8 @@ export class GameService {
         );
 
         matches.forEach(match => {
-          const homeTeam = league.teams.find(t => t.id === match.homeTeamId);
-          const awayTeam = league.teams.find(t => t.id === match.awayTeamId);
+          const homeTeam = this.teamById().get(match.homeTeamId);
+          const awayTeam = this.teamById().get(match.awayTeamId);
           if (!homeTeam || !awayTeam) return;
 
           this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
@@ -505,8 +505,8 @@ export class GameService {
       matches.forEach(match => {
         if (match.played) return;
 
-        const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
-        const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+        const homeTeam = this.teamById().get(match.homeTeamId);
+        const awayTeam = this.teamById().get(match.awayTeamId);
 
         if (!homeTeam || !awayTeam) return;
 
