@@ -2,29 +2,15 @@ import { isDevMode } from '@angular/core';
 import { Player, Team } from './types';
 import { getLatestTeamSeasonSnapshot } from './season-history';
 
-const warnedInvariantMessages = new Set<string>();
-
-function warnInvariantOnce(team: Team, issues: string[]): void {
-  const message = `Team playerIds mismatch for ${team.name} (${team.id}): ${issues.join('; ')}`;
-  if (warnedInvariantMessages.has(message)) {
-    return;
-  }
-
-  warnedInvariantMessages.add(message);
-  console.warn(message);
-}
-
-function throwOrWarnInvariant(team: Team, issues: string[]): void {
+function checkInvariant(team: Team, issues: string[]): void {
   if (issues.length === 0) {
     return;
   }
 
-  const message = `Team playerIds mismatch for ${team.name} (${team.id}): ${issues.join('; ')}`;
   if (isDevMode()) {
+    const message = `Team playerIds mismatch for ${team.name} (${team.id}): ${issues.join('; ')}`;
     throw new Error(message);
   }
-
-  warnInvariantOnce(team, issues);
 }
 
 export function getTeamPlayerInvariantIssues(team: Team, explicitPlayers?: Player[]): string[] {
@@ -118,6 +104,6 @@ export function normalizeTeamRoster(team: Team, explicitPlayers?: Player[]): Tea
  */
 export function resolveTeamPlayers(team: Team, explicitPlayers?: Player[]): Player[] {
   const issues = getTeamPlayerInvariantIssues(team, explicitPlayers);
-  throwOrWarnInvariant(team, issues);
+  checkInvariant(team, issues);
   return normalizeTeamRoster(team, explicitPlayers).players;
 }
