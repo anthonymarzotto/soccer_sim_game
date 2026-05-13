@@ -65,14 +65,14 @@ export class PlayerProfileComponent {
   });
 
   /**
-   * Returns the player's injury records in reverse chronological order
-   * (most recent first). Includes both healed and active records.
+   * Returns the player's injury records in chronological order
+   * (oldest first). Includes both healed and active records.
    */
   injuryHistory = computed<InjuryRecord[]>(() => {
     const records = this.player()?.injuries ?? [];
     return [...records].sort((a, b) => {
-      const seasonDiff = b.sustainedInSeason - a.sustainedInSeason;
-      return seasonDiff !== 0 ? seasonDiff : b.sustainedInWeek - a.sustainedInWeek;
+      const seasonDiff = a.sustainedInSeason - b.sustainedInSeason;
+      return seasonDiff !== 0 ? seasonDiff : a.sustainedInWeek - b.sustainedInWeek;
     });
   });
 
@@ -92,10 +92,10 @@ export class PlayerProfileComponent {
     const current = this.currentSeasonAttributes();
     const prev = this.previousSeasonAttributes();
     if (!current || !prev) return null;
-    
+
     const currentVal = current[key]?.value;
     const prevVal = prev[key]?.value;
-    
+
     if (typeof currentVal === 'number' && typeof prevVal === 'number') {
       const diff = currentVal - prevVal;
       return diff !== 0 ? diff : null;
@@ -251,7 +251,7 @@ export class PlayerProfileComponent {
     const seasonNum = this.selectedSeason();
     const player = this.player();
     if (!seasonNum || !player) return null;
-    
+
     const careerStatsForSeason = player.careerStats?.find(stats => stats.seasonYear === seasonNum);
     return careerStatsForSeason || null;
   });
@@ -262,7 +262,7 @@ export class PlayerProfileComponent {
     const seasons = this.seasonHistory();
     const league = this.gameService.league();
     const currentYear = league?.currentSeasonYear || 0;
-    
+
     return seasons
       .filter(s => s.seasonYear < currentYear)
       .sort((a, b) => b.seasonYear - a.seasonYear);
@@ -342,48 +342,48 @@ export class PlayerProfileComponent {
   });
 
   // Chart calculation helpers
-  createChartPoints(data: {label: string, value: number}[], size = 120): string {
+  createChartPoints(data: { label: string, value: number }[], size = 120): string {
     if (data.length === 0) return '';
-    
+
     const centerX = size / 2;
     const centerY = size / 2;
     const radius = size / 2 - 10;
     const points: string[] = [];
-    
+
     data.forEach((item, index) => {
       const angle = (index / data.length) * 2 * Math.PI - Math.PI / 2;
       const x = centerX + (radius * (item.value / 100)) * Math.cos(angle);
       const y = centerY + (radius * (item.value / 100)) * Math.sin(angle);
       points.push(`${x},${y}`);
     });
-    
+
     return points.join(' ');
   }
 
-  createAxisPoints(data: {label: string, value: number}[], size = 120): string {
+  createAxisPoints(data: { label: string, value: number }[], size = 120): string {
     if (data.length === 0) return '';
-    
+
     const centerX = size / 2;
     const centerY = size / 2;
     const radius = size / 2 - 10;
     const points: string[] = [];
-    
+
     data.forEach((item, index) => {
       const angle = (index / data.length) * 2 * Math.PI - Math.PI / 2;
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
       points.push(`${x},${y}`);
     });
-    
+
     return points.join(' ');
   }
 
-  getAxisLabelPosition(index: number, data: {label: string, value: number}[], size = 120): { x: number, y: number } {
+  getAxisLabelPosition(index: number, data: { label: string, value: number }[], size = 120): { x: number, y: number } {
     const centerX = size / 2;
     const centerY = size / 2;
     const radius = size / 2 + 15; // Position labels outside the chart
     const angle = (index / data.length) * 2 * Math.PI - Math.PI / 2;
-    
+
     return {
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle)
@@ -393,6 +393,6 @@ export class PlayerProfileComponent {
   getAttributesHistory = computed(() => {
     const player = this.player();
     if (!player || !player.seasonAttributes) return [];
-    return [...player.seasonAttributes].sort((a, b) => b.seasonYear - a.seasonYear);
+    return [...player.seasonAttributes].sort((a, b) => a.seasonYear - b.seasonYear);
   });
 }

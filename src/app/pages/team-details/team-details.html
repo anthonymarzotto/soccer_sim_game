@@ -23,6 +23,36 @@
       </div>
     </div>
 
+    @if (teamTransitionEvents().length > 0) {
+      <div class="rounded-2xl border border-blue-500/30 bg-zinc-900/80 shadow-[0_4px_24px_-4px_rgba(59,130,246,0.15)] overflow-hidden relative">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-400"></div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-blue-300 uppercase tracking-wider flex items-center gap-2">
+              <span class="material-icons text-base text-blue-400">update</span>
+              Season News
+            </h2>
+            <button
+              (click)="dismissTeamNews()"
+              class="text-zinc-400 hover:text-white transition-colors p-1 rounded-full hover:bg-zinc-800 text-xs flex items-center gap-1"
+              title="Dismiss"
+            >
+              <span class="material-icons text-sm">close</span>
+              Dismiss
+            </button>
+          </div>
+          <div class="grid gap-2">
+            @for (event of teamTransitionEvents(); track event.playerIds[0]) {
+              <div class="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                <div class="font-medium text-white text-sm mb-0.5">{{ event.headline }}</div>
+                <div class="text-xs text-zinc-400">{{ event.detail }}</div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
     @if (team()) {
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
         

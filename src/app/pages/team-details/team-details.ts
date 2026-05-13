@@ -36,7 +36,7 @@ export class TeamDetailsComponent {
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private gameService = inject(GameService);
+  gameService = inject(GameService);
   private fieldService = inject(FieldService);
   private formationLibrary = inject(FormationLibraryService);
 
@@ -71,6 +71,20 @@ export class TeamDetailsComponent {
     if (!id) return undefined;
     return this.gameService.getTeam(id);
   });
+
+  teamTransitionEvents = computed(() => {
+    const log = this.gameService.unreadSeasonTransitionLog();
+    const teamId = this.teamId();
+    if (!log || !teamId) return [];
+    const dismissed = new Set(log.dismissedTeamIds);
+    if (dismissed.has(teamId)) return [];
+    return log.events.filter(e => e.teamId === teamId);
+  });
+
+  dismissTeamNews() {
+    const teamId = this.teamId();
+    if (teamId) this.gameService.dismissTeamTransitionEvents(teamId);
+  }
 
   teamOverall = computed(() => {
     const t = this.team();
@@ -184,7 +198,7 @@ export class TeamDetailsComponent {
   }
 
   private positionWeight(pos: string): number {
-    switch(pos) {
+    switch (pos) {
       case this.Position.GOALKEEPER: return 1;
       case this.Position.DEFENDER: return 2;
       case this.Position.MIDFIELDER: return 3;
@@ -235,11 +249,11 @@ export class TeamDetailsComponent {
   onDropOnPlayer(event: DragEvent, targetPlayerId: string) {
     event.preventDefault();
     const draggedId = this.draggedPlayerId();
-    
+
     if (draggedId && draggedId !== targetPlayerId) {
       this.gameService.swapPlayerRoles(draggedId, targetPlayerId);
     }
-    
+
     this.draggedPlayerId.set(null);
     this.dragOverTargetId.set(null);
   }
@@ -345,7 +359,7 @@ export class TeamDetailsComponent {
         rank: standing.rank,
         totalTeams: standing.totalTeams
       };
-    }).sort((a, b) => b.season - a.season);
+    }).sort((a, b) => a.season - b.season);
   });
 
   onFormationChange(formationId: string) {

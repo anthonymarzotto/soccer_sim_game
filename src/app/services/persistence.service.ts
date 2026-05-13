@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { League, Match, Team } from '../models/types';
+import { League, Match, Team, SeasonTransitionLog } from '../models/types';
 import { AppDbService } from './app-db.service';
 import { NormalizedDbService } from './normalized-db.service';
 import { DataSchemaVersionService } from './data-schema-version.service';
@@ -20,6 +20,7 @@ export interface PersistedSettingsRecord {
 
 const SETTINGS_STATE_KEY = 'app-settings';
 const SELECTED_WEEK_KEY = 'schedule-selected-week';
+const SEASON_TRANSITION_LOG_KEY = 'season_transition_log';
 
 @Injectable({
   providedIn: 'root'
@@ -111,5 +112,13 @@ export class PersistenceService {
 
   async clearSelectedWeek(): Promise<void> {
     await this.appDb.deleteState(SELECTED_WEEK_KEY);
+  }
+
+  async loadSeasonTransitionLog(): Promise<SeasonTransitionLog | null> {
+    return this.appDb.getState<SeasonTransitionLog>(SEASON_TRANSITION_LOG_KEY);
+  }
+
+  async saveSeasonTransitionLog(log: SeasonTransitionLog): Promise<void> {
+    await this.doSafeStateWrite(SEASON_TRANSITION_LOG_KEY, log);
   }
 }

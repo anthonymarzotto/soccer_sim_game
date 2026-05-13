@@ -14,7 +14,7 @@ import { clamp } from '../utils/math';
 })
 export class GeneratorService {
   private formationLibrary = inject(FormationLibraryService);
-  
+
   private firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George', 'Edward', 'Ronald', 'Timothy', 'Jason', 'Jeffrey', 'Ryan', 'Jacob', 'Gary', 'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon', 'Benjamin', 'Samuel', 'Gregory', 'Frank', 'Alexander', 'Raymond', 'Patrick', 'Jack', 'Dennis', 'Jerry', 'Tyler', 'Aaron', 'Jose', 'Adam', 'Henry', 'Nathan', 'Douglas', 'Zachary', 'Peter', 'Kyle', 'Walter', 'Ethan', 'Jeremy', 'Harold', 'Keith', 'Christian', 'Roger', 'Noah', 'Gerald', 'Carl', 'Terry', 'Sean', 'Austin', 'Arthur', 'Lawrence', 'Jesse', 'Dylan', 'Bryan', 'Joe', 'Jordan', 'Billy', 'Bruce', 'Albert', 'Willie', 'Gabriel', 'Logan', 'Alan', 'Juan', 'Wayne', 'Ralph', 'Roy', 'Eugene', 'Randy', 'Vincent', 'Russell', 'Louis', 'Philip', 'Bobby', 'Johnny', 'Bradley'];
   private lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts', 'Gomez', 'Phillips', 'Evans', 'Turner', 'Diaz', 'Parker', 'Cruz', 'Edwards', 'Collins', 'Reyes', 'Stewart', 'Morris', 'Morales', 'Murphy', 'Cook', 'Rogers', 'Gutierrez', 'Ortiz', 'Morgan', 'Cooper', 'Peterson', 'Bailey', 'Reed', 'Kelly', 'Howard', 'Ramos', 'Kim', 'Cox', 'Ward', 'Richardson', 'Watson', 'Brooks', 'Chavez', 'Wood', 'James', 'Bennett', 'Gray', 'Mendoza', 'Ruiz', 'Hughes', 'Price', 'Alvarez', 'Castillo', 'Sanders', 'Patel', 'Myers', 'Long', 'Ross', 'Foster', 'Jimenez'];
   private cities = ['London', 'Manchester', 'Liverpool', 'Birmingham', 'Leeds', 'Sheffield', 'Newcastle', 'Bristol', 'Nottingham', 'Leicester', 'Madrid', 'Barcelona', 'Valencia', 'Seville', 'Zaragoza', 'Malaga', 'Murcia', 'Palma', 'Las Palmas', 'Bilbao', 'Rome', 'Milan', 'Naples', 'Turin', 'Palermo', 'Genoa', 'Bologna', 'Florence', 'Bari', 'Catania', 'Berlin', 'Hamburg', 'Munich', 'Cologne', 'Frankfurt', 'Stuttgart', 'Dusseldorf', 'Dortmund', 'Essen', 'Leipzig', 'Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille'];
@@ -40,10 +40,10 @@ export class GeneratorService {
 
   private generateTeam(id: string, name: string, currentSeasonYear: number): Team {
     const players: Player[] = [];
-    
+
     // Team quality multiplier: ranges from 0.6 to 1.4 to create stronger and weaker teams
     const teamQuality = Math.random() * 0.8 + 0.6; // 0.6 to 1.4
-    
+
     // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
     players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
     for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
@@ -100,56 +100,64 @@ export class GeneratorService {
     };
   }
 
-  public generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear()): Player {
+  public generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear(), age?: number): Player {
     const id = crypto.randomUUID();
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
     const name = `${firstName} ${lastName}`;
 
-    const age = Math.floor(Math.random() * 20) + 16; // 16 to 35
-    const birthday = birthdayForAge(age, currentSeasonYear, Math.random());
+    const resolvedAge = age ?? (Math.floor(Math.random() * 20) + 16); // 16 to 35
+    // Youth scaling: base quality ramps from 0.25 at age 16 to 1.0 at age 23.5, then stays flat.
+    // A power-law talent roll (U^3) biases most players toward the base while allowing
+    // rare standouts to approach full quality — creating a natural prodigy spectrum.
+    // Multiplied with teamQuality so stronger teams still produce better prospects.
+    const baseAgeQuality = resolvedAge < 23.5 ? Math.min(1.0, 0.25 + (resolvedAge - 16) * 0.1) : 1.0;
+    const talentRoll = Math.pow(Math.random(), 3); // biased toward 0, rare highs
+    const ageQuality = baseAgeQuality + talentRoll * (1.0 - baseAgeQuality);
+    const effectiveQuality = teamQuality * ageQuality;
+    const birthday = birthdayForAge(resolvedAge, currentSeasonYear, Math.random());
     const height = Math.floor(Math.random() * 30) + 165; // 165cm to 195cm
     const weight = Math.floor(Math.random() * 25) + 65; // 65kg to 90kg
     const nationality = this.nationalities[Math.floor(Math.random() * this.nationalities.length)];
 
     const values: Record<StatKey, number> = {
-      speed: this.randomStat(20, 90, teamQuality),
-      strength: this.randomStat(20, 90, teamQuality),
-      endurance: this.randomStat(20, 90, teamQuality),
-      flair: this.randomStat(20, 90, teamQuality),
-      vision: this.randomStat(20, 90, teamQuality),
-      determination: this.randomStat(20, 90, teamQuality),
-      tackling: this.randomStat(20, 90, teamQuality),
-      shooting: this.randomStat(20, 90, teamQuality),
-      heading: this.randomStat(20, 90, teamQuality),
-      longPassing: this.randomStat(20, 90, teamQuality),
-      shortPassing: this.randomStat(20, 90, teamQuality),
-      handling: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
-      reflexes: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
-      commandOfArea: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, teamQuality) : this.randomStat(1, 40, teamQuality),
-      clutch: this.randomStat(40, 80, teamQuality),
-      composure: this.randomStat(40, 80, teamQuality),
-      morale: this.randomStat(40, 80, teamQuality),
-      consistency: this.randomStat(40, 80, teamQuality),
-      aggressiveness: this.randomStat(40, 80, teamQuality),
-      fitness: this.randomStat(40, 80, teamQuality),
-      luck: this.randomStat(1, 100, teamQuality),
-      injuryRate: this.randomStat(1, 100, teamQuality),
+      speed: this.randomStat(20, 90, effectiveQuality),
+      strength: this.randomStat(20, 90, effectiveQuality),
+      endurance: this.randomStat(20, 90, effectiveQuality),
+      flair: this.randomStat(20, 90, effectiveQuality),
+      vision: this.randomStat(20, 90, effectiveQuality),
+      determination: this.randomStat(20, 90, effectiveQuality),
+      tackling: this.randomStat(20, 90, effectiveQuality),
+      shooting: this.randomStat(20, 90, effectiveQuality),
+      heading: this.randomStat(20, 90, effectiveQuality),
+      longPassing: this.randomStat(20, 90, effectiveQuality),
+      shortPassing: this.randomStat(20, 90, effectiveQuality),
+      handling: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
+      reflexes: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
+      commandOfArea: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
+      clutch: this.randomStat(40, 80, effectiveQuality),
+      composure: this.randomStat(40, 80, effectiveQuality),
+      morale: this.randomStat(40, 80, effectiveQuality),
+      consistency: this.randomStat(40, 80, effectiveQuality),
+      aggressiveness: this.randomStat(40, 80, effectiveQuality),
+      fitness: this.randomStat(40, 80, effectiveQuality),
+      luck: this.randomStat(1, 100, effectiveQuality),
+      injuryRate: this.randomStat(1, 100, effectiveQuality),
       overall: 0
     };
 
     // Boost stats based on position
     if (position === PositionEnum.DEFENDER) {
-      values.tackling = this.randomStat(60, 99, teamQuality);
-      values.heading = this.randomStat(50, 90, teamQuality);
+      values.tackling = this.randomStat(60, 99, effectiveQuality);
+      values.heading = this.randomStat(50, 90, effectiveQuality);
     } else if (position === PositionEnum.MIDFIELDER) {
-      values.shortPassing = this.randomStat(60, 99, teamQuality);
-      values.longPassing = this.randomStat(60, 99, teamQuality);
-      values.vision = this.randomStat(60, 99, teamQuality);
+      values.shortPassing = this.randomStat(60, 99, effectiveQuality);
+      values.longPassing = this.randomStat(60, 99, effectiveQuality);
+      values.vision = this.randomStat(60, 99, effectiveQuality);
     } else if (position === PositionEnum.FORWARD) {
-      values.shooting = this.randomStat(60, 99, teamQuality);
-      values.speed = this.randomStat(60, 99, teamQuality);
-      values.flair = this.randomStat(60, 99, teamQuality);
+      values.shooting = this.randomStat(60, 99, effectiveQuality);
+      values.speed = this.randomStat(60, 99, effectiveQuality);
+      values.flair = this.randomStat(60, 99, effectiveQuality);
     }
 
     values.overall = calculateOverall(values, position);
@@ -164,7 +172,7 @@ export class GeneratorService {
     else if (position === PositionEnum.FORWARD) { baseJuniorEnd = 21; basePeakEnd = 27; baseSeniorEnd = 32; }
 
     const juniorEndAge = baseJuniorEnd + clamp(Math.floor((potential - 50) / 10), -3, 3);
-    const peakEndAge   = basePeakEnd   + clamp(Math.floor((professionalism - 50) / 10), -3, 3);
+    const peakEndAge = basePeakEnd + clamp(Math.floor((professionalism - 50) / 10), -3, 3);
     const seniorEndAge = baseSeniorEnd + clamp(Math.floor((professionalism - 50) / 20), -3, 3);
 
     const progression = {
@@ -237,12 +245,12 @@ export class GeneratorService {
 
     // Round Robin scheduling algorithm
     const teamIds = teams.map(t => t.id);
-    
+
     for (let week = 1; week <= numWeeks / 2; week++) {
       for (let i = 0; i < numTeams / 2; i++) {
         const home = teamIds[i];
         const away = teamIds[numTeams - 1 - i];
-        
+
         schedule.push({
           id: (matchId++).toString(),
           seasonYear: currentSeasonYear,
@@ -266,7 +274,7 @@ export class GeneratorService {
           played: false
         });
       }
-      
+
       // Rotate teams (keep first team fixed)
       teamIds.splice(1, 0, teamIds.pop()!);
     }

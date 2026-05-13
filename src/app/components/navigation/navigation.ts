@@ -38,6 +38,7 @@ export class NavigationComponent {
     return league?.userTeamId;
   });
 
+  unreadSeasonTransitionLog = this.gameService.unreadSeasonTransitionLog;
   toggleDebugMenu() {
     this.isDebugMenuOpen.update(v => !v);
   }
