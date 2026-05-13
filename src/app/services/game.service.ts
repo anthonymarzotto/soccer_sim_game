@@ -1382,14 +1382,14 @@ export class GameService {
         return {
           ...team,
           stats: nextStats,
-          seasonSnapshots: withSortedUniqueSeasons([
-            ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
-            {
+          seasonSnapshots: {
+            ...(team.seasonSnapshots ?? {}),
+            [currentSeasonYear]: {
               seasonYear: currentSeasonYear,
               playerIds: [...snapshot.playerIds],
               stats: nextStats
             }
-          ])
+          }
         };
       } else if (team.id === awayTeam.id) {
         const snapshot = this.getTeamSnapshotForSeason(team, currentSeasonYear);
@@ -1408,14 +1408,14 @@ export class GameService {
         return {
           ...team,
           stats: nextStats,
-          seasonSnapshots: withSortedUniqueSeasons([
-            ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
-            {
+          seasonSnapshots: {
+            ...(team.seasonSnapshots ?? {}),
+            [currentSeasonYear]: {
               seasonYear: currentSeasonYear,
               playerIds: [...snapshot.playerIds],
               stats: nextStats
             }
-          ])
+          }
         };
       }
       return team;
@@ -1828,7 +1828,10 @@ export class GameService {
         players: seededPlayers,
         stats: nextSnapshot.stats,
         playerIds: [...nextSnapshot.playerIds],
-        seasonSnapshots: withSortedUniqueSeasons([...(team.seasonSnapshots ?? []), nextSnapshot])
+        seasonSnapshots: {
+          ...(team.seasonSnapshots ?? {}),
+          [nextSnapshot.seasonYear]: nextSnapshot
+        }
       });
     });
 

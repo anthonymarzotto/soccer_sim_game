@@ -327,7 +327,7 @@ export class TeamDetailsComponent {
   seasonHistory = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return t.seasonSnapshots || [];
+    return Object.values(t.seasonSnapshots || {});
   });
 
   seasonHistoryWithStats = computed(() => {

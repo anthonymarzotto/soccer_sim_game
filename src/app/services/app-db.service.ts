@@ -15,7 +15,7 @@ export interface PersistedTeamRecord {
   name: string;
   selectedFormationId: string;
   formationAssignments: Record<string, string>;
-  seasonSnapshots: TeamSeasonSnapshot[];
+  seasonSnapshots: Record<number, TeamSeasonSnapshot>;
 }
 
 export interface PersistedPlayerPersonalRecord {

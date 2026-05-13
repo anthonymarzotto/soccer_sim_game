@@ -1,5 +1,5 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team } from '../models/types';
+import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team, TeamSeasonSnapshot } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
 import {
   getTeamSeasonSnapshotForYear,
@@ -52,19 +52,16 @@ export class LeagueAssemblyService {
           `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
         );
       }
-      const seasonSnapshots = normalizedTeam.seasonSnapshots ?? [];
-      const seasonSnapshotsWithoutCurrent = seasonSnapshots.filter(
-        snapshot => snapshot.seasonYear !== currentSnapshot.seasonYear
-      );
+      const seasonSnapshots = normalizedTeam.seasonSnapshots ?? {};
 
       return {
         id: normalizedTeam.id,
         name: normalizedTeam.name,
         selectedFormationId: normalizedTeam.selectedFormationId,
         formationAssignments: normalizedTeam.formationAssignments,
-        seasonSnapshots: withSortedUniqueSeasons([
-          ...seasonSnapshotsWithoutCurrent,
-          {
+        seasonSnapshots: {
+          ...seasonSnapshots,
+          [currentSnapshot.seasonYear]: {
             seasonYear: currentSnapshot.seasonYear,
             playerIds: [...currentSnapshot.playerIds],
             stats: {
@@ -72,7 +69,7 @@ export class LeagueAssemblyService {
               last5: [...currentSnapshot.stats.last5]
             }
           }
-        ])
+        }
       };
     });
   }
@@ -183,7 +180,16 @@ export class LeagueAssemblyService {
     }
 
     const teams: (Team | null)[] = snapshot.teams.map(teamRecord => {
-      const seasonSnapshot = teamRecord.seasonSnapshots.find(s => s.seasonYear === currentSeasonYear);
+      let snapshotsMap: Record<number, TeamSeasonSnapshot> = {};
+      if (Array.isArray(teamRecord.seasonSnapshots)) {
+        for (const snap of (teamRecord.seasonSnapshots as TeamSeasonSnapshot[])) {
+          snapshotsMap[snap.seasonYear] = snap;
+        }
+      } else {
+        snapshotsMap = teamRecord.seasonSnapshots ?? {};
+      }
+
+      const seasonSnapshot = snapshotsMap[currentSeasonYear];
       if (!seasonSnapshot) {
         const message =
           `assembleLeague: missing season-${currentSeasonYear} snapshot for team "${teamRecord.id}". ` +
@@ -210,7 +216,7 @@ export class LeagueAssemblyService {
         stats: seasonSnapshot.stats,
         selectedFormationId: teamRecord.selectedFormationId,
         formationAssignments: teamRecord.formationAssignments,
-        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots)
+        seasonSnapshots: snapshotsMap
       });
     });
 
@@ -380,7 +386,7 @@ export class LeagueAssemblyService {
 
   private resolveCurrentSeasonYear(teams: Team[]): number {
     const latestYear = teams
-      .flatMap(team => (team.seasonSnapshots ?? []).map(snapshot => snapshot.seasonYear))
+      .flatMap(team => Object.values(team.seasonSnapshots ?? {}).map(snapshot => snapshot.seasonYear))
       .reduce<number | null>((maxYear, seasonYear) => {
         if (maxYear === null || seasonYear > maxYear) {
           return seasonYear;

@@ -661,11 +661,10 @@ function createTeam(idPrefix: string, players: Player[]): Team {
       att_r: fwd2.id
     },
     stats: { ...initialStats },
-    seasonSnapshots: [{
-      seasonYear: 2026,
+    seasonSnapshots: { 2026: { seasonYear: 2026,
       playerIds,
       stats: { ...initialStats }
-    }]
+     } }
   };
 }
 

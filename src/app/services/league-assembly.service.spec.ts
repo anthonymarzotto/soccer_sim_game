@@ -1,6 +1,6 @@
 import { LeagueAssemblyService } from './league-assembly.service';
 import { EventImportance, EventType, MatchResult, Position, Role } from '../models/enums';
-import { League } from '../models/types';
+import { League, TeamSeasonSnapshot } from '../models/types';
 import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs } from '../testing/test-player-fixtures';
 
 describe('LeagueAssemblyService', () => {
@@ -162,10 +162,18 @@ describe('LeagueAssemblyService', () => {
     const snapshot = service.flattenLeague(leagueFixture);
     const corruptedSnapshot = {
       ...snapshot,
-      teams: snapshot.teams.map(team => ({
-        ...team,
-        seasonSnapshots: team.seasonSnapshots.filter(s => s.seasonYear !== 2026)
-      }))
+      teams: snapshot.teams.map(team => {
+        const filtered: Record<number, TeamSeasonSnapshot> = {};
+        for (const [key, val] of Object.entries(team.seasonSnapshots)) {
+          if ((val as { seasonYear: number }).seasonYear !== 2026) {
+            filtered[Number(key)] = val as TeamSeasonSnapshot;
+          }
+        }
+        return {
+          ...team,
+          seasonSnapshots: filtered
+        };
+      })
     };
 
     expect(() => service.assembleLeague(corruptedSnapshot)).toThrowError(

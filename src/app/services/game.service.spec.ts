@@ -24,20 +24,22 @@ describe('GameService persistence integration', () => {
 
     const seasonYear = storedLeague.currentSeasonYear;
     const teams = storedLeague.teams.map(team => {
-      if ((team.seasonSnapshots?.length ?? 0) > 0) {
+      if (Object.keys(team.seasonSnapshots ?? {}).length > 0) {
         return team;
       }
 
       return {
         ...team,
-        seasonSnapshots: [{
-          seasonYear,
-          playerIds: [...team.playerIds],
-          stats: {
-            ...team.stats,
-            last5: [...team.stats.last5]
+        seasonSnapshots: {
+          [seasonYear]: {
+            seasonYear,
+            playerIds: [...team.playerIds],
+            stats: {
+              ...team.stats,
+              last5: [...team.stats.last5]
+            }
           }
-        }]
+        }
       };
     });
 
@@ -435,7 +437,7 @@ describe('GameService persistence integration', () => {
     const started = service.startNewSeason();
     const league = service.league();
     const player = league?.teams[0]?.players[0];
-    const nextSnapshot = league?.teams[0]?.seasonSnapshots?.find(snapshot => snapshot.seasonYear === 2027);
+    const nextSnapshot = league?.teams[0]?.seasonSnapshots?.[2027];
 
     expect(started).toBe(true);
     expect(generatorSpy.generateScheduleForSeason).toHaveBeenCalledWith(expect.any(Array), 2027);

@@ -54,7 +54,7 @@ export function getTeamPlayerInvariantIssues(team: Team, explicitPlayers?: Playe
 export function normalizeTeamRoster(team: Team, explicitPlayers?: Player[]): Team {
   const sourcePlayers = explicitPlayers ?? team.players;
   const snapshot = getLatestTeamSeasonSnapshot(team);
-  const seasonSnapshots = team.seasonSnapshots ?? [];
+  const seasonSnapshots = team.seasonSnapshots ?? {};
   const preferredPlayerIds = snapshot?.playerIds ?? [];
   const uniquePlayers: Player[] = [];
   const seenIds = new Set<string>();
@@ -89,13 +89,13 @@ export function normalizeTeamRoster(team: Team, explicitPlayers?: Player[]): Tea
     ...team,
     players: normalizedPlayers,
     playerIds: normalizedPlayers.map(player => player.id),
-    seasonSnapshots: snapshot ? [
-      ...seasonSnapshots.slice(0, -1),
-      {
+    seasonSnapshots: snapshot ? {
+      ...seasonSnapshots,
+      [snapshot.seasonYear]: {
         ...snapshot,
         playerIds: normalizedPlayers.map(player => player.id)
       }
-    ] : seasonSnapshots
+    } : seasonSnapshots
   };
 }
 
