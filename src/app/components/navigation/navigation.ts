@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
@@ -31,6 +31,7 @@ export class NavigationComponent {
   isLocalhost = computed(() => this.localhostService.isLocalhost());
   displayedVersion = computed(() => `${APP_VERSION}.${resolveSchemaVersion(this.settingsService.currentDataSchemaVersion)}`);
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;
+  isDebugMenuOpen = signal(false);
 
   userTeamId = computed(() => {
     const league = this.gameService.league();
@@ -38,4 +39,7 @@ export class NavigationComponent {
   });
 
   unreadSeasonTransitionLog = this.gameService.unreadSeasonTransitionLog;
+  toggleDebugMenu() {
+    this.isDebugMenuOpen.update(v => !v);
+  }
 }

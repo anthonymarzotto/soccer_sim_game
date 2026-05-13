@@ -85,32 +85,58 @@
       </a>
 
       @if (isLocalhost()) {
-        <a
-          routerLink="/debug/simulation"
-          routerLinkActive="bg-zinc-800 text-white"
-          class="mt-2 flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-        >
-          <span class="material-icons text-xl">science</span>
-          <span>Simulation Debug</span>
-        </a>
+        <div class="mt-2">
+          <button
+            (click)="toggleDebugMenu()"
+            class="w-full flex items-center justify-between px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+          >
+            <div class="flex items-center gap-3">
+              <span class="material-icons text-xl">bug_report</span>
+              <span>Debug</span>
+            </div>
+            <span class="material-icons text-xl transition-transform duration-200" [class.rotate-180]="isDebugMenuOpen()">expand_more</span>
+          </button>
 
-        <a
-          routerLink="/debug/player-progression"
-          routerLinkActive="bg-zinc-800 text-white"
-          class="mt-2 flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-        >
-          <span class="material-icons text-xl">trending_up</span>
-          <span>Progression Debug</span>
-        </a>
+          @if (isDebugMenuOpen()) {
+            <div class="mt-1 ml-4 space-y-1 border-l-2 border-zinc-800 pl-2">
+              <a
+                routerLink="/debug/simulation"
+                routerLinkActive="bg-zinc-800 text-white"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors text-sm"
+              >
+                <span class="material-icons text-[18px]">science</span>
+                <span>Simulation Debug</span>
+              </a>
 
-        <a
-          routerLink="/design-docs"
-          routerLinkActive="bg-zinc-800 text-white"
-          class="mt-2 flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-        >
-          <span class="material-icons text-xl">account_tree</span>
-          <span>Design Docs</span>
-        </a>
+              <a
+                routerLink="/debug/tick"
+                routerLinkActive="bg-zinc-800 text-white"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors text-sm"
+              >
+                <span class="material-icons text-[18px]">play_circle_filled</span>
+                <span>Tick Debug</span>
+              </a>
+
+              <a
+                routerLink="/debug/player-progression"
+                routerLinkActive="bg-zinc-800 text-white"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors text-sm"
+              >
+                <span class="material-icons text-[18px]">trending_up</span>
+                <span>Progression Debug</span>
+              </a>
+
+              <a
+                routerLink="/design-docs"
+                routerLinkActive="bg-zinc-800 text-white"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors text-sm"
+              >
+                <span class="material-icons text-[18px]">account_tree</span>
+                <span>Design Docs</span>
+              </a>
+            </div>
+          }
+        </div>
       }
 
       <div class="mt-3 border-t border-zinc-800 px-4 pt-3 text-center">

@@ -59,7 +59,7 @@
     "@angular/compiler-cli": "^21.0.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/express": "^5.0.1",
-    "@types/node": "^20.17.19",
+    "@types/node": "^20.19.40",
     "angular-eslint": "21.1.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
@@ -69,6 +69,7 @@
     "lint-staged": "^16.4.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.12",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2",
     "typescript-eslint": "8.47.0",
     "vitest": "^4.0.0"

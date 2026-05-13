@@ -144,10 +144,30 @@ export interface VariantBTuningConfig {
   homeAdvantageGoalBonus: number;
 }
 
+export interface TickTrace {
+  minute: number;
+  tickIndex: number;
+  ballPossession: Possession;
+  actionWeights: {
+    pass: number;
+    carry: number;
+    shot: number;
+    foul: number;
+  };
+  channels: {
+    wideChannel: boolean;
+    channelSlots: number;
+    centralSlots: number;
+  };
+  eventCreated: PlayByPlayEvent | null;
+  matchShapeSnapshot: VariantBMatchShapeSnapshot | null;
+}
+
 export interface MatchState {
   ballPossession: Possession;
   events: PlayByPlayEvent[];
   fatigueTimeline: MatchFatigueTimeline;
+  tickTraces?: TickTrace[];
   currentMinute: number;
   homeScore: number;
   awayScore: number;
@@ -183,6 +203,7 @@ export interface SimulationConfig {
   // guardrail tests that pre-date the injury system and need stable goal/shot
   // distributions independent of injury-driven manpower changes.
   disableInjuries?: boolean;
+  debugTickTracing?: boolean;
 }
 
 export interface TacticalSetup {
