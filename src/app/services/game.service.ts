@@ -257,10 +257,6 @@ export class GameService {
     return resolveTeamPlayers(team);
   }
 
-  getPlayerOnTeam(team: Team, playerId: string): Player | undefined {
-    return resolveTeamPlayers(team).find(player => player.id === playerId);
-  }
-
   getMatchesForWeek(week: number): Match[] {
     const league = this.leagueState();
     if (!league) return [];
