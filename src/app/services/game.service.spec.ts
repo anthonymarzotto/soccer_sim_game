@@ -58,9 +58,19 @@ describe('GameService persistence integration', () => {
 
     const hasSchemaMismatch = signal(false);
 
-    const generatorSpy: Pick<GeneratorService, 'generateLeague' | 'generateScheduleForSeason'> = {
+    const generatorSpy: Pick<GeneratorService, 'generateLeague' | 'generateScheduleForSeason' | 'generatePlayer'> = {
       generateLeague: vi.fn().mockReturnValue({ teams: [], schedule: [], currentSeasonYear: 2026 }),
-      generateScheduleForSeason: vi.fn().mockReturnValue([])
+      generateScheduleForSeason: vi.fn().mockReturnValue([]),
+      generatePlayer: vi.fn().mockImplementation((teamId, position, role, teamQuality, seasonYear, age) => {
+        return createTestPlayer({
+          id: 'replacement-player',
+          teamId,
+          position,
+          role,
+          seasonYear,
+          age: age ?? 17
+        });
+      })
     };
 
     const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult' | 'loadSeasonTransitionLog' | 'saveSeasonTransitionLog'> = {
