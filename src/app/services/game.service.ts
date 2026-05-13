@@ -1913,8 +1913,7 @@ export class GameService {
         if (retire) {
           teamHasRetirements = true;
           const isUserTeam = team.id === userTeamId;
-          const randomFraction = this.rng.random();
-          const replacementAge = 16 + (randomFraction * 2); // 16 to 18
+          const replacementAge = 16 + Math.floor(this.rng.random() * 3); // 16 to 18 inclusive
           // Age scaling is handled inside generatePlayer — passing age < 19
           // automatically reduces stat ceilings while preserving high potential.
           const replacement = this.generator.generatePlayer(
