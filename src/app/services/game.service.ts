@@ -113,9 +113,18 @@ export class GameService {
     return new Map((l?.teams ?? []).map(team => [team.id, team]));
   });
 
+  private playerByIdCache = new WeakMap<Team, Player[]>();
+
   private playerById = computed(() => {
     const l = this.leagueState();
-    return new Map((l?.teams ?? []).flatMap(team => resolveTeamPlayers(team).map(player => [player.id, player] as const)));
+    return new Map((l?.teams ?? []).flatMap(team => {
+      let players = this.playerByIdCache.get(team);
+      if (!players) {
+        players = resolveTeamPlayers(team);
+        this.playerByIdCache.set(team, players);
+      }
+      return players.map(player => [player.id, player] as const);
+    }));
   });
 
   private withSyncedPlayerIds(team: Team): Team {
@@ -498,8 +507,8 @@ export class GameService {
         );
 
         matches.forEach(match => {
-          const homeTeam = league.teams.find(t => t.id === match.homeTeamId);
-          const awayTeam = league.teams.find(t => t.id === match.awayTeamId);
+          const homeTeam = this.teamById().get(match.homeTeamId);
+          const awayTeam = this.teamById().get(match.awayTeamId);
           if (!homeTeam || !awayTeam) return;
 
           this.simulateMatchWithDetails(match, homeTeam, awayTeam, {
@@ -541,8 +550,8 @@ export class GameService {
       matches.forEach(match => {
         if (match.played) return;
 
-        const homeTeam = l.teams.find(t => t.id === match.homeTeamId);
-        const awayTeam = l.teams.find(t => t.id === match.awayTeamId);
+        const homeTeam = this.teamById().get(match.homeTeamId);
+        const awayTeam = this.teamById().get(match.awayTeamId);
 
         if (!homeTeam || !awayTeam) return;
 
@@ -563,9 +572,6 @@ export class GameService {
         }
 
         // The match result is already updated in the league state by simulateMatchWithDetails
-        console.log(`Match ${match.id}: ${homeTeam.name} ${result.matchState.homeScore} - ${result.matchState.awayScore} ${awayTeam.name}`);
-        console.log('Key Events:', result.matchState.events.length);
-        console.log('Commentary Sample:', result.commentary.slice(0, 3));
       });
 
       // Advance to next week
@@ -647,11 +653,12 @@ export class GameService {
       );
 
       const nextAssignments = { ...team.formationAssignments };
-      Object.keys(nextAssignments).forEach(key => {
-        if (nextAssignments[key] === playerId) {
+      for (const [key, id] of Object.entries(nextAssignments)) {
+        if (id === playerId) {
           nextAssignments[key] = '';
+          break;
         }
-      });
+      }
       nextAssignments[slotId] = playerId;
 
       return {
@@ -963,11 +970,28 @@ export class GameService {
     const eligible = (player: Player) => isPlayerEligible(player);
 
     // Sort players by position + overall descending; these arrays share object refs with `players`
+    const gk: { p: Player; o: number }[] = [];
+    const def: { p: Player; o: number }[] = [];
+    const mid: { p: Player; o: number }[] = [];
+    const fwd: { p: Player; o: number }[] = [];
+
+    for (const p of players) {
+      if (eligible(p)) {
+        const o = overallOf(p);
+        if (p.position === Position.GOALKEEPER) gk.push({ p, o });
+        else if (p.position === Position.DEFENDER) def.push({ p, o });
+        else if (p.position === Position.MIDFIELDER) mid.push({ p, o });
+        else if (p.position === Position.FORWARD) fwd.push({ p, o });
+      }
+    }
+
+    const sortFn = (a: { o: number }, b: { o: number }) => b.o - a.o;
+
     const byPosition = new Map<Position, Player[]>([
-      [Position.GOALKEEPER, players.filter(p => p.position === Position.GOALKEEPER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.DEFENDER, players.filter(p => p.position === Position.DEFENDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.MIDFIELDER, players.filter(p => p.position === Position.MIDFIELDER && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
-      [Position.FORWARD, players.filter(p => p.position === Position.FORWARD && eligible(p)).sort((a, b) => overallOf(b) - overallOf(a))],
+      [Position.GOALKEEPER, gk.sort(sortFn).map(x => x.p)],
+      [Position.DEFENDER, def.sort(sortFn).map(x => x.p)],
+      [Position.MIDFIELDER, mid.sort(sortFn).map(x => x.p)],
+      [Position.FORWARD, fwd.sort(sortFn).map(x => x.p)],
     ]);
 
     // Evaluate each formation: score = sum of overalls of best-fit starters per slot
@@ -1150,10 +1174,19 @@ export class GameService {
   }
 
   public calculateTeamOverall(team: Team): number {
-    const starters = resolveTeamPlayers(team).filter(p => p.role === Role.STARTER);
-    if (starters.length === 0) return 50;
-    const sum = starters.reduce((acc, player) => acc + this.getCurrentSeasonPlayerAttributes(player).overall.value, 0);
-    return Math.round(sum / starters.length);
+    let startersCount = 0;
+    let sum = 0;
+    const players = resolveTeamPlayers(team);
+
+    for (const player of players) {
+      if (player.role === Role.STARTER) {
+        sum += this.getCurrentSeasonPlayerAttributes(player).overall.value;
+        startersCount++;
+      }
+    }
+
+    if (startersCount === 0) return 50;
+    return Math.round(sum / startersCount);
   }
 
   public getTeamOverall(teamId: string): number {
