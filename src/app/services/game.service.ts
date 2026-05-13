@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
 import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
-import { computeAge, seasonAnchorDate, birthdayForAge } from '../models/player-age';
+import { computeAge, seasonAnchorDate } from '../models/player-age';
 import { gaussianRandom, clamp, lerp } from '../utils/math';
 import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall } from '../models/player-progression';
 import { Phase } from '../models/enums';
@@ -1882,15 +1882,16 @@ export class GameService {
           const isUserTeam = team.id === userTeamId;
           const randomFraction = this.rng.random();
           const replacementAge = 16 + (randomFraction * 2); // 16 to 18
-          const replacementQuality = 0.8 + (this.rng.random() * 0.6); // 0.8 to 1.4
+          // Age scaling is handled inside generatePlayer — passing age < 19
+          // automatically reduces stat ceilings while preserving high potential.
           const replacement = this.generator.generatePlayer(
             team.id,
             player.position,
             Role.RESERVE,
-            replacementQuality,
-            nextSeasonYear
+            1.0,
+            nextSeasonYear,
+            replacementAge
           );
-          replacement.personal.birthday = birthdayForAge(replacementAge, nextSeasonYear, this.rng.random());
 
           updatedPlayers.push(replacement);
 

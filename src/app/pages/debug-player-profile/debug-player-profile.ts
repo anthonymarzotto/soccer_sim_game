@@ -27,16 +27,30 @@ import { Position as PositionEnum } from '../../models/enums';
             </div>
           </div>
           <div class="flex items-center gap-3">
+            <div class="flex flex-col gap-1">
+              <label for="genAgeSelect" class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Gen Age</label>
+              <select 
+                id="genAgeSelect"
+                [value]="selectedAge() ?? 'random'" 
+                (change)="onAgeChange($event)"
+                class="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg px-2 py-2 outline-none focus:border-emerald-500 min-w-[100px]"
+              >
+                <option value="random">Random</option>
+                @for (age of [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35]; track age) {
+                  <option [value]="age">{{ age }}</option>
+                }
+              </select>
+            </div>
             <button
               (click)="generateRandomPlayer()"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors shadow-lg"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors shadow-lg self-end h-[38px]"
             >
               Generate Random Player
             </button>
             <button
               (click)="resetStats()"
               [disabled]="!player()"
-              class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+              class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 self-end h-[38px]"
             >
               Reset History
             </button>
@@ -230,6 +244,8 @@ export class DebugPlayerProfileComponent {
   private gameService = inject(GameService);
   private generator = inject(GeneratorService);
 
+  selectedAge = signal<number | null>(null);
+
   player = signal<Player | null>(null);
   PositionEnum = PositionEnum;
   statCategories: StatCategory[] = ['physical', 'skill', 'goalkeeping', 'mental'];
@@ -247,9 +263,15 @@ export class DebugPlayerProfileComponent {
     return computeAge(p.personal.birthday, seasonAnchorDate(attrs.seasonYear));
   });
 
+  onAgeChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value;
+    this.selectedAge.set(val === 'random' ? null : parseInt(val, 10));
+  }
+
   generateRandomPlayer() {
     const year = this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear();
-    const p = this.generator.generatePlayer('debug', PositionEnum.FORWARD, Role.STARTER, 1.0, year);
+    // Pass the selected age directly — generatePlayer handles youth quality scaling internally.
+    const p = this.generator.generatePlayer('debug', PositionEnum.FORWARD, Role.STARTER, 1.0, year, this.selectedAge() ?? undefined);
     this.player.set(p);
   }
 
