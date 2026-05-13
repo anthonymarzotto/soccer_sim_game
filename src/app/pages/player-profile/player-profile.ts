@@ -65,8 +65,8 @@ export class PlayerProfileComponent {
   });
 
   /**
-   * Returns the player's injury records in reverse chronological order
-   * (most recent first). Includes both healed and active records.
+   * Returns the player's injury records in chronological order
+   * (oldest first). Includes both healed and active records.
    */
   injuryHistory = computed<InjuryRecord[]>(() => {
     const records = this.player()?.injuries ?? [];

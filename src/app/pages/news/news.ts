@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { SeasonTransitionEvent } from '../../models/types';
@@ -12,7 +13,7 @@ interface TeamNewsGroup {
 @Component({
   selector: 'app-news',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, NgClass],
   templateUrl: './news.html',
 })
 export class NewsComponent {

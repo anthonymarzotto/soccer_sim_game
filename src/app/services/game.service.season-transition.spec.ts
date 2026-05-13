@@ -135,6 +135,18 @@ describe('GameService — season transition log', () => {
     expect(persistenceSpy.saveSeasonTransitionLog).not.toHaveBeenCalled();
   });
 
+  it('dismissTeamTransitionEvents — does not add duplicate teamIds', async () => {
+    const league = makeLeague([makeTeam('team-1', [])], 'team-1');
+    const existingLog: SeasonTransitionLog = { seasonYear: 2025, events: [], isRead: false, dismissedTeamIds: ['team-1'] };
+    const { service, persistenceSpy } = setup(league, existingLog);
+    await service.ensureHydrated();
+
+    service.dismissTeamTransitionEvents('team-1');
+
+    // Should not call save because it's already dismissed
+    expect(persistenceSpy.saveSeasonTransitionLog).not.toHaveBeenCalled();
+  });
+
   it('markSeasonTransitionLogRead — sets isRead to true but preserves dismissedTeamIds', async () => {
     const league = makeLeague([makeTeam('team-1', [])], 'team-1');
     const existingLog: SeasonTransitionLog = {

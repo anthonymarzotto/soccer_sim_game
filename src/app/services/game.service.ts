@@ -197,7 +197,7 @@ export class GameService {
 
   dismissTeamTransitionEvents(teamId: string): void {
     const log = this.seasonTransitionLogState();
-    if (!log) return;
+    if (!log || log.dismissedTeamIds.includes(teamId)) return;
     const dismissedTeamIds = [...log.dismissedTeamIds, teamId];
     const updatedLog = { ...log, dismissedTeamIds };
     this.seasonTransitionLogState.set(updatedLog);
