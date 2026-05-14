@@ -258,6 +258,7 @@
     .pill.team      { background: #431407; color: #fb923c; }
     .pill.viaoverall { background: #1e3a5f; color: #93c5fd; }
     .pill.unused    { background: #27272a; color: #71717a; }
+    .pill.rollover  { background: #312e81; color: #818cf8; }
 
     .footnote {
       font-size: 0.8rem;
@@ -281,6 +282,7 @@
         <div class="legend-item"><span class="pill team">team setup</span><span>Read pre-match to derive team tactics, formation slot fit, or auto-lineups.</span></div>
         <div class="legend-item"><span class="pill viaoverall">via overall</span><span>Not read directly today; only influences gameplay because it was folded into generated <code>overall</code>.</span></div>
         <div class="legend-item"><span class="pill unused">unused</span><span>Persisted and rolled forward but no current consumer in setup, simulation, or reporting.</span></div>
+        <div class="legend-item"><span class="pill rollover">rollover</span><span>Evaluated during season transition to determine attribute growth or decay.</span></div>
       </div>
 
       <div class="chip-row">
@@ -650,6 +652,31 @@
 
     <section class="panel">
       <div class="panel-header">
+        <h2>Player Progression</h2>
+        <p>These attributes live on <code>Player.progression</code> and influence attribute growth and decay during the season rollover process. They do not affect in-match simulation directly.</p>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div><span class="stat-name">potential</span> <span class="pill rollover">rollover</span></div>
+          <div class="stat-meta">1-100</div>
+          <p>Softly caps growth via headroom. The closer a player's overall is to their potential, the slower they grow.</p>
+        </div>
+        <div class="stat-card">
+          <div><span class="stat-name">professionalism</span> <span class="pill rollover">rollover</span></div>
+          <div class="stat-meta">1-100</div>
+          <p>Higher values mean a higher potential for growth per year. Hard-workers improve more reliably.</p>
+        </div>
+        <div class="stat-card">
+          <div><span class="stat-name">temperament</span> <span class="pill rollover">rollover</span></div>
+          <div class="stat-meta">1-100</div>
+          <p>Lower values create higher variance in development. Unpredictable players might randomly boom or bust.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
         <h2>Principles to remember</h2>
       </div>
 
@@ -667,8 +694,8 @@
           <p><code>FieldService.calculateTeamTactics</code> averages <code>overall</code>, <code>speed</code>, <code>shortPassing</code>, <code>longPassing</code>, <code>tackling</code>, and <code>shooting</code> across the whole roster. One elite player will not flip the team's playing style.</p>
         </article>
         <article class="principle">
-          <h3>Rollover is a copy, not a progression</h3>
-          <p><code>GameService.startNewSeason</code> deep-copies every stat object into the next season and resets mood/fatigue. There is no automatic aging, training, or decay step.</p>
+          <h3>Rollover drives progression</h3>
+          <p><code>GameService.startNewSeason</code> uses <code>PlayerProgression</code> to age players, apply growth/decay curves based on their career phase (Junior, Peak, Senior, Decline), and generate a new <code>PlayerSeasonAttributes</code> snapshot for the next year.</p>
         </article>
       </div>
     </section>
