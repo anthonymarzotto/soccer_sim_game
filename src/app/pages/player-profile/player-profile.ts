@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
@@ -16,7 +17,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent],
+  imports: [RouterLink, TeamBadgeComponent, DecimalPipe],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {
@@ -197,7 +198,8 @@ export class PlayerProfileComponent {
     return [
       { label: 'Speed', value: attrs.speed.value },
       { label: 'Strength', value: attrs.strength.value },
-      { label: 'Endurance', value: attrs.endurance.value }
+      { label: 'Endurance', value: attrs.endurance.value },
+      { label: 'Fitness', value: attrs.fitness.value }
     ];
   });
 
