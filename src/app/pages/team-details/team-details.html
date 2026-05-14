@@ -204,7 +204,6 @@
                     <th scope="col" class="px-4 py-4 font-medium text-center w-16">Fatigue</th>
                     <th scope="col" class="px-4 py-4 font-medium text-center w-24">Rating</th>
                     <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-24">Nat</th>
                   } @else {
                     <th scope="col" class="px-4 py-4 font-medium text-center w-16">GP</th>
                     <th scope="col" class="px-4 py-4 font-medium text-center w-20">Min</th>
@@ -288,7 +287,6 @@
                         @if (sStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ sStatsB.starNominations.third }}</span>}
                       </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {
                       @let stats = getRowStats(row.player);
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
@@ -365,7 +363,6 @@
                         @if (bStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ bStatsB.starNominations.third }}</span>}
                       </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ row.player?.personal?.nationality ?? '--' }}</td>
                     } @else {
                       @let stats = getRowStats(row.player);
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
@@ -435,7 +432,6 @@
                         @if (rStats.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ rStats.starNominations.third }}</span>}
                       </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--' }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-24">{{ player.personal.nationality }}</td>
                     } @else {
                       @let stats = getCurrentSeasonStats(player);
                       <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
