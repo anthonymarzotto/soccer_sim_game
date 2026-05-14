@@ -221,7 +221,7 @@ export class GeneratorService {
       seasonAttributes: [seasonAttributes],
       careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
       mood: 100,
-      fatigue: 100,
+      fatigue: 0,
       injuries: [],
       progression
     };

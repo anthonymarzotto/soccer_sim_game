@@ -408,7 +408,7 @@ describe('GameService persistence integration', () => {
                 seniorEndAge: 32
               },
               mood: 100,
-              fatigue: 100,
+              fatigue: 0,
               injuries: []
             }
           ],

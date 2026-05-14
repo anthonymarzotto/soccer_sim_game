@@ -2082,7 +2082,7 @@ export class GameService {
         return {
           ...player,
           mood: 100,
-          fatigue: 100,
+          fatigue: 0,
           seasonAttributes: hasSeededAttributes
             ? (player.seasonAttributes ?? [])
             : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes!]),
