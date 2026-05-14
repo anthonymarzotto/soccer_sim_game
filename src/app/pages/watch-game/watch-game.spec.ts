@@ -782,43 +782,43 @@ describe('WatchGameComponent', () => {
     component.matchState.set(createMatchState([
       {
         minute: 10,
-        players: [{ playerId: 'player-1', stamina: 91 }]
+        players: [{ playerId: 'player-1', fatigue: 91 }]
       },
       {
         minute: 20,
-        players: [{ playerId: 'player-1', stamina: 84 }]
+        players: [{ playerId: 'player-1', fatigue: 84 }]
       },
       {
         minute: 30,
-        players: [{ playerId: 'player-1', stamina: 77 }]
+        players: [{ playerId: 'player-1', fatigue: 77 }]
       }
     ]));
     component.currentMinute.set(27);
 
-    const fatigue = component['getTrackedFatigue']('player-1');
+    const stamina = component['getTrackedFatigue']('player-1');
 
-    expect(fatigue).toBe(84);
+    expect(stamina).toBe(84);
   });
 
-  it('floors current minute when reading tracked fatigue snapshots', () => {
+  it('floors current minute when reading tracked stamina snapshots', () => {
     const fixture = TestBed.createComponent(WatchGameComponent);
     const component = fixture.componentInstance;
 
     component.matchState.set(createMatchState([
       {
         minute: 45,
-        players: [{ playerId: 'player-1', stamina: 70 }]
+        players: [{ playerId: 'player-1', fatigue: 70 }]
       },
       {
         minute: 46,
-        players: [{ playerId: 'player-1', stamina: 64 }]
+        players: [{ playerId: 'player-1', fatigue: 64 }]
       }
     ]));
     component.currentMinute.set(45.9);
 
-    const fatigue = component['getTrackedFatigue']('player-1');
+    const stamina = component['getTrackedFatigue']('player-1');
 
-    expect(fatigue).toBe(70);
+    expect(stamina).toBe(70);
   });
 
   it('keeps scanning older snapshots when latest eligible minute lacks player entry', () => {
@@ -828,11 +828,11 @@ describe('WatchGameComponent', () => {
     component.matchState.set(createMatchState([
       {
         minute: 40,
-        players: [{ playerId: 'player-1', stamina: 73 }]
+        players: [{ playerId: 'player-1', fatigue: 73 }]
       },
       {
         minute: 50,
-        players: [{ playerId: 'other-player', stamina: 68 }]
+        players: [{ playerId: 'other-player', fatigue: 68 }]
       }
     ]));
     component.currentMinute.set(50);

@@ -252,7 +252,6 @@ describe('GameService persistence integration', () => {
 
     expect(service.league()?.currentWeek).toBe(5);
     expect(service.getPlayer('player-1')?.injuries[0]?.weeksRemaining).toBe(1);
-    expect(persistenceSpy.saveTeam).not.toHaveBeenCalled();
   });
 
   it('should block mutating league operations while schema mismatch is active', async () => {

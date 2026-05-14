@@ -68,7 +68,7 @@ export function createTestPlayer(opts: {
     ],
     careerStats: [],
     mood: 100,
-    fatigue: 100,
+    fatigue: 0,
     injuries: [],
     progression: {
       potential: 90,
@@ -129,7 +129,7 @@ export function createTestPersistedPlayer(opts: {
     seasonAttributes: [{ seasonYear, values }],
     careerStats: opts.careerStats ?? [],
     mood: opts.mood ?? 100,
-    fatigue: opts.fatigue ?? 100,
+    fatigue: opts.fatigue ?? 0,
     progression: {
       potential: 90,
       professionalism: 50,

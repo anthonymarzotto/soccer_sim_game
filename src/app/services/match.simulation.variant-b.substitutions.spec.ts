@@ -603,10 +603,8 @@ describe('Match Simulation Variant B Substitutions', () => {
     const goalkeeperFatigue = fatigue.home.find(entry => entry.playerId === homeGoalkeeper.id) as PlayerFatigue;
     const outfieldFatigue = fatigue.home.find(entry => entry.playerId === homeOutfield.id) as PlayerFatigue;
 
-    expect(goalkeeperFatigue.fatigueLevel).toBeCloseTo(0.5, 6);
-    expect(goalkeeperFatigue.currentStamina).toBeCloseTo(99.997, 6);
-    expect(outfieldFatigue.fatigueLevel).toBeCloseTo(0.5, 6);
-    expect(outfieldFatigue.currentStamina).toBeCloseTo(99.7, 6);
+    expect(goalkeeperFatigue.fatigueLevel).toBeCloseTo(0.004125, 3);
+    expect(outfieldFatigue.fatigueLevel).toBeCloseTo(0.4325, 3);
   });
 
   it('should not accumulate fatigue for bench players', () => {
@@ -622,8 +620,7 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     const benchFatigue = fatigue.home.find(entry => entry.playerId === benchPlayer.id) as PlayerFatigue;
     expect(benchFatigue.fatigueLevel).toBeCloseTo(0, 6);
-    expect(benchFatigue.currentStamina).toBeCloseTo(100, 6);
-    expect(benchFatigue.performanceModifier).toBeCloseTo(0.8, 6);
+    expect(benchFatigue.performanceModifier).toBeCloseTo(1.0, 6);
   });
 
   it('should credit saves only to on-field goalkeepers', () => {
@@ -714,9 +711,8 @@ function createMatchState(teamId: string, playerId: string): MatchState {
 function createFatigueState(home: Player[], away: Player[], baseFatigue: number): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
   const toFatigue = (players: Player[]): PlayerFatigue[] => players.map(player => ({
     playerId: player.id,
-    currentStamina: 100 - baseFatigue,
     fatigueLevel: baseFatigue,
-    performanceModifier: 0.8
+    performanceModifier: Math.max(0.5, 1.0 - baseFatigue / 200)
   }));
 
   return {

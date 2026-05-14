@@ -1109,7 +1109,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       return null;
     }
 
-    return this.clampNumber(Math.round(playerEntry.stamina), 0, 100);
+    return this.clampNumber(Math.round(playerEntry.fatigue), 0, 100);
   }
 
   getRedCardBadge(dot: FormationDot): string | null {

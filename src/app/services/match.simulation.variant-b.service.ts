@@ -448,9 +448,8 @@ export class MatchSimulationVariantBService {
     const createFatigue = (players: Player[]): PlayerFatigue[] => {
       return players.map((player) => ({
         playerId: player.id,
-        currentStamina: 100,
-        fatigueLevel: 0,
-        performanceModifier: 1,
+        fatigueLevel: player.fatigue ?? 0,
+        performanceModifier: Math.max(0.5, 1.0 - (player.fatigue ?? 0) / 200),
       }));
     };
 
@@ -470,7 +469,7 @@ export class MatchSimulationVariantBService {
       entries.forEach((entry) => {
         players.push({
           playerId: entry.playerId,
-          stamina: Math.round(this.clamp(entry.currentStamina, 0, 100)),
+          fatigue: Math.round(this.clamp(entry.fatigueLevel, 0, 100)),
         });
       });
     };
@@ -978,8 +977,6 @@ export class MatchSimulationVariantBService {
     }
 
     const excessTicks = ticks - 1;
-    const fatiguePerTick = 0.5;
-    const staminaPerTick = 0.3;
 
     const homeById = new Map(
       rosters.homePlayers.map((player) => [player.id, player]),
@@ -998,18 +995,13 @@ export class MatchSimulationVariantBService {
           continue;
         }
 
-        const staminaMultiplier =
-          player.position === PositionEnum.GOALKEEPER
-            ? this.goalkeeperStaminaDrainMultiplier
-            : 1;
+        const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
+        const endurance = attrs.endurance.value;
+        const fatiguePerTick = 0.5 * (1 - (endurance - 50) * 0.005); // Lower fatigue per tick for higher endurance
+
         entry.fatigueLevel = Math.max(
           0,
           entry.fatigueLevel - fatiguePerTick * excessTicks,
-        );
-        entry.currentStamina = Math.min(
-          100,
-          entry.currentStamina +
-            staminaPerTick * staminaMultiplier * excessTicks,
         );
         entry.performanceModifier = Math.max(
           0.5,
@@ -2487,15 +2479,15 @@ export class MatchSimulationVariantBService {
           return;
         }
 
-        const staminaMultiplier =
-          player.position === PositionEnum.GOALKEEPER
-            ? this.goalkeeperStaminaDrainMultiplier
-            : 1;
-        entry.fatigueLevel = Math.min(100, entry.fatigueLevel + 0.5);
-        entry.currentStamina = Math.max(
-          0,
-          entry.currentStamina - 0.3 * staminaMultiplier,
-        );
+        const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
+        const endurance = attrs.endurance.value;
+        const baseFatigueAccrual = 0.5;
+        let fatigueAccrual = baseFatigueAccrual * (1 - (endurance - 50) * 0.005);
+        if (player.position === PositionEnum.GOALKEEPER) {
+          fatigueAccrual *= this.goalkeeperStaminaDrainMultiplier;
+        }
+
+        entry.fatigueLevel = Math.min(100, entry.fatigueLevel + fatigueAccrual);
         entry.performanceModifier = Math.max(0.5, 1 - entry.fatigueLevel / 200);
       });
     };

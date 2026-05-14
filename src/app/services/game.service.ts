@@ -395,7 +395,7 @@ export class GameService {
     const updatedLeague: League = {
       ...league,
       currentWeek: league.currentWeek + 1,
-      teams: this.decrementInjuryWeeks(league.teams, league.currentSeasonYear, league.currentWeek)
+      teams: this.advanceWeekForPlayers(league.teams, league.currentSeasonYear, league.currentWeek)
     };
 
     this.leagueState.set(updatedLeague);
@@ -409,29 +409,43 @@ export class GameService {
    * Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as
    * historical records.
    */
-  private decrementInjuryWeeks(teams: Team[], currentSeasonYear: number, currentWeek: number): Team[] {
+  private advanceWeekForPlayers(teams: Team[], currentSeasonYear: number, currentWeek: number): Team[] {
     return teams.map(team => {
       if (!team.players) return team;
       let teamMutated = false;
       const players = team.players.map(player => {
-        if (!player.injuries || player.injuries.length === 0) return player;
         let playerMutated = false;
-        const updated = player.injuries.map(record => {
-          if (record.weeksRemaining <= 0) return record;
-          const wasAlreadyActiveBeforeThisWeek =
-            record.sustainedInSeason < currentSeasonYear
-            || record.sustainedInWeek < currentWeek;
-          if (!wasAlreadyActiveBeforeThisWeek) {
-            return record;
+        
+        let nextFatigue = player.fatigue ?? 0;
+        if (nextFatigue > 0) {
+          const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
+          const recovery = 20 + (fitness * 0.3);
+          nextFatigue = Math.max(0, nextFatigue - recovery);
+          if (nextFatigue !== (player.fatigue ?? 0)) {
+            playerMutated = true;
           }
-          playerMutated = true;
-          return { ...record, weeksRemaining: record.weeksRemaining - 1 };
-        });
+        }
+
+        let updatedInjuries = player.injuries;
+        if (player.injuries && player.injuries.length > 0) {
+          updatedInjuries = player.injuries.map(record => {
+            if (record.weeksRemaining <= 0) return record;
+            const wasAlreadyActiveBeforeThisWeek =
+              record.sustainedInSeason < currentSeasonYear
+              || record.sustainedInWeek < currentWeek;
+            if (!wasAlreadyActiveBeforeThisWeek) {
+              return record;
+            }
+            playerMutated = true;
+            return { ...record, weeksRemaining: record.weeksRemaining - 1 };
+          });
+        }
+
         if (!playerMutated) {
           return player;
         }
         teamMutated = true;
-        return { ...player, injuries: updated };
+        return { ...player, injuries: updatedInjuries, fatigue: nextFatigue };
       });
       return teamMutated ? { ...team, players } : team;
     });
@@ -476,6 +490,31 @@ export class GameService {
         if (!record) return player;
         teamMutated = true;
         return { ...player, injuries: [...(player.injuries ?? []), record] };
+      });
+      return teamMutated ? { ...team, players } : team;
+    });
+  }
+
+  private applyPostMatchFatigue(teams: Team[], matchState: MatchState): Team[] {
+    if (!matchState.fatigueTimeline || matchState.fatigueTimeline.length === 0) return teams;
+    const finalFatigueSnapshot = matchState.fatigueTimeline[matchState.fatigueTimeline.length - 1];
+    if (!finalFatigueSnapshot) return teams;
+
+    const fatigueByPlayerId = new Map<string, number>();
+    for (const p of finalFatigueSnapshot.players) {
+      fatigueByPlayerId.set(p.playerId, p.fatigue);
+    }
+
+    if (fatigueByPlayerId.size === 0) return teams;
+
+    return teams.map(team => {
+      if (!team.players) return team;
+      let teamMutated = false;
+      const players = team.players.map(player => {
+        const nextFatigue = fatigueByPlayerId.get(player.id);
+        if (nextFatigue === undefined || nextFatigue === player.fatigue) return player;
+        teamMutated = true;
+        return { ...player, fatigue: nextFatigue };
       });
       return teamMutated ? { ...team, players } : team;
     });
@@ -964,7 +1003,11 @@ export class GameService {
 
     const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
     const resolvedSeasonYear = seasonYear ?? this.getCurrentLeagueSeasonYear();
-    const overallOf = (player: Player) => getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
+    const overallOf = (player: Player) => {
+      const baseOverall = getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
+      const fatigue = player.fatigue ?? 0;
+      return baseOverall * Math.max(0.5, 1 - (fatigue / 200));
+    };
 
     // Eligibility gate: injured players are not selectable.
     const eligible = (player: Player) => isPlayerEligible(player);
@@ -1465,7 +1508,10 @@ export class GameService {
     // Persist injuries sustained during the match onto the team rosters.
     const teamsWithInjuries = this.applyPostMatchInjuries(updatedTeams, matchState, l.currentSeasonYear, l.currentWeek);
 
-    const finalizedTeams = this.dressBestPlayers(teamsWithInjuries);
+    // Apply accrued fatigue from the match
+    const teamsWithFatigue = this.applyPostMatchFatigue(teamsWithInjuries, matchState);
+
+    const finalizedTeams = this.dressBestPlayers(teamsWithFatigue);
 
     // Persist updated league state. Week progression is managed externally
     // (e.g., by the schedule component) to avoid double-incrementing.
