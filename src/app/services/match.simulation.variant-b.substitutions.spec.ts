@@ -4,7 +4,7 @@ import { MatchSimulationVariantBService } from './match.simulation.variant-b.ser
 import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
-import { MatchState, PlayerFatigue, SimulationConfig } from '../models/simulation.types';
+import { MatchState, PlayerFatigue, SimulationConfig, calculateFatigueModifier } from '../models/simulation.types';
 import { CommentaryStyle, EventType, FieldZone, MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/enums';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
@@ -712,7 +712,7 @@ function createFatigueState(home: Player[], away: Player[], baseFatigue: number)
   const toFatigue = (players: Player[]): PlayerFatigue[] => players.map(player => ({
     playerId: player.id,
     fatigueLevel: baseFatigue,
-    performanceModifier: Math.max(0.5, 1.0 - baseFatigue / 200)
+    performanceModifier: calculateFatigueModifier(baseFatigue)
   }));
 
   return {

@@ -27,7 +27,7 @@ import {
   isPlayerEligible,
   withSortedUniqueSeasons
 } from '../models/season-history';
-import { SimulationConfig, MatchState, PlayByPlayEvent } from '../models/simulation.types';
+import { SimulationConfig, MatchState, PlayByPlayEvent, calculateFatigueModifier } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 import { getInjuryDefinition, InjuryRecord } from '../data/injuries';
 
@@ -1006,7 +1006,7 @@ export class GameService {
     const overallOf = (player: Player) => {
       const baseOverall = getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
       const fatigue = player.fatigue ?? 0;
-      return baseOverall * Math.max(0.5, 1 - (fatigue / 200));
+      return baseOverall * calculateFatigueModifier(fatigue);
     };
 
     // Eligibility gate: injured players are not selectable.

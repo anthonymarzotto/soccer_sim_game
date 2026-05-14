@@ -221,3 +221,7 @@ export interface PlayerFatigue {
   fatigueLevel: number; // 0-100
   performanceModifier: number; // 0.5-1.0
 }
+
+export function calculateFatigueModifier(fatigue: number): number {
+  return Math.max(0.5, 1.0 - fatigue / 200);
+}

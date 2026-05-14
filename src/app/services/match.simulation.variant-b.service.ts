@@ -13,6 +13,7 @@ import {
   VariantBMatchShapeSnapshot,
   MinuteFatigueSnapshot,
   PlayerFatigueSnapshot,
+  calculateFatigueModifier,
 } from "../models/simulation.types";
 import { FieldService } from "./field.service";
 import { RngService } from "./rng.service";
@@ -449,7 +450,7 @@ export class MatchSimulationVariantBService {
       return players.map((player) => ({
         playerId: player.id,
         fatigueLevel: player.fatigue ?? 0,
-        performanceModifier: Math.max(0.5, 1.0 - (player.fatigue ?? 0) / 200),
+        performanceModifier: calculateFatigueModifier(player.fatigue ?? 0),
       }));
     };
 
