@@ -628,7 +628,7 @@
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
                 <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.fatigue"></div>
               </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.fatigue }}</span>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.fatigue || 0 | number:'1.0-0' }}</span>
             </div>
             <div class="flex items-center gap-4">
               <span class="text-zinc-500 w-28" [title]="getStatDescription('luck')">Luck</span>
