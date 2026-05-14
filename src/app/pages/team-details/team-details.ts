@@ -8,6 +8,7 @@ import { FieldService } from '../../services/field.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
 import { Player, PlayerCareerStats, Role } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
+import { calculateFatigueModifier } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating } from '../../models/player-career-stats';
@@ -171,6 +172,18 @@ export class TeamDetailsComponent {
       throw new Error('Player attributes unavailable for current season');
     }
     return attributes.overall.value;
+  }
+
+  /**
+   * Returns the fatigue-adjusted effective overall for display.
+   * Returns null when fatigue is negligible (< 1 point difference).
+   */
+  getPlayerEffectiveOverall(player: Player): number | null {
+    const base = this.getPlayerOverall(player);
+    const fatigue = player.fatigue ?? 0;
+    if (fatigue === 0) return null;
+    const effective = Math.round(base * calculateFatigueModifier(fatigue));
+    return effective < base ? effective : null;
   }
 
   getPlayerAge(player: Player | null | undefined): number | null {

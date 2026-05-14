@@ -270,7 +270,15 @@
                       }
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ row.player ? getPlayerOverall(row.player) : '--' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                        @if (row.player) {
+                          @let eff = getPlayerEffectiveOverall(row.player);
+                          {{ getPlayerOverall(row.player) }}
+                          @if (eff !== null) {
+                            <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                          }
+                        } @else { -- }
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold w-16" [class.text-red-400]="(row.player?.fatigue ?? 0) >= 50" [class.text-yellow-400]="(row.player?.fatigue ?? 0) >= 25 && (row.player?.fatigue ?? 0) < 50" [class.text-emerald-400]="(row.player?.fatigue ?? 0) < 25">{{ row.player ? (row.player.fatigue || 0 | number:'1.0-0') : '--' }}</td>
                       @let sStatsB = getRowStats(row.player);
                       <td class="px-4 py-4 whitespace-nowrap text-center w-24">
@@ -339,7 +347,15 @@
                       <td class="px-6 py-4 whitespace-nowrap font-medium text-zinc-500 italic">Empty bench slot</td>
                     }
                     @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ row.player ? getPlayerOverall(row.player) : '--' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                        @if (row.player) {
+                          @let eff = getPlayerEffectiveOverall(row.player);
+                          {{ getPlayerOverall(row.player) }}
+                          @if (eff !== null) {
+                            <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                          }
+                        } @else { -- }
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold w-16" [class.text-red-400]="(row.player?.fatigue ?? 0) >= 50" [class.text-yellow-400]="(row.player?.fatigue ?? 0) >= 25 && (row.player?.fatigue ?? 0) < 50" [class.text-emerald-400]="(row.player?.fatigue ?? 0) < 25">{{ row.player ? (row.player.fatigue || 0 | number:'1.0-0') : '--' }}</td>
                       @let bStatsB = getRowStats(row.player);
                       <td class="px-4 py-4 whitespace-nowrap text-center w-24">
@@ -403,7 +419,13 @@
                       </a>
                     </td>
                     @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">{{ getPlayerOverall(player) }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                        @let eff = getPlayerEffectiveOverall(player);
+                        {{ getPlayerOverall(player) }}
+                        @if (eff !== null) {
+                          <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                        }
+                      </td>
                       <td class="px-4 py-4 whitespace-nowrap text-center font-bold w-16" [class.text-red-400]="(player.fatigue ?? 0) >= 50" [class.text-yellow-400]="(player.fatigue ?? 0) >= 25 && (player.fatigue ?? 0) < 50" [class.text-emerald-400]="(player.fatigue ?? 0) < 25">{{ player.fatigue || 0 | number:'1.0-0' }}</td>
                       @let rStats = getCurrentSeasonStats(player);
                       <td class="px-4 py-4 whitespace-nowrap text-center w-24">
