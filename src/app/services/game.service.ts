@@ -404,10 +404,11 @@ export class GameService {
   }
 
   /**
-   * Decrements `weeksRemaining` on every player's active injury once the player
-   * has completed at least one full future match week on the sideline.
-   * Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as
-   * historical records.
+   * Performs weekly state updates for all players in the league.
+   * 1. Fatigue Recovery: Recovers fatigue based on the player's 'fitness' attribute (Base 20 + 0.3 * fitness).
+   * 2. Injury Progression: Decrements `weeksRemaining` on every player's active injury once the player
+   *    has completed at least one full future match week on the sideline.
+   *    Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as historical records.
    */
   private advanceWeekForPlayers(teams: Team[], currentSeasonYear: number, currentWeek: number): Team[] {
     return teams.map(team => {
