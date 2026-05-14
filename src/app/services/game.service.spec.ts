@@ -245,7 +245,7 @@ describe('GameService persistence integration', () => {
       }]
     };
 
-    const { service, persistenceSpy } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
     await service.ensureHydrated();
 
     service.advanceWeek();
@@ -255,7 +255,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should block mutating league operations while schema mismatch is active', async () => {
-    const { service, persistenceSpy, hasSchemaMismatch } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service, hasSchemaMismatch } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
     await service.ensureHydrated();
 
     hasSchemaMismatch.set(true);
