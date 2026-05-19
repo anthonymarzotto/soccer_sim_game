@@ -278,7 +278,13 @@
                           }
                         } @else { -- }
                       </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold w-16" [class.text-red-400]="(row.player?.fatigue ?? 0) >= 50" [class.text-yellow-400]="(row.player?.fatigue ?? 0) >= 25 && (row.player?.fatigue ?? 0) < 50" [class.text-emerald-400]="(row.player?.fatigue ?? 0) < 25">{{ row.player ? (row.player.fatigue || 0 | number:'1.0-0') : '--' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-16">
+                        @if (row.player) {
+                          <div class="inline-block w-8 h-1 bg-zinc-800 rounded-full overflow-hidden" [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                            <div class="h-full" [style.width.%]="row.player.fatigue || 0" [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
+                          </div>
+                        } @else { -- }
+                      </td>
                       @let sStatsB = getRowStats(row.player);
                       <td class="px-4 py-4 whitespace-nowrap text-center w-24">
                         <span class="text-amber-400 font-mono">{{ formatAvgRating(sStatsB) }}</span>
@@ -354,7 +360,13 @@
                           }
                         } @else { -- }
                       </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold w-16" [class.text-red-400]="(row.player?.fatigue ?? 0) >= 50" [class.text-yellow-400]="(row.player?.fatigue ?? 0) >= 25 && (row.player?.fatigue ?? 0) < 50" [class.text-emerald-400]="(row.player?.fatigue ?? 0) < 25">{{ row.player ? (row.player.fatigue || 0 | number:'1.0-0') : '--' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-16">
+                        @if (row.player) {
+                          <div class="inline-block w-8 h-1 bg-zinc-800 rounded-full overflow-hidden" [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                            <div class="h-full" [style.width.%]="row.player.fatigue || 0" [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
+                          </div>
+                        } @else { -- }
+                      </td>
                       @let bStatsB = getRowStats(row.player);
                       <td class="px-4 py-4 whitespace-nowrap text-center w-24">
                         <span class="text-amber-400 font-mono">{{ formatAvgRating(bStatsB) }}</span>
@@ -423,7 +435,11 @@
                           <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
                         }
                       </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold w-16" [class.text-red-400]="(player.fatigue ?? 0) >= 50" [class.text-yellow-400]="(player.fatigue ?? 0) >= 25 && (player.fatigue ?? 0) < 50" [class.text-emerald-400]="(player.fatigue ?? 0) < 25">{{ player.fatigue || 0 | number:'1.0-0' }}</td>
+                      <td class="px-4 py-4 whitespace-nowrap text-center w-16">
+                        <div class="inline-block w-8 h-1 bg-zinc-800 rounded-full overflow-hidden" [title]="(player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                          <div class="h-full" [style.width.%]="player.fatigue || 0" [style.background-color]="getFatigueColor(player.fatigue || 0)"></div>
+                        </div>
+                      </td>
                       @let rStats = getCurrentSeasonStats(player);
                       <td class="px-4 py-4 whitespace-nowrap text-center w-24">
                         <span class="text-amber-400 font-mono">{{ formatAvgRating(rStats) }}</span>

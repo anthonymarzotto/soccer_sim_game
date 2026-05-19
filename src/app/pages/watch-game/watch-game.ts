@@ -8,7 +8,7 @@ import { TeamColorsService } from '../../services/team-colors.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
 import { StatisticsService, PlayerRatingBreakdownItem } from '../../services/statistics.service';
 import { rankThreeStars, MatchStarEntry } from '../../models/match-stars';
-import { Match, MatchEvent, MatchStatistics, Team, Player, PlayerStatistics } from '../../models/types';
+import { Match, MatchEvent, MatchStatistics, Team, Player, PlayerStatistics, TeamLineupSnapshot } from '../../models/types';
 import { EventType, EventImportance, CommentaryStyle, TeamSide, Role } from '../../models/enums';
 import { PlayByPlayEvent, MatchState, Coordinates, PlayByPlayEventAdditionalData, VariantBMatchShapeSnapshot, VariantBShapeSlotSnapshot, MinuteFatigueSnapshot } from '../../models/simulation.types';
 
@@ -101,11 +101,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private static readonly MAX_SPEED = 5;
   private static readonly NEW_COMMENTARY_ANIMATION_MS = 500;
 
-  private readonly HIGH_FATIGUE_THRESHOLD = 75;
-  private readonly MEDIUM_FATIGUE_THRESHOLD = 50;
-  private readonly HIGH_FATIGUE_BAR_COLOR = '#22c55e';
-  private readonly MEDIUM_FATIGUE_BAR_COLOR = '#f59e0b';
-  private readonly LOW_FATIGUE_BAR_COLOR = '#dc2626';
+  private readonly FATIGUE_EXHAUSTED_THRESHOLD = 75;
+  private readonly FATIGUE_TIRED_THRESHOLD = 40;
+  private readonly FATIGUE_FRESH_COLOR = '#22c55e';
+  private readonly FATIGUE_TIRED_COLOR = '#f59e0b';
+  private readonly FATIGUE_EXHAUSTED_COLOR = '#dc2626';
 
 
   private route = inject(ActivatedRoute);
@@ -144,7 +144,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   homeTeamAccentColor = signal<string>('#f43f5e');
   awayTeamColor = signal<string>('#f43f5e');
   awayTeamAccentColor = signal<string>('#0ea5e9');
-  
+
   // Match state from simulation
   matchState = signal<MatchState | null>(null);
   matchStats = signal<MatchStatistics | null>(null);
@@ -175,7 +175,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   commentaryAutoFollow = signal<boolean>(true);
   ratingTooltip = signal<LiveRatingTooltipState | null>(null);
   private pausedSpeed: number | null = null;
-  
+
   // Replay scheduling
   private commentaryTimer: ReturnType<typeof setTimeout> | null = null;
   private commentaryTimerStartedAt: number | null = null;
@@ -226,8 +226,20 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     if (!match) return;
 
     this.match.set(match);
-    const home = this.gameService.getTeam(match.homeTeamId) ?? null;
-    const away = this.gameService.getTeam(match.awayTeamId) ?? null;
+    
+    let home: Team | null = null;
+    let away: Team | null = null;
+
+    if (match.played) {
+      const baseHome = this.gameService.getTeam(match.homeTeamId);
+      const baseAway = this.gameService.getTeam(match.awayTeamId);
+      home = baseHome ? this.applyLineupSnapshot(baseHome, match.homeLineup) : null;
+      away = baseAway ? this.applyLineupSnapshot(baseAway, match.awayLineup) : null;
+    } else {
+      home = this.gameService.previewDressedTeam(match.homeTeamId);
+      away = this.gameService.previewDressedTeam(match.awayTeamId);
+    }
+
     this.homeTeam.set(home);
     this.awayTeam.set(away);
 
@@ -271,6 +283,22 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         matchStats: undefined
       });
     }
+  }
+
+  private applyLineupSnapshot(team: Team, snapshot?: TeamLineupSnapshot): Team {
+    if (!snapshot) return team;
+    
+    const players = team.players.map(p => ({
+      ...p,
+      role: snapshot.playerRoles[p.id] ?? p.role
+    }));
+
+    return {
+      ...team,
+      players,
+      selectedFormationId: snapshot.selectedFormationId,
+      formationAssignments: { ...snapshot.formationAssignments }
+    };
   }
 
   startSimulation() {
@@ -368,6 +396,10 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       // Store the match state (stats will be set after commentary completes)
       this.matchState.set(result.matchState);
       this.finalKeyEvents = result.keyEvents;
+
+      // Keep using the pre-loaded teams as they represent the true starting state
+      this.buildPlayerTeamLookup(home.id, away.id);
+      this.buildFormationDots(home, away);
       this.finalMatchStats = result.matchStats;
       this.keyEvents.set(result.keyEvents);
 
@@ -433,13 +465,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
           awayPlayers
         }
       );
-      
+
       // Determine importance based on event type
       let importance = EventImportance.LOW;
       if (event.type === EventType.GOAL || event.type === EventType.RED_CARD) {
         importance = EventImportance.HIGH;
-      } else if (event.type === EventType.YELLOW_CARD || event.type === EventType.SAVE || 
-                 event.type === EventType.SHOT || event.type === EventType.CORNER) {
+      } else if (event.type === EventType.YELLOW_CARD || event.type === EventType.SAVE ||
+        event.type === EventType.SHOT || event.type === EventType.CORNER) {
         importance = EventImportance.MEDIUM;
       }
 
@@ -550,13 +582,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       this.clearActiveEventState();
       this.commentary.update(items => [item, ...items]);
       this.scrollCommentaryLogToLatest();
-      
+
       setTimeout(() => {
-        this.commentary.update(items => 
+        this.commentary.update(items =>
           items.map(i => i.id === item.id ? { ...i, isNew: false } : i)
         );
       }, WatchGameComponent.NEW_COMMENTARY_ANIMATION_MS);
-      
+
       this.commentaryIndex++;
       this.stopCommentaryFeed();
       this.pausedSpeed = null;
@@ -589,7 +621,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     // Remove isNew flag after animation
     setTimeout(() => {
-      this.commentary.update(items => 
+      this.commentary.update(items =>
         items.map(i => i.id === item.id ? { ...i, isNew: false } : i)
       );
     }, WatchGameComponent.NEW_COMMENTARY_ANIMATION_MS);
@@ -990,12 +1022,12 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   private buildFormationDots(homeTeam: Team, awayTeam: Team) {
     const homeColors = this.teamColorsService.getTeamColors(homeTeam.name);
     const awayColors = this.teamColorsService.getTeamColors(awayTeam.name);
-    
+
     this.homeTeamColor.set(homeColors.main);
     this.homeTeamAccentColor.set(homeColors.accent);
     this.awayTeamColor.set(awayColors.main);
     this.awayTeamAccentColor.set(awayColors.accent);
-    
+
     this.homeFormationDots.set(this.buildDotsForTeam(homeTeam, TeamSide.HOME, false));
     this.awayFormationDots.set(this.buildDotsForTeam(awayTeam, TeamSide.AWAY, true));
     this.homeRemovedPlayers.set(new Map());
@@ -1070,14 +1102,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
     const player = this.gameService.getPlayer(dot.playerId);
     if (!player) {
-      return 100;
+      return 0;
     }
 
     // Fallback for legacy states without fatigue snapshots.
     const minutesOnPitch = Math.max(0, this.currentMinute() - dot.minuteEntered);
     const fallbackRatePerMinute = player.position === 'GK' ? 0.003 : 0.5;
-    const fatigueLoad = this.clampNumber(Math.round(minutesOnPitch * fallbackRatePerMinute), 0, 100);
-    return this.clampNumber(100 - fatigueLoad, 0, 100);
+    return this.clampNumber(Math.round(minutesOnPitch * fallbackRatePerMinute), 0, 100);
   }
 
   private getTrackedFatigue(playerId: string): number | null {
@@ -1170,7 +1201,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
           fatigue = removed.fatigue;
         } else {
           playerStatus = Role.BENCH;
-          fatigue = 100;
+          fatigue = 0;
         }
 
         return {
@@ -1214,15 +1245,15 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   getLineupBarColor(fatigue: number): string {
-    if (fatigue >= this.HIGH_FATIGUE_THRESHOLD) {
-      return this.HIGH_FATIGUE_BAR_COLOR;
+    if (fatigue >= this.FATIGUE_EXHAUSTED_THRESHOLD) {
+      return this.FATIGUE_EXHAUSTED_COLOR;
     }
 
-    if (fatigue >= this.MEDIUM_FATIGUE_THRESHOLD) {
-      return this.MEDIUM_FATIGUE_BAR_COLOR;
+    if (fatigue >= this.FATIGUE_TIRED_THRESHOLD) {
+      return this.FATIGUE_TIRED_COLOR;
     }
 
-    return this.LOW_FATIGUE_BAR_COLOR;
+    return this.FATIGUE_FRESH_COLOR;
   }
 
   getSlotLabelInitials(label: string | null): string {

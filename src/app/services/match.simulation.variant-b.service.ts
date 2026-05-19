@@ -36,8 +36,14 @@ import {
 } from "../data/injuries";
 
 interface ResolvedRosters {
+  /** On-field starters only — all gameplay methods use these exclusively. */
   homePlayers: Player[];
+  /** On-field starters only — all gameplay methods use these exclusively. */
   awayPlayers: Player[];
+  /** Bench players — accessed only by substitution logic. */
+  homeBench: Player[];
+  /** Bench players — accessed only by substitution logic. */
+  awayBench: Player[];
 }
 
 type TeamSubstitutionUsage = Record<TeamSide, number>;
@@ -151,12 +157,13 @@ export class MatchSimulationVariantBService {
     away: 0,
   };
   private injuredPlayerIds = new Set<string>();
-  private pendingInjuryReplacements: Record<TeamSide, string[]> = {
+  private pendingInjuryReplacements: Record<TeamSide, { playerId: string; position: PositionEnum }[]> = {
     home: [],
     away: [],
   };
   private lastSimulationForfeit: TeamSide | null = null;
   private currentSeasonYear = new Date().getFullYear();
+  private activeRosters: ResolvedRosters | null = null;
 
   didLastSimulationEndByForfeit(): boolean {
     return this.lastSimulationForfeit !== null;
@@ -179,23 +186,14 @@ export class MatchSimulationVariantBService {
     const simulatedHomeTeam = structuredClone(homeTeam);
     const simulatedAwayTeam = structuredClone(awayTeam);
 
-    const rosters: ResolvedRosters = {
-      homePlayers: resolveTeamPlayers(simulatedHomeTeam),
-      awayPlayers: resolveTeamPlayers(simulatedAwayTeam),
-    };
+    const rosters = this.buildResolvedRosters(simulatedHomeTeam, simulatedAwayTeam);
+    this.activeRosters = rosters;
 
     const tactics = this.calculateTeamTactics(
       simulatedHomeTeam,
       simulatedAwayTeam,
-      rosters.homePlayers,
-      rosters.awayPlayers,
     );
-    const fatigue = this.initializeFatigue(
-      simulatedHomeTeam,
-      simulatedAwayTeam,
-      rosters.homePlayers,
-      rosters.awayPlayers,
-    );
+    const fatigue = this.initializeFatigue(rosters);
 
     let currentState = this.initializeMatchState(
       match,
@@ -279,6 +277,7 @@ export class MatchSimulationVariantBService {
     this.pendingTacticalSubstitutions = { home: 0, away: 0 };
     this.injuredPlayerIds = new Set();
     this.pendingInjuryReplacements = { home: [], away: [] };
+    this.activeRosters = null;
 
     return currentState;
   }
@@ -423,28 +422,21 @@ export class MatchSimulationVariantBService {
   private calculateTeamTactics(
     homeTeam: Team,
     awayTeam: Team,
-    homePlayers: Player[],
-    awayPlayers: Player[],
   ): { home: TacticalSetup; away: TacticalSetup } {
     return {
       home: this.fieldService.calculateTeamTactics(
         homeTeam,
         this.currentSeasonYear,
-        homePlayers,
       ),
       away: this.fieldService.calculateTeamTactics(
         awayTeam,
         this.currentSeasonYear,
-        awayPlayers,
       ),
     };
   }
 
   private initializeFatigue(
-    _homeTeam: Team,
-    _awayTeam: Team,
-    homePlayers: Player[],
-    awayPlayers: Player[],
+    rosters: ResolvedRosters,
   ): { home: PlayerFatigue[]; away: PlayerFatigue[] } {
     const createFatigue = (players: Player[]): PlayerFatigue[] => {
       return players.map((player) => ({
@@ -455,8 +447,8 @@ export class MatchSimulationVariantBService {
     };
 
     return {
-      home: createFatigue(homePlayers),
-      away: createFatigue(awayPlayers),
+      home: createFatigue([...rosters.homePlayers, ...rosters.homeBench]),
+      away: createFatigue([...rosters.awayPlayers, ...rosters.awayBench]),
     };
   }
 
@@ -524,15 +516,9 @@ export class MatchSimulationVariantBService {
   }
 
   private getBallCarrier(playerId: string, teamPlayers: Player[]): Player {
-    const carrier = teamPlayers.find((player) => player.id === playerId);
-    if (carrier) {
-      return carrier;
-    }
-
-    const starters = teamPlayers.filter(
-      (player) => player.role === Role.STARTER,
-    );
-    return starters[0] ?? teamPlayers[0];
+    // teamPlayers contains only on-field starters, so any match is valid.
+    return teamPlayers.find((player) => player.id === playerId)
+      ?? teamPlayers[0];
   }
 
   private applyCarrierMovement(
@@ -998,16 +984,13 @@ export class MatchSimulationVariantBService {
 
         const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
         const endurance = attrs.endurance.value;
-        const fatiguePerTick = 0.5 * (1 - (endurance - 50) * 0.005); // Lower fatigue per tick for higher endurance
+        const fatiguePerTick = 0.5 * (1 + (endurance - 50) * 0.005); // Higher fatigue recovery per tick for higher endurance
 
         entry.fatigueLevel = Math.max(
           0,
           entry.fatigueLevel - fatiguePerTick * excessTicks,
         );
-        entry.performanceModifier = Math.max(
-          0.5,
-          1.0 - entry.fatigueLevel / 200,
-        );
+        entry.performanceModifier = calculateFatigueModifier(entry.fatigueLevel);
       }
     };
 
@@ -1632,7 +1615,12 @@ export class MatchSimulationVariantBService {
       (player) => player.id === playerId,
     );
     if (dismissedPlayer) {
-      dismissedPlayer.role = Role.DISMISSED;
+      // Remove from the on-field array so no gameplay method can reach this player.
+      if (this.activeRosters) {
+        this.removeFromPitch(this.activeRosters, teamKey, playerId, Role.DISMISSED);
+      } else {
+        dismissedPlayer.role = Role.DISMISSED;
+      }
       this.rebalanceShapeAfterDismissal(
         teamKey,
         teamPlayers,
@@ -1717,7 +1705,10 @@ export class MatchSimulationVariantBService {
       tactics,
       state,
     );
-    this.pendingInjuryReplacements[teamKey].push(player.id);
+    this.pendingInjuryReplacements[teamKey].push({
+      playerId: player.id,
+      position: player.position,
+    });
     return true;
   }
 
@@ -1732,30 +1723,30 @@ export class MatchSimulationVariantBService {
     if (!injured) {
       return;
     }
-    // Mark the player as off the pitch using the existing substitution role.
-    // We deliberately do NOT use Role.DISMISSED so this isn't counted as a
-    // forfeit/red card, and we don't persist a new role state.
-    injured.role = Role.SUBSTITUTED_OUT;
-     // For injury withdrawals, do NOT rebalance the entire shape here.
-     // Instead, just clear the injured player's slot and let the replacement logic
-     // rebalance once when the sub comes on. This avoids cascading position changes
-     // that disrupt non-4-4-2 formations and create visual noise.
-     if (this.activeMatchShape) {
-       const currentShape = this.activeMatchShape[teamKey];
-       this.activeMatchShape = {
-         ...this.activeMatchShape,
-         [teamKey]: currentShape.map((slot) => ({
-           ...slot,
-           playerId: slot.playerId === playerId ? null : slot.playerId,
-         })),
-       };
-     }
+    // Remove from the on-field array so no gameplay method can reach this player.
+    if (this.activeRosters) {
+      this.removeFromPitch(this.activeRosters, teamKey, playerId, Role.SUBSTITUTED_OUT);
+    } else {
+      injured.role = Role.SUBSTITUTED_OUT;
+    }
+    // For injury withdrawals, do NOT rebalance the entire shape here.
+    // Instead, just clear the injured player's slot and let the replacement logic
+    // rebalance once when the sub comes on. This avoids cascading position changes
+    // that disrupt non-4-4-2 formations and create visual noise.
+    if (this.activeMatchShape) {
+      const currentShape = this.activeMatchShape[teamKey];
+      this.activeMatchShape = {
+        ...this.activeMatchShape,
+        [teamKey]: currentShape.map((slot) => ({
+          ...slot,
+          playerId: slot.playerId === playerId ? null : slot.playerId,
+        })),
+      };
+    }
 
     if (state.ballPossession.playerWithBall === playerId) {
-      const remainingStarter = teamPlayers.find(
-        (candidate) =>
-          candidate.role === Role.STARTER && candidate.id !== playerId,
-      );
+      // After removal, teamPlayers (the on-field array) contains only remaining starters.
+      const remainingStarter = teamPlayers[0];
       if (remainingStarter) {
         state.ballPossession.playerWithBall = remainingStarter.id;
       }
@@ -1778,45 +1769,45 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     substitutionsUsed: TeamSubstitutionUsage,
   ): boolean {
-    const pendingInjuredIds = [...this.pendingInjuryReplacements[teamKey]];
-    if (pendingInjuredIds.length === 0) {
+    const pendingInjuries = [...this.pendingInjuryReplacements[teamKey]];
+    if (pendingInjuries.length === 0) {
       return false;
     }
     this.pendingInjuryReplacements[teamKey] = [];
 
-    const teamPlayers =
+    const teamBench =
+      teamKey === TeamSide.HOME ? rosters.homeBench : rosters.awayBench;
+    const teamOnField =
       teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     let processedReplacement = false;
 
-    for (const injuredId of pendingInjuredIds) {
+    for (const injury of pendingInjuries) {
       if (
         substitutionsUsed[teamKey] >= this.maxSubstitutionsPerTeam ||
         !this.activeMatchShape
       ) {
-        // Out of substitutions: the team plays short for the remaining queued injuries.
         break;
       }
 
-      const injuredPlayer = teamPlayers.find((player) => player.id === injuredId);
-      const incomingPosition = injuredPlayer?.position ?? PositionEnum.MIDFIELDER;
+      // Position was captured when the injury occurred (player already removed from onField).
+      const incomingPosition = injury.position;
       const incoming = this.selectSubstitutionIncomingPlayer(
-        teamPlayers,
+        teamBench,
         incomingPosition,
       );
       if (!incoming) {
         continue;
       }
 
-      incoming.role = Role.STARTER;
+      // Atomically move from bench to on-field.
+      this.transferToPitch(rosters, teamKey, incoming.id);
       substitutionsUsed[teamKey] += 1;
 
       const currentShape = this.activeMatchShape[teamKey];
-      const activePlayers = teamPlayers.filter(
-        (player) => player.role === Role.STARTER,
-      );
+      // teamOnField now contains only active starters (including the new arrival).
       const rebalancedShape = this.rebalanceShapeForPlayers(
         currentShape,
-        activePlayers,
+        teamOnField,
       );
       this.activeMatchShape = {
         ...this.activeMatchShape,
@@ -1827,7 +1818,7 @@ export class MatchSimulationVariantBService {
       const teamId = teamKey === TeamSide.HOME ? homeTeam.id : awayTeam.id;
       if (
         state.ballPossession.teamId === teamId &&
-        state.ballPossession.playerWithBall === injuredId
+        state.ballPossession.playerWithBall === injury.playerId
       ) {
         state.ballPossession.playerWithBall = incoming.id;
       }
@@ -1835,7 +1826,7 @@ export class MatchSimulationVariantBService {
       this.createEvent(
         state,
         EventType.SUBSTITUTION,
-        [injuredId, incoming.id],
+        [injury.playerId, incoming.id],
         { ...state.ballPossession.location },
         minute,
         true,
@@ -2096,31 +2087,31 @@ export class MatchSimulationVariantBService {
     const homeUsedTacticalSub = homeHasPendingInjuryReplacement
       ? false
       : this.tryPendingTacticalSubstitution(
-          TeamSide.HOME,
-          state,
-          tactics,
-          homeTeam,
-          awayTeam,
-          fatigue,
-          minute,
-          config,
-          rosters,
-          substitutionsUsed,
-        );
+        TeamSide.HOME,
+        state,
+        tactics,
+        homeTeam,
+        awayTeam,
+        fatigue,
+        minute,
+        config,
+        rosters,
+        substitutionsUsed,
+      );
     const awayUsedTacticalSub = awayHasPendingInjuryReplacement
       ? false
       : this.tryPendingTacticalSubstitution(
-          TeamSide.AWAY,
-          state,
-          tactics,
-          homeTeam,
-          awayTeam,
-          fatigue,
-          minute,
-          config,
-          rosters,
-          substitutionsUsed,
-        );
+        TeamSide.AWAY,
+        state,
+        tactics,
+        homeTeam,
+        awayTeam,
+        fatigue,
+        minute,
+        config,
+        rosters,
+        substitutionsUsed,
+      );
 
     if (!homeHasPendingInjuryReplacement && !homeUsedTacticalSub) {
       this.tryTeamSubstitution(
@@ -2200,20 +2191,18 @@ export class MatchSimulationVariantBService {
       return false;
     }
 
-    const teamPlayers =
+    const teamOnField =
       teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const teamBench =
+      teamKey === TeamSide.HOME ? rosters.homeBench : rosters.awayBench;
     const currentShape = this.activeMatchShape[teamKey];
     const currentQuality = this.calculateShapeQuality(
       currentShape,
-      teamPlayers,
+      teamOnField,
     );
-    const benchPlayers = teamPlayers.filter(
-      (player) => player.role === Role.BENCH,
-    );
-    const starterOutfield = teamPlayers.filter(
-      (player) =>
-        player.role === Role.STARTER &&
-        player.position !== PositionEnum.GOALKEEPER,
+    // teamOnField is starters-only; filter out goalkeepers for outgoing candidates.
+    const starterOutfield = teamOnField.filter(
+      (player) => player.position !== PositionEnum.GOALKEEPER,
     );
 
     let bestCandidate: {
@@ -2223,10 +2212,10 @@ export class MatchSimulationVariantBService {
       shape: ActiveShapeSlot[];
     } | null = null;
 
-    for (const incoming of benchPlayers) {
+    for (const incoming of teamBench) {
       for (const outgoing of starterOutfield) {
-        const simulatedActivePlayers = teamPlayers.filter(
-          (player) => player.role === Role.STARTER && player.id !== outgoing.id,
+        const simulatedActivePlayers = teamOnField.filter(
+          (player) => player.id !== outgoing.id,
         );
         simulatedActivePlayers.push({ ...incoming, role: Role.STARTER });
 
@@ -2236,7 +2225,7 @@ export class MatchSimulationVariantBService {
         );
         const candidateQuality = this.calculateShapeQuality(
           candidateShape,
-          teamPlayers,
+          teamOnField,
         );
 
         if (!bestCandidate || candidateQuality > bestCandidate.quality) {
@@ -2254,8 +2243,9 @@ export class MatchSimulationVariantBService {
       return false;
     }
 
-    bestCandidate.outgoing.role = Role.SUBSTITUTED_OUT;
-    bestCandidate.incoming.role = Role.STARTER;
+    // Atomically swap: remove outgoing from on-field, move incoming from bench to on-field.
+    this.removeFromPitch(rosters, teamKey, bestCandidate.outgoing.id, Role.SUBSTITUTED_OUT);
+    this.transferToPitch(rosters, teamKey, bestCandidate.incoming.id);
     substitutionsUsed[teamKey] += 1;
     this.activeMatchShape = {
       ...this.activeMatchShape,
@@ -2307,11 +2297,13 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    const teamPlayers =
+    const teamOnField =
       teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const teamBench =
+      teamKey === TeamSide.HOME ? rosters.homeBench : rosters.awayBench;
     const teamFatigue = fatigue[teamKey];
     const triggerChance = this.calculateSubstitutionTriggerChance(
-      teamPlayers,
+      teamOnField,
       teamFatigue,
       minute,
     );
@@ -2320,7 +2312,7 @@ export class MatchSimulationVariantBService {
     }
 
     const outgoingPlayer = this.selectSubstitutionOutgoingPlayer(
-      teamPlayers,
+      teamOnField,
       teamFatigue,
     );
     if (!outgoingPlayer) {
@@ -2328,15 +2320,15 @@ export class MatchSimulationVariantBService {
     }
 
     const incomingPlayer = this.selectSubstitutionIncomingPlayer(
-      teamPlayers,
+      teamBench,
       outgoingPlayer.position,
     );
     if (!incomingPlayer) {
       return;
     }
 
-    outgoingPlayer.role = Role.SUBSTITUTED_OUT;
-    incomingPlayer.role = Role.STARTER;
+    this.removeFromPitch(rosters, teamKey, outgoingPlayer.id, Role.SUBSTITUTED_OUT);
+    this.transferToPitch(rosters, teamKey, incomingPlayer.id);
     substitutionsUsed[teamKey] += 1;
     this.applyShapeSubstitution(
       teamKey,
@@ -2376,9 +2368,9 @@ export class MatchSimulationVariantBService {
     const fatigueByPlayer = new Map(
       teamFatigue.map((entry) => [entry.playerId, entry.fatigueLevel]),
     );
+    // teamPlayers is the on-field array (starters only).
     const fatiguedStarters = teamPlayers.filter(
       (player) =>
-        player.role === Role.STARTER &&
         player.position !== PositionEnum.GOALKEEPER &&
         (fatigueByPlayer.get(player.id) ?? 0) >= 62,
     ).length;
@@ -2394,10 +2386,9 @@ export class MatchSimulationVariantBService {
     const fatigueByPlayer = new Map(
       teamFatigue.map((entry) => [entry.playerId, entry.fatigueLevel]),
     );
+    // teamPlayers is the on-field array (starters only).
     const starterOutfield = teamPlayers.filter(
-      (player) =>
-        player.role === Role.STARTER &&
-        player.position !== PositionEnum.GOALKEEPER,
+      (player) => player.position !== PositionEnum.GOALKEEPER,
     );
 
     if (starterOutfield.length === 0) {
@@ -2422,22 +2413,22 @@ export class MatchSimulationVariantBService {
   }
 
   private selectSubstitutionIncomingPlayer(
-    teamPlayers: Player[],
+    benchPlayers: Player[],
     outgoingPosition: PositionEnum,
   ): Player | null {
-    const benchPlayers = teamPlayers.filter(
-      (player) => player.role === Role.BENCH && isPlayerEligible(player),
+    const eligible = benchPlayers.filter(
+      (player) => isPlayerEligible(player),
     );
 
-    if (benchPlayers.length === 0) {
+    if (eligible.length === 0) {
       return null;
     }
 
-    const samePositionPool = benchPlayers.filter(
+    const samePositionPool = eligible.filter(
       (player) => player.position === outgoingPosition,
     );
     const candidatePool =
-      samePositionPool.length > 0 ? samePositionPool : benchPlayers;
+      samePositionPool.length > 0 ? samePositionPool : eligible;
 
     const sortedByQuality = [...candidatePool].sort((left, right) => {
       const leftAttrs = getCurrentPlayerSeasonAttributes(
@@ -2676,7 +2667,7 @@ export class MatchSimulationVariantBService {
     let goalChance =
       this.activeTuning.goalChanceBase +
       (shooterAttrs.shooting.value - keeperSkill) *
-        this.activeTuning.goalChanceSkillVsKeeperScale;
+      this.activeTuning.goalChanceSkillVsKeeperScale;
 
     if (attackingY >= 85) {
       goalChance += 0.2;
@@ -2760,7 +2751,7 @@ export class MatchSimulationVariantBService {
     const selectablePlayers = starters.length > 0 ? starters : newOwnerPool;
     const newOwner =
       selectablePlayers[
-        Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))
+      Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))
       ] ?? newOwnerPool[0];
     state.ballPossession.playerWithBall = newOwner.id;
     state.ballPossession.passes = 0;
@@ -3292,13 +3283,94 @@ export class MatchSimulationVariantBService {
     };
   }
 
+  /**
+   * Builds the structurally separated rosters from team data.
+   * On-field arrays contain only starters (derived from formationAssignments).
+   * Bench arrays contain only bench players. Reserves are excluded entirely.
+   */
+  private buildResolvedRosters(
+    homeTeam: Team,
+    awayTeam: Team,
+  ): ResolvedRosters {
+    const buildSide = (team: Team) => {
+      const allPlayers = resolveTeamPlayers(team);
+      const starterIds = new Set(
+        Object.values(team.formationAssignments).filter(
+          (id): id is string => id.length > 0,
+        ),
+      );
+      const onField: Player[] = [];
+      const bench: Player[] = [];
+      for (const player of allPlayers) {
+        if (starterIds.has(player.id)) {
+          onField.push(
+            player.role === Role.STARTER
+              ? player
+              : { ...player, role: Role.STARTER },
+          );
+        } else if (player.role === Role.BENCH) {
+          bench.push(player);
+        }
+        // Reserves are excluded — never used during simulation.
+      }
+      return { onField, bench };
+    };
+
+    const home = buildSide(homeTeam);
+    const away = buildSide(awayTeam);
+    return {
+      homePlayers: home.onField,
+      awayPlayers: away.onField,
+      homeBench: home.bench,
+      awayBench: away.bench,
+    };
+  }
+
+  /**
+   * Atomically moves a player from bench to on-field during a substitution.
+   * Returns the incoming player, or null if not found on the bench.
+   */
+  private transferToPitch(
+    rosters: ResolvedRosters,
+    teamKey: TeamSide,
+    incomingId: string,
+  ): Player | null {
+    const bench =
+      teamKey === TeamSide.HOME ? rosters.homeBench : rosters.awayBench;
+    const onField =
+      teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const idx = bench.findIndex((player) => player.id === incomingId);
+    if (idx < 0) {
+      return null;
+    }
+    const [incoming] = bench.splice(idx, 1);
+    incoming.role = Role.STARTER;
+    onField.push(incoming);
+    return incoming;
+  }
+
+  /**
+   * Removes a player from the on-field array (injury, dismissal, or substitution out).
+   */
+  private removeFromPitch(
+    rosters: ResolvedRosters,
+    teamKey: TeamSide,
+    playerId: string,
+    newRole: Role,
+  ): void {
+    const onField =
+      teamKey === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const idx = onField.findIndex((player) => player.id === playerId);
+    if (idx >= 0) {
+      onField[idx].role = newRole;
+      onField.splice(idx, 1);
+    }
+  }
+
   private getRandomPlayerId(teamPlayers: Player[]): string {
-    const starters = teamPlayers.filter(
-      (player) => player.role === Role.STARTER,
-    );
-    const selectablePlayers = starters.length > 0 ? starters : teamPlayers;
-    return selectablePlayers[
-      Math.floor(this.rng.random() * selectablePlayers.length)
+    // teamPlayers contains only on-field starters.
+    return teamPlayers[
+      Math.floor(this.rng.random() * teamPlayers.length)
     ].id;
   }
 

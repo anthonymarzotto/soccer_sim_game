@@ -42,6 +42,12 @@ export class TeamDetailsComponent {
   private fieldService = inject(FieldService);
   private formationLibrary = inject(FormationLibraryService);
 
+  private readonly FATIGUE_EXHAUSTED_THRESHOLD = 75;
+  private readonly FATIGUE_TIRED_THRESHOLD = 40;
+  private readonly FATIGUE_FRESH_COLOR = '#22c55e';
+  private readonly FATIGUE_TIRED_COLOR = '#f59e0b';
+  private readonly FATIGUE_EXHAUSTED_COLOR = '#dc2626';
+
   // Expose enums for template
   Position = PositionEnum;
   MatchResult = MatchResult;
@@ -395,5 +401,15 @@ export class TeamDetailsComponent {
 
   setViewMode(mode: TeamDetailsViewMode) {
     this.viewMode.set(mode);
+  }
+
+  getFatigueColor(fatigue: number): string {
+    if (fatigue >= this.FATIGUE_EXHAUSTED_THRESHOLD) {
+      return this.FATIGUE_EXHAUSTED_COLOR;
+    }
+    if (fatigue >= this.FATIGUE_TIRED_THRESHOLD) {
+      return this.FATIGUE_TIRED_COLOR;
+    }
+    return this.FATIGUE_FRESH_COLOR;
   }
 }

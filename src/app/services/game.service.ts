@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { computeAge, seasonAnchorDate } from '../models/player-age';
@@ -421,7 +421,7 @@ export class GameService {
         if (nextFatigue > 0) {
           const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
           const recovery = 20 + (fitness * 0.3);
-          nextFatigue = Math.max(0, nextFatigue - recovery);
+          nextFatigue = Math.max(0, Math.round(nextFatigue - recovery));
           if (nextFatigue !== (player.fatigue ?? 0)) {
             playerMutated = true;
           }
@@ -701,11 +701,11 @@ export class GameService {
       }
       nextAssignments[slotId] = playerId;
 
-      return {
+      return this.syncStarterRolesWithAssignments({
         ...team,
         players: updatedPlayers,
         formationAssignments: nextAssignments
-      };
+      });
     });
 
     const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
@@ -761,13 +761,13 @@ export class GameService {
 
     const updatedTeams = l.teams.map(team => {
       if (team.id !== teamId) return team;
-      return {
+      return this.syncStarterRolesWithAssignments({
         ...team,
         formationAssignments: {
           ...team.formationAssignments,
           [slotId]: ''
         }
-      };
+      });
     });
 
     const updatedLeague: League = { ...l, teams: updatedTeams };
@@ -1346,6 +1346,28 @@ export class GameService {
   private postMatchAnalysisService = inject(PostMatchAnalysisService);
   private fieldService = inject(FieldService);
 
+  public getTeamLineupSnapshot(team: Team): TeamLineupSnapshot {
+    const playerRoles: Record<string, Role> = {};
+    const players = resolveTeamPlayers(team);
+    for (const player of players) {
+      playerRoles[player.id] = player.role;
+    }
+    return {
+      teamId: team.id,
+      selectedFormationId: team.selectedFormationId,
+      formationAssignments: { ...team.formationAssignments },
+      playerRoles
+    };
+  }
+
+  public previewDressedTeam(teamId: string): Team | null {
+    const team = this.getTeam(teamId);
+    if (!team) return null;
+    const userTeamId = this.leagueState()?.userTeamId;
+    if (team.id === userTeamId) return team;
+    return this.dressTeamLineup(team);
+  }
+
   simulateMatchWithDetails(
     match: Match,
     homeTeam: Team,
@@ -1376,6 +1398,9 @@ export class GameService {
     const preparedHomeTeam = currentLeague?.teams.find(team => team.id === match.homeTeamId) ?? homeTeam;
     const preparedAwayTeam = currentLeague?.teams.find(team => team.id === match.awayTeamId) ?? awayTeam;
 
+    const homeLineup = this.getTeamLineupSnapshot(preparedHomeTeam);
+    const awayLineup = this.getTeamLineupSnapshot(preparedAwayTeam);
+
     // Merge caller-supplied overrides on top of the simulation defaults.
     const simConfig: SimulationConfig = {
       enablePlayByPlay: true,
@@ -1402,7 +1427,18 @@ export class GameService {
     const keyEvents = this.extractKeyEvents(matchState.events);
 
     // Update league state with results
-    this.updateLeagueWithMatchResult(match, matchState, preparedHomeTeam, preparedAwayTeam, keyEvents, matchStats, matchReport, endedByForfeit);
+    this.updateLeagueWithMatchResult(
+      match, 
+      matchState, 
+      preparedHomeTeam, 
+      preparedAwayTeam, 
+      keyEvents, 
+      matchStats, 
+      matchReport, 
+      homeLineup,
+      awayLineup,
+      endedByForfeit
+    );
 
     return {
       matchState,
@@ -1421,6 +1457,8 @@ export class GameService {
     keyEvents: MatchEvent[],
     matchStats: MatchStatistics,
     matchReport: MatchReport,
+    homeLineup: TeamLineupSnapshot,
+    awayLineup: TeamLineupSnapshot,
     skipPlayerCareerStats = false
   ) {
     const l = this.leagueState();
@@ -1437,7 +1475,9 @@ export class GameService {
           played: true,
           keyEvents,
           matchStats,
-          matchReport
+          matchReport,
+          homeLineup,
+          awayLineup
         }
         : m
     );

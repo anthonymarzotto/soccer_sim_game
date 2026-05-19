@@ -15,7 +15,7 @@ type TeamSubstitutionUsage = Record<TeamSide, number>;
 interface VariantBSubstitutionInternals {
   rng: { random: () => number };
   activeMatchShape: unknown;
-  pendingInjuryReplacements: Record<TeamSide, string[]>;
+  pendingInjuryReplacements: Record<TeamSide, { playerId: string; position: PositionEnum }[]>;
   processMinuteSubstitutions: (
     state: MatchState,
     tactics: { home: ReturnType<FieldService['calculateTeamTactics']>; away: ReturnType<FieldService['calculateTeamTactics']> },
@@ -24,7 +24,7 @@ interface VariantBSubstitutionInternals {
     awayTeam: Team,
     minute: number,
     config: SimulationConfig,
-    rosters: { homePlayers: Player[]; awayPlayers: Player[] },
+    rosters: { homePlayers: Player[]; awayPlayers: Player[]; homeBench: Player[]; awayBench: Player[] },
     substitutionsUsed: TeamSubstitutionUsage,
   ) => void;
   getDefendingShapeContextForLocation: (
@@ -70,13 +70,13 @@ interface VariantBSubstitutionInternals {
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number,
     config: SimulationConfig,
-    rosters: { homePlayers: Player[]; awayPlayers: Player[] },
+    rosters: { homePlayers: Player[]; awayPlayers: Player[]; homeBench: Player[]; awayBench: Player[] },
     substitutionsUsed: TeamSubstitutionUsage
   ) => void;
   updateFatigue: (
     fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
     minute: number,
-    rosters: { homePlayers: Player[]; awayPlayers: Player[] }
+    rosters: { homePlayers: Player[]; awayPlayers: Player[]; homeBench: Player[]; awayBench: Player[] }
   ) => void;
   executeVariantBShot: (
     state: MatchState,
@@ -90,7 +90,7 @@ interface VariantBSubstitutionInternals {
     rosters: { homePlayers: Player[]; awayPlayers: Player[] }
   ) => void;
   selectSubstitutionIncomingPlayer: (
-    teamPlayers: Player[],
+    benchPlayers: Player[],
     outgoingPosition: PositionEnum,
   ) => Player | null;
   initializeMatchShape: (homeTeam: Team, awayTeam: Team) => unknown;
@@ -109,7 +109,7 @@ interface VariantBSubstitutionInternals {
     awayTeam: Team,
     minute: number,
     config: SimulationConfig,
-    rosters: { homePlayers: Player[]; awayPlayers: Player[] },
+    rosters: { homePlayers: Player[]; awayPlayers: Player[]; homeBench: Player[]; awayBench: Player[] },
     substitutionsUsed: TeamSubstitutionUsage,
   ) => boolean;
 }
@@ -149,6 +149,15 @@ describe('Match Simulation Variant B Substitutions', () => {
     awayTeam = createTeam('away', awayPlayers);
   });
 
+  function buildRosters(): { homePlayers: Player[]; awayPlayers: Player[]; homeBench: Player[]; awayBench: Player[] } {
+    return {
+      homePlayers: homePlayers.filter(p => p.role === Role.STARTER),
+      awayPlayers: awayPlayers.filter(p => p.role === Role.STARTER),
+      homeBench: homePlayers.filter(p => p.role === Role.BENCH),
+      awayBench: awayPlayers.filter(p => p.role === Role.BENCH),
+    };
+  }
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -181,7 +190,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       fatigue,
       82,
       config,
-      { homePlayers, awayPlayers },
+      { ...buildRosters() },
       substitutionsUsed
     );
 
@@ -392,7 +401,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       fatigue,
       83,
       config,
-      { homePlayers, awayPlayers },
+      { ...buildRosters() },
       substitutionsUsed
     );
 
@@ -412,7 +421,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       fatigue,
       86,
       config,
-      { homePlayers, awayPlayers },
+      { ...buildRosters() },
       cappedUsage
     );
 
@@ -434,7 +443,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     }
 
     const incoming = internals.selectSubstitutionIncomingPlayer(
-      homePlayers,
+      homePlayers.filter(p => p.role === Role.BENCH),
       PositionEnum.MIDFIELDER
     );
 
@@ -455,10 +464,14 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid1', homePlayers, tactics, state);
     internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid2', homePlayers, tactics, state);
     internals.pendingInjuryReplacements = {
-      [TeamSide.HOME]: ['home-mid1', 'home-mid2'],
+      [TeamSide.HOME]: [
+        { playerId: 'home-mid1', position: PositionEnum.MIDFIELDER },
+        { playerId: 'home-mid2', position: PositionEnum.MIDFIELDER }
+      ],
       [TeamSide.AWAY]: []
     };
 
+    const rosters = buildRosters();
     const replacedAny = internals.tryPendingInjuryReplacement(
       TeamSide.HOME,
       state,
@@ -467,7 +480,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       awayTeam,
       61,
       config,
-      { homePlayers, awayPlayers },
+      rosters,
       substitutionsUsed
     );
 
@@ -494,7 +507,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
     internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid1', homePlayers, tactics, state);
     internals.pendingInjuryReplacements = {
-      [TeamSide.HOME]: ['home-mid1'],
+      [TeamSide.HOME]: [{ playerId: 'home-mid1', position: PositionEnum.MIDFIELDER }],
       [TeamSide.AWAY]: []
     };
 
@@ -511,7 +524,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       awayTeam,
       82,
       config,
-      { homePlayers, awayPlayers },
+      { ...buildRosters() },
       substitutionsUsed
     );
 
@@ -556,7 +569,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       fatigue,
       80,
       config,
-      { homePlayers, awayPlayers },
+      { ...buildRosters() },
       substitutionsUsed
     );
 
@@ -578,7 +591,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       fatigue,
       84,
       config,
-      { homePlayers, awayPlayers },
+      { ...buildRosters() },
       substitutionsUsed
     );
 
@@ -597,7 +610,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.updateFatigue(
       fatigue,
       12,
-      { homePlayers, awayPlayers }
+      { homePlayers, awayPlayers, homeBench: [], awayBench: [] }
     );
 
     const goalkeeperFatigue = fatigue.home.find(entry => entry.playerId === homeGoalkeeper.id) as PlayerFatigue;
@@ -615,7 +628,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.updateFatigue(
       fatigue,
       12,
-      { homePlayers, awayPlayers }
+      { homePlayers, awayPlayers, homeBench: [], awayBench: [] }
     );
 
     const benchFatigue = fatigue.home.find(entry => entry.playerId === benchPlayer.id) as PlayerFatigue;

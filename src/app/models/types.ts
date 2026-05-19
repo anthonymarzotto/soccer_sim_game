@@ -154,6 +154,13 @@ export interface Team {
   seasonSnapshots?: TeamSeasonSnapshot[];
 }
 
+export interface TeamLineupSnapshot {
+  teamId: string;
+  selectedFormationId: string;
+  formationAssignments: Record<string, string>;
+  playerRoles: Record<string, Role>;
+}
+
 export interface Match {
   id: string;
   seasonYear?: number;
@@ -166,6 +173,8 @@ export interface Match {
   keyEvents?: MatchEvent[];
   matchStats?: MatchStatistics;
   matchReport?: MatchReport;
+  homeLineup?: TeamLineupSnapshot;
+  awayLineup?: TeamLineupSnapshot;
 }
 
 export interface MatchEvent {

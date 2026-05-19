@@ -867,6 +867,6 @@ describe('WatchGameComponent', () => {
       redCards: 0
     });
 
-    expect(fatigue).toBe(90);
+    expect(fatigue).toBe(10);
   });
 });

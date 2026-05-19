@@ -26,6 +26,12 @@ export class PlayerProfileComponent {
   gameService = inject(GameService);
   private settingsService = inject(SettingsService);
 
+  private readonly FATIGUE_EXHAUSTED_THRESHOLD = 75;
+  private readonly FATIGUE_TIRED_THRESHOLD = 40;
+  private readonly FATIGUE_FRESH_COLOR = '#22c55e';
+  private readonly FATIGUE_TIRED_COLOR = '#f59e0b';
+  private readonly FATIGUE_EXHAUSTED_COLOR = '#dc2626';
+
   // Expose enums for template
   Position = Position;
   badgeStyle = this.settingsService.badgeStyle;
@@ -397,4 +403,14 @@ export class PlayerProfileComponent {
     if (!player || !player.seasonAttributes) return [];
     return [...player.seasonAttributes].sort((a, b) => a.seasonYear - b.seasonYear);
   });
+
+  getFatigueColor(fatigue: number): string {
+    if (fatigue >= this.FATIGUE_EXHAUSTED_THRESHOLD) {
+      return this.FATIGUE_EXHAUSTED_COLOR;
+    }
+    if (fatigue >= this.FATIGUE_TIRED_THRESHOLD) {
+      return this.FATIGUE_TIRED_COLOR;
+    }
+    return this.FATIGUE_FRESH_COLOR;
+  }
 }

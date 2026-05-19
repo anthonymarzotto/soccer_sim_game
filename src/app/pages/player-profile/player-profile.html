@@ -284,13 +284,10 @@
               </div>
               <div class="flex justify-between items-center py-2.5 border-t border-zinc-800/50 mt-1">
                 <span class="text-zinc-500 text-xs uppercase tracking-wider">Current Fatigue</span>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-sm font-semibold"
-                        [class.text-red-400]="(p?.fatigue ?? 0) >= 50"
-                        [class.text-yellow-400]="(p?.fatigue ?? 0) >= 25 && (p?.fatigue ?? 0) < 50"
-                        [class.text-emerald-400]="(p?.fatigue ?? 0) < 25">
-                    {{ p?.fatigue || 0 | number:'1.0-0' }}
-                  </span>
+                <div class="min-w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden" [title]="(p?.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                  <div class="h-full transition-all duration-500" 
+                       [style.width.%]="p?.fatigue ?? 0" 
+                       [style.background-color]="getFatigueColor(p?.fatigue ?? 0)"></div>
                 </div>
               </div>
             </div>
