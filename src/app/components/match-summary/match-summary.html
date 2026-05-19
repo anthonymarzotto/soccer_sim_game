@@ -87,6 +87,21 @@
                     </span>
                     @if (!$last) {, }
                   }
+                } @else if (moment.isExpanded && moment.event.playerIds && moment.event.playerIds.length > 0) {
+                  <span class="inline leading-relaxed">
+                    @for (segment of getCommentarySegments(moment.event); track $index) {
+                      @if (segment.type === 'player') {
+                        <span class="inline-flex items-center gap-1 mx-0.5 align-middle">
+                          <app-team-badge [teamId]="segment.teamId!" size="sm" [link]="true"></app-team-badge>
+                          <a [routerLink]="['/player', segment.playerId!]" class="text-emerald-400 hover:text-emerald-300 hover:underline font-medium">
+                            {{ segment.playerName }}
+                          </a>
+                        </span>
+                      } @else {
+                        {{ segment.text }}
+                      }
+                    }
+                  </span>
                 } @else {
                   {{ moment.event.description }}
                 }
