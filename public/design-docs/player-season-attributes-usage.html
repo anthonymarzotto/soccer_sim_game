@@ -416,12 +416,12 @@
                 <ul class="compact">
                   <li>In-match fatigue accrual (<code>updateFatigue</code>): scales per-tick fatigue gain. Higher endurance = less fatigue per tick.
                     <span class="formula">fatigueAccrual = 0.5 × (1 − (endurance − 50) × 0.005)</span></li>
-                  <li>Between-game fatigue recovery (<code>normalizeFatigue</code>): scales per-tick fatigue shed between matches. Higher endurance = faster recovery.
-                    <span class="formula">fatigueRecovery = 0.5 × (1 + (endurance − 50) × 0.005)</span></li>
-                  <li>Substitution tie-breaker in <code>selectSubstitutionIncomingPlayer</code> when bench candidates share the same <code>overall</code>.</li>
+                  <li>Match-tick fatigue normalization (<code>normalizeFatigue</code>): refunds unplayed match ticks symmetrically using the accrual rate.
+                    <span class="formula">fatigueRefundPerTick = 0.5 × (1 − (endurance − 50) × 0.005)</span></li>
+                  <li>Substitution tie-breaker in <code>selectSubstitutionIncomingPlayer</code> when bench candidates share the same fatigue-adjusted <code>overall</code>.</li>
                 </ul>
               </td>
-              <td>Goalkeeper stamina drain multiplier additionally scales accrual for GK position. Both formulas use the same <code>0.005</code> scale factor, but inverted sign so recovery is symmetric with accrual.</td>
+              <td>Goalkeeper stamina drain multiplier additionally scales accrual for GK position. The tick normalization uses a subtraction refund to correctly scale down fatigue for subbed-out players.</td>
             </tr>
             <tr>
               <td class="col-stat">vision<small>mental</small></td>
@@ -452,23 +452,23 @@
                 <ul class="compact">
                   <li><code>FieldService.calculateTeamTactics</code> — team-strength threshold</li>
                   <li><code>getPlayerSlotFitScore</code> — formation slot fit (<code>+ overall × 0.2</code>)</li>
-                  <li><code>selectSubstitutionIncomingPlayer</code> — bench sort key</li>
+                  <li><code>selectSubstitutionIncomingPlayer</code> — bench sort key (now uses fatigue-adjusted overall via <code>scaleOverallWithFatigue</code>)</li>
                   <li><code>GameService.dressBestPlayers</code> — auto starter selection per position</li>
                   <li><code>calculateTeamOverall</code> / <code>getMatchProbabilities</code> — preview odds</li>
                   <li><code>StatisticsService.calculatePlayerRating</code> — post-match rating baseline; runs on <code>PlayByPlayEvent</code> logs after the match completes, not during it</li>
                 </ul>
               </td>
-              <td>Generated once and never recomputed at rollover. Match ratings then add goals/assists/passes/tackles and subtract fouls/cards.</td>
+              <td>Generated once and never recomputed at rollover. Performance modifier uses a quadratic penalty curve: <code>Math.max(0.5, 1.0 - 0.5 * (fatigue / 100)^2)</code>, scaled using <code>scaleOverallWithFatigue</code>.</td>
             </tr>
             <tr>
-              <td class="col-stat">fitness<small>hidden physical</small></td>
+              <td class="col-stat">fitness<small>physical</small></td>
               <td><div class="status-stack"><span class="pill live">live</span></div></td>
               <td>
                 Scales the weekly fatigue recovery amount in <code>GameService.advanceWeekForPlayers</code>. Applied once per game week for players carrying non-zero fatigue.
-                <span class="formula">recovery = 20 + (fitness × 0.3)</span>
-                <span class="formula" style="color:#71717a">→ range: 20 (fitness 0) – 50 (fitness 100) fatigue points shed per week</span>
+                <span class="formula">recovery = 15 + (fitness × 0.25)</span>
+                <span class="formula" style="color:#71717a">→ range: 15 (fitness 0) – 40 (fitness 100) fatigue points shed per week</span>
               </td>
-              <td>Applied before injury tick advances. A player at fitness 50 recovers 35 fatigue per week; at fitness 100 they recover 50. Fatigue is floored at 0.</td>
+              <td>Applied before injury tick advances. A player at fitness 50 recovers 27.5 fatigue per week; at fitness 100 they recover 40. Fatigue is floored at 0.</td>
             </tr>
             <tr>
               <td class="col-stat">injuryRate<small>misc</small></td>

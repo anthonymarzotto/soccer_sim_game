@@ -27,7 +27,7 @@ import {
   isPlayerEligible,
   withSortedUniqueSeasons
 } from '../models/season-history';
-import { SimulationConfig, MatchState, PlayByPlayEvent, calculateFatigueModifier } from '../models/simulation.types';
+import { SimulationConfig, MatchState, PlayByPlayEvent, calculateFatigueModifier, scaleOverallWithFatigue } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
 import { getInjuryDefinition, InjuryRecord } from '../data/injuries';
 
@@ -405,7 +405,7 @@ export class GameService {
 
   /**
    * Performs weekly state updates for all players in the league.
-   * 1. Fatigue Recovery: Recovers fatigue based on the player's 'fitness' attribute (Base 20 + 0.3 * fitness).
+   * 1. Fatigue Recovery: Recovers fatigue based on the player's 'fitness' attribute (Base 15 + 0.25 * fitness).
    * 2. Injury Progression: Decrements `weeksRemaining` on every player's active injury once the player
    *    has completed at least one full future match week on the sideline.
    *    Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as historical records.
@@ -420,7 +420,7 @@ export class GameService {
         let nextFatigue = player.fatigue ?? 0;
         if (nextFatigue > 0) {
           const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
-          const recovery = 20 + (fitness * 0.3);
+          const recovery = 15 + (fitness * 0.25);
           nextFatigue = Math.max(0, Math.round(nextFatigue - recovery));
           if (nextFatigue !== (player.fatigue ?? 0)) {
             playerMutated = true;
@@ -1007,7 +1007,7 @@ export class GameService {
     const overallOf = (player: Player) => {
       const baseOverall = getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
       const fatigue = player.fatigue ?? 0;
-      return baseOverall * calculateFatigueModifier(fatigue);
+      return scaleOverallWithFatigue(baseOverall, calculateFatigueModifier(fatigue));
     };
 
     // Eligibility gate: injured players are not selectable.

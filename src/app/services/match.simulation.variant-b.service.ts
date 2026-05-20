@@ -14,6 +14,7 @@ import {
   MinuteFatigueSnapshot,
   PlayerFatigueSnapshot,
   calculateFatigueModifier,
+  scaleOverallWithFatigue,
 } from "../models/simulation.types";
 import { FieldService } from "./field.service";
 import { RngService } from "./rng.service";
@@ -148,7 +149,7 @@ export class MatchSimulationVariantBService {
   private fieldService = inject(FieldService);
   private rng = inject(RngService);
   private readonly maxSubstitutionsPerTeam = 5;
-  private readonly goalkeeperStaminaDrainMultiplier = 0.01;
+  private readonly goalkeeperStaminaDrainMultiplier = 0.95;
 
   private activeTuning: VariantBTuningConfig = DEFAULT_VARIANT_B_TUNING;
   private activeMatchShape: MatchShapeState | null = null;
@@ -984,7 +985,7 @@ export class MatchSimulationVariantBService {
 
         const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
         const endurance = attrs.endurance.value;
-        const fatiguePerTick = 0.5 * (1 + (endurance - 50) * 0.005); // Higher fatigue recovery per tick for higher endurance
+        const fatiguePerTick = 0.5 * (1 - (endurance - 50) * 0.005); // Match the accrual rate exactly
 
         entry.fatigueLevel = Math.max(
           0,
@@ -2439,11 +2440,19 @@ export class MatchSimulationVariantBService {
         right,
         this.currentSeasonYear,
       );
-      if (rightAttrs.overall.value === leftAttrs.overall.value) {
+      const leftFatigue = left.fatigue ?? 0;
+      const rightFatigue = right.fatigue ?? 0;
+      const leftModifier = calculateFatigueModifier(leftFatigue);
+      const rightModifier = calculateFatigueModifier(rightFatigue);
+
+      const leftOverall = scaleOverallWithFatigue(leftAttrs.overall.value, leftModifier);
+      const rightOverall = scaleOverallWithFatigue(rightAttrs.overall.value, rightModifier);
+
+      if (rightOverall === leftOverall) {
         return rightAttrs.endurance.value - leftAttrs.endurance.value;
       }
 
-      return rightAttrs.overall.value - leftAttrs.overall.value;
+      return rightOverall - leftOverall;
     });
 
     return sortedByQuality[0] ?? null;
@@ -2480,7 +2489,7 @@ export class MatchSimulationVariantBService {
         }
 
         entry.fatigueLevel = Math.min(100, entry.fatigueLevel + fatigueAccrual);
-        entry.performanceModifier = Math.max(0.5, 1 - entry.fatigueLevel / 200);
+        entry.performanceModifier = calculateFatigueModifier(entry.fatigueLevel);
       });
     };
 

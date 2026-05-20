@@ -1,531 +1,576 @@
 <div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
   <div class="max-w-6xl mx-auto space-y-8">
-    
+
     <div class="flex items-center gap-4">
-      <a routerLink="/standings" class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      <a routerLink="/standings"
+        class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
       </a>
       <div class="flex items-center gap-3">
-        <select
-          id="team-switcher"
-          [value]="teamId()"
-          (change)="onTeamChange($any($event.target).value)"
+        <select id="team-switcher" [value]="teamId()" (change)="onTeamChange($any($event.target).value)"
           class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg -ml-1 px-1">
           @for (t of allTeamsSorted(); track t.id) {
-            <option [value]="t.id" [selected]="t.id === teamId()" class="bg-zinc-900 text-white text-base font-normal">{{ userTeamId() === t.id ? '★ ' : '' }}{{ t.name }}</option>
+          <option [value]="t.id" [selected]="t.id === teamId()" class="bg-zinc-900 text-white text-base font-normal">{{
+            userTeamId() === t.id ? '★ ' : '' }}{{ t.name }}</option>
           }
         </select>
         @if (team()) {
-          <span class="px-2 py-1 rounded text-sm font-bold bg-zinc-800 text-white border border-zinc-700">
-            OVR {{ teamOverall() }}
-          </span>
+        <span class="px-2 py-1 rounded text-sm font-bold bg-zinc-800 text-white border border-zinc-700">
+          OVR {{ teamOverall() }}
+        </span>
         }
       </div>
     </div>
 
     @if (teamTransitionEvents().length > 0) {
-      <div class="rounded-2xl border border-blue-500/30 bg-zinc-900/80 shadow-[0_4px_24px_-4px_rgba(59,130,246,0.15)] overflow-hidden relative">
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-400"></div>
-        <div class="p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-blue-300 uppercase tracking-wider flex items-center gap-2">
-              <span class="material-icons text-base text-blue-400">update</span>
-              Season News
-            </h2>
-            <button
-              (click)="dismissTeamNews()"
-              class="text-zinc-400 hover:text-white transition-colors p-1 rounded-full hover:bg-zinc-800 text-xs flex items-center gap-1"
-              title="Dismiss"
-            >
-              <span class="material-icons text-sm">close</span>
-              Dismiss
-            </button>
+    <div
+      class="rounded-2xl border border-blue-500/30 bg-zinc-900/80 shadow-[0_4px_24px_-4px_rgba(59,130,246,0.15)] overflow-hidden relative">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-400"></div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-blue-300 uppercase tracking-wider flex items-center gap-2">
+            <span class="material-icons text-base text-blue-400">update</span>
+            Season News
+          </h2>
+          <button (click)="dismissTeamNews()"
+            class="text-zinc-400 hover:text-white transition-colors p-1 rounded-full hover:bg-zinc-800 text-xs flex items-center gap-1"
+            title="Dismiss">
+            <span class="material-icons text-sm">close</span>
+            Dismiss
+          </button>
+        </div>
+        <div class="grid gap-2">
+          @for (event of teamTransitionEvents(); track event.playerIds[0]) {
+          <div class="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+            <div class="font-medium text-white text-sm mb-0.5">{{ event.headline }}</div>
+            <div class="text-xs text-zinc-400">{{ event.detail }}</div>
           </div>
-          <div class="grid gap-2">
-            @for (event of teamTransitionEvents(); track event.playerIds[0]) {
-              <div class="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
-                <div class="font-medium text-white text-sm mb-0.5">{{ event.headline }}</div>
-                <div class="text-xs text-zinc-400">{{ event.detail }}</div>
-              </div>
-            }
-          </div>
+          }
         </div>
       </div>
+    </div>
     }
 
     @if (team()) {
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        <div class="lg:col-span-1 space-y-6">
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Team Stats</h2>
-            <div class="space-y-4">
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Matches Played</span>
-                <span class="font-medium">{{ team()?.stats?.played }}</span>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+      <div class="lg:col-span-1 space-y-6">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Team Stats</h2>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Matches Played</span>
+              <span class="font-medium">{{ team()?.stats?.played }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Wins</span>
+              <span class="font-medium text-emerald-400">{{ team()?.stats?.won }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Draws</span>
+              <span class="font-medium text-zinc-300">{{ team()?.stats?.drawn }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Losses</span>
+              <span class="font-medium text-red-400">{{ team()?.stats?.lost }}</span>
+            </div>
+            <div class="h-px bg-zinc-800 my-2"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Goals For</span>
+              <span class="font-medium">{{ team()?.stats?.goalsFor }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Goals Against</span>
+              <span class="font-medium">{{ team()?.stats?.goalsAgainst }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Goal Diff</span>
+              <span class="font-medium">{{ (team()?.stats?.goalsFor || 0) - (team()?.stats?.goalsAgainst || 0) }}</span>
+            </div>
+            <div class="h-px bg-zinc-800 my-2"></div>
+            <div class="flex justify-between items-center text-lg">
+              <span class="text-zinc-400 font-medium">Points</span>
+              <span class="font-bold text-white">{{ team()?.stats?.points }}</span>
+            </div>
+          </div>
+        </div>
+
+        @if (injured().length > 0) {
+        <div class="bg-zinc-900 border border-red-900/50 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4">Unavailable</h2>
+          <div class="space-y-3">
+            @for (player of injured(); track player.id) {
+            @let injuryRow = getActiveInjuryFor(player);
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-mono text-[11px] font-bold shrink-0"
+                  [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                  [class.text-blue-400]="player.position === Position.DEFENDER"
+                  [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                  [class.text-red-400]="player.position === Position.FORWARD">{{ player.position }}</span>
+                <a [routerLink]="['/player', player.id]"
+                  class="text-sm text-white hover:text-emerald-400 transition-colors truncate">{{ player.name }}</a>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Wins</span>
-                <span class="font-medium text-emerald-400">{{ team()?.stats?.won }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Draws</span>
-                <span class="font-medium text-zinc-300">{{ team()?.stats?.drawn }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Losses</span>
-                <span class="font-medium text-red-400">{{ team()?.stats?.lost }}</span>
-              </div>
-              <div class="h-px bg-zinc-800 my-2"></div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Goals For</span>
-                <span class="font-medium">{{ team()?.stats?.goalsFor }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Goals Against</span>
-                <span class="font-medium">{{ team()?.stats?.goalsAgainst }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-zinc-500">Goal Diff</span>
-                <span class="font-medium">{{ (team()?.stats?.goalsFor || 0) - (team()?.stats?.goalsAgainst || 0) }}</span>
-              </div>
-              <div class="h-px bg-zinc-800 my-2"></div>
-              <div class="flex justify-between items-center text-lg">
-                <span class="text-zinc-400 font-medium">Points</span>
-                <span class="font-bold text-white">{{ team()?.stats?.points }}</span>
-              </div>
+              @if (injuryRow) {
+              <span
+                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40 cursor-default"
+                [title]="getInjuryName(injuryRow.definitionId)">🩹 {{ formatWeeksOut(injuryRow.weeksRemaining) }}</span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+
+      <div class="lg:col-span-3 space-y-8">
+
+        <!-- Persistent header: formation selector + view toggle -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between p-4 border-b border-zinc-800">
+            <div class="flex items-center gap-3">
+              <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+                @if (viewMode() === ViewMode.SEASON_HISTORY) { Season History } @else { Player Roster }
+              </h2>
+              @if (isUserTeam() && viewMode() !== ViewMode.SEASON_HISTORY) {
+              <select [value]="team()?.selectedFormationId" (change)="onFormationChange($any($event.target).value)"
+                class="bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors"
+                aria-label="Select formation">
+                @for (f of availableFormations(); track f.id) {
+                <option [value]="f.id" [selected]="f.id === team()?.selectedFormationId">{{ f.shortCode }} — {{ f.name
+                  }}</option>
+                }
+              </select>
+              }
+            </div>
+            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+              <button (click)="setViewMode(ViewMode.BIO)"
+                [class]="viewMode() === ViewMode.BIO ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Bio
+              </button>
+              <button (click)="setViewMode(ViewMode.STATS)"
+                [class]="viewMode() === ViewMode.STATS ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20v-6M6 20V10M18 20V4" />
+                </svg>
+                Stats
+              </button>
+              <button (click)="setViewMode(ViewMode.SEASON_HISTORY)"
+                [class]="viewMode() === ViewMode.SEASON_HISTORY ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 20h16M4 12h16M4 4h16" />
+                </svg>
+                History
+              </button>
             </div>
           </div>
 
-          @if (injured().length > 0) {
-            <div class="bg-zinc-900 border border-red-900/50 rounded-2xl p-6 shadow-xl">
-              <h2 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4">Unavailable</h2>
-              <div class="space-y-3">
-                @for (player of injured(); track player.id) {
-                  @let injuryRow = getActiveInjuryFor(player);
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span class="font-mono text-[11px] font-bold shrink-0"
-                            [class.text-yellow-400]="player.position === Position.GOALKEEPER"
-                            [class.text-blue-400]="player.position === Position.DEFENDER"
-                            [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                            [class.text-red-400]="player.position === Position.FORWARD">{{ player.position }}</span>
-                      <a [routerLink]="['/player', player.id]" class="text-sm text-white hover:text-emerald-400 transition-colors truncate">{{ player.name }}</a>
-                    </div>
-                    @if (injuryRow) {
-                      <span class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40 cursor-default"
-                            [title]="getInjuryName(injuryRow.definitionId)">🩹 {{ formatWeeksOut(injuryRow.weeksRemaining) }}</span>
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-
-        <div class="lg:col-span-3 space-y-8">
-
-          <!-- Persistent header: formation selector + view toggle -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="flex items-center justify-between p-4 border-b border-zinc-800">
-              <div class="flex items-center gap-3">
-                <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-                  @if (viewMode() === ViewMode.SEASON_HISTORY) { Season History } @else { Player Roster }
-                </h2>
-                @if (isUserTeam() && viewMode() !== ViewMode.SEASON_HISTORY) {
-                  <select
-                    [value]="team()?.selectedFormationId"
-                    (change)="onFormationChange($any($event.target).value)"
-                    class="bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors"
-                    aria-label="Select formation">
-                    @for (f of availableFormations(); track f.id) {
-                      <option [value]="f.id" [selected]="f.id === team()?.selectedFormationId">{{ f.shortCode }} — {{ f.name }}</option>
-                    }
-                  </select>
-                }
-              </div>
-              <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
-                <button (click)="setViewMode(ViewMode.BIO)" 
-                        [class]="viewMode() === ViewMode.BIO ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                        class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  Bio
-                </button>
-                <button (click)="setViewMode(ViewMode.STATS)" 
-                        [class]="viewMode() === ViewMode.STATS ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                        class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
-                  Stats
-                </button>
-                <button (click)="setViewMode(ViewMode.SEASON_HISTORY)" 
-                        [class]="viewMode() === ViewMode.SEASON_HISTORY ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                        class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M4 12h16M4 4h16"/></svg>
-                  History
-                </button>
-              </div>
-            </div>
-
           @if (viewMode() === ViewMode.BIO || viewMode() === ViewMode.STATS) {
-            @if (readinessIssues().length > 0) {
-              <div class="rounded-2xl border border-red-800 bg-red-950/30 px-4 py-3 shadow-xl">
-                <div class="mb-2 flex items-start justify-between gap-3">
-                  <p class="text-xs font-semibold text-red-300 uppercase tracking-wide">Lineup Issues</p>
-                  @if (showQuickFix()) {
-                    <button
-                      type="button"
-                      (click)="runQuickFix()"
-                      [disabled]="isSchemaMismatchBlocking()"
-                      class="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400">
-                      Quick Fix
-                    </button>
-                  }
-                </div>
-                <ul class="text-sm text-red-200 space-y-1">
-                  @for (issue of readinessIssues(); track issue.message) {
-                    <li>{{ issue.message }}</li>
-                  }
-                </ul>
-                @if (showQuickFix() && isSchemaMismatchBlocking()) {
-                  <p class="mt-2 text-xs text-zinc-400">Quick Fix is unavailable while schema-mismatch protection blocks writes.</p>
-                }
-              </div>
+          @if (readinessIssues().length > 0) {
+          <div class="rounded-2xl border border-red-800 bg-red-950/30 px-4 py-3 shadow-xl">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <p class="text-xs font-semibold text-red-300 uppercase tracking-wide">Lineup Issues</p>
+              @if (showQuickFix()) {
+              <button type="button" (click)="runQuickFix()" [disabled]="isSchemaMismatchBlocking()"
+                class="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400">
+                Quick Fix
+              </button>
+              }
+            </div>
+            <ul class="text-sm text-red-200 space-y-1">
+              @for (issue of readinessIssues(); track issue.message) {
+              <li>{{ issue.message }}</li>
+              }
+            </ul>
+            @if (showQuickFix() && isSchemaMismatchBlocking()) {
+            <p class="mt-2 text-xs text-zinc-400">Quick Fix is unavailable while schema-mismatch protection blocks
+              writes.</p>
             }
-            
-            <table class="w-full text-sm text-left">
-              <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
-                <tr>
-                  <th scope="col" class="px-2 py-4 font-medium w-12"></th>
-                  <th scope="col" class="px-4 py-4 font-medium w-20">Formation</th>
-                  <th scope="col" class="px-6 py-4 font-medium w-16">Pref Pos</th>
-                  <th scope="col" class="px-6 py-4 font-medium">Player</th>
-                  @if (viewMode() === ViewMode.BIO) {
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">Fatigue</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-24">Rating</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
-                  } @else {
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">GP</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-20">Min</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">G</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-16">A</th>
-                    <th scope="col" class="px-4 py-4 font-medium text-center w-20">Cards</th>
+          </div>
+          }
+
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+              <tr>
+                <th scope="col" class="px-2 py-4 font-medium w-12"></th>
+                <th scope="col" class="px-4 py-4 font-medium w-20">Formation</th>
+                <th scope="col" class="px-6 py-4 font-medium w-16">Pref Pos</th>
+                <th scope="col" class="px-6 py-4 font-medium">Player</th>
+                @if (viewMode() === ViewMode.BIO) {
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Fatigue</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-24">Rating</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
+                } @else {
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">GP</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-20">Min</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">G</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">A</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-20">Cards</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-800">
+              <!-- Starting XI -->
+              @for (row of starterRows(); track row.slot.slotId; let i = $index) {
+              <tr class="hover:bg-zinc-800/50 transition-colors" [class.border-t-[2px]]="i === 0"
+                [class.border-t-emerald-500]="i === 0" [class.dragging]="row.player && isDragging(row.player.id)"
+                [class.drag-over]="isDragOver(starterRowTargetId(row.slot.slotId))" [class.cursor-grab]="isUserTeam()"
+                [class.cursor-grabbing]="row.player && isDragging(row.player.id)" [attr.draggable]="isUserTeam()"
+                (dragstart)="row.player && onDragStart($event, row.player.id)"
+                (dragover)="onDragOver($event, starterRowTargetId(row.slot.slotId))" (dragleave)="onDragLeave($event)"
+                (drop)="onDropOnStarterSlot($event, row.slot.slotId, row.player?.id)" (dragend)="onDragEnd()">
+                @if (i === 0) {
+                <td [attr.rowspan]="starterRows().length" class="px-2 py-4 align-middle relative row-label">
+                  <div class="flex flex-col items-center justify-center h-full">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 mb-2"></span>
+                    <span class="text-xs font-bold text-white uppercase tracking-wider"
+                      style="writing-mode: sideways-lr; text-orientation: mixed;">Starting XI</span>
+                  </div>
+                </td>
+                }
+                <td class="px-4 py-4 whitespace-nowrap w-20">
+                  <span
+                    class="inline-flex items-center justify-center min-w-12 px-2 py-1 rounded-md border text-xs font-semibold"
+                    [class]="slotBadgeClass(row.slot)">
+                    {{ row.slot.label }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                  [class.text-yellow-400]="row.player?.position === Position.GOALKEEPER"
+                  [class.text-blue-400]="row.player?.position === Position.DEFENDER"
+                  [class.text-emerald-400]="row.player?.position === Position.MIDFIELDER"
+                  [class.text-red-400]="row.player?.position === Position.FORWARD">
+                  {{ row.player?.position || '---' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                  @if (row.player) {
+                  <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
+                    {{ row.player.name }}
+                  </a>
+                  @if (isInjured(row.player)) {
+                  @let starterInjury = getActiveInjuryFor(row.player);
+                  @if (starterInjury) {
+                  <span
+                    class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40"
+                    [title]="getInjuryName(starterInjury.definitionId) + ' — ' + formatWeeksOut(starterInjury.weeksRemaining)">
+                    🩹 {{ formatWeeksOut(starterInjury.weeksRemaining) }}
+                  </span>
                   }
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-zinc-800">
-                <!-- Starting XI -->
-                @for (row of starterRows(); track row.slot.slotId; let i = $index) {
-                  <tr 
-                    class="hover:bg-zinc-800/50 transition-colors" 
-                    [class.border-t-[2px]]="i === 0" 
-                    [class.border-t-emerald-500]="i === 0"
-                    [class.dragging]="row.player && isDragging(row.player.id)"
-                    [class.drag-over]="isDragOver(starterRowTargetId(row.slot.slotId))"
-                    [class.cursor-grab]="isUserTeam()"
-                    [class.cursor-grabbing]="row.player && isDragging(row.player.id)"
-                    [attr.draggable]="isUserTeam()"
-                    (dragstart)="row.player && onDragStart($event, row.player.id)"
-                    (dragover)="onDragOver($event, starterRowTargetId(row.slot.slotId))"
-                    (dragleave)="onDragLeave($event)"
-                    (drop)="onDropOnStarterSlot($event, row.slot.slotId, row.player?.id)"
-                    (dragend)="onDragEnd()">
-                    @if (i === 0) {
-                      <td [attr.rowspan]="starterRows().length" class="px-2 py-4 align-middle relative row-label">
-                        <div class="flex flex-col items-center justify-center h-full">
-                          <span class="w-2 h-2 rounded-full bg-emerald-500 mb-2"></span>
-                          <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Starting XI</span>
-                        </div>
-                      </td>
-                    }
-                    <td class="px-4 py-4 whitespace-nowrap w-20">
-                      <span class="inline-flex items-center justify-center min-w-12 px-2 py-1 rounded-md border text-xs font-semibold" [class]="slotBadgeClass(row.slot)">
-                        {{ row.slot.label }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                        [class.text-yellow-400]="row.player?.position === Position.GOALKEEPER"
-                        [class.text-blue-400]="row.player?.position === Position.DEFENDER"
-                        [class.text-emerald-400]="row.player?.position === Position.MIDFIELDER"
-                        [class.text-red-400]="row.player?.position === Position.FORWARD">
-                      {{ row.player?.position || '---' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                      @if (row.player) {
-                        <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
-                          {{ row.player.name }}
-                        </a>
-                        @if (isInjured(row.player)) {
-                          @let starterInjury = getActiveInjuryFor(row.player);
-                          @if (starterInjury) {
-                            <span class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40"
-                                  [title]="getInjuryName(starterInjury.definitionId) + ' — ' + formatWeeksOut(starterInjury.weeksRemaining)">
-                              🩹 {{ formatWeeksOut(starterInjury.weeksRemaining) }}
-                            </span>
-                          }
-                        }
-                      } @else {
-                        <span class="text-zinc-500 italic">Unassigned</span>
-                      }
-                    </td>
-                    @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
-                        @if (row.player) {
-                          @let eff = getPlayerEffectiveOverall(row.player);
-                          {{ getPlayerOverall(row.player) }}
-                          @if (eff !== null) {
-                            <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
-                          }
-                        } @else { -- }
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-16">
-                        @if (row.player) {
-                          <div class="inline-block w-8 h-1 bg-zinc-800 rounded-full overflow-hidden" [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                            <div class="h-full" [style.width.%]="row.player.fatigue || 0" [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
-                          </div>
-                        } @else { -- }
-                      </td>
-                      @let sStatsB = getRowStats(row.player);
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
-                        <span class="text-amber-400 font-mono">{{ formatAvgRating(sStatsB) }}</span>
-                        @if (sStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ sStatsB.starNominations.first }}</span>}
-                        @if (sStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ sStatsB.starNominations.second }}</span>}
-                        @if (sStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ sStatsB.starNominations.third }}</span>}
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
-                    } @else {
-                      @let stats = getRowStats(row.player);
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-20">
-                        <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ stats.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards || 0 }}</span>
-                        </span>
-                      </td>
-                    }
-                  </tr>
+                  }
+                  } @else {
+                  <span class="text-zinc-500 italic">Unassigned</span>
+                  }
+                </td>
+                @if (viewMode() === ViewMode.BIO) {
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                  @if (row.player) {
+                  @let eff = getPlayerEffectiveOverall(row.player);
+                  {{ getPlayerOverall(row.player) }}
+                  @if (eff !== null) {
+                  <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                  }
+                  } @else { -- }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center w-16">
+                  @if (row.player) {
+                  <div class="py-2 cursor-help flex justify-center"
+                    [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                    <div class="inline-block w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div class="h-full" [style.width.%]="row.player.fatigue || 0"
+                        [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
+                    </div>
+                  </div>
+                  } @else { -- }
+                </td>
+                @let sStatsB = getRowStats(row.player);
+                <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                  <span class="text-amber-400 font-mono">{{ formatAvgRating(sStatsB) }}</span>
+                  @if (sStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ sStatsB.starNominations.first
+                    }}</span>}
+                  @if (sStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{
+                    sStatsB.starNominations.second }}</span>}
+                  @if (sStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ sStatsB.starNominations.third
+                    }}</span>}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ??
+                  '--' }}</td>
+                } @else {
+                @let stats = getRowStats(row.player);
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals ||
+                  0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center w-20">
+                  <span class="inline-flex items-center gap-1">
+                    <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{
+                      stats.yellowCards || 0 }}</span>
+                    <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
+                      || 0 }}</span>
+                  </span>
+                </td>
                 }
-                <!-- Bench -->
-                @for (row of benchRows(); track row.slotNumber; let i = $index) {
-                  <tr 
-                    class="hover:bg-zinc-800/50 transition-colors" 
-                    [class.border-t-[2px]]="i === 0" 
-                    [class.border-t-yellow-500]="i === 0"
-                    [class.dragging]="row.player && isDragging(row.player.id)"
-                    [class.drag-over]="isDragOver(row.player?.id || benchSlotTargetId(row.slotNumber))"
-                    [class.cursor-grab]="isUserTeam()"
-                    [class.cursor-grabbing]="row.player && isDragging(row.player.id)"
-                    [attr.draggable]="isUserTeam() && row.player ? 'true' : null"
-                    (dragstart)="row.player && onDragStart($event, row.player.id)"
-                    (dragover)="onDragOver($event, row.player?.id || benchSlotTargetId(row.slotNumber))"
-                    (dragleave)="onDragLeave($event)"
-                    (drop)="row.player ? onDropOnPlayer($event, row.player.id) : onDropOnBenchSlot($event)"
-                    (dragend)="onDragEnd()">
-                    @if (i === 0) {
-                      <td [attr.rowspan]="benchRows().length" class="px-2 py-4 align-middle relative row-label">
-                        <div class="flex flex-col items-center justify-center h-full">
-                          <span class="w-2 h-2 rounded-full bg-yellow-500 mb-2"></span>
-                          <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Bench</span>
-                        </div>
-                      </td>
-                    }
-                    <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
-                    @if (row.player) {
-                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                          [class.text-yellow-400]="row.player.position === Position.GOALKEEPER"
-                          [class.text-blue-400]="row.player.position === Position.DEFENDER"
-                          [class.text-emerald-400]="row.player.position === Position.MIDFIELDER"
-                          [class.text-red-400]="row.player.position === Position.FORWARD">
-                        {{ row.player.position }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                        <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
-                          {{ row.player.name }}
-                        </a>
-                      </td>
-                    } @else {
-                      <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16 text-zinc-500">---</td>
-                      <td class="px-6 py-4 whitespace-nowrap font-medium text-zinc-500 italic">Empty bench slot</td>
-                    }
-                    @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
-                        @if (row.player) {
-                          @let eff = getPlayerEffectiveOverall(row.player);
-                          {{ getPlayerOverall(row.player) }}
-                          @if (eff !== null) {
-                            <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
-                          }
-                        } @else { -- }
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-16">
-                        @if (row.player) {
-                          <div class="inline-block w-8 h-1 bg-zinc-800 rounded-full overflow-hidden" [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                            <div class="h-full" [style.width.%]="row.player.fatigue || 0" [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
-                          </div>
-                        } @else { -- }
-                      </td>
-                      @let bStatsB = getRowStats(row.player);
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
-                        <span class="text-amber-400 font-mono">{{ formatAvgRating(bStatsB) }}</span>
-                        @if (bStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ bStatsB.starNominations.first }}</span>}
-                        @if (bStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ bStatsB.starNominations.second }}</span>}
-                        @if (bStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ bStatsB.starNominations.third }}</span>}
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ?? '--' }}</td>
-                    } @else {
-                      @let stats = getRowStats(row.player);
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-20">
-                        <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ stats.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards || 0 }}</span>
-                        </span>
-                      </td>
-                    }
-                  </tr>
+              </tr>
+              }
+              <!-- Bench -->
+              @for (row of benchRows(); track row.slotNumber; let i = $index) {
+              <tr class="hover:bg-zinc-800/50 transition-colors" [class.border-t-[2px]]="i === 0"
+                [class.border-t-yellow-500]="i === 0" [class.dragging]="row.player && isDragging(row.player.id)"
+                [class.drag-over]="isDragOver(row.player?.id || benchSlotTargetId(row.slotNumber))"
+                [class.cursor-grab]="isUserTeam()" [class.cursor-grabbing]="row.player && isDragging(row.player.id)"
+                [attr.draggable]="isUserTeam() && row.player ? 'true' : null"
+                (dragstart)="row.player && onDragStart($event, row.player.id)"
+                (dragover)="onDragOver($event, row.player?.id || benchSlotTargetId(row.slotNumber))"
+                (dragleave)="onDragLeave($event)"
+                (drop)="row.player ? onDropOnPlayer($event, row.player.id) : onDropOnBenchSlot($event)"
+                (dragend)="onDragEnd()">
+                @if (i === 0) {
+                <td [attr.rowspan]="benchRows().length" class="px-2 py-4 align-middle relative row-label">
+                  <div class="flex flex-col items-center justify-center h-full">
+                    <span class="w-2 h-2 rounded-full bg-yellow-500 mb-2"></span>
+                    <span class="text-xs font-bold text-white uppercase tracking-wider"
+                      style="writing-mode: sideways-lr; text-orientation: mixed;">Bench</span>
+                  </div>
+                </td>
                 }
-                <!-- Reserves -->
-                @for (player of reserves(); track player.id; let i = $index) {
-                  <tr 
-                    class="hover:bg-zinc-800/50 transition-colors opacity-75" 
-                    [class.border-t-[2px]]="i === 0" 
-                    [class.border-t-zinc-600]="i === 0"
-                    [class.dragging]="isDragging(player.id)"
-                    [class.drag-over]="isDragOver(player.id)"
-                    [class.cursor-grab]="isUserTeam()"
-                    [class.cursor-grabbing]="isDragging(player.id)"
-                    [attr.draggable]="isUserTeam()"
-                    (dragstart)="onDragStart($event, player.id)"
-                    (dragover)="onDragOver($event, player.id)"
-                    (dragleave)="onDragLeave($event)"
-                    (drop)="onDropOnPlayer($event, player.id)"
-                    (dragend)="onDragEnd()">
-                    @if (i === 0) {
-                      <td [attr.rowspan]="reserves().length" class="px-2 py-4 align-middle relative row-label">
-                        <div class="flex flex-col items-center justify-center h-full">
-                          <span class="w-2 h-2 rounded-full bg-zinc-600 mb-2"></span>
-                          <span class="text-xs font-bold text-white uppercase tracking-wider" style="writing-mode: sideways-lr; text-orientation: mixed;">Reserves</span>
-                        </div>
-                      </td>
-                    }
-                    <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
-                    <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                        [class.text-yellow-400]="player.position === Position.GOALKEEPER"
-                        [class.text-blue-400]="player.position === Position.DEFENDER"
-                        [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                        [class.text-red-400]="player.position === Position.FORWARD">
-                      {{ player.position }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                      <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
-                        {{ player.name }}
-                      </a>
-                    </td>
-                    @if (viewMode() === ViewMode.BIO) {
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
-                        @let eff = getPlayerEffectiveOverall(player);
-                        {{ getPlayerOverall(player) }}
-                        @if (eff !== null) {
-                          <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
-                        }
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-16">
-                        <div class="inline-block w-8 h-1 bg-zinc-800 rounded-full overflow-hidden" [title]="(player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                          <div class="h-full" [style.width.%]="player.fatigue || 0" [style.background-color]="getFatigueColor(player.fatigue || 0)"></div>
-                        </div>
-                      </td>
-                      @let rStats = getCurrentSeasonStats(player);
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-24">
-                        <span class="text-amber-400 font-mono">{{ formatAvgRating(rStats) }}</span>
-                        @if (rStats.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ rStats.starNominations.first }}</span>}
-                        @if (rStats.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ rStats.starNominations.second }}</span>}
-                        @if (rStats.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ rStats.starNominations.third }}</span>}
-                      </td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--' }}</td>
-                    } @else {
-                      @let stats = getCurrentSeasonStats(player);
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
-                      <td class="px-4 py-4 whitespace-nowrap text-center w-20">
-                        <span class="inline-flex items-center gap-1">
-                          <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{ stats.yellowCards || 0 }}</span>
-                          <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards || 0 }}</span>
-                        </span>
-                      </td>
-                    }
-                  </tr>
+                <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
+                @if (row.player) {
+                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                  [class.text-yellow-400]="row.player.position === Position.GOALKEEPER"
+                  [class.text-blue-400]="row.player.position === Position.DEFENDER"
+                  [class.text-emerald-400]="row.player.position === Position.MIDFIELDER"
+                  [class.text-red-400]="row.player.position === Position.FORWARD">
+                  {{ row.player.position }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                  <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
+                    {{ row.player.name }}
+                  </a>
+                </td>
+                } @else {
+                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16 text-zinc-500">---</td>
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-zinc-500 italic">Empty bench slot</td>
                 }
-                </tbody>
-              </table>
+                @if (viewMode() === ViewMode.BIO) {
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                  @if (row.player) {
+                  @let eff = getPlayerEffectiveOverall(row.player);
+                  {{ getPlayerOverall(row.player) }}
+                  @if (eff !== null) {
+                  <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                  }
+                  } @else { -- }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center w-16">
+                  @if (row.player) {
+                  <div class="py-2 cursor-help flex justify-center"
+                    [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                    <div class="inline-block w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div class="h-full" [style.width.%]="row.player.fatigue || 0"
+                        [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
+                    </div>
+                  </div>
+                  } @else { -- }
+                </td>
+                @let bStatsB = getRowStats(row.player);
+                <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                  <span class="text-amber-400 font-mono">{{ formatAvgRating(bStatsB) }}</span>
+                  @if (bStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ bStatsB.starNominations.first
+                    }}</span>}
+                  @if (bStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{
+                    bStatsB.starNominations.second }}</span>}
+                  @if (bStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ bStatsB.starNominations.third
+                    }}</span>}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ??
+                  '--' }}</td>
+                } @else {
+                @let stats = getRowStats(row.player);
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals ||
+                  0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center w-20">
+                  <span class="inline-flex items-center gap-1">
+                    <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{
+                      stats.yellowCards || 0 }}</span>
+                    <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
+                      || 0 }}</span>
+                  </span>
+                </td>
+                }
+              </tr>
+              }
+              <!-- Reserves -->
+              @for (player of reserves(); track player.id; let i = $index) {
+              <tr class="hover:bg-zinc-800/50 transition-colors opacity-75" [class.border-t-[2px]]="i === 0"
+                [class.border-t-zinc-600]="i === 0" [class.dragging]="isDragging(player.id)"
+                [class.drag-over]="isDragOver(player.id)" [class.cursor-grab]="isUserTeam()"
+                [class.cursor-grabbing]="isDragging(player.id)" [attr.draggable]="isUserTeam()"
+                (dragstart)="onDragStart($event, player.id)" (dragover)="onDragOver($event, player.id)"
+                (dragleave)="onDragLeave($event)" (drop)="onDropOnPlayer($event, player.id)" (dragend)="onDragEnd()">
+                @if (i === 0) {
+                <td [attr.rowspan]="reserves().length" class="px-2 py-4 align-middle relative row-label">
+                  <div class="flex flex-col items-center justify-center h-full">
+                    <span class="w-2 h-2 rounded-full bg-zinc-600 mb-2"></span>
+                    <span class="text-xs font-bold text-white uppercase tracking-wider"
+                      style="writing-mode: sideways-lr; text-orientation: mixed;">Reserves</span>
+                  </div>
+                </td>
+                }
+                <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
+                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
+                  [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                  [class.text-blue-400]="player.position === Position.DEFENDER"
+                  [class.text-emerald-400]="player.position === Position.MIDFIELDER"
+                  [class.text-red-400]="player.position === Position.FORWARD">
+                  {{ player.position }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                  <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
+                    {{ player.name }}
+                  </a>
+                </td>
+                @if (viewMode() === ViewMode.BIO) {
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                  @let eff = getPlayerEffectiveOverall(player);
+                  {{ getPlayerOverall(player) }}
+                  @if (eff !== null) {
+                  <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                  }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center w-16">
+                  <div class="py-2 cursor-help flex justify-center"
+                    [title]="(player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                    <div class="inline-block w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div class="h-full" [style.width.%]="player.fatigue || 0"
+                        [style.background-color]="getFatigueColor(player.fatigue || 0)"></div>
+                    </div>
+                  </div>
+                </td>
+                @let rStats = getCurrentSeasonStats(player);
+                <td class="px-4 py-4 whitespace-nowrap text-center w-24">
+                  <span class="text-amber-400 font-mono">{{ formatAvgRating(rStats) }}</span>
+                  @if (rStats.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ rStats.starNominations.first
+                    }}</span>}
+                  @if (rStats.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ rStats.starNominations.second
+                    }}</span>}
+                  @if (rStats.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ rStats.starNominations.third
+                    }}</span>}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--'
+                  }}</td>
+                } @else {
+                @let stats = getCurrentSeasonStats(player);
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals ||
+                  0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center w-20">
+                  <span class="inline-flex items-center gap-1">
+                    <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{
+                      stats.yellowCards || 0 }}</span>
+                    <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
+                      || 0 }}</span>
+                  </span>
+                </td>
+                }
+              </tr>
+              }
+            </tbody>
+          </table>
           }
 
           @if (viewMode() === ViewMode.SEASON_HISTORY) {
-              @if (seasonHistoryWithStats().length === 0) {
-                <div class="p-6 text-center text-zinc-500">
-                  <p class="text-sm">No season history available yet.</p>
-                </div>
-              } @else {
-                <table class="w-full text-sm text-left">
-                  <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
-                    <tr>
-                      <th scope="col" class="px-6 py-4 font-medium w-20">Season</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Pos</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Played</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Wins</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Draws</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Losses</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">For</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Against</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Diff</th>
-                      <th scope="col" class="px-4 py-4 font-medium text-center w-16">Points</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-zinc-800">
-                    @for (season of seasonHistoryWithStats(); track season.season) {
-                      <tr class="hover:bg-zinc-800/50 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap font-medium text-white">{{ season.season }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.ovr ?? '—' }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center">
-                          @if (season.rank) {
-                            <span class="font-bold" [class.text-yellow-400]="season.rank === 1" [class.text-zinc-300]="season.rank !== 1">{{ season.rank }}<span class="text-zinc-600 font-normal">/{{ season.totalTeams }}</span></span>
-                          } @else {
-                            <span class="text-zinc-600">—</span>
-                          }
-                        </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.played || 0 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400">{{ season.stats.won || 0 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300">{{ season.stats.drawn || 0 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-red-400">{{ season.stats.lost || 0 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsFor || 0 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsAgainst || 0 }}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center" [class.text-emerald-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) >= 0" [class.text-red-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) < 0">
-                          {{ (season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) }}
-                        </td>
-                        <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.stats.points || 0 }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+          @if (seasonHistoryWithStats().length === 0) {
+          <div class="p-6 text-center text-zinc-500">
+            <p class="text-sm">No season history available yet.</p>
+          </div>
+          } @else {
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+              <tr>
+                <th scope="col" class="px-6 py-4 font-medium w-20">Season</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Pos</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Played</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Wins</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Draws</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Losses</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">For</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Against</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Diff</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Points</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-800">
+              @for (season of seasonHistoryWithStats(); track season.season) {
+              <tr class="hover:bg-zinc-800/50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">{{ season.season }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.ovr ?? '—' }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center">
+                  @if (season.rank) {
+                  <span class="font-bold" [class.text-yellow-400]="season.rank === 1"
+                    [class.text-zinc-300]="season.rank !== 1">{{ season.rank }}<span
+                      class="text-zinc-600 font-normal">/{{ season.totalTeams }}</span></span>
+                  } @else {
+                  <span class="text-zinc-600">—</span>
+                  }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.played || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400">{{ season.stats.won ||
+                  0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300">{{ season.stats.drawn || 0
+                  }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-red-400">{{ season.stats.lost || 0
+                  }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsFor || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsAgainst || 0 }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center"
+                  [class.text-emerald-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) >= 0"
+                  [class.text-red-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) < 0">
+                  {{ (season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.stats.points || 0 }}
+                </td>
+              </tr>
               }
+            </tbody>
+          </table>
+          }
           }
 
-          </div><!-- end persistent card -->
+        </div><!-- end persistent card -->
 
-        </div>
       </div>
+    </div>
     } @else {
-      <div class="text-center py-12 text-zinc-500">
-        Team not found.
-      </div>
+    <div class="text-center py-12 text-zinc-500">
+      Team not found.
+    </div>
     }
   </div>
 </div>

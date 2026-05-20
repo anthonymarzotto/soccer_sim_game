@@ -601,7 +601,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     expect(homePlayers.find(player => player.id === 'home-mid1')?.role).toBe(Role.SUBSTITUTED_OUT);
   });
 
-  it('should apply goalkeeper stamina drain at 1% of outfield players', () => {
+  it('should apply goalkeeper stamina drain at 95% of outfield players', () => {
     const internals = simulationB as unknown as VariantBSubstitutionInternals;
     const fatigue = createFatigueState(homePlayers, awayPlayers, 0);
     const homeGoalkeeper = homePlayers.find(player => player.id === 'home-gk1') as Player;
@@ -616,7 +616,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     const goalkeeperFatigue = fatigue.home.find(entry => entry.playerId === homeGoalkeeper.id) as PlayerFatigue;
     const outfieldFatigue = fatigue.home.find(entry => entry.playerId === homeOutfield.id) as PlayerFatigue;
 
-    expect(goalkeeperFatigue.fatigueLevel).toBeCloseTo(0.004125, 3);
+    expect(goalkeeperFatigue.fatigueLevel).toBeCloseTo(0.391875, 3);
     expect(outfieldFatigue.fatigueLevel).toBeCloseTo(0.4325, 3);
   });
 
