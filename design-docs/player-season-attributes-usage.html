@@ -258,6 +258,7 @@
     .pill.team      { background: #431407; color: #fb923c; }
     .pill.viaoverall { background: #1e3a5f; color: #93c5fd; }
     .pill.unused    { background: #27272a; color: #71717a; }
+    .pill.rollover  { background: #312e81; color: #818cf8; }
 
     .footnote {
       font-size: 0.8rem;
@@ -281,13 +282,14 @@
         <div class="legend-item"><span class="pill team">team setup</span><span>Read pre-match to derive team tactics, formation slot fit, or auto-lineups.</span></div>
         <div class="legend-item"><span class="pill viaoverall">via overall</span><span>Not read directly today; only influences gameplay because it was folded into generated <code>overall</code>.</span></div>
         <div class="legend-item"><span class="pill unused">unused</span><span>Persisted and rolled forward but no current consumer in setup, simulation, or reporting.</span></div>
+        <div class="legend-item"><span class="pill rollover">rollover</span><span>Evaluated during season transition to determine attribute growth or decay.</span></div>
       </div>
 
       <div class="chip-row">
         <div class="chip-card"><strong>23</strong><span>Total stats on <code>PlayerSeasonAttributes</code></span></div>
-        <div class="chip-card"><strong>14</strong><span>Read by match setup or Variant B</span></div>
+        <div class="chip-card"><strong>15</strong><span>Read by match setup or Variant B</span></div>
         <div class="chip-card"><strong>2</strong><span>Indirect via generated <code>overall</code></span></div>
-        <div class="chip-card"><strong>7</strong><span>Unused in the current pipeline</span></div>
+        <div class="chip-card"><strong>6</strong><span>Unused in the current pipeline</span></div>
       </div>
     </section>
 
@@ -409,8 +411,17 @@
             <tr>
               <td class="col-stat">endurance<small>physical</small></td>
               <td><div class="status-stack"><span class="pill live">live</span></div></td>
-              <td>Tie-breaker in <code>selectSubstitutionIncomingPlayer</code> after candidates are sorted by <code>overall</code>.</td>
-              <td>Only consulted when two bench players share the same <code>overall</code> in the same position.</td>
+              <td>
+                Three read sites:
+                <ul class="compact">
+                  <li>In-match fatigue accrual (<code>updateFatigue</code>): scales per-tick fatigue gain. Higher endurance = less fatigue per tick.
+                    <span class="formula">fatigueAccrual = 0.5 × (1 − (endurance − 50) × 0.005)</span></li>
+                  <li>Match-tick fatigue normalization (<code>normalizeFatigue</code>): refunds unplayed match ticks symmetrically using the accrual rate.
+                    <span class="formula">fatigueRefundPerTick = 0.5 × (1 − (endurance − 50) × 0.005)</span></li>
+                  <li>Substitution tie-breaker in <code>selectSubstitutionIncomingPlayer</code> when bench candidates share the same fatigue-adjusted <code>overall</code>.</li>
+                </ul>
+              </td>
+              <td>Goalkeeper stamina drain multiplier additionally scales accrual for GK position. The tick normalization uses a subtraction refund to correctly scale down fatigue for subbed-out players.</td>
             </tr>
             <tr>
               <td class="col-stat">vision<small>mental</small></td>
@@ -441,13 +452,23 @@
                 <ul class="compact">
                   <li><code>FieldService.calculateTeamTactics</code> — team-strength threshold</li>
                   <li><code>getPlayerSlotFitScore</code> — formation slot fit (<code>+ overall × 0.2</code>)</li>
-                  <li><code>selectSubstitutionIncomingPlayer</code> — bench sort key</li>
+                  <li><code>selectSubstitutionIncomingPlayer</code> — bench sort key (now uses fatigue-adjusted overall via <code>scaleOverallWithFatigue</code>)</li>
                   <li><code>GameService.dressBestPlayers</code> — auto starter selection per position</li>
                   <li><code>calculateTeamOverall</code> / <code>getMatchProbabilities</code> — preview odds</li>
                   <li><code>StatisticsService.calculatePlayerRating</code> — post-match rating baseline; runs on <code>PlayByPlayEvent</code> logs after the match completes, not during it</li>
                 </ul>
               </td>
-              <td>Generated once and never recomputed at rollover. Match ratings then add goals/assists/passes/tackles and subtract fouls/cards.</td>
+              <td>Generated once and never recomputed at rollover. Performance modifier uses a quadratic penalty curve: <code>Math.max(0.5, 1.0 - 0.5 * (fatigue / 100)^2)</code>, scaled using <code>scaleOverallWithFatigue</code>.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">fitness<small>physical</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>
+                Scales the weekly fatigue recovery amount in <code>GameService.advanceWeekForPlayers</code>. Applied once per game week for players carrying non-zero fatigue.
+                <span class="formula">recovery = 15 + (fitness × 0.25)</span>
+                <span class="formula" style="color:#71717a">→ range: 15 (fitness 0) – 40 (fitness 100) fatigue points shed per week</span>
+              </td>
+              <td>Applied before injury tick advances. A player at fitness 50 recovers 27.5 fatigue per week; at fitness 100 they recover 40. Fatigue is floored at 0.</td>
             </tr>
             <tr>
               <td class="col-stat">injuryRate<small>misc</small></td>
@@ -638,7 +659,6 @@
         <div class="stat-card"><div><span class="stat-name">morale</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental — distinct from <code>Player.mood</code></div></div>
         <div class="stat-card"><div><span class="stat-name">consistency</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
         <div class="stat-card"><div><span class="stat-name">aggressiveness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
-        <div class="stat-card"><div><span class="stat-name">fitness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden physical</div><p style="font-size:0.8rem;color:#52525b;margin-top:4px">In-match fatigue is tracked by the transient <code>PlayerFatigue</code> struct (<code>currentStamina</code>, <code>fatigueLevel</code>, <code>performanceModifier</code>), initialised fresh each match and never persisted. This stored stat is a separate field with no current consumer.</p></div>
         <div class="stat-card"><div><span class="stat-name">luck</span> <span class="pill unused">unused</span></div><div class="stat-meta">misc — randomness comes from the simulation RNG</div></div>
       </div>
 
@@ -650,13 +670,38 @@
 
     <section class="panel">
       <div class="panel-header">
+        <h2>Player Progression</h2>
+        <p>These attributes live on <code>Player.progression</code> and influence attribute growth and decay during the season rollover process. They do not affect in-match simulation directly.</p>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div><span class="stat-name">potential</span> <span class="pill rollover">rollover</span></div>
+          <div class="stat-meta">1-100</div>
+          <p>Softly caps growth via headroom. The closer a player's overall is to their potential, the slower they grow.</p>
+        </div>
+        <div class="stat-card">
+          <div><span class="stat-name">professionalism</span> <span class="pill rollover">rollover</span></div>
+          <div class="stat-meta">1-100</div>
+          <p>Higher values mean a higher potential for growth per year. Hard-workers improve more reliably.</p>
+        </div>
+        <div class="stat-card">
+          <div><span class="stat-name">temperament</span> <span class="pill rollover">rollover</span></div>
+          <div class="stat-meta">1-100</div>
+          <p>Lower values create higher variance in development. Unpredictable players might randomly boom or bust.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
         <h2>Principles to remember</h2>
       </div>
 
       <div class="principle-grid">
         <article class="principle">
           <h3>Stat values never change mid-match</h3>
-          <p>Variant B always reads from the active season record. In-match dynamics live in transient state — <code>PlayerFatigue</code> (<code>currentStamina</code> / <code>fatigueLevel</code> / <code>performanceModifier</code>, initialised fresh each match and never persisted), possession chain, scoreline, and RNG — none of which writes back into <code>PlayerSeasonAttributes</code>.</p>
+          <p>Variant B always reads from the active season record. In-match dynamics live in transient state — <code>PlayerFatigue</code> (<code>fatigueLevel</code> / <code>performanceModifier</code>, initialised from the player's persisted fatigue at kick-off), possession chain, scoreline, and RNG — none of which writes back into <code>PlayerSeasonAttributes</code>.</p>
         </article>
         <article class="principle">
           <h3><code>overall</code> is a snapshot, not a derivative</h3>
@@ -667,8 +712,8 @@
           <p><code>FieldService.calculateTeamTactics</code> averages <code>overall</code>, <code>speed</code>, <code>shortPassing</code>, <code>longPassing</code>, <code>tackling</code>, and <code>shooting</code> across the whole roster. One elite player will not flip the team's playing style.</p>
         </article>
         <article class="principle">
-          <h3>Rollover is a copy, not a progression</h3>
-          <p><code>GameService.startNewSeason</code> deep-copies every stat object into the next season and resets mood/fatigue. There is no automatic aging, training, or decay step.</p>
+          <h3>Rollover drives progression</h3>
+          <p><code>GameService.startNewSeason</code> uses <code>PlayerProgression</code> to age players, apply growth/decay curves based on their career phase (Junior, Peak, Senior, Decline), and generate a new <code>PlayerSeasonAttributes</code> snapshot for the next year.</p>
         </article>
       </div>
     </section>
