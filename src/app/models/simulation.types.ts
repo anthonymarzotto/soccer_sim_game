@@ -223,5 +223,9 @@ export interface PlayerFatigue {
 }
 
 export function calculateFatigueModifier(fatigue: number): number {
-  return Math.max(0.5, 1.0 - fatigue / 200);
+  return Math.max(0.5, 1.0 - 0.5 * Math.pow(fatigue / 100, 2));
+}
+
+export function scaleOverallWithFatigue(baseOverall: number, fatigueModifier: number): number {
+  return Math.round(baseOverall * fatigueModifier);
 }
