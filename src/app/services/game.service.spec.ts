@@ -1006,7 +1006,9 @@ describe('GameService persistence integration', () => {
       awayTeam,
       [],
       matchStats,
-      matchReport
+      matchReport,
+      undefined,
+      undefined
     );
 
     expect(persistenceSpy.saveMatchResult).toHaveBeenCalledTimes(1);
@@ -1400,7 +1402,9 @@ describe('GameService persistence integration', () => {
       awayTeam,
       [],
       matchStats,
-      matchReport
+      matchReport,
+      undefined,
+      undefined
     );
 
     const homeKeeper = homeTeam.players.find(player => player.id === 'p1');
@@ -1518,6 +1522,8 @@ describe('GameService persistence integration', () => {
       [],
       matchStats,
       matchReport,
+      undefined,
+      undefined,
       true
     );
 
@@ -1613,7 +1619,7 @@ describe('GameService persistence integration', () => {
     };
 
     (service as unknown as { updateLeagueWithMatchResult: (...args: unknown[]) => void }).updateLeagueWithMatchResult(
-      match, matchState, homeTeam, awayTeam, [], emptyStats, matchReport
+      match, matchState, homeTeam, awayTeam, [], emptyStats, matchReport, undefined, undefined
     );
 
     const starter = homeTeam.players.find(p => p.id === 'p-starter');
@@ -1722,7 +1728,9 @@ describe('GameService persistence integration', () => {
       awayTeam,
       [],
       emptyStats,
-      matchReport
+      matchReport,
+      undefined,
+      undefined
     );
 
     const scorer = homeTeam.players.find((player) => player.id === 'p-home');
@@ -1933,14 +1941,19 @@ describe('GameService simulation engine', () => {
 
     const service = TestBed.inject(GameService);
 
-    service.simulateMatchWithDetails({ id: 'match-1', seasonYear: 2026 } as never, { id: 'home' } as never, { id: 'away' } as never, {
-      enablePlayByPlay: true,
-      enableSpatialTracking: true,
-      enableTactics: true,
-      enableFatigue: true,
-      commentaryStyle: CommentaryStyle.DETAILED,
-      skipCommentary: true
-    });
+    service.simulateMatchWithDetails(
+      { id: 'match-1', seasonYear: 2026 } as never,
+      { id: 'home', name: 'Home', players: [], playerIds: [], formationAssignments: {}, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }] } as never,
+      { id: 'away', name: 'Away', players: [], playerIds: [], formationAssignments: {}, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }] } as never,
+      {
+        enablePlayByPlay: true,
+        enableSpatialTracking: true,
+        enableTactics: true,
+        enableFatigue: true,
+        commentaryStyle: CommentaryStyle.DETAILED,
+        skipCommentary: true
+      }
+    );
 
     expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(1);
     expect(variantBSpy.simulateMatch).toHaveBeenCalledWith(
