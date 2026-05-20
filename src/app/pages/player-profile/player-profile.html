@@ -274,6 +274,22 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.endurance?.value }}</span>
                 </div>
               </div>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-zinc-400 text-sm" [title]="getStatDescription('fitness')">Fitness</span>
+                <div class="flex items-center gap-2">
+                  @let diffFitness = getStatDiff('fitness');
+                  @if (diffFitness) { <span class="text-xs font-mono" [class.text-emerald-500]="diffFitness > 0" [class.text-red-500]="diffFitness < 0">{{ diffFitness > 0 ? '+' : '' }}{{ diffFitness }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.fitness?.value }}</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center py-2.5 border-t border-zinc-800/50 mt-1">
+                <span class="text-zinc-500 text-xs uppercase tracking-wider">Current Fatigue</span>
+                <div class="min-w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden" [title]="(p?.fatigue || 0 | number:'1.0-0') + '% fatigue'">
+                  <div class="h-full transition-all duration-500" 
+                       [style.width.%]="p?.fatigue ?? 0" 
+                       [style.background-color]="getFatigueColor(p?.fatigue ?? 0)"></div>
+                </div>
+              </div>
             </div>
           } @else {
             @let physicalData = physicalChartData();
@@ -610,26 +626,13 @@
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.aggressiveness?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('fitness')">Fitness</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.fitness?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.fitness?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
               <span class="text-zinc-500 w-28">Mood</span>
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
                 <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.mood"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.mood }}</span>
             </div>
-            <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Fatigue</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.fatigue"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.fatigue }}</span>
-            </div>
+
             <div class="flex items-center gap-4">
               <span class="text-zinc-500 w-28" [title]="getStatDescription('luck')">Luck</span>
               <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">

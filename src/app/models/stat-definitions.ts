@@ -104,8 +104,8 @@ export const STAT_DEFINITIONS: Record<StatKey, StatDefinition> = {
   },
   fitness: {
     type: 'physical',
-    description: 'The rate at which the player builds up fatigue during a game.',
-    hidden: true
+    description: 'The rate at which the player recovers from fatigue between matches.',
+    hidden: false
   },
   luck: {
     type: 'misc',

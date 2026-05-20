@@ -56,10 +56,24 @@ export class GeneratorService {
     for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
     for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH, teamQuality, currentSeasonYear));
 
-    // 5 Not Dressed: Random positions
-    const positions: Position[] = [PositionEnum.GOALKEEPER, PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
-    for (let i = 0; i < 5; i++) {
-      const pos = positions[Math.floor(Math.random() * positions.length)];
+    // 5 Not Dressed: Guarantee at least 1 of each outfield position, max 1 GK
+    const reservePositions: Position[] = [
+      PositionEnum.DEFENDER,
+      PositionEnum.MIDFIELDER,
+      PositionEnum.FORWARD
+    ];
+
+    // Fill remaining 2 slots: allowing at most 1 GK total in reserves
+    for (let i = 0; i < 2; i++) {
+      const allowed: Position[] = [PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
+      if (!reservePositions.includes(PositionEnum.GOALKEEPER)) {
+        allowed.push(PositionEnum.GOALKEEPER);
+      }
+      const pos = allowed[Math.floor(Math.random() * allowed.length)];
+      reservePositions.push(pos);
+    }
+
+    for (const pos of reservePositions) {
       players.push(this.generatePlayer(id, pos, RoleEnum.RESERVE, teamQuality, currentSeasonYear));
     }
 
@@ -221,7 +235,7 @@ export class GeneratorService {
       seasonAttributes: [seasonAttributes],
       careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
       mood: 100,
-      fatigue: 100,
+      fatigue: 0,
       injuries: [],
       progression
     };

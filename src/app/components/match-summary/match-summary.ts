@@ -10,6 +10,10 @@ import { getInjuryDefinition } from '../../data/injuries';
 
 const ICON_BADGE_STYLE_SET = new Set<BadgeStyle>(ICON_BADGE_STYLES);
 
+type CommentarySegment =
+  | { type: 'text'; text: string }
+  | { type: 'player'; playerId: string; playerName: string; teamId: string };
+
 interface InjuryMomentSummary {
   playerId: string;
   playerName: string;
@@ -140,6 +144,48 @@ export class MatchSummaryComponent {
   getPlayerTeamId(playerId: string): string {
     const player = this.gameService.getPlayer(playerId);
     return player?.teamId || '';
+  }
+
+  getCommentarySegments(event: MatchEvent): CommentarySegment[] {
+    if (!event.playerIds || event.playerIds.length === 0) {
+      return [{ type: 'text', text: event.description || '' }];
+    }
+
+    const players = this.getPlayerLinks(event.playerIds).map(p => ({
+      ...p,
+      teamId: this.getPlayerTeamId(p.playerId)
+    }));
+
+    players.sort((a, b) => b.name.length - a.name.length);
+
+    let segments: CommentarySegment[] = [{ type: 'text', text: event.description || '' }];
+
+    for (const player of players) {
+      const newSegments: CommentarySegment[] = [];
+      for (const segment of segments) {
+        if (segment.type === 'text') {
+          const parts = segment.text.split(player.name);
+          for (let i = 0; i < parts.length; i++) {
+            if (parts[i]) {
+              newSegments.push({ type: 'text', text: parts[i] });
+            }
+            if (i < parts.length - 1) {
+              newSegments.push({
+                type: 'player',
+                playerId: player.playerId,
+                playerName: player.name,
+                teamId: player.teamId
+              });
+            }
+          }
+        } else {
+          newSegments.push(segment);
+        }
+      }
+      segments = newSegments;
+    }
+
+    return segments;
   }
 
   getInjuryMomentSummary(event: MatchEvent): InjuryMomentSummary | null {

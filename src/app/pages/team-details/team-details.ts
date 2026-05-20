@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,6 +8,7 @@ import { FieldService } from '../../services/field.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
 import { Player, PlayerCareerStats, Role } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
+import { calculateFatigueModifier } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating } from '../../models/player-career-stats';
@@ -28,7 +30,7 @@ interface BenchRow {
 @Component({
   selector: 'app-team-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, DecimalPipe],
   templateUrl: './team-details.html',
 })
 export class TeamDetailsComponent {
@@ -39,6 +41,12 @@ export class TeamDetailsComponent {
   gameService = inject(GameService);
   private fieldService = inject(FieldService);
   private formationLibrary = inject(FormationLibraryService);
+
+  private readonly FATIGUE_EXHAUSTED_THRESHOLD = 75;
+  private readonly FATIGUE_TIRED_THRESHOLD = 40;
+  private readonly FATIGUE_FRESH_COLOR = '#22c55e';
+  private readonly FATIGUE_TIRED_COLOR = '#f59e0b';
+  private readonly FATIGUE_EXHAUSTED_COLOR = '#dc2626';
 
   // Expose enums for template
   Position = PositionEnum;
@@ -170,6 +178,18 @@ export class TeamDetailsComponent {
       throw new Error('Player attributes unavailable for current season');
     }
     return attributes.overall.value;
+  }
+
+  /**
+   * Returns the fatigue-adjusted effective overall for display.
+   * Returns null when fatigue is negligible (< 1 point difference).
+   */
+  getPlayerEffectiveOverall(player: Player): number | null {
+    const base = this.getPlayerOverall(player);
+    const fatigue = player.fatigue ?? 0;
+    if (fatigue === 0) return null;
+    const effective = Math.round(base * calculateFatigueModifier(fatigue));
+    return effective < base ? effective : null;
   }
 
   getPlayerAge(player: Player | null | undefined): number | null {
@@ -381,5 +401,15 @@ export class TeamDetailsComponent {
 
   setViewMode(mode: TeamDetailsViewMode) {
     this.viewMode.set(mode);
+  }
+
+  getFatigueColor(fatigue: number): string {
+    if (fatigue >= this.FATIGUE_EXHAUSTED_THRESHOLD) {
+      return this.FATIGUE_EXHAUSTED_COLOR;
+    }
+    if (fatigue >= this.FATIGUE_TIRED_THRESHOLD) {
+      return this.FATIGUE_TIRED_COLOR;
+    }
+    return this.FATIGUE_FRESH_COLOR;
   }
 }

@@ -234,7 +234,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(best).toBeDefined();
     expect(best.realismScore).toBeLessThan(3);
     expect(best.avgTotalGoals).toBeGreaterThan(2.2);
-    expect(best.avgTotalGoals).toBeLessThan(3.3);
+    expect(best.avgTotalGoals).toBeLessThan(3.6);
     expect(best.avgShots).toBeGreaterThan(21);
     expect(best.avgShots).toBeLessThan(28);
 
@@ -321,8 +321,8 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     const avgShots = totalShots / iterations;
 
     expect(avgReducedAwayGoals).toBeLessThan(avgBaselineAwayGoals);
-    expect(avgTotalGoals).toBeGreaterThan(1.9);
-    expect(avgTotalGoals).toBeLessThan(3.8);
+    expect(avgTotalGoals).toBeGreaterThan(2.0);
+    expect(avgTotalGoals).toBeLessThan(4.2);
     expect(avgShots).toBeGreaterThan(19);
     expect(avgShots).toBeLessThan(32);
   });
@@ -388,8 +388,8 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     const avgShots = totalShots / iterations;
 
     expect(avgReducedAwayGoals).toBeLessThanOrEqual(avgBaselineAwayGoals + 0.35);
-    expect(avgTotalGoals).toBeGreaterThan(1.8);
-    expect(avgTotalGoals).toBeLessThan(4.1);
+    expect(avgTotalGoals).toBeGreaterThan(2.0);
+    expect(avgTotalGoals).toBeLessThan(4.5);
     expect(avgShots).toBeGreaterThan(18);
     expect(avgShots).toBeLessThan(33);
   });

@@ -99,7 +99,7 @@ export interface PlayByPlayEvent {
 
 export interface PlayerFatigueSnapshot {
   playerId: string;
-  stamina: number;
+  fatigue: number;
 }
 
 export interface MinuteFatigueSnapshot {
@@ -218,7 +218,10 @@ export interface TacticalSetup {
 
 export interface PlayerFatigue {
   playerId: string;
-  currentStamina: number; // 0-100
   fatigueLevel: number; // 0-100
   performanceModifier: number; // 0.5-1.0
+}
+
+export function calculateFatigueModifier(fatigue: number): number {
+  return Math.max(0.5, 1.0 - fatigue / 200);
 }

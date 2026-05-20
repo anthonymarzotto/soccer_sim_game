@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
@@ -16,7 +17,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent],
+  imports: [RouterLink, TeamBadgeComponent, DecimalPipe],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {
@@ -24,6 +25,12 @@ export class PlayerProfileComponent {
   private router = inject(Router);
   gameService = inject(GameService);
   private settingsService = inject(SettingsService);
+
+  private readonly FATIGUE_EXHAUSTED_THRESHOLD = 75;
+  private readonly FATIGUE_TIRED_THRESHOLD = 40;
+  private readonly FATIGUE_FRESH_COLOR = '#22c55e';
+  private readonly FATIGUE_TIRED_COLOR = '#f59e0b';
+  private readonly FATIGUE_EXHAUSTED_COLOR = '#dc2626';
 
   // Expose enums for template
   Position = Position;
@@ -197,7 +204,8 @@ export class PlayerProfileComponent {
     return [
       { label: 'Speed', value: attrs.speed.value },
       { label: 'Strength', value: attrs.strength.value },
-      { label: 'Endurance', value: attrs.endurance.value }
+      { label: 'Endurance', value: attrs.endurance.value },
+      { label: 'Fitness', value: attrs.fitness.value }
     ];
   });
 
@@ -395,4 +403,14 @@ export class PlayerProfileComponent {
     if (!player || !player.seasonAttributes) return [];
     return [...player.seasonAttributes].sort((a, b) => a.seasonYear - b.seasonYear);
   });
+
+  getFatigueColor(fatigue: number): string {
+    if (fatigue >= this.FATIGUE_EXHAUSTED_THRESHOLD) {
+      return this.FATIGUE_EXHAUSTED_COLOR;
+    }
+    if (fatigue >= this.FATIGUE_TIRED_THRESHOLD) {
+      return this.FATIGUE_TIRED_COLOR;
+    }
+    return this.FATIGUE_FRESH_COLOR;
+  }
 }

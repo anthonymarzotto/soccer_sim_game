@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { GeneratorService } from './generator.service';
 import { FormationLibraryService } from './formation-library.service';
+import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
 
 describe('GeneratorService', () => {
   let service: GeneratorService;
@@ -56,6 +57,25 @@ describe('GeneratorService', () => {
       teams.forEach(team => {
         const expectedPlayerIds = team.players.map(player => player.id);
         expect(team.playerIds).toEqual(expectedPlayerIds);
+      });
+    });
+
+    it('should generate "Not Dressed" players with correct position distribution', () => {
+      const { teams } = service.generateLeague();
+      
+      teams.forEach(team => {
+        const reserves = team.players.filter(p => p.role === RoleEnum.RESERVE);
+        expect(reserves.length).toBe(5);
+
+        const gks = reserves.filter(p => p.position === PositionEnum.GOALKEEPER);
+        const defs = reserves.filter(p => p.position === PositionEnum.DEFENDER);
+        const mids = reserves.filter(p => p.position === PositionEnum.MIDFIELDER);
+        const fwds = reserves.filter(p => p.position === PositionEnum.FORWARD);
+
+        expect(gks.length).toBeLessThanOrEqual(1);
+        expect(defs.length).toBeGreaterThanOrEqual(1);
+        expect(mids.length).toBeGreaterThanOrEqual(1);
+        expect(fwds.length).toBeGreaterThanOrEqual(1);
       });
     });
   });
