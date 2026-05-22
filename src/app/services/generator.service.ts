@@ -255,7 +255,6 @@ export class GeneratorService {
     const schedule: Match[] = [];
     const numTeams = teams.length;
     const numWeeks = (numTeams - 1) * 2; // Home and away
-    let matchId = 1;
 
     // Round Robin scheduling algorithm
     const teamIds = teams.map(t => t.id);
@@ -266,7 +265,7 @@ export class GeneratorService {
         const away = teamIds[numTeams - 1 - i];
 
         schedule.push({
-          id: (matchId++).toString(),
+          id: crypto.randomUUID(),
           seasonYear: currentSeasonYear,
           homeTeamId: home,
           awayTeamId: away,
@@ -278,7 +277,7 @@ export class GeneratorService {
 
         // Add reverse fixture for second half of season
         schedule.push({
-          id: (matchId++).toString(),
+          id: crypto.randomUUID(),
           seasonYear: currentSeasonYear,
           homeTeamId: away,
           awayTeamId: home,

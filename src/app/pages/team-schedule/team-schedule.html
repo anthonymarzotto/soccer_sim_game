@@ -1,0 +1,224 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
+  <div class="max-w-4xl mx-auto space-y-8">
+    
+    <!-- Top Nav / Switcher Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+      <div class="flex items-center gap-4">
+        <a [routerLink]="['/team', teamId()]" 
+           class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
+           title="Back to Team Details">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+        </a>
+        <div class="flex items-center gap-3">
+          <select id="team-schedule-switcher" 
+                  [value]="teamId()" 
+                  (change)="onTeamChange($any($event.target).value)"
+                  class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg -ml-1 px-1"
+                  aria-label="Select Team">
+            @for (t of allTeamsSorted(); track t.id) {
+              <option [value]="t.id" class="bg-zinc-900 text-white text-base font-normal">
+                {{ gameService.league()?.userTeamId === t.id ? '★ ' : '' }}{{ t.name }}
+              </option>
+            }
+          </select>
+          <span class="text-zinc-500 text-2xl font-light">/</span>
+          <span class="text-zinc-400 text-xl font-medium pt-1">Schedule</span>
+        </div>
+      </div>
+
+      <!-- Season Dropdown Selector -->
+      @if (seasons().length > 1) {
+        <select [value]="selectedSeason()"
+                (change)="onSeasonChange($event)"
+                class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg px-1 text-right"
+                aria-label="Select Season">
+          @for (year of seasons(); track year) {
+            <option [value]="year" [selected]="year === selectedSeason()" class="bg-zinc-900 text-white text-base font-normal text-left">{{ year }}</option>
+          }
+        </select>
+      }
+    </div>
+
+    <!-- Glassmorphic Season Performance Stats Banner -->
+    @if (team() && seasonStats()) {
+      @let stats = seasonStats()!;
+      @let standing = seasonStanding();
+      <div class="relative bg-zinc-900/60 backdrop-blur-md border border-zinc-800/80 rounded-2xl p-6 shadow-2xl overflow-hidden group">
+        <!-- Subtle background glow -->
+        <div class="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700"></div>
+        <div class="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="relative grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+          
+          <!-- Season Summary Header -->
+          <div class="col-span-2 md:col-span-1 flex flex-col justify-center border-b border-zinc-800/50 pb-4 md:pb-0 md:border-b-0 md:border-r md:border-zinc-800/40 flex items-center md:items-center">
+            <div class="flex items-center gap-2">
+              @if (seasonOvr()) {
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-zinc-800 font-bold text-zinc-300 border border-zinc-700/60">OVR {{ seasonOvr() }}</span>
+              }
+              @if (isCurrentSeason()) {
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-indigo-500/10 font-bold text-indigo-400 border border-indigo-500/20">Active</span>
+              }
+            </div>
+          </div>
+
+          <!-- Standing Rank -->
+          <div class="flex flex-col justify-center py-2 border-r border-zinc-800/40">
+            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">League Finish</span>
+            @if (standing && standing.rank) {
+              <div class="text-3xl font-extrabold" [class.text-yellow-400]="standing.rank === 1" [class.text-white]="standing.rank !== 1">
+                {{ standing.rank }}<span class="text-sm font-normal text-zinc-500">/{{ standing.totalTeams }}</span>
+              </div>
+            } @else {
+              <div class="text-2xl font-bold text-zinc-600">—</div>
+            }
+          </div>
+
+          <!-- Record W-D-L -->
+          <div class="flex flex-col justify-center py-2 border-r border-zinc-800/40">
+            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Record</span>
+            <div class="text-2xl font-extrabold text-white tracking-tight">
+              <span class="text-emerald-400">{{ stats.won }}</span>
+              <span class="text-zinc-500 text-lg mx-1">-</span>
+              <span class="text-zinc-400">{{ stats.drawn }}</span>
+              <span class="text-zinc-500 text-lg mx-1">-</span>
+              <span class="text-red-400">{{ stats.lost }}</span>
+            </div>
+            <div class="text-[11px] text-zinc-500 mt-1">Played {{ stats.played }} matches</div>
+          </div>
+
+          <!-- Points -->
+          <div class="flex flex-col justify-center py-2 border-r border-zinc-800/40">
+            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Points</span>
+            <div class="text-3xl font-black text-white tracking-tight">{{ stats.points }}</div>
+            <div class="text-[11px] text-zinc-500 mt-1">
+              {{ stats.played > 0 ? (stats.points / stats.played | number:'1.1-1') + ' Pts/Game' : '0.0 Pts/Game' }}
+            </div>
+          </div>
+
+          <!-- Goals GF-GA (GD) -->
+          <div class="flex flex-col justify-center py-2 pr-2">
+            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Goals (GD)</span>
+            <div class="text-xl font-extrabold text-white tracking-tight">
+              {{ stats.goalsFor }}<span class="text-zinc-500 text-sm font-normal mx-0.5">/</span>{{ stats.goalsAgainst }}
+            </div>
+            <div class="text-xs font-semibold mt-1" 
+                 [class.text-emerald-400]="stats.goalsFor - stats.goalsAgainst > 0"
+                 [class.text-red-400]="stats.goalsFor - stats.goalsAgainst < 0"
+                 [class.text-zinc-500]="stats.goalsFor - stats.goalsAgainst === 0">
+              {{ stats.goalsFor - stats.goalsAgainst > 0 ? '+' : '' }}{{ stats.goalsFor - stats.goalsAgainst }} Diff
+            </div>
+          </div>
+
+        </div>
+      </div>
+    }
+
+    <!-- Matches Timeline Content -->
+    <div class="space-y-6">
+
+      <!-- ================= PENDING MATCHES SECTION ================= -->
+      @if (pendingMatches().length > 0) {
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+            <h3 class="text-lg font-bold text-indigo-300 uppercase tracking-wider text-sm">Upcoming Matches</h3>
+            <span class="text-xs text-zinc-500 bg-indigo-950 px-2 py-0.5 rounded-full font-mono">{{ pendingMatches().length }} Remaining</span>
+          </div>
+
+          <div class="grid gap-4">
+            @for (match of pendingMatches(); track match.id) {
+              @let outcome = getMatchOutcome(match);
+              <div [class]="'flex flex-col p-4 rounded-2xl border bg-zinc-900/40 hover:bg-zinc-900/70 transition-all duration-300 ' + outcome.borderClass">
+                <div class="flex justify-between items-center mb-3">
+                  <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">Week {{ match.week }}</div>
+                  <span [class]="'px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ' + outcome.bgClass + ' ' + outcome.textClass + ' ' + outcome.borderClass">
+                    {{ outcome.label }}
+                  </span>
+                </div>
+
+                <app-match-summary
+                  [match]="match"
+                  [showProbabilities]="true"
+                  [showStats]="false"
+                  [showEvents]="false">
+                </app-match-summary>
+
+                <!-- Navigation suggestion note for current week active sim -->
+                @if (outcome.label === 'Current Week') {
+                  <div class="mt-3 pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs">
+                    <span class="text-zinc-500 italic">This match is in the active week and ready to play!</span>
+                    <a routerLink="/schedule" class="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors">
+                      Go to Schedule to Simulate 
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14m-7-7 7 7-7 7"/>
+                      </svg>
+                    </a>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ================= COMPLETED/PLAYED MATCHES DIVIDER SEPARATOR ================= -->
+      @if (pendingMatches().length > 0 && completedMatches().length > 0) {
+        <div class="relative py-4 flex items-center justify-center">
+          <div class="absolute inset-0 flex items-center" aria-hidden="true">
+            <div class="w-full border-t border-dashed border-zinc-800/60"></div>
+          </div>
+          <div class="relative px-4 bg-zinc-950 text-xs font-semibold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+            <span class="material-icons text-sm">check_circle</span>
+            Completed Matches
+          </div>
+        </div>
+      }
+
+      <!-- ================= COMPLETED MATCHES LIST ================= -->
+      @if (completedMatches().length > 0) {
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <span class="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+            <h3 class="text-lg font-bold text-emerald-400 uppercase tracking-wider text-sm">Match Results</h3>
+            <span class="text-xs text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded-full font-mono">{{ completedMatches().length }} Games</span>
+          </div>
+
+          <div class="grid gap-4">
+            @for (match of completedMatches(); track match.id) {
+              @let outcome = getMatchOutcome(match);
+              <div [class]="'flex flex-col p-4 rounded-2xl border bg-zinc-900/30 hover:bg-zinc-900/60 transition-all duration-300 ' + outcome.borderClass">
+                <div class="flex justify-between items-center mb-3">
+                  <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">Week {{ match.week }}</div>
+                  <span [class]="'px-2.5 py-0.5 rounded text-[10px] font-black uppercase border ' + outcome.bgClass + ' ' + outcome.textClass + ' ' + outcome.borderClass">
+                    {{ outcome.label }}
+                  </span>
+                </div>
+
+                <app-match-summary
+                  [match]="match"
+                  [showProbabilities]="false"
+                  [showStats]="true"
+                  [showEvents]="true">
+                </app-match-summary>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ================= NO MATCHES FALLBACK ================= -->
+      @if (allSeasonMatches().length === 0) {
+        <div class="text-center py-16 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-2xl space-y-3">
+          <span class="material-icons text-4xl text-zinc-600">event_busy</span>
+          <h3 class="text-md font-bold text-zinc-400">No schedule found</h3>
+          <p class="text-zinc-500 text-xs max-w-xs mx-auto">We couldn't retrieve any matches for Season {{ selectedSeason() }} for this team.</p>
+        </div>
+      }
+
+    </div>
+
+  </div>
+</div>
