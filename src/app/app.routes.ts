@@ -3,6 +3,7 @@ import {inject} from '@angular/core';
 import { HomeComponent } from './pages/home/home';
 import { StandingsComponent } from './pages/standings/standings';
 import { TeamDetailsComponent } from './pages/team-details/team-details';
+import { TeamScheduleComponent } from './pages/team-schedule/team-schedule';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
 import { PlayerStatsComponent } from './pages/player-stats/player-stats';
 import { ScheduleComponent } from './pages/schedule/schedule';
@@ -34,6 +35,7 @@ export const routes: Routes = [
   { path: 'player-stats', component: PlayerStatsComponent },
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },
   { path: 'team/:id', component: TeamDetailsComponent },
+  { path: 'team/:id/schedule', component: TeamScheduleComponent },
   { path: 'player/:id', component: PlayerProfileComponent },
   { path: 'schedule', component: ScheduleComponent },
   { path: 'watch/:id', component: WatchGameComponent },

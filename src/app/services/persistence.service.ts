@@ -37,14 +37,17 @@ export class PersistenceService {
   }
 
   private enqueueNormalizedWrite(operation: () => Promise<void>): Promise<void> {
-    const queuedOperation = this.normalizedWriteQueue.then(operation, operation);
+    const queuedOperation = this.normalizedWriteQueue.then(
+      () => operation(),
+      () => operation()
+    );
     this.normalizedWriteQueue = queuedOperation.catch(() => undefined);
     return queuedOperation;
   }
 
   private async doSafeNormalizedWrite(operation: () => Promise<void>): Promise<void> {
     if (await this.shouldBlockMutatingWrite()) {
-      return;
+      throw new Error('Database write blocked: Persisted data schema version mismatch. A database reset or migration is required.');
     }
 
     await this.enqueueNormalizedWrite(operation);
@@ -52,7 +55,7 @@ export class PersistenceService {
 
   private async doSafeStateWrite<TValue>(key: string, value: TValue): Promise<void> {
     if (await this.shouldBlockMutatingWrite()) {
-      return;
+      throw new Error('Database write blocked: Persisted data schema version mismatch. A database reset or migration is required.');
     }
 
     await this.appDb.putState(key, value);

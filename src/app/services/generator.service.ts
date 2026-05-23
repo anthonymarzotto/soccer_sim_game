@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Player, Team, Match, Position, Role, PlayerSeasonAttributes, StatKey } from '../models/types';
 import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
+import { RngService } from './rng.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createEmptyTeamStats } from '../models/season-history';
 import { buildStat } from '../models/stat-definitions';
@@ -14,6 +15,7 @@ import { clamp } from '../utils/math';
 })
 export class GeneratorService {
   private formationLibrary = inject(FormationLibraryService);
+  private rng = inject(RngService);
 
   private firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George', 'Edward', 'Ronald', 'Timothy', 'Jason', 'Jeffrey', 'Ryan', 'Jacob', 'Gary', 'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon', 'Benjamin', 'Samuel', 'Gregory', 'Frank', 'Alexander', 'Raymond', 'Patrick', 'Jack', 'Dennis', 'Jerry', 'Tyler', 'Aaron', 'Jose', 'Adam', 'Henry', 'Nathan', 'Douglas', 'Zachary', 'Peter', 'Kyle', 'Walter', 'Ethan', 'Jeremy', 'Harold', 'Keith', 'Christian', 'Roger', 'Noah', 'Gerald', 'Carl', 'Terry', 'Sean', 'Austin', 'Arthur', 'Lawrence', 'Jesse', 'Dylan', 'Bryan', 'Joe', 'Jordan', 'Billy', 'Bruce', 'Albert', 'Willie', 'Gabriel', 'Logan', 'Alan', 'Juan', 'Wayne', 'Ralph', 'Roy', 'Eugene', 'Randy', 'Vincent', 'Russell', 'Louis', 'Philip', 'Bobby', 'Johnny', 'Bradley'];
   private lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts', 'Gomez', 'Phillips', 'Evans', 'Turner', 'Diaz', 'Parker', 'Cruz', 'Edwards', 'Collins', 'Reyes', 'Stewart', 'Morris', 'Morales', 'Murphy', 'Cook', 'Rogers', 'Gutierrez', 'Ortiz', 'Morgan', 'Cooper', 'Peterson', 'Bailey', 'Reed', 'Kelly', 'Howard', 'Ramos', 'Kim', 'Cox', 'Ward', 'Richardson', 'Watson', 'Brooks', 'Chavez', 'Wood', 'James', 'Bennett', 'Gray', 'Mendoza', 'Ruiz', 'Hughes', 'Price', 'Alvarez', 'Castillo', 'Sanders', 'Patel', 'Myers', 'Long', 'Ross', 'Foster', 'Jimenez'];
@@ -115,7 +117,7 @@ export class GeneratorService {
   }
 
   public generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear(), age?: number): Player {
-    const id = crypto.randomUUID();
+    const id = this.rng.nextUUID();
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
     const name = `${firstName} ${lastName}`;
@@ -252,10 +254,13 @@ export class GeneratorService {
   }
 
   private generateSchedule(teams: Team[], currentSeasonYear: number): Match[] {
+    if (teams.length % 2 !== 0) {
+      throw new Error(`generateSchedule: round-robin algorithm requires an even number of teams. Got ${teams.length}`);
+    }
+
     const schedule: Match[] = [];
     const numTeams = teams.length;
     const numWeeks = (numTeams - 1) * 2; // Home and away
-    let matchId = 1;
 
     // Round Robin scheduling algorithm
     const teamIds = teams.map(t => t.id);
@@ -266,7 +271,7 @@ export class GeneratorService {
         const away = teamIds[numTeams - 1 - i];
 
         schedule.push({
-          id: (matchId++).toString(),
+          id: this.rng.nextUUID(),
           seasonYear: currentSeasonYear,
           homeTeamId: home,
           awayTeamId: away,
@@ -278,7 +283,7 @@ export class GeneratorService {
 
         // Add reverse fixture for second half of season
         schedule.push({
-          id: (matchId++).toString(),
+          id: this.rng.nextUUID(),
           seasonYear: currentSeasonYear,
           homeTeamId: away,
           awayTeamId: home,
