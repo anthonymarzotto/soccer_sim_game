@@ -19,6 +19,18 @@ export class RngService {
     return this.generator();
   }
 
+  nextUUID(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    // Fallback RFC4122 version 4 compliant UUID generator using configured RNG
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (this.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   /**
    * Mulberry32 — a fast 32-bit PRNG with good statistical quality for
    * simulation use cases. Each call advances a single 32-bit state counter

@@ -190,12 +190,20 @@ describe('PersistenceService', () => {
     expect(normalizedDbSpy.saveMatchResultFromLeague).toHaveBeenCalledWith(match, teams, 2026);
   });
 
-  it('should block mutating writes when persisted schema version mismatches', async () => {
+  it('should block mutating writes and throw when persisted schema version mismatches', async () => {
     hasSchemaMismatch.set(true);
 
-    await service.saveSettings({ version: '0.1.0-alpha.data.1', badgeStyle: 'shield' });
-    await service.saveSelectedWeek(4);
-    await service.saveLeague({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    await expect(
+      service.saveSettings({ version: '0.1.0-alpha.data.1', badgeStyle: 'shield' })
+    ).rejects.toThrow('Database write blocked: Persisted data schema version mismatch.');
+
+    await expect(
+      service.saveSelectedWeek(4)
+    ).rejects.toThrow('Database write blocked: Persisted data schema version mismatch.');
+
+    await expect(
+      service.saveLeague({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 })
+    ).rejects.toThrow('Database write blocked: Persisted data schema version mismatch.');
 
     expect(dataSchemaVersionSpy.ensureHydrated).toHaveBeenCalled();
     expect(appDbSpy.putState).not.toHaveBeenCalled();
