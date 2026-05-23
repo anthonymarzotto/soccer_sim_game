@@ -1296,6 +1296,8 @@ export class GameService {
       seasonYear: 'Career',
       teamId: player.teamId,
       matchesPlayed: 0,
+      gamesStarted: 0,
+      gamesSubbed: 0,
       goals: 0,
       assists: 0,
       yellowCards: 0,
@@ -1316,6 +1318,8 @@ export class GameService {
 
     player.careerStats.forEach(season => {
       aggregated.matchesPlayed += season.matchesPlayed;
+      aggregated.gamesStarted += (season.gamesStarted ?? season.matchesPlayed);
+      aggregated.gamesSubbed += (season.gamesSubbed ?? 0);
       aggregated.goals += season.goals;
       aggregated.assists += season.assists;
       aggregated.yellowCards += season.yellowCards;
@@ -1758,7 +1762,18 @@ export class GameService {
       const minutes = minutesOnPitch.get(player.id) ?? 0;
       if (minutes > 0) {
         const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        if (stats.gamesStarted === undefined) {
+          stats.gamesStarted = stats.matchesPlayed;
+        }
+        if (stats.gamesSubbed === undefined) {
+          stats.gamesSubbed = 0;
+        }
         stats.matchesPlayed++;
+        if (player.role === Role.STARTER) {
+          stats.gamesStarted++;
+        } else {
+          stats.gamesSubbed++;
+        }
       }
     });
 

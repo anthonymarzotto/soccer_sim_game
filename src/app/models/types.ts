@@ -96,6 +96,8 @@ export interface PlayerCareerStats {
   seasonYear: number;
   teamId: string;
   matchesPlayed: number;
+  gamesStarted: number;
+  gamesSubbed: number;
   goals: number;
   assists: number;
   yellowCards: number;

@@ -28,6 +28,8 @@ describe('LeagueAssemblyService', () => {
                 seasonYear: 2026,
                 teamId: 'team-1',
                 matchesPlayed: 10,
+                gamesStarted: 10,
+                gamesSubbed: 0,
                 goals: 0,
                 assists: 0,
                 yellowCards: 1,

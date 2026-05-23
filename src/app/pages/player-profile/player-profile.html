@@ -769,7 +769,7 @@
                     <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors"
                         [class.bg-zinc-800/30]="s.seasonYear === currentYear">
                       <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
-                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.matchesPlayed || 0 }}</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ formatGamesPlayed(s) }}</td>
                       <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
                       @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ s.goals || 0 }}</td>
@@ -801,7 +801,7 @@
                   @if (totals) {
                     <tr class="border-t-2 border-zinc-600 bg-zinc-800/50 font-semibold">
                       <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300">TOTAL</td>
-                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.matchesPlayed }}</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ formatGamesPlayed(totals) }}</td>
                       <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
                       @if (statsView === 'offensive') {
                         <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ totals.goals }}</td>

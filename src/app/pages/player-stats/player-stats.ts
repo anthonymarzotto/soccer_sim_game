@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Position } from '../../models/enums';
-import { calculateAverageMatchRating, formatAverageMatchRating } from '../../models/player-career-stats';
+import { calculateAverageMatchRating, formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 type NumericPlayerCareerStatColumn = Exclude<{
@@ -266,6 +266,9 @@ export class PlayerStatsComponent {
     if (column === 'name') return row.player.name;
     if (column === 'team') return this.getTeamName(row.player.teamId);
     if (column === 'position') return row.player.position;
+    if (column === 'matchesPlayed') {
+      return formatGamesPlayed(row.stats);
+    }
     if (column === 'averageRating') {
       return formatAverageMatchRating(row.stats);
     }
