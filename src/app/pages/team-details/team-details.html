@@ -316,7 +316,7 @@
                   '--' }}</td>
                 } @else {
                 @let stats = getRowStats(row.player);
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
                 </td>
@@ -408,7 +408,7 @@
                   '--' }}</td>
                 } @else {
                 @let stats = getRowStats(row.player);
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
                 </td>
@@ -487,7 +487,7 @@
                   }}</td>
                 } @else {
                 @let stats = getCurrentSeasonStats(player);
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ stats.matchesPlayed || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
                 </td>

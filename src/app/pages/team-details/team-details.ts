@@ -11,11 +11,11 @@ import { FormationSlot } from '../../models/simulation.types';
 import { calculateFatigueModifier, scaleOverallWithFatigue } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
-import { formatAverageMatchRating } from '../../models/player-career-stats';
+import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
 import { getActiveInjury, isPlayerInjured } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 
-type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'totalMatchRating' | 'starNominations'>;
+type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'gamesStarted' | 'gamesSubbed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'totalMatchRating' | 'starNominations'>;
 
 interface StarterRow {
   slot: FormationSlot;
@@ -162,6 +162,8 @@ export class TeamDetailsComponent {
   getCurrentSeasonStats(player: Player): TeamDetailsRowStats {
     return this.gameService.getCurrentSeasonStats(player) || {
       matchesPlayed: 0,
+      gamesStarted: 0,
+      gamesSubbed: 0,
       minutesPlayed: 0,
       goals: 0,
       assists: 0,
@@ -203,9 +205,15 @@ export class TeamDetailsComponent {
     return formatAverageMatchRating(stats);
   }
 
+  formatGamesPlayed(stats: TeamDetailsRowStats): string {
+    return formatGamesPlayed(stats);
+  }
+
   getRowStats(player: Player | null): TeamDetailsRowStats {
     if (!player) return {
       matchesPlayed: 0,
+      gamesStarted: 0,
+      gamesSubbed: 0,
       minutesPlayed: 0,
       goals: 0,
       assists: 0,

@@ -9,7 +9,7 @@ import { Position, Role } from '../../models/enums';
 import { PlayerCareerStats, PlayerSeasonAttributes, StatKey } from '../../models/types';
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
-import { formatAverageMatchRating } from '../../models/player-career-stats';
+import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
 import { getCurrentPlayerSeasonAttributes, getActiveInjury } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
@@ -291,6 +291,10 @@ export class PlayerProfileComponent {
     return formatAverageMatchRating(stats);
   }
 
+  formatGamesPlayed(stats: PlayerCareerStats): string {
+    return formatGamesPlayed(stats);
+  }
+
   totalStarNominations = computed(() => {
     const stats = this.allSeasonStats();
     return {
@@ -332,6 +336,8 @@ export class PlayerProfileComponent {
 
     return {
       matchesPlayed: allStats.reduce((sum, s) => sum + (s?.matchesPlayed || 0), 0),
+      gamesStarted: allStats.reduce((sum, s) => sum + (s?.gamesStarted ?? s?.matchesPlayed ?? 0), 0),
+      gamesSubbed: allStats.reduce((sum, s) => sum + (s?.gamesSubbed ?? 0), 0),
       minutesPlayed: allStats.reduce((sum, s) => sum + (s?.minutesPlayed || 0), 0),
       goals: allStats.reduce((sum, s) => sum + (s?.goals || 0), 0),
       assists: allStats.reduce((sum, s) => sum + (s?.assists || 0), 0),
