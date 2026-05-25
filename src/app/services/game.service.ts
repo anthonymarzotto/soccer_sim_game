@@ -1608,12 +1608,22 @@ export class GameService {
       allPlayers.set(player.id, player);
     });
 
+    const statsCache = new Map<string, PlayerCareerStats>();
+    const getStats = (player: Player) => {
+      let stats = statsCache.get(player.id);
+      if (!stats) {
+        stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        statsCache.set(player.id, stats);
+      }
+      return stats;
+    };
+
     // Update player stats based on events
     events.forEach(event => {
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
         if (scorer) {
-          const stats = this.getOrCreateCurrentSeasonStats(scorer, scorer.teamId);
+          const stats = getStats(scorer);
           stats.shots++;
           stats.shotsOnTarget++;
           stats.goals++;
@@ -1624,14 +1634,14 @@ export class GameService {
       if (event.type === EventType.SAVE) {
         const shooter = allPlayers.get(event.playerIds[0]);
         if (shooter) {
-          const stats = this.getOrCreateCurrentSeasonStats(shooter, shooter.teamId);
+          const stats = getStats(shooter);
           stats.shots++;
           stats.shotsOnTarget++;
         }
         const keeperId = event.playerIds[1] ?? event.playerIds[0];
         const keeper = allPlayers.get(keeperId);
         if (keeper) {
-          const stats = this.getOrCreateCurrentSeasonStats(keeper, keeper.teamId);
+          const stats = getStats(keeper);
           stats.saves++;
         }
         return;
@@ -1640,7 +1650,7 @@ export class GameService {
       if (event.type === EventType.MISS) {
         const shooter = allPlayers.get(event.playerIds[0]);
         if (shooter) {
-          const stats = this.getOrCreateCurrentSeasonStats(shooter, shooter.teamId);
+          const stats = getStats(shooter);
           stats.shots++;
         }
         return;
@@ -1652,7 +1662,7 @@ export class GameService {
         const player = allPlayers.get(playerId);
         if (!player) return;
 
-        const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        const stats = getStats(player);
 
         // Update career stats based on event type
         switch (event.type) {
@@ -1752,7 +1762,7 @@ export class GameService {
     allTeamPlayers.forEach(player => {
       const minutes = minutesOnPitch.get(player.id) ?? 0;
       if (minutes > 0) {
-        const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        const stats = getStats(player);
         stats.minutesPlayed += minutes;
       }
     });
@@ -1761,7 +1771,7 @@ export class GameService {
     allTeamPlayers.forEach(player => {
       const minutes = minutesOnPitch.get(player.id) ?? 0;
       if (minutes > 0) {
-        const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+        const stats = getStats(player);
         if (stats.gamesStarted === undefined) {
           stats.gamesStarted = stats.matchesPlayed;
         }
@@ -1782,11 +1792,11 @@ export class GameService {
     const awayGoalkeeper = awayPlayers.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
     if (homeGoalkeeper && awayScore === 0) {
-      const stats = this.getOrCreateCurrentSeasonStats(homeGoalkeeper, homeGoalkeeper.teamId);
+      const stats = getStats(homeGoalkeeper);
       stats.cleanSheets++;
     }
     if (awayGoalkeeper && homeScore === 0) {
-      const stats = this.getOrCreateCurrentSeasonStats(awayGoalkeeper, awayGoalkeeper.teamId);
+      const stats = getStats(awayGoalkeeper);
       stats.cleanSheets++;
     }
 
@@ -1794,7 +1804,7 @@ export class GameService {
     [...homePlayerStats, ...awayPlayerStats].forEach(ps => {
       const player = [...homePlayers, ...awayPlayers].find(p => p.id === ps.playerId);
       if (!player) return;
-      const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+      const stats = getStats(player);
       stats.assists += ps.assists;
       if (ps.rating !== 0) {
         stats.totalMatchRating += ps.rating;
@@ -1811,7 +1821,7 @@ export class GameService {
     stars.forEach(star => {
       const player = [...homePlayers, ...awayPlayers].find(p => p.id === star.stats.playerId);
       if (!player) return;
-      const stats = this.getOrCreateCurrentSeasonStats(player, player.teamId);
+      const stats = getStats(player);
       if (star.rank === 1) stats.starNominations.first++;
       else if (star.rank === 2) stats.starNominations.second++;
       else stats.starNominations.third++;
