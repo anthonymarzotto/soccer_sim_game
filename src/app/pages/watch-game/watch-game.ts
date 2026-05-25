@@ -430,70 +430,85 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const homePlayers = this.gameService.getPlayersForTeam(homeTeam.id);
     const awayPlayers = this.gameService.getPlayersForTeam(awayTeam.id);
 
-    // Add starting commentary
-    const startingCommentary = this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam, {
-      homePlayers,
-      awayPlayers
-    });
-    startingCommentary.forEach((text, index) => {
-      this.allCommentary.push({
-        id: `start-${index}`,
-        minute: 0,
-        text,
-        type: EventType.PASS, // Generic type for non-event commentary
-        importance: EventImportance.LOW,
-        location: null,
-        teamSide: null,
-        playerIds: [],
-        isNew: false
-      });
-    });
+    this.allCommentary.push(...this.getStartingCommentaryItems(homeTeam, awayTeam, homePlayers, awayPlayers));
 
-    // Separate first-half and second-half events
     const firstHalfEvents = matchState.events.filter(e => e.time <= WatchGameComponent.FIRST_HALF_END_MINUTE);
     const secondHalfEvents = matchState.events.filter(e => e.time > WatchGameComponent.FIRST_HALF_END_MINUTE);
 
-    // Helper function to add event commentary
-    const addEventCommentary = (event: typeof matchState.events[0]) => {
-      const text = this.commentaryService.generateEventCommentary(
-        event,
-        homeTeam,
-        awayTeam,
-        CommentaryStyle.DETAILED,
-        {
-          homePlayers,
-          awayPlayers
-        }
-      );
+    for (const event of firstHalfEvents) {
+      this.allCommentary.push(this.createEventCommentaryItem(event, homeTeam, awayTeam, homePlayers, awayPlayers));
+    }
 
-      // Determine importance based on event type
-      let importance = EventImportance.LOW;
-      if (event.type === EventType.GOAL || event.type === EventType.RED_CARD) {
-        importance = EventImportance.HIGH;
-      } else if (event.type === EventType.YELLOW_CARD || event.type === EventType.SAVE ||
-        event.type === EventType.SHOT || event.type === EventType.CORNER) {
-        importance = EventImportance.MEDIUM;
-      }
+    const halfTimeCommentary = this.getHalfTimeCommentaryItem(firstHalfEvents, matchState, homeTeam, awayTeam);
+    if (halfTimeCommentary) {
+      this.allCommentary.push(halfTimeCommentary);
+    }
 
-      this.allCommentary.push({
-        id: event.id,
-        minute: event.time,
-        text: `${event.time}': ${text}`,
-        type: event.type,
-        importance,
-        location: { ...event.location },
-        teamSide: this.getEventTeamSide(event, homeTeam, awayTeam),
-        playerIds: [...event.playerIds],
-        additionalData: event.additionalData,
-        isNew: false
-      });
+    for (const event of secondHalfEvents) {
+      this.allCommentary.push(this.createEventCommentaryItem(event, homeTeam, awayTeam, homePlayers, awayPlayers));
+    }
+
+    this.allCommentary.push(this.getFullTimeCommentaryItem(matchState));
+
+    this.halfTimeIndex = this.allCommentary.findIndex(item => item.id === 'halftime');
+  }
+
+  private getStartingCommentaryItems(homeTeam: Team, awayTeam: Team, homePlayers: Player[], awayPlayers: Player[]): CommentaryItem[] {
+    const startingCommentaryTexts = this.commentaryService.generateStartingXICommentary(homeTeam, awayTeam, {
+      homePlayers,
+      awayPlayers
+    });
+
+    return startingCommentaryTexts.map((text, index) => ({
+      id: `start-${index}`,
+      minute: 0,
+      text,
+      type: EventType.PASS,
+      importance: EventImportance.LOW,
+      location: null,
+      teamSide: null,
+      playerIds: [],
+      isNew: false
+    }));
+  }
+
+  private mapEventImportance(eventType: EventType): EventImportance {
+    if (eventType === EventType.GOAL || eventType === EventType.RED_CARD) {
+      return EventImportance.HIGH;
+    } else if (eventType === EventType.YELLOW_CARD || eventType === EventType.SAVE ||
+      eventType === EventType.SHOT || eventType === EventType.CORNER) {
+      return EventImportance.MEDIUM;
+    }
+    return EventImportance.LOW;
+  }
+
+  private createEventCommentaryItem(event: PlayByPlayEvent, homeTeam: Team, awayTeam: Team, homePlayers: Player[], awayPlayers: Player[]): CommentaryItem {
+    const text = this.commentaryService.generateEventCommentary(
+      event,
+      homeTeam,
+      awayTeam,
+      CommentaryStyle.DETAILED,
+      { homePlayers, awayPlayers }
+    );
+
+    return {
+      id: event.id,
+      minute: event.time,
+      text: `${event.time}': ${text}`,
+      type: event.type,
+      importance: this.mapEventImportance(event.type),
+      location: event.location ? { ...event.location } as Coordinates : null,
+      teamSide: this.getEventTeamSide(event, homeTeam, awayTeam),
+      playerIds: [...event.playerIds],
+      additionalData: event.additionalData,
+      isNew: false
     };
+  }
 
-    // Add first-half event commentary
-    firstHalfEvents.forEach(addEventCommentary);
-
+  private getHalfTimeCommentaryItem(firstHalfEvents: PlayByPlayEvent[], matchState: MatchState, homeTeam: Team, awayTeam: Team): CommentaryItem | null {
     let halfTimeHomeScore = 0;
     let halfTimeAwayScore = 0;
+
     firstHalfEvents
       .filter((event) => event.type === EventType.GOAL)
       .forEach((event) => {
@@ -505,10 +520,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         }
       });
 
-    // Add half-time commentary at the correct chronological position
     const halfTimeGoals = firstHalfEvents.filter(e => e.type === EventType.GOAL).length;
     if (halfTimeGoals > 0 || matchState.events.length > 0) {
-      this.allCommentary.push({
+      return {
         id: 'halftime',
         minute: WatchGameComponent.FIRST_HALF_END_MINUTE,
         text: this.commentaryService.generateHalfTimeCommentary(halfTimeHomeScore, halfTimeAwayScore, firstHalfEvents),
@@ -518,14 +532,13 @@ export class WatchGameComponent implements OnInit, OnDestroy {
         teamSide: null,
         playerIds: [],
         isNew: false
-      });
+      };
     }
+    return null;
+  }
 
-    // Add second-half event commentary
-    secondHalfEvents.forEach(addEventCommentary);
-
-    // Add full-time commentary
-    this.allCommentary.push({
+  private getFullTimeCommentaryItem(matchState: MatchState): CommentaryItem {
+    return {
       id: 'fulltime',
       minute: 90,
       text: this.commentaryService.generateFullTimeCommentary(matchState.homeScore, matchState.awayScore, matchState.events),
@@ -535,8 +548,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       teamSide: null,
       playerIds: [],
       isNew: false
-    });
-    this.halfTimeIndex = this.allCommentary.findIndex(item => item.id === 'halftime');
+    };
   }
 
   private startCommentaryFeed(resetIndex = true) {
