@@ -1581,6 +1581,41 @@ export class GameService {
     }
   }
 
+  private applyEventToPlayerCareerStats(event: PlayByPlayEvent, player: Player, stats: PlayerCareerStats, primaryPlayerId: string, playerId: string): void {
+    switch (event.type) {
+      case EventType.TACKLE:
+        if (playerId === primaryPlayerId && player.position !== Position.GOALKEEPER) {
+          stats.tackles++;
+        }
+        break;
+      case EventType.INTERCEPTION:
+        if (playerId === primaryPlayerId && player.position !== Position.GOALKEEPER) {
+          stats.interceptions++;
+        }
+        break;
+      case EventType.PASS:
+        stats.passes++;
+        break;
+      case EventType.FOUL:
+        if (playerId === primaryPlayerId) {
+          stats.fouls = (stats.fouls ?? 0) + 1;
+        } else {
+          stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
+        }
+        break;
+      case EventType.YELLOW_CARD:
+        if (playerId === primaryPlayerId) {
+          stats.yellowCards++;
+        }
+        break;
+      case EventType.RED_CARD:
+        if (playerId === primaryPlayerId) {
+          stats.redCards++;
+        }
+        break;
+    }
+  }
+
   private getOrCreateCurrentSeasonStats(player: Player, teamId: string): PlayerCareerStats {
     const currentSeasonYear = this.getCurrentLeagueSeasonYear();
     let statsEntry = player.careerStats.find(stats => stats.seasonYear === currentSeasonYear);
@@ -1619,7 +1654,7 @@ export class GameService {
     };
 
     // Update player stats based on events
-    events.forEach(event => {
+    for (const event of events) {
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
         if (scorer) {
@@ -1628,7 +1663,7 @@ export class GameService {
           stats.shotsOnTarget++;
           stats.goals++;
         }
-        return;
+        continue;
       }
 
       if (event.type === EventType.SAVE) {
@@ -1644,7 +1679,7 @@ export class GameService {
           const stats = getStats(keeper);
           stats.saves++;
         }
-        return;
+        continue;
       }
 
       if (event.type === EventType.MISS) {
@@ -1653,52 +1688,19 @@ export class GameService {
           const stats = getStats(shooter);
           stats.shots++;
         }
-        return;
+        continue;
       }
 
       const primaryPlayerId = event.playerIds[0];
 
-      event.playerIds.forEach((playerId: string) => {
+      for (const playerId of event.playerIds) {
         const player = allPlayers.get(playerId);
-        if (!player) return;
+        if (!player) continue;
 
         const stats = getStats(player);
-
-        // Update career stats based on event type
-        switch (event.type) {
-          case EventType.TACKLE:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
-              stats.tackles++;
-            }
-            break;
-          case EventType.INTERCEPTION:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
-              stats.interceptions++;
-            }
-            break;
-          case EventType.PASS:
-            stats.passes++;
-            break;
-          case EventType.FOUL:
-            if (playerId === primaryPlayerId) {
-              stats.fouls = (stats.fouls ?? 0) + 1;
-            } else {
-              stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
-            }
-            break;
-          case EventType.YELLOW_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.yellowCards++;
-            break;
-          case EventType.RED_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.redCards++;
-            break;
-        }
-      });
-    });
+        this.applyEventToPlayerCareerStats(event, player, stats, primaryPlayerId, playerId);
+      }
+    }
 
     // Compute exact minutes played using on/off intervals.
     // Starters begin on the pitch at minute 0; players can leave via substitution, red card, or injury.
