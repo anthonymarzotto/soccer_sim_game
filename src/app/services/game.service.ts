@@ -403,6 +403,40 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
+  private recoverFatigue(currentFatigue: number | undefined, fitness: number): { fatigue: number; mutated: boolean } {
+    const fatigue = currentFatigue ?? 0;
+    if (fatigue <= 0) {
+      return { fatigue: 0, mutated: false };
+    }
+    const recovery = 15 + (fitness * 0.25);
+    const nextFatigue = Math.max(0, Math.round(fatigue - recovery));
+    return { fatigue: nextFatigue, mutated: nextFatigue !== fatigue };
+  }
+
+  private progressInjuries(
+    injuries: InjuryRecord[] | undefined,
+    currentSeasonYear: number,
+    currentWeek: number
+  ): { injuries: InjuryRecord[]; mutated: boolean } {
+    if (!injuries?.length) {
+      return { injuries: injuries ?? [], mutated: false };
+    }
+
+    let mutated = false;
+    const updatedInjuries = injuries.map(record => {
+      const isEligibleForRecovery = record.weeksRemaining > 0 &&
+        (record.sustainedInSeason < currentSeasonYear || record.sustainedInWeek < currentWeek);
+
+      if (isEligibleForRecovery) {
+        mutated = true;
+        return { ...record, weeksRemaining: record.weeksRemaining - 1 };
+      }
+      return record;
+    });
+
+    return { injuries: updatedInjuries, mutated };
+  }
+
   /**
    * Performs weekly state updates for all players in the league.
    * 1. Fatigue Recovery: Recovers fatigue based on the player's 'fitness' attribute (Base 15 + 0.25 * fitness).
@@ -415,38 +449,20 @@ export class GameService {
       if (!team.players) return team;
       let teamMutated = false;
       const players = team.players.map(player => {
-        let playerMutated = false;
-        
-        let nextFatigue = player.fatigue ?? 0;
-        if (nextFatigue > 0) {
-          const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
-          const recovery = 15 + (fitness * 0.25);
-          nextFatigue = Math.max(0, Math.round(nextFatigue - recovery));
-          if (nextFatigue !== (player.fatigue ?? 0)) {
-            playerMutated = true;
-          }
-        }
+        const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
+        const fatigueResult = this.recoverFatigue(player.fatigue, fitness);
+        const injuriesResult = this.progressInjuries(player.injuries, currentSeasonYear, currentWeek);
 
-        let updatedInjuries = player.injuries;
-        if (player.injuries && player.injuries.length > 0) {
-          updatedInjuries = player.injuries.map(record => {
-            if (record.weeksRemaining <= 0) return record;
-            const wasAlreadyActiveBeforeThisWeek =
-              record.sustainedInSeason < currentSeasonYear
-              || record.sustainedInWeek < currentWeek;
-            if (!wasAlreadyActiveBeforeThisWeek) {
-              return record;
-            }
-            playerMutated = true;
-            return { ...record, weeksRemaining: record.weeksRemaining - 1 };
-          });
-        }
-
-        if (!playerMutated) {
+        if (!fatigueResult.mutated && !injuriesResult.mutated) {
           return player;
         }
+
         teamMutated = true;
-        return { ...player, injuries: updatedInjuries, fatigue: nextFatigue };
+        return {
+          ...player,
+          injuries: injuriesResult.injuries,
+          fatigue: fatigueResult.fatigue
+        };
       });
       return teamMutated ? { ...team, players } : team;
     });
