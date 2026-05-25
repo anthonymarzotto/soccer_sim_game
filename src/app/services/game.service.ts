@@ -1120,12 +1120,21 @@ export class GameService {
     // injuries leaving one position pool empty), promote the best remaining eligible
     // non-starters regardless of position until the bench is full.
     const MAX_BENCH_SIZE = 9;
-    const benchedIds = new Set(players.filter(p => p.role === Role.BENCH).map(p => p.id));
-    const openSpots = MAX_BENCH_SIZE - benchedIds.size;
+
+    let benchedCount = 0;
+    const remainingEligible: Player[] = [];
+
+    for (const p of players) {
+      if (p.role === Role.BENCH) {
+        benchedCount++;
+      } else if (!starterIds.has(p.id) && eligible(p)) {
+        remainingEligible.push(p);
+      }
+    }
+
+    const openSpots = MAX_BENCH_SIZE - benchedCount;
     if (openSpots > 0) {
-      const remainingEligible = players
-        .filter(p => !starterIds.has(p.id) && !benchedIds.has(p.id) && eligible(p))
-        .sort((a, b) => overallOf(b) - overallOf(a));
+      remainingEligible.sort((a, b) => overallOf(b) - overallOf(a));
       for (let i = 0; i < Math.min(openSpots, remainingEligible.length); i++) {
         remainingEligible[i].role = Role.BENCH;
       }
