@@ -1935,6 +1935,170 @@ export class GameService {
     return newLast5;
   }
 
+  private shouldPlayerRetire(
+    player: Player,
+    currentSeasonYear: number,
+    age: number,
+    phase: Phase
+  ): boolean {
+    if (!player.progression) return false;
+
+    if (phase === Phase.Junior || phase === Phase.Peak) {
+      return false;
+    }
+    if (age >= 45) {
+      return true;
+    }
+
+    // SENIOR or DECLINE phase
+    let baseRate = 0;
+    if (phase === Phase.Senior) {
+      baseRate = lerp(0.01, 0.06, 1 - (player.progression.professionalism / 100));
+    } else if (phase === Phase.Decline) {
+      const yearsIntoDecline = age - player.progression.seniorEndAge;
+      const declineWindowLength = Math.max(1, 45 - player.progression.seniorEndAge);
+      const t = yearsIntoDecline / declineWindowLength;
+      const professionalismDampener = lerp(1.2, 0.8, player.progression.professionalism / 100);
+      baseRate = clamp(t * 0.75 * professionalismDampener, 0, 0.75);
+    }
+
+    // Injury modifier
+    let recentSevereCount = 0;
+    for (const inj of (player.injuries || [])) {
+      if (inj.sustainedInSeason >= currentSeasonYear - 2) {
+        const def = getInjuryDefinition(inj.definitionId);
+        if (def && (def.severity === 'Serious' || def.severity === 'Severe')) {
+          recentSevereCount++;
+        }
+      }
+    }
+    const isStillInjured = getActiveInjury(player) !== null;
+    const injuryMultiplier = clamp(1.0 + (recentSevereCount * 0.3) + (isStillInjured ? 0.2 : 0), 1.0, 2.0);
+
+    // Overall decline bonus
+    let peakOverall = 0;
+    let currentOverall = 0;
+    for (const attrs of (player.seasonAttributes || [])) {
+      if (attrs.overall.value > peakOverall) peakOverall = attrs.overall.value;
+      if (attrs.seasonYear === currentSeasonYear) currentOverall = attrs.overall.value;
+    }
+    const declineMagnitude = peakOverall - currentOverall;
+    let overallDeclineBonus = 0;
+    if (declineMagnitude >= 25) overallDeclineBonus = 0.20;
+    else if (declineMagnitude >= 15) overallDeclineBonus = 0.12;
+    else if (declineMagnitude >= 5) overallDeclineBonus = 0.05;
+
+    // Mood/professionalism bonus
+    let moodBonus = 0;
+    if (player.progression.professionalism <= 70 && player.mood < 50) {
+      moodBonus = ((50 - player.mood) / 50) * 0.10;
+    }
+
+    // Career ceiling modifier
+    let careerCeilingBonus = 0;
+    if (phase === Phase.Decline) {
+      if (peakOverall < 55) careerCeilingBonus = 0.15;
+      else if (peakOverall <= 64) careerCeilingBonus = 0.08;
+    }
+
+    const rawChance = (baseRate * injuryMultiplier) + overallDeclineBonus + moodBonus + careerCeilingBonus;
+    let dampened = rawChance;
+    if (currentOverall >= 70) dampened *= 0.5;
+    else if (currentOverall >= 65) dampened *= 0.7;
+
+    const finalChance = clamp(dampened, 0, 0.90);
+    return this.rng.random() < finalChance;
+  }
+
+  private processTeamRetirements(
+    team: Team,
+    currentSeasonYear: number,
+    nextSeasonYear: number,
+    userTeamId: string | undefined
+  ): { updatedTeam: Team, events: SeasonTransitionEvent[] } {
+    const players = resolveTeamPlayers(team);
+    const updatedPlayers: Player[] = [];
+    const events: SeasonTransitionEvent[] = [];
+    let teamHasRetirements = false;
+
+    for (const player of players) {
+      if (!player.progression) {
+        throw new Error(`Player ${player.id} is missing progression data. Cannot assess retirement.`);
+      }
+
+      const age = computeAge(player.personal.birthday, seasonAnchorDate(nextSeasonYear));
+      const phase = derivePhase(age, player);
+
+      const retire = this.shouldPlayerRetire(player, currentSeasonYear, age, phase);
+
+      if (retire) {
+        teamHasRetirements = true;
+        const isUserTeam = team.id === userTeamId;
+        const replacementAge = 16 + Math.floor(this.rng.random() * 3); // 16 to 18 inclusive
+        // Age scaling is handled inside generatePlayer — passing age < 19
+        // automatically reduces stat ceilings while preserving high potential.
+        const replacement = this.generator.generatePlayer(
+          team.id,
+          player.position,
+          Role.RESERVE,
+          1.0,
+          nextSeasonYear,
+          replacementAge
+        );
+
+        updatedPlayers.push(replacement);
+
+        // Build event — emit for every retirement so team-details and news page have full data
+        events.push({
+          category: 'retirement',
+          headline: `${player.name} Retires`,
+          detail: `${player.name} (${age}) has announced their retirement. ${replacement.name} has been signed as a prospect.`,
+          teamId: team.id,
+          playerIds: [player.id, replacement.id],
+          isUserTeam
+        });
+      } else {
+        updatedPlayers.push(player);
+      }
+    }
+
+    if (!teamHasRetirements) {
+      return { updatedTeam: team, events };
+    }
+
+    const updatedTeam = this.withSyncedPlayerIds({
+      ...team,
+      players: updatedPlayers
+    });
+
+    // We must update the last season snapshot (which is for nextSeasonYear)
+    // to reflect the new playerIds.
+    if (updatedTeam.seasonSnapshots && updatedTeam.seasonSnapshots.length > 0) {
+      const snapshots = [...updatedTeam.seasonSnapshots];
+      const lastIndex = snapshots.length - 1;
+      if (snapshots[lastIndex].seasonYear === nextSeasonYear) {
+        snapshots[lastIndex] = {
+          ...snapshots[lastIndex],
+          playerIds: updatedTeam.playerIds
+        };
+        updatedTeam.seasonSnapshots = snapshots;
+      }
+    }
+
+    // We also need to clear formationAssignments for any replaced player
+    // or just re-validate later, but it's safer to clear here.
+    const currentPlayersSet = new Set(updatedTeam.playerIds);
+    const newFormationAssignments = { ...updatedTeam.formationAssignments };
+    for (const [slotId, playerId] of Object.entries(newFormationAssignments)) {
+      if (!currentPlayersSet.has(playerId as string)) {
+        newFormationAssignments[slotId] = '';
+      }
+    }
+    updatedTeam.formationAssignments = newFormationAssignments;
+
+    return { updatedTeam, events };
+  }
+
   private assessRetirements(
     teams: Team[],
     currentSeasonYear: number,
@@ -1943,151 +2107,9 @@ export class GameService {
   ): { updatedTeams: Team[], transitionLog: SeasonTransitionLog } {
     const logEvents: SeasonTransitionEvent[] = [];
     const updatedTeams = teams.map(team => {
-      const players = resolveTeamPlayers(team);
-      const updatedPlayers: Player[] = [];
-      let teamHasRetirements = false;
-
-      for (const player of players) {
-        if (!player.progression) {
-          throw new Error(`Player ${player.id} is missing progression data. Cannot assess retirement.`);
-        }
-
-        const age = computeAge(player.personal.birthday, seasonAnchorDate(nextSeasonYear));
-        const phase = derivePhase(age, player);
-
-        let retire = false;
-        let peakOverall = 0;
-        let currentOverall = 0;
-
-        if (phase === Phase.Junior || phase === Phase.Peak) {
-          retire = false;
-        } else if (age >= 45) {
-          retire = true;
-        } else {
-          // SENIOR or DECLINE phase
-          let baseRate = 0;
-          if (phase === Phase.Senior) {
-            baseRate = lerp(0.01, 0.06, 1 - (player.progression.professionalism / 100));
-          } else if (phase === Phase.Decline) {
-            const yearsIntoDecline = age - player.progression.seniorEndAge;
-            const declineWindowLength = Math.max(1, 45 - player.progression.seniorEndAge);
-            const t = yearsIntoDecline / declineWindowLength;
-            const professionalismDampener = lerp(1.2, 0.8, player.progression.professionalism / 100);
-            baseRate = clamp(t * 0.75 * professionalismDampener, 0, 0.75);
-          }
-
-          // Injury modifier
-          let recentSevereCount = 0;
-          for (const inj of (player.injuries || [])) {
-            if (inj.sustainedInSeason >= currentSeasonYear - 2) {
-              const def = getInjuryDefinition(inj.definitionId);
-              if (def && (def.severity === 'Serious' || def.severity === 'Severe')) {
-                recentSevereCount++;
-              }
-            }
-          }
-          const isStillInjured = getActiveInjury(player) !== null;
-          const injuryMultiplier = clamp(1.0 + (recentSevereCount * 0.3) + (isStillInjured ? 0.2 : 0), 1.0, 2.0);
-
-          // Overall decline bonus
-          for (const attrs of (player.seasonAttributes || [])) {
-            if (attrs.overall.value > peakOverall) peakOverall = attrs.overall.value;
-            if (attrs.seasonYear === currentSeasonYear) currentOverall = attrs.overall.value;
-          }
-          const declineMagnitude = peakOverall - currentOverall;
-          let overallDeclineBonus = 0;
-          if (declineMagnitude >= 25) overallDeclineBonus = 0.20;
-          else if (declineMagnitude >= 15) overallDeclineBonus = 0.12;
-          else if (declineMagnitude >= 5) overallDeclineBonus = 0.05;
-
-          // Mood/professionalism bonus
-          let moodBonus = 0;
-          if (player.progression.professionalism <= 70 && player.mood < 50) {
-            moodBonus = ((50 - player.mood) / 50) * 0.10;
-          }
-
-          // Career ceiling modifier
-          let careerCeilingBonus = 0;
-          if (phase === Phase.Decline) {
-            if (peakOverall < 55) careerCeilingBonus = 0.15;
-            else if (peakOverall <= 64) careerCeilingBonus = 0.08;
-          }
-
-          const rawChance = (baseRate * injuryMultiplier) + overallDeclineBonus + moodBonus + careerCeilingBonus;
-          let dampened = rawChance;
-          if (currentOverall >= 70) dampened *= 0.5;
-          else if (currentOverall >= 65) dampened *= 0.7;
-
-          const finalChance = clamp(dampened, 0, 0.90);
-          retire = this.rng.random() < finalChance;
-        }
-
-        if (retire) {
-          teamHasRetirements = true;
-          const isUserTeam = team.id === userTeamId;
-          const replacementAge = 16 + Math.floor(this.rng.random() * 3); // 16 to 18 inclusive
-          // Age scaling is handled inside generatePlayer — passing age < 19
-          // automatically reduces stat ceilings while preserving high potential.
-          const replacement = this.generator.generatePlayer(
-            team.id,
-            player.position,
-            Role.RESERVE,
-            1.0,
-            nextSeasonYear,
-            replacementAge
-          );
-
-          updatedPlayers.push(replacement);
-
-          // Build event — emit for every retirement so team-details and news page have full data
-          logEvents.push({
-            category: 'retirement',
-            headline: `${player.name} Retires`,
-            detail: `${player.name} (${age}) has announced their retirement. ${replacement.name} has been signed as a prospect.`,
-            teamId: team.id,
-            playerIds: [player.id, replacement.id],
-            isUserTeam
-          });
-        } else {
-          updatedPlayers.push(player);
-        }
-      }
-
-      if (!teamHasRetirements) {
-        return team;
-      }
-
-      const updatedTeam = this.withSyncedPlayerIds({
-        ...team,
-        players: updatedPlayers
-      });
-
-      // We must update the last season snapshot (which is for nextSeasonYear)
-      // to reflect the new playerIds.
-      if (updatedTeam.seasonSnapshots && updatedTeam.seasonSnapshots.length > 0) {
-        const snapshots = [...updatedTeam.seasonSnapshots];
-        const lastIndex = snapshots.length - 1;
-        if (snapshots[lastIndex].seasonYear === nextSeasonYear) {
-          snapshots[lastIndex] = {
-            ...snapshots[lastIndex],
-            playerIds: updatedTeam.playerIds
-          };
-          updatedTeam.seasonSnapshots = snapshots;
-        }
-      }
-
-      // We also need to clear formationAssignments for any replaced player
-      // or just re-validate later, but it's safer to clear here.
-      const currentPlayersSet = new Set(updatedTeam.playerIds);
-      const newFormationAssignments = { ...updatedTeam.formationAssignments };
-      for (const [slotId, playerId] of Object.entries(newFormationAssignments)) {
-        if (!currentPlayersSet.has(playerId as string)) {
-          newFormationAssignments[slotId] = '';
-        }
-      }
-      updatedTeam.formationAssignments = newFormationAssignments;
-
-      return updatedTeam;
+      const result = this.processTeamRetirements(team, currentSeasonYear, nextSeasonYear, userTeamId);
+      logEvents.push(...result.events);
+      return result.updatedTeam;
     });
 
     return {
