@@ -1594,6 +1594,41 @@ export class GameService {
     return statsEntry;
   }
 
+  private applyEventToCareerStats(eventType: EventType, playerId: string, primaryPlayerId: string, player: Player, stats: PlayerCareerStats) {
+    switch (eventType) {
+      case EventType.TACKLE:
+        if (playerId !== primaryPlayerId) return;
+        if (player.position !== Position.GOALKEEPER) {
+          stats.tackles++;
+        }
+        break;
+      case EventType.INTERCEPTION:
+        if (playerId !== primaryPlayerId) return;
+        if (player.position !== Position.GOALKEEPER) {
+          stats.interceptions++;
+        }
+        break;
+      case EventType.PASS:
+        stats.passes++;
+        break;
+      case EventType.FOUL:
+        if (playerId === primaryPlayerId) {
+          stats.fouls = (stats.fouls ?? 0) + 1;
+        } else {
+          stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
+        }
+        break;
+      case EventType.YELLOW_CARD:
+        if (playerId !== primaryPlayerId) return;
+        stats.yellowCards++;
+        break;
+      case EventType.RED_CARD:
+        if (playerId !== primaryPlayerId) return;
+        stats.redCards++;
+        break;
+    }
+  }
+
   private updatePlayerCareerStats(matchState: MatchState, homeTeam: Team, awayTeam: Team, homePlayerStats: PlayerStatistics[], awayPlayerStats: PlayerStatistics[]) {
     const l = this.leagueState();
     if (!l) return;
@@ -1658,46 +1693,14 @@ export class GameService {
 
       const primaryPlayerId = event.playerIds[0];
 
-      event.playerIds.forEach((playerId: string) => {
+      for (const playerId of event.playerIds) {
         const player = allPlayers.get(playerId);
-        if (!player) return;
+        if (!player) continue;
 
         const stats = getStats(player);
 
-        // Update career stats based on event type
-        switch (event.type) {
-          case EventType.TACKLE:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
-              stats.tackles++;
-            }
-            break;
-          case EventType.INTERCEPTION:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
-              stats.interceptions++;
-            }
-            break;
-          case EventType.PASS:
-            stats.passes++;
-            break;
-          case EventType.FOUL:
-            if (playerId === primaryPlayerId) {
-              stats.fouls = (stats.fouls ?? 0) + 1;
-            } else {
-              stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
-            }
-            break;
-          case EventType.YELLOW_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.yellowCards++;
-            break;
-          case EventType.RED_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.redCards++;
-            break;
-        }
-      });
+        this.applyEventToCareerStats(event.type, playerId, primaryPlayerId, player, stats);
+      }
     });
 
     // Compute exact minutes played using on/off intervals.
