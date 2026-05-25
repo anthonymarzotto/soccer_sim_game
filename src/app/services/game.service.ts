@@ -1889,6 +1889,21 @@ export class GameService {
     return keyEvents.sort((a, b) => a.time - b.time);
   }
 
+  private countRecentSevereInjuries(player: Player, currentSeasonYear: number): number {
+    let recentSevereCount = 0;
+    for (const inj of (player.injuries || [])) {
+      if (inj.sustainedInSeason < currentSeasonYear - 2) {
+        continue;
+      }
+      const def = getInjuryDefinition(inj.definitionId);
+      if (!def || (def.severity !== 'Serious' && def.severity !== 'Severe')) {
+        continue;
+      }
+      recentSevereCount++;
+    }
+    return recentSevereCount;
+  }
+
   private getPoints(homeScore: number, awayScore: number, isHome: boolean): number {
     if (isHome) {
       if (homeScore > awayScore) return 3;
@@ -1977,15 +1992,7 @@ export class GameService {
           }
 
           // Injury modifier
-          let recentSevereCount = 0;
-          for (const inj of (player.injuries || [])) {
-            if (inj.sustainedInSeason >= currentSeasonYear - 2) {
-              const def = getInjuryDefinition(inj.definitionId);
-              if (def && (def.severity === 'Serious' || def.severity === 'Severe')) {
-                recentSevereCount++;
-              }
-            }
-          }
+          const recentSevereCount = this.countRecentSevereInjuries(player, currentSeasonYear);
           const isStillInjured = getActiveInjury(player) !== null;
           const injuryMultiplier = clamp(1.0 + (recentSevereCount * 0.3) + (isStillInjured ? 0.2 : 0), 1.0, 2.0);
 
