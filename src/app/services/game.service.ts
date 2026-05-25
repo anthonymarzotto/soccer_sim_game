@@ -1658,23 +1658,22 @@ export class GameService {
 
       const primaryPlayerId = event.playerIds[0];
 
-      event.playerIds.forEach((playerId: string) => {
+      for (const playerId of event.playerIds) {
         const player = allPlayers.get(playerId);
-        if (!player) return;
+        if (!player) continue;
 
         const stats = getStats(player);
+        const isPrimary = playerId === primaryPlayerId;
 
         // Update career stats based on event type
         switch (event.type) {
           case EventType.TACKLE:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
+            if (isPrimary && player.position !== Position.GOALKEEPER) {
               stats.tackles++;
             }
             break;
           case EventType.INTERCEPTION:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
+            if (isPrimary && player.position !== Position.GOALKEEPER) {
               stats.interceptions++;
             }
             break;
@@ -1682,22 +1681,24 @@ export class GameService {
             stats.passes++;
             break;
           case EventType.FOUL:
-            if (playerId === primaryPlayerId) {
+            if (isPrimary) {
               stats.fouls = (stats.fouls ?? 0) + 1;
             } else {
               stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
             }
             break;
           case EventType.YELLOW_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.yellowCards++;
+            if (isPrimary) {
+              stats.yellowCards++;
+            }
             break;
           case EventType.RED_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.redCards++;
+            if (isPrimary) {
+              stats.redCards++;
+            }
             break;
         }
-      });
+      }
     });
 
     // Compute exact minutes played using on/off intervals.
