@@ -1581,6 +1581,52 @@ export class GameService {
     }
   }
 
+  private updatePlayerStatsFromEvent(
+    stats: PlayerCareerStats,
+    eventType: EventType,
+    playerId: string,
+    primaryPlayerId: string,
+    playerPosition: Position
+  ): void {
+    if (eventType === EventType.PASS) {
+      stats.passes++;
+      return;
+    }
+
+    if (eventType === EventType.FOUL) {
+      if (playerId === primaryPlayerId) {
+        stats.fouls = (stats.fouls ?? 0) + 1;
+      } else {
+        stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
+      }
+      return;
+    }
+
+    if (playerId !== primaryPlayerId) {
+      return;
+    }
+
+    if (eventType === EventType.TACKLE && playerPosition !== Position.GOALKEEPER) {
+      stats.tackles++;
+      return;
+    }
+
+    if (eventType === EventType.INTERCEPTION && playerPosition !== Position.GOALKEEPER) {
+      stats.interceptions++;
+      return;
+    }
+
+    if (eventType === EventType.YELLOW_CARD) {
+      stats.yellowCards++;
+      return;
+    }
+
+    if (eventType === EventType.RED_CARD) {
+      stats.redCards++;
+      return;
+    }
+  }
+
   private getOrCreateCurrentSeasonStats(player: Player, teamId: string): PlayerCareerStats {
     const currentSeasonYear = this.getCurrentLeagueSeasonYear();
     let statsEntry = player.careerStats.find(stats => stats.seasonYear === currentSeasonYear);
@@ -1664,39 +1710,7 @@ export class GameService {
 
         const stats = getStats(player);
 
-        // Update career stats based on event type
-        switch (event.type) {
-          case EventType.TACKLE:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
-              stats.tackles++;
-            }
-            break;
-          case EventType.INTERCEPTION:
-            if (playerId !== primaryPlayerId) return;
-            if (player.position !== Position.GOALKEEPER) {
-              stats.interceptions++;
-            }
-            break;
-          case EventType.PASS:
-            stats.passes++;
-            break;
-          case EventType.FOUL:
-            if (playerId === primaryPlayerId) {
-              stats.fouls = (stats.fouls ?? 0) + 1;
-            } else {
-              stats.foulsSuffered = (stats.foulsSuffered ?? 0) + 1;
-            }
-            break;
-          case EventType.YELLOW_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.yellowCards++;
-            break;
-          case EventType.RED_CARD:
-            if (playerId !== primaryPlayerId) return;
-            stats.redCards++;
-            break;
-        }
+        this.updatePlayerStatsFromEvent(stats, event.type, playerId, primaryPlayerId, player.position);
       });
     });
 
