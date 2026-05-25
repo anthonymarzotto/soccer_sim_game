@@ -5,8 +5,7 @@ import {
   getStatKeysByCategory,
   STAT_VALUE_MIN,
   STAT_VALUE_MAX,
-  STAT_DEFINITIONS,
-  STAT_KEYS
+  STAT_DEFINITIONS
 } from './stat-definitions';
 import { StatKey, StatCategory } from './types';
 
