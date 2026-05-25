@@ -4,12 +4,33 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+import cors from 'cors';
 import express from 'express';
+import helmet from 'helmet';
 import {join} from 'node:path';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
+
+// Apply standard security headers
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        fontSrc: ["'self'", "data:"],
+      },
+    },
+  })
+);
+
+// Configure CORS
+app.use(cors());
+
 const angularApp = new AngularNodeAppEngine();
 
 /**
