@@ -1979,11 +1979,13 @@ export class GameService {
           // Injury modifier
           let recentSevereCount = 0;
           for (const inj of (player.injuries || [])) {
-            if (inj.sustainedInSeason >= currentSeasonYear - 2) {
-              const def = getInjuryDefinition(inj.definitionId);
-              if (def && (def.severity === 'Serious' || def.severity === 'Severe')) {
-                recentSevereCount++;
-              }
+            if (inj.sustainedInSeason < currentSeasonYear - 2) {
+              continue;
+            }
+
+            const severity = getInjuryDefinition(inj.definitionId)?.severity;
+            if (severity === 'Serious' || severity === 'Severe') {
+              recentSevereCount++;
             }
           }
           const isStillInjured = getActiveInjury(player) !== null;
