@@ -2197,9 +2197,14 @@ export class MatchSimulationVariantBService {
     const teamBench =
       teamKey === TeamSide.HOME ? rosters.homeBench : rosters.awayBench;
     const currentShape = this.activeMatchShape[teamKey];
+    const teamOnFieldPlayersById = new Map(
+      teamOnField.map((player) => [player.id, player]),
+    );
+
     const currentQuality = this.calculateShapeQuality(
       currentShape,
       teamOnField,
+      teamOnFieldPlayersById,
     );
     // teamOnField is starters-only; filter out goalkeepers for outgoing candidates.
     const starterOutfield = teamOnField.filter(
@@ -2227,6 +2232,7 @@ export class MatchSimulationVariantBService {
         const candidateQuality = this.calculateShapeQuality(
           candidateShape,
           teamOnField,
+          teamOnFieldPlayersById,
         );
 
         if (!bestCandidate || candidateQuality > bestCandidate.quality) {
@@ -3961,10 +3967,11 @@ export class MatchSimulationVariantBService {
   private calculateShapeQuality(
     shape: ActiveShapeSlot[],
     teamPlayers: Player[],
+    playersMap?: Map<string, Player>,
   ): number {
-    const playersById = new Map(
-      teamPlayers.map((player) => [player.id, player]),
-    );
+    const playersById =
+      playersMap ||
+      new Map(teamPlayers.map((player) => [player.id, player]));
 
     return shape.reduce((total, slot) => {
       if (!slot.playerId) {
