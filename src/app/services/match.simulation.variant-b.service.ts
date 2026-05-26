@@ -3097,6 +3097,95 @@ export class MatchSimulationVariantBService {
     );
   }
 
+  private scorePassTarget(
+    target: Player,
+    passer: Player,
+    tactics: TacticalSetup,
+    currentLocation: Coordinates,
+    currentTeam: TeamSide,
+    passIntent: PassIntent,
+  ): { target: Player; score: number; distance: number } {
+    const targetPosition = this.fieldService.getStartingPositionForPlayer(
+      target,
+      tactics.formation,
+    );
+    const distance = this.fieldService.getDistance(
+      currentLocation,
+      targetPosition,
+    );
+    const progression =
+      currentTeam === TeamSide.HOME
+        ? targetPosition.y - currentLocation.y
+        : currentLocation.y - targetPosition.y;
+    const lateralDistance = Math.abs(targetPosition.x - currentLocation.x);
+    const centrality = 50 - Math.abs(targetPosition.x - 50);
+
+    let score = 0;
+
+    if (passIntent === PASS_INTENT.RECYCLE) {
+      score += (34 - Math.min(distance, 34)) * 2.2;
+      score -= Math.max(0, progression - 6) * 1.2;
+      score -= Math.max(0, -progression) * 0.3;
+      score -= Math.max(0, lateralDistance - 24) * 0.3;
+      if (
+        target.position === PositionEnum.DEFENDER ||
+        target.position === PositionEnum.MIDFIELDER
+      ) {
+        score += 7;
+      }
+    } else if (passIntent === PASS_INTENT.PROGRESSION) {
+      score += Math.max(0, progression) * 1.7;
+      score -= Math.max(0, distance - 26) * 0.7;
+      score -= Math.max(0, -progression) * 2.5;
+      if (target.position === PositionEnum.MIDFIELDER) {
+        score += 4;
+      }
+      if (target.position === PositionEnum.FORWARD) {
+        score += 3;
+      }
+    } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
+      score += Math.max(0, progression) * 2.2;
+      score -= Math.max(0, 14 - progression) * 1.5;
+      score -= Math.max(0, distance - 32) * 0.8;
+      if (target.position === PositionEnum.FORWARD) {
+        score += 10;
+      }
+    } else {
+      score += Math.max(0, progression) * 1.3;
+      score += centrality * 0.35;
+      score -= Math.max(0, distance - 30) * 0.6;
+      if (target.position === PositionEnum.FORWARD) {
+        score += 8;
+      }
+    }
+
+    if (
+      tactics.playingStyle === PlayingStyle.POSSESSION &&
+      passIntent !== PASS_INTENT.THROUGH_BALL
+    ) {
+      score += (34 - Math.min(distance, 34)) * 0.2;
+    }
+
+    if (
+      tactics.playingStyle === PlayingStyle.COUNTER_ATTACK &&
+      passIntent !== PASS_INTENT.RECYCLE
+    ) {
+      score += Math.max(0, progression) * 0.35;
+    }
+
+    if (target.position === PositionEnum.GOALKEEPER) {
+      const keeperRecycleAllowed = this.isGoalkeeperRecycleTargetAllowed(
+        passer,
+        currentLocation,
+        currentTeam,
+        passIntent,
+      );
+      score += keeperRecycleAllowed ? 2 : -6;
+    }
+
+    return { target, score, distance };
+  }
+
   private findPassTarget(
     passer: Player,
     teamPlayers: Player[],
@@ -3114,87 +3203,16 @@ export class MatchSimulationVariantBService {
     }
 
     const scoredTargets = potentialTargets
-      .map((target) => {
-        const targetPosition = this.fieldService.getStartingPositionForPlayer(
+      .map((target) =>
+        this.scorePassTarget(
           target,
-          tactics.formation,
-        );
-        const distance = this.fieldService.getDistance(
+          passer,
+          tactics,
           currentLocation,
-          targetPosition,
-        );
-        const progression =
-          currentTeam === TeamSide.HOME
-            ? targetPosition.y - currentLocation.y
-            : currentLocation.y - targetPosition.y;
-        const lateralDistance = Math.abs(targetPosition.x - currentLocation.x);
-        const centrality = 50 - Math.abs(targetPosition.x - 50);
-
-        let score = 0;
-
-        if (passIntent === PASS_INTENT.RECYCLE) {
-          score += (34 - Math.min(distance, 34)) * 2.2;
-          score -= Math.max(0, progression - 6) * 1.2;
-          score -= Math.max(0, -progression) * 0.3;
-          score -= Math.max(0, lateralDistance - 24) * 0.3;
-          if (
-            target.position === PositionEnum.DEFENDER ||
-            target.position === PositionEnum.MIDFIELDER
-          ) {
-            score += 7;
-          }
-        } else if (passIntent === PASS_INTENT.PROGRESSION) {
-          score += Math.max(0, progression) * 1.7;
-          score -= Math.max(0, distance - 26) * 0.7;
-          score -= Math.max(0, -progression) * 2.5;
-          if (target.position === PositionEnum.MIDFIELDER) {
-            score += 4;
-          }
-          if (target.position === PositionEnum.FORWARD) {
-            score += 3;
-          }
-        } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
-          score += Math.max(0, progression) * 2.2;
-          score -= Math.max(0, 14 - progression) * 1.5;
-          score -= Math.max(0, distance - 32) * 0.8;
-          if (target.position === PositionEnum.FORWARD) {
-            score += 10;
-          }
-        } else {
-          score += Math.max(0, progression) * 1.3;
-          score += centrality * 0.35;
-          score -= Math.max(0, distance - 30) * 0.6;
-          if (target.position === PositionEnum.FORWARD) {
-            score += 8;
-          }
-        }
-
-        if (
-          tactics.playingStyle === PlayingStyle.POSSESSION &&
-          passIntent !== PASS_INTENT.THROUGH_BALL
-        ) {
-          score += (34 - Math.min(distance, 34)) * 0.2;
-        }
-
-        if (
-          tactics.playingStyle === PlayingStyle.COUNTER_ATTACK &&
-          passIntent !== PASS_INTENT.RECYCLE
-        ) {
-          score += Math.max(0, progression) * 0.35;
-        }
-
-        if (target.position === PositionEnum.GOALKEEPER) {
-          const keeperRecycleAllowed = this.isGoalkeeperRecycleTargetAllowed(
-            passer,
-            currentLocation,
-            currentTeam,
-            passIntent,
-          );
-          score += keeperRecycleAllowed ? 2 : -6;
-        }
-
-        return { target, score, distance };
-      })
+          currentTeam,
+          passIntent,
+        ),
+      )
       .sort((left, right) => {
         if (right.score === left.score) {
           return left.distance - right.distance;
