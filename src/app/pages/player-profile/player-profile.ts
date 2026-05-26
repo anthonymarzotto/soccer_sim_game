@@ -291,7 +291,7 @@ export class PlayerProfileComponent {
     return formatAverageMatchRating(stats);
   }
 
-  formatGamesPlayed(stats: PlayerCareerStats): string {
+  formatGamesPlayed(stats: { matchesPlayed: number; gamesStarted?: number; gamesSubbed?: number }): string {
     return formatGamesPlayed(stats);
   }
 

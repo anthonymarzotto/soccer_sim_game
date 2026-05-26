@@ -1030,7 +1030,9 @@ export class MatchSimulationVariantBService {
     const opponentPlayers =
       currentTeam === TeamSide.HOME ? awayPlayers : homePlayers;
     const teamTactics = tactics[currentTeam];
-    const teamFatigueMap = this.activeFatigueMaps![currentTeam];
+    const teamFatigueMap = this.activeFatigueMaps
+      ? this.activeFatigueMaps[currentTeam]
+      : new Map(fatigue[currentTeam].map((entry) => [entry.playerId, entry]));
     const passIntent =
       action.passIntent ??
       this.selectPassIntent(
