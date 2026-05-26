@@ -165,6 +165,10 @@ export class MatchSimulationVariantBService {
   private lastSimulationForfeit: TeamSide | null = null;
   private currentSeasonYear = new Date().getFullYear();
   private activeRosters: ResolvedRosters | null = null;
+  private activeFatigueMaps: {
+    home: Map<string, PlayerFatigue>;
+    away: Map<string, PlayerFatigue>;
+  } | null = null;
 
   didLastSimulationEndByForfeit(): boolean {
     return this.lastSimulationForfeit !== null;
@@ -195,6 +199,10 @@ export class MatchSimulationVariantBService {
       simulatedAwayTeam,
     );
     const fatigue = this.initializeFatigue(rosters);
+    this.activeFatigueMaps = {
+      home: new Map(fatigue.home.map((f) => [f.playerId, f])),
+      away: new Map(fatigue.away.map((f) => [f.playerId, f])),
+    };
 
     let currentState = this.initializeMatchState(
       match,
@@ -279,6 +287,7 @@ export class MatchSimulationVariantBService {
     this.injuredPlayerIds = new Set();
     this.pendingInjuryReplacements = { home: [], away: [] };
     this.activeRosters = null;
+    this.activeFatigueMaps = null;
 
     return currentState;
   }
@@ -1021,7 +1030,7 @@ export class MatchSimulationVariantBService {
     const opponentPlayers =
       currentTeam === TeamSide.HOME ? awayPlayers : homePlayers;
     const teamTactics = tactics[currentTeam];
-    const teamFatigue = fatigue[currentTeam];
+    const teamFatigueMap = this.activeFatigueMaps![currentTeam];
     const passIntent =
       action.passIntent ??
       this.selectPassIntent(
@@ -1030,7 +1039,7 @@ export class MatchSimulationVariantBService {
         currentTeam,
         teamTactics,
         minute,
-        teamFatigue.find((entry) => entry.playerId === passer.id),
+        teamFatigueMap.get(passer.id),
       );
     const pressure = this.calculateDefensivePressure(
       state,
@@ -1122,7 +1131,7 @@ export class MatchSimulationVariantBService {
       passer,
       targetPlayer,
       teamTactics,
-      teamFatigue,
+      teamFatigueMap,
       state.ballPossession.location,
       currentTeam,
       passIntent,
@@ -1846,14 +1855,14 @@ export class MatchSimulationVariantBService {
     passer: Player,
     target: Player,
     tactics: TacticalSetup,
-    fatigue: PlayerFatigue[],
+    fatigueMap: Map<string, PlayerFatigue>,
     currentLocation: Coordinates,
     currentTeam: TeamSide,
     passIntent: PassIntent,
     pressure: number,
   ): boolean {
-    const passerFatigue = fatigue.find((entry) => entry.playerId === passer.id);
-    const targetFatigue = fatigue.find((entry) => entry.playerId === target.id);
+    const passerFatigue = fatigueMap.get(passer.id);
+    const targetFatigue = fatigueMap.get(target.id);
 
     const passerAttrs = getCurrentPlayerSeasonAttributes(
       passer,
