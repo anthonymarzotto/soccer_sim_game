@@ -1063,16 +1063,35 @@ export class GameService {
 
     const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
     const resolvedSeasonYear = seasonYear ?? this.getCurrentLeagueSeasonYear();
+
     const overallOf = (player: Player) => {
       const baseOverall = getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
       const fatigue = player.fatigue ?? 0;
       return scaleOverallWithFatigue(baseOverall, calculateFatigueModifier(fatigue));
     };
 
-    // Eligibility gate: injured players are not selectable.
     const eligible = (player: Player) => isPlayerEligible(player);
 
-    // Sort players by position + overall descending; these arrays share object refs with `players`
+    const byPosition = this.groupAndSortEligiblePlayers(players, eligible, overallOf);
+
+    const { bestFormationId, formationAssignments } = this.evaluateAndSelectFormation(
+      predefinedFormations,
+      fallbackFormationId,
+      byPosition,
+      overallOf
+    );
+
+    this.assignPlayerRoles(players, formationAssignments, byPosition, eligible, overallOf);
+
+    return this.withSyncedPlayerIds({ ...team, selectedFormationId: bestFormationId, players, formationAssignments });
+  }
+
+
+  private groupAndSortEligiblePlayers(
+    players: Player[],
+    eligible: (p: Player) => boolean,
+    overallOf: (p: Player) => number
+  ): Map<Position, Player[]> {
     const gk: { p: Player; o: number }[] = [];
     const def: { p: Player; o: number }[] = [];
     const mid: { p: Player; o: number }[] = [];
@@ -1090,20 +1109,25 @@ export class GameService {
 
     const sortFn = (a: { o: number }, b: { o: number }) => b.o - a.o;
 
-    const byPosition = new Map<Position, Player[]>([
+    return new Map<Position, Player[]>([
       [Position.GOALKEEPER, gk.sort(sortFn).map(x => x.p)],
       [Position.DEFENDER, def.sort(sortFn).map(x => x.p)],
       [Position.MIDFIELDER, mid.sort(sortFn).map(x => x.p)],
       [Position.FORWARD, fwd.sort(sortFn).map(x => x.p)],
     ]);
+  }
 
-    // Evaluate each formation: score = sum of overalls of best-fit starters per slot
+  private evaluateAndSelectFormation(
+    predefinedFormations: { id: string, slots: { preferredPosition: Position, slotId: string }[] }[],
+    fallbackFormationId: string,
+    byPosition: Map<Position, Player[]>,
+    overallOf: (p: Player) => number
+  ): { bestFormationId: string; formationAssignments: Record<string, string> } {
     let bestScore = -1;
     let bestFormationId = fallbackFormationId;
     let bestSlotAssignments: Record<string, string> | null = null;
 
     for (const formation of predefinedFormations) {
-      // Group slot IDs by preferredPosition
       const slotsByPos = new Map<Position, string[]>();
       for (const slot of formation.slots) {
         const ids = slotsByPos.get(slot.preferredPosition) ?? [];
@@ -1111,11 +1135,9 @@ export class GameService {
         slotsByPos.set(slot.preferredPosition, ids);
       }
 
-      // Viable only if the team has enough eligible players to fill every slot in the formation
       const viable = [...slotsByPos].every(([pos, slotIds]) => (byPosition.get(pos)?.length ?? 0) >= slotIds.length);
       if (!viable) continue;
 
-      // Score this formation and build its slot assignment map
       let score = 0;
       const slotAssignments: Record<string, string> = {};
       for (const [pos, slotIds] of slotsByPos) {
@@ -1133,7 +1155,6 @@ export class GameService {
       }
     }
 
-    // Build final formationAssignments, falling back to hardcoded 4-4-2 heuristic
     let formationAssignments: Record<string, string>;
     if (bestSlotAssignments) {
       formationAssignments = bestSlotAssignments;
@@ -1158,13 +1179,21 @@ export class GameService {
       };
     }
 
-    // Mark starters (mutates shared object refs, updating `players` in place)
+    return { bestFormationId, formationAssignments };
+  }
+
+  private assignPlayerRoles(
+    players: Player[],
+    formationAssignments: Record<string, string>,
+    byPosition: Map<Position, Player[]>,
+    eligible: (p: Player) => boolean,
+    overallOf: (p: Player) => number
+  ): void {
     const starterIds = new Set(Object.values(formationAssignments).filter(id => id !== ''));
     for (const player of players) {
       if (starterIds.has(player.id)) player.role = Role.STARTER;
     }
 
-    // Mark bench: next best available players per position not already starting
     const benchGks = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
     const benchDefs = (byPosition.get(Position.DEFENDER) ?? []).filter(p => !starterIds.has(p.id));
     const benchMids = (byPosition.get(Position.MIDFIELDER) ?? []).filter(p => !starterIds.has(p.id));
@@ -1175,9 +1204,6 @@ export class GameService {
     for (let i = 0; i < Math.min(4, benchMids.length); i++) benchMids[i].role = Role.BENCH;
     for (let i = 0; i < Math.min(2, benchFwds.length); i++) benchFwds[i].role = Role.BENCH;
 
-    // Backfill: if any of the 9 bench spots are still open (e.g. due to positional
-    // injuries leaving one position pool empty), promote the best remaining eligible
-    // non-starters regardless of position until the bench is full.
     const MAX_BENCH_SIZE = 9;
     const benchedIds = new Set(players.filter(p => p.role === Role.BENCH).map(p => p.id));
     const openSpots = MAX_BENCH_SIZE - benchedIds.size;
@@ -1189,8 +1215,6 @@ export class GameService {
         remainingEligible[i].role = Role.BENCH;
       }
     }
-
-    return this.withSyncedPlayerIds({ ...team, selectedFormationId: bestFormationId, players, formationAssignments });
   }
 
   /**
