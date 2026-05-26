@@ -114,6 +114,7 @@ export class GameService {
   });
 
   private playerByIdCache = new WeakMap<Team, Player[]>();
+  private teamArrayToMapCache = new WeakMap<Team[], Map<string, Team>>();
 
   private playerById = computed(() => {
     const l = this.leagueState();
@@ -222,13 +223,32 @@ export class GameService {
     void this.persistenceService.saveLeagueMetadata(league);
   }
 
+  private getChangedTeams(previousTeams: Team[], nextTeams: Team[]): Team[] {
+    let previousById = this.teamArrayToMapCache.get(previousTeams);
+    if (!previousById) {
+      previousById = new Map<string, Team>();
+      for (const team of previousTeams) {
+        previousById.set(team.id, team);
+      }
+      this.teamArrayToMapCache.set(previousTeams, previousById);
+    }
+
+    const changedTeams: Team[] = [];
+    for (const team of nextTeams) {
+      if (previousById.get(team.id) !== team) {
+        changedTeams.push(team);
+      }
+    }
+
+    return changedTeams;
+  }
+
   private persistChangedTeamsAndPlayers(previousTeams: Team[], nextTeams: Team[]): void {
     if (this.isHydrating()) {
       return;
     }
 
-    const previousById = new Map(previousTeams.map(team => [team.id, team]));
-    const changedTeams = nextTeams.filter(team => previousById.get(team.id) !== team);
+    const changedTeams = this.getChangedTeams(previousTeams, nextTeams);
 
     changedTeams.forEach(team => {
       void this.persistenceService.saveTeam(team, this.getCurrentLeagueSeasonYear());
@@ -240,8 +260,7 @@ export class GameService {
       return;
     }
 
-    const previousById = new Map(previousTeams.map(team => [team.id, team]));
-    const changedTeams = nextTeams.filter(team => previousById.get(team.id) !== team);
+    const changedTeams = this.getChangedTeams(previousTeams, nextTeams);
 
     changedTeams.forEach(team => {
       void this.persistenceService.saveTeamDefinition(team);
