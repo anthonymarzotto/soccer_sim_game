@@ -411,45 +411,52 @@ export class GameService {
    *    Resolved injuries (weeksRemaining hits 0) remain in `player.injuries` as historical records.
    */
   private advanceWeekForPlayers(teams: Team[], currentSeasonYear: number, currentWeek: number): Team[] {
-    return teams.map(team => {
-      if (!team.players) return team;
-      let teamMutated = false;
-      const players = team.players.map(player => {
-        let playerMutated = false;
-        
-        let nextFatigue = player.fatigue ?? 0;
-        if (nextFatigue > 0) {
-          const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
-          const recovery = 15 + (fitness * 0.25);
-          nextFatigue = Math.max(0, Math.round(nextFatigue - recovery));
-          if (nextFatigue !== (player.fatigue ?? 0)) {
-            playerMutated = true;
-          }
-        }
+    return teams.map(team => this.advanceWeekForTeam(team, currentSeasonYear, currentWeek));
+  }
 
-        let updatedInjuries = player.injuries;
-        if (player.injuries && player.injuries.length > 0) {
-          updatedInjuries = player.injuries.map(record => {
-            if (record.weeksRemaining <= 0) return record;
-            const wasAlreadyActiveBeforeThisWeek =
-              record.sustainedInSeason < currentSeasonYear
-              || record.sustainedInWeek < currentWeek;
-            if (!wasAlreadyActiveBeforeThisWeek) {
-              return record;
-            }
-            playerMutated = true;
-            return { ...record, weeksRemaining: record.weeksRemaining - 1 };
-          });
-        }
-
-        if (!playerMutated) {
-          return player;
-        }
+  private advanceWeekForTeam(team: Team, currentSeasonYear: number, currentWeek: number): Team {
+    if (!team.players) return team;
+    let teamMutated = false;
+    const players = team.players.map(player => {
+      const updatedPlayer = this.advanceWeekForPlayer(player, currentSeasonYear, currentWeek);
+      if (updatedPlayer !== player) {
         teamMutated = true;
-        return { ...player, injuries: updatedInjuries, fatigue: nextFatigue };
-      });
-      return teamMutated ? { ...team, players } : team;
+      }
+      return updatedPlayer;
     });
+    return teamMutated ? { ...team, players } : team;
+  }
+
+  private advanceWeekForPlayer(player: Player, currentSeasonYear: number, currentWeek: number): Player {
+    let playerMutated = false;
+
+    let nextFatigue = player.fatigue ?? 0;
+    if (nextFatigue > 0) {
+      const fitness = this.getCurrentSeasonPlayerAttributes(player).fitness.value;
+      const recovery = 15 + (fitness * 0.25);
+      nextFatigue = Math.max(0, Math.round(nextFatigue - recovery));
+      if (nextFatigue !== (player.fatigue ?? 0)) {
+        playerMutated = true;
+      }
+    }
+
+    let updatedInjuries = player.injuries;
+    if (player.injuries && player.injuries.length > 0) {
+      updatedInjuries = player.injuries.map(record => {
+        if (record.weeksRemaining <= 0) return record;
+        if (record.sustainedInSeason === currentSeasonYear && record.sustainedInWeek >= currentWeek) {
+          return record;
+        }
+
+        playerMutated = true;
+        return { ...record, weeksRemaining: record.weeksRemaining - 1 };
+      });
+    }
+
+    if (!playerMutated) {
+      return player;
+    }
+    return { ...player, injuries: updatedInjuries, fatigue: nextFatigue };
   }
 
   /**
