@@ -1498,57 +1498,9 @@ export class GameService {
     // Update team stats
     const updatedTeams = l.teams.map(team => {
       if (team.id === homeTeam.id) {
-        const snapshot = this.getTeamSnapshotForSeason(team, currentSeasonYear);
-        const nextStats = {
-          ...snapshot.stats,
-          played: snapshot.stats.played + 1,
-          goalsFor: snapshot.stats.goalsFor + matchState.homeScore,
-          goalsAgainst: snapshot.stats.goalsAgainst + matchState.awayScore,
-          won: snapshot.stats.won + (matchState.homeScore > matchState.awayScore ? 1 : 0),
-          drawn: snapshot.stats.drawn + (matchState.homeScore === matchState.awayScore ? 1 : 0),
-          lost: snapshot.stats.lost + (matchState.homeScore < matchState.awayScore ? 1 : 0),
-          points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, true),
-          last5: this.updateLast5Array(snapshot.stats.last5, this.buildRecentMatchResult(matchState.homeScore, matchState.awayScore, true, awayTeam.name))
-        };
-
-        return {
-          ...team,
-          stats: nextStats,
-          seasonSnapshots: withSortedUniqueSeasons([
-            ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
-            {
-              seasonYear: currentSeasonYear,
-              playerIds: [...snapshot.playerIds],
-              stats: nextStats
-            }
-          ])
-        };
+        return this.getUpdatedTeamWithMatchStats(team, matchState, currentSeasonYear, true, awayTeam.name);
       } else if (team.id === awayTeam.id) {
-        const snapshot = this.getTeamSnapshotForSeason(team, currentSeasonYear);
-        const nextStats = {
-          ...snapshot.stats,
-          played: snapshot.stats.played + 1,
-          goalsFor: snapshot.stats.goalsFor + matchState.awayScore,
-          goalsAgainst: snapshot.stats.goalsAgainst + matchState.homeScore,
-          won: snapshot.stats.won + (matchState.awayScore > matchState.homeScore ? 1 : 0),
-          drawn: snapshot.stats.drawn + (matchState.awayScore === matchState.homeScore ? 1 : 0),
-          lost: snapshot.stats.lost + (matchState.awayScore < matchState.homeScore ? 1 : 0),
-          points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, false),
-          last5: this.updateLast5Array(snapshot.stats.last5, this.buildRecentMatchResult(matchState.homeScore, matchState.awayScore, false, homeTeam.name))
-        };
-
-        return {
-          ...team,
-          stats: nextStats,
-          seasonSnapshots: withSortedUniqueSeasons([
-            ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
-            {
-              seasonYear: currentSeasonYear,
-              playerIds: [...snapshot.playerIds],
-              stats: nextStats
-            }
-          ])
-        };
+        return this.getUpdatedTeamWithMatchStats(team, matchState, currentSeasonYear, false, homeTeam.name);
       }
       return team;
     });
@@ -1586,6 +1538,43 @@ export class GameService {
     if (updatedMatch && changedTeams.length > 0 && !this.isHydrating()) {
       void this.persistenceService.saveMatchResult(updatedMatch, changedTeams, updatedLeague.currentSeasonYear);
     }
+  }
+
+  private getUpdatedTeamWithMatchStats(
+    team: Team,
+    matchState: MatchState,
+    currentSeasonYear: number,
+    isHome: boolean,
+    opponentName: string
+  ): Team {
+    const snapshot = this.getTeamSnapshotForSeason(team, currentSeasonYear);
+    const goalsFor = isHome ? matchState.homeScore : matchState.awayScore;
+    const goalsAgainst = isHome ? matchState.awayScore : matchState.homeScore;
+
+    const nextStats = {
+      ...snapshot.stats,
+      played: snapshot.stats.played + 1,
+      goalsFor: snapshot.stats.goalsFor + goalsFor,
+      goalsAgainst: snapshot.stats.goalsAgainst + goalsAgainst,
+      won: snapshot.stats.won + (goalsFor > goalsAgainst ? 1 : 0),
+      drawn: snapshot.stats.drawn + (goalsFor === goalsAgainst ? 1 : 0),
+      lost: snapshot.stats.lost + (goalsFor < goalsAgainst ? 1 : 0),
+      points: snapshot.stats.points + this.getPoints(matchState.homeScore, matchState.awayScore, isHome),
+      last5: this.updateLast5Array(snapshot.stats.last5, this.buildRecentMatchResult(matchState.homeScore, matchState.awayScore, isHome, opponentName))
+    };
+
+    return {
+      ...team,
+      stats: nextStats,
+      seasonSnapshots: withSortedUniqueSeasons([
+        ...(team.seasonSnapshots ?? []).filter(existing => existing.seasonYear !== currentSeasonYear),
+        {
+          seasonYear: currentSeasonYear,
+          playerIds: [...snapshot.playerIds],
+          stats: nextStats
+        }
+      ])
+    };
   }
 
   private getOrCreateCurrentSeasonStats(player: Player, teamId: string): PlayerCareerStats {
