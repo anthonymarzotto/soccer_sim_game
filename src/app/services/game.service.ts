@@ -660,19 +660,31 @@ export class GameService {
     const l = this.leagueState();
     if (!l) return;
 
-    const updatedTeams = l.teams.map(team => {
-      const teamPlayers = resolveTeamPlayers(team);
-      const playerIndex = teamPlayers.findIndex(p => p.id === playerId);
-      if (playerIndex !== -1) {
-        if (!this.canAssignPlayerToRole(teamPlayers[playerIndex], newRole)) {
-          return team;
+    let updatedTeam: typeof l.teams[0] | null = null;
+    let teamIndex = -1;
+
+    for (let i = 0; i < l.teams.length; i++) {
+      const team = l.teams[i];
+      if (team.playerIds.includes(playerId)) {
+        teamIndex = i;
+        const teamPlayers = resolveTeamPlayers(team);
+        const playerIndex = teamPlayers.findIndex(p => p.id === playerId);
+        if (playerIndex !== -1) {
+          if (!this.canAssignPlayerToRole(teamPlayers[playerIndex], newRole)) {
+            return;
+          }
+          const updatedPlayers = [...teamPlayers];
+          updatedPlayers[playerIndex] = { ...updatedPlayers[playerIndex], role: newRole };
+          updatedTeam = this.withSyncedPlayerIds({ ...team, players: updatedPlayers });
         }
-        const updatedPlayers = [...teamPlayers];
-        updatedPlayers[playerIndex] = { ...updatedPlayers[playerIndex], role: newRole };
-        return this.withSyncedPlayerIds({ ...team, players: updatedPlayers });
+        break;
       }
-      return team;
-    });
+    }
+
+    if (!updatedTeam) return;
+
+    const updatedTeams = [...l.teams];
+    updatedTeams[teamIndex] = updatedTeam;
 
     const updatedLeague: League = { ...l, teams: updatedTeams };
     this.leagueState.set(updatedLeague);
@@ -687,33 +699,37 @@ export class GameService {
     const l = this.leagueState();
     if (!l) return;
 
-    const updatedTeams = l.teams.map(team => {
-      if (team.id !== teamId) return team;
+    const teamIndex = l.teams.findIndex(t => t.id === teamId);
+    if (teamIndex === -1) return;
 
-      const teamPlayers = resolveTeamPlayers(team);
+    const team = l.teams[teamIndex];
+    const teamPlayers = resolveTeamPlayers(team);
+    const playerIndex = teamPlayers.findIndex(p => p.id === playerId);
 
-      const player = teamPlayers.find(p => p.id === playerId);
-      if (!player || !isPlayerEligible(player)) return team;
+    if (playerIndex === -1) return;
+    const player = teamPlayers[playerIndex];
+    if (!isPlayerEligible(player)) return;
 
-      const updatedPlayers = teamPlayers.map(p =>
-        p.id === playerId ? { ...p, role: Role.STARTER } : p
-      );
+    const updatedPlayers = [...teamPlayers];
+    updatedPlayers[playerIndex] = { ...player, role: Role.STARTER };
 
-      const nextAssignments = { ...team.formationAssignments };
-      for (const [key, id] of Object.entries(nextAssignments)) {
-        if (id === playerId) {
-          nextAssignments[key] = '';
-          break;
-        }
+    const nextAssignments = { ...team.formationAssignments };
+    for (const [key, id] of Object.entries(nextAssignments)) {
+      if (id === playerId) {
+        nextAssignments[key] = '';
+        break;
       }
-      nextAssignments[slotId] = playerId;
+    }
+    nextAssignments[slotId] = playerId;
 
-      return this.syncStarterRolesWithAssignments({
-        ...team,
-        players: updatedPlayers,
-        formationAssignments: nextAssignments
-      });
+    const updatedTeam = this.syncStarterRolesWithAssignments({
+      ...team,
+      players: updatedPlayers,
+      formationAssignments: nextAssignments
     });
+
+    const updatedTeams = [...l.teams];
+    updatedTeams[teamIndex] = updatedTeam;
 
     const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
     this.leagueState.set(updatedLeague);
@@ -728,30 +744,35 @@ export class GameService {
     const l = this.leagueState();
     if (!l) return;
 
-    const updatedTeams = l.teams.map(team => {
-      if (team.id !== teamId) return team;
+    const teamIndex = l.teams.findIndex(t => t.id === teamId);
+    if (teamIndex === -1) return;
 
-      const teamPlayers = resolveTeamPlayers(team);
-      const player = teamPlayers.find(p => p.id === playerId);
-      if (!player || !this.canAssignPlayerToRole(player, Role.BENCH)) return team;
+    const team = l.teams[teamIndex];
+    const teamPlayers = resolveTeamPlayers(team);
+    const playerIndex = teamPlayers.findIndex(p => p.id === playerId);
 
-      const updatedPlayers = teamPlayers.map(p =>
-        p.id === playerId ? { ...p, role: Role.BENCH } : p
-      );
+    if (playerIndex === -1) return;
+    const player = teamPlayers[playerIndex];
+    if (!this.canAssignPlayerToRole(player, Role.BENCH)) return;
 
-      const updatedAssignments = { ...team.formationAssignments };
-      Object.keys(updatedAssignments).forEach(slotId => {
-        if (updatedAssignments[slotId] === playerId) {
-          updatedAssignments[slotId] = '';
-        }
-      });
+    const updatedPlayers = [...teamPlayers];
+    updatedPlayers[playerIndex] = { ...player, role: Role.BENCH };
 
-      return {
-        ...team,
-        players: updatedPlayers,
-        formationAssignments: updatedAssignments
-      };
-    });
+    const updatedAssignments = { ...team.formationAssignments };
+    for (const slotKey of Object.keys(updatedAssignments)) {
+      if (updatedAssignments[slotKey] === playerId) {
+        updatedAssignments[slotKey] = '';
+      }
+    }
+
+    const updatedTeam = {
+      ...team,
+      players: updatedPlayers,
+      formationAssignments: updatedAssignments
+    };
+
+    const updatedTeams = [...l.teams];
+    updatedTeams[teamIndex] = updatedTeam;
 
     const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
     this.leagueState.set(updatedLeague);
@@ -930,45 +951,57 @@ export class GameService {
     const l = this.leagueState();
     if (!l) return;
 
-    const updatedTeams = l.teams.map(team => {
-      const teamPlayers = resolveTeamPlayers(team);
-      const player1Index = teamPlayers.findIndex(p => p.id === playerId1);
-      const player2Index = teamPlayers.findIndex(p => p.id === playerId2);
+    let updatedTeam: typeof l.teams[0] | null = null;
+    let teamIndex = -1;
 
-      if (player1Index !== -1 && player2Index !== -1) {
-        const updatedPlayers = [...teamPlayers];
-        const player1Role = updatedPlayers[player1Index].role;
-        const player2Role = updatedPlayers[player2Index].role;
-        if (
-          !this.canAssignPlayerToRole(updatedPlayers[player1Index], player2Role)
-          || !this.canAssignPlayerToRole(updatedPlayers[player2Index], player1Role)
-        ) {
-          return team;
+    for (let i = 0; i < l.teams.length; i++) {
+      const team = l.teams[i];
+      if (team.playerIds.includes(playerId1) && team.playerIds.includes(playerId2)) {
+        teamIndex = i;
+        const teamPlayers = resolveTeamPlayers(team);
+        const player1Index = teamPlayers.findIndex(p => p.id === playerId1);
+        const player2Index = teamPlayers.findIndex(p => p.id === playerId2);
+
+        if (player1Index !== -1 && player2Index !== -1) {
+          const updatedPlayers = [...teamPlayers];
+          const player1Role = updatedPlayers[player1Index].role;
+          const player2Role = updatedPlayers[player2Index].role;
+          if (
+            !this.canAssignPlayerToRole(updatedPlayers[player1Index], player2Role)
+            || !this.canAssignPlayerToRole(updatedPlayers[player2Index], player1Role)
+          ) {
+            return;
+          }
+          const updatedAssignments = { ...team.formationAssignments };
+          const player1SlotId = this.findAssignedSlotId(updatedAssignments, playerId1);
+          const player2SlotId = this.findAssignedSlotId(updatedAssignments, playerId2);
+
+          updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: player2Role };
+          updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: player1Role };
+
+          if (player1SlotId && player2SlotId) {
+            updatedAssignments[player1SlotId] = playerId2;
+            updatedAssignments[player2SlotId] = playerId1;
+          } else if (player1SlotId) {
+            updatedAssignments[player1SlotId] = playerId2;
+          } else if (player2SlotId) {
+            updatedAssignments[player2SlotId] = playerId1;
+          }
+
+          updatedTeam = {
+            ...team,
+            players: updatedPlayers,
+            formationAssignments: updatedAssignments
+          };
         }
-        const updatedAssignments = { ...team.formationAssignments };
-        const player1SlotId = this.findAssignedSlotId(updatedAssignments, playerId1);
-        const player2SlotId = this.findAssignedSlotId(updatedAssignments, playerId2);
-
-        updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: player2Role };
-        updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: player1Role };
-
-        if (player1SlotId && player2SlotId) {
-          updatedAssignments[player1SlotId] = playerId2;
-          updatedAssignments[player2SlotId] = playerId1;
-        } else if (player1SlotId) {
-          updatedAssignments[player1SlotId] = playerId2;
-        } else if (player2SlotId) {
-          updatedAssignments[player2SlotId] = playerId1;
-        }
-
-        return {
-          ...team,
-          players: updatedPlayers,
-          formationAssignments: updatedAssignments
-        };
+        break;
       }
-      return team;
-    });
+    }
+
+    if (!updatedTeam) return;
+
+    const updatedTeams = [...l.teams];
+    updatedTeams[teamIndex] = updatedTeam;
 
     const updatedLeague: League = { ...l, teams: this.withSyncedPlayerIdsForTeams(updatedTeams) };
     this.leagueState.set(updatedLeague);
