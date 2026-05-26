@@ -118,10 +118,45 @@ export class GeneratorService {
 
   public generatePlayer(teamId: string, position: Position, role: Role, teamQuality = 1.0, currentSeasonYear = new Date().getFullYear(), age?: number): Player {
     const id = this.rng.nextUUID();
+
+    const personalDetails = this.generatePlayerPersonalDetails();
+    const { name, height, weight, nationality } = personalDetails;
+
+    const qualityDetails = this.calculateEffectiveQuality(teamQuality, currentSeasonYear, age);
+    const { effectiveQuality, birthday } = qualityDetails;
+
+    const values = this.generatePlayerBaseAttributes(effectiveQuality, position);
+    const progression = this.generatePlayerProgression(values.overall, position);
+    const seasonAttributes = this.generatePlayerSeasonAttributes(currentSeasonYear, values);
+
+    return {
+      id,
+      name,
+      teamId,
+      position,
+      role,
+      personal: { height, weight, birthday, nationality },
+      seasonAttributes: [seasonAttributes],
+      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
+      mood: 100,
+      fatigue: 0,
+      injuries: [],
+      progression
+    };
+  }
+
+  private generatePlayerPersonalDetails(): { firstName: string, lastName: string, name: string, height: number, weight: number, nationality: string } {
     const firstName = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
     const lastName = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
     const name = `${firstName} ${lastName}`;
+    const height = Math.floor(Math.random() * 30) + 165; // 165cm to 195cm
+    const weight = Math.floor(Math.random() * 25) + 65; // 65kg to 90kg
+    const nationality = this.nationalities[Math.floor(Math.random() * this.nationalities.length)];
 
+    return { firstName, lastName, name, height, weight, nationality };
+  }
+
+  private calculateEffectiveQuality(teamQuality: number, currentSeasonYear: number, age?: number): { resolvedAge: number, effectiveQuality: number, birthday: Date } {
     const resolvedAge = age ?? (Math.floor(Math.random() * 20) + 16); // 16 to 35
     // Youth scaling: base quality ramps from 0.25 at age 16 to 1.0 at age 23.5, then stays flat.
     // A power-law talent roll (U^3) biases most players toward the base while allowing
@@ -132,10 +167,11 @@ export class GeneratorService {
     const ageQuality = baseAgeQuality + talentRoll * (1.0 - baseAgeQuality);
     const effectiveQuality = teamQuality * ageQuality;
     const birthday = birthdayForAge(resolvedAge, currentSeasonYear, Math.random());
-    const height = Math.floor(Math.random() * 30) + 165; // 165cm to 195cm
-    const weight = Math.floor(Math.random() * 25) + 65; // 65kg to 90kg
-    const nationality = this.nationalities[Math.floor(Math.random() * this.nationalities.length)];
 
+    return { resolvedAge, effectiveQuality, birthday };
+  }
+
+  private generatePlayerBaseAttributes(effectiveQuality: number, position: Position): Record<StatKey, number> {
     const values: Record<StatKey, number> = {
       speed: this.randomStat(20, 90, effectiveQuality),
       strength: this.randomStat(20, 90, effectiveQuality),
@@ -177,8 +213,11 @@ export class GeneratorService {
     }
 
     values.overall = calculateOverall(values, position);
+    return values;
+  }
 
-    const potential = clamp(values.overall + Math.floor(Math.random() * (100 - values.overall)) + 1, values.overall + 1, 100);
+  private generatePlayerProgression(overall: number, position: Position): { potential: number, professionalism: number, temperament: number, juniorEndAge: number, peakEndAge: number, seniorEndAge: number } {
+    const potential = clamp(overall + Math.floor(Math.random() * (100 - overall)) + 1, overall + 1, 100);
     const professionalism = Math.floor(Math.random() * 100) + 1;
     const temperament = Math.floor(Math.random() * 100) + 1;
 
@@ -191,7 +230,7 @@ export class GeneratorService {
     const peakEndAge = basePeakEnd + clamp(Math.floor((professionalism - 50) / 10), -3, 3);
     const seniorEndAge = baseSeniorEnd + clamp(Math.floor((professionalism - 50) / 20), -3, 3);
 
-    const progression = {
+    return {
       potential,
       professionalism,
       temperament,
@@ -199,8 +238,10 @@ export class GeneratorService {
       peakEndAge,
       seniorEndAge
     };
+  }
 
-    const seasonAttributes: PlayerSeasonAttributes = {
+  private generatePlayerSeasonAttributes(currentSeasonYear: number, values: Record<StatKey, number>): PlayerSeasonAttributes {
+    return {
       seasonYear: currentSeasonYear,
       speed: buildStat('speed', values.speed),
       strength: buildStat('strength', values.strength),
@@ -225,21 +266,6 @@ export class GeneratorService {
       luck: buildStat('luck', values.luck),
       injuryRate: buildStat('injuryRate', values.injuryRate),
       overall: buildStat('overall', values.overall)
-    };
-
-    return {
-      id,
-      name,
-      teamId,
-      position,
-      role,
-      personal: { height, weight, birthday, nationality },
-      seasonAttributes: [seasonAttributes],
-      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
-      mood: 100,
-      fatigue: 0,
-      injuries: [],
-      progression
     };
   }
 
