@@ -163,23 +163,24 @@ export class MatchSummaryComponent {
     for (const player of players) {
       const newSegments: CommentarySegment[] = [];
       for (const segment of segments) {
-        if (segment.type === 'text') {
-          const parts = segment.text.split(player.name);
-          for (let i = 0; i < parts.length; i++) {
-            if (parts[i]) {
-              newSegments.push({ type: 'text', text: parts[i] });
-            }
-            if (i < parts.length - 1) {
-              newSegments.push({
-                type: 'player',
-                playerId: player.playerId,
-                playerName: player.name,
-                teamId: player.teamId
-              });
-            }
-          }
-        } else {
+        if (segment.type !== 'text') {
           newSegments.push(segment);
+          continue;
+        }
+
+        const parts = segment.text.split(player.name);
+        for (let i = 0; i < parts.length; i++) {
+          if (parts[i]) {
+            newSegments.push({ type: 'text', text: parts[i] });
+          }
+          if (i < parts.length - 1) {
+            newSegments.push({
+              type: 'player',
+              playerId: player.playerId,
+              playerName: player.name,
+              teamId: player.teamId
+            });
+          }
         }
       }
       segments = newSegments;
