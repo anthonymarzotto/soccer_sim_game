@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -14,6 +14,7 @@ import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
 import { getActiveInjury, isPlayerInjured } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
+import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
 
 type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'gamesStarted' | 'gamesSubbed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'totalMatchRating' | 'starNominations'>;
 
@@ -30,7 +31,7 @@ interface BenchRow {
 @Component({
   selector: 'app-team-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe],
+  imports: [RouterLink, DecimalPipe, CurrencyPipe],
   templateUrl: './team-details.html',
 })
 export class TeamDetailsComponent {
@@ -180,6 +181,18 @@ export class TeamDetailsComponent {
       throw new Error('Player attributes unavailable for current season');
     }
     return attributes.overall.value;
+  }
+
+  getPlayerMarketValue(player: Player): number {
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (year === undefined) return 0;
+    return calculateMarketValue(player, year);
+  }
+
+  getPlayerWageCost(player: Player): number {
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (year === undefined) return 0;
+    return calculatePlayerWageCost(player, year);
   }
 
   /**

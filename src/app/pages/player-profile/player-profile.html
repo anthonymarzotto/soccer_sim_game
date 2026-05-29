@@ -99,7 +99,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Personal Details
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
           <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
             <span class="text-zinc-500">Age</span>
             <span class="font-medium text-white">{{ playerAge() }}</span>
@@ -115,6 +115,14 @@
           <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
             <span class="text-zinc-500">Weight</span>
             <span class="font-medium text-white">{{ p?.personal?.weight }} kg</span>
+          </div>
+          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+            <span class="text-zinc-500">Value</span>
+            <span class="font-medium text-emerald-400 font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
+          </div>
+          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+            <span class="text-zinc-500">Wage</span>
+            <span class="font-medium text-amber-400 font-mono">{{ wageCost() | number:'1.1-1' }} pts</span>
           </div>
         </div>
       </div>

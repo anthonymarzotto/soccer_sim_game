@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
@@ -13,11 +13,12 @@ import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player
 import { getCurrentPlayerSeasonAttributes, getActiveInjury } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
+import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
 
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent, DecimalPipe],
+  imports: [RouterLink, TeamBadgeComponent, DecimalPipe, CurrencyPipe],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {
@@ -69,6 +70,20 @@ export class PlayerProfileComponent {
   activeInjury = computed<InjuryRecord | null>(() => {
     const p = this.player();
     return p ? getActiveInjury(p) : null;
+  });
+
+  marketValue = computed<number | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || year === undefined) return null;
+    return calculateMarketValue(p, year);
+  });
+
+  wageCost = computed<number | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || year === undefined) return null;
+    return calculatePlayerWageCost(p, year);
   });
 
   /**
