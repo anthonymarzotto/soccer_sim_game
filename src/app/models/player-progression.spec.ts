@@ -279,10 +279,10 @@ describe('Player Progression', () => {
       } as unknown as Player;
 
       // Age: 16 (0.35x career arc multiplier)
-      // projectedOvr = 40 + (45 - 40) * 0.85 = 44.25
-      // arcPosition = 0 -> effectiveOvr = 44.25
-      // Base: 500000 * exp(0.12 * (44.25 - 70)) = 22751
-      // Final: 22751 * 0.35 = 7963 -> Clamps to 10000 floor
+      // projectedOvr = 40 + (45 - 40) * 0.75 = 43.75
+      // arcPosition = 0 -> effectiveOvr = 43.75
+      // Base: 500000 * exp(0.12 * (43.75 - 70)) = 24604
+      // Final: 24604 * 0.35 = 8611 -> Clamps to 10000 floor
       expect(calculateMarketValue(player, 2028)).toBe(10000);
     });
   });
