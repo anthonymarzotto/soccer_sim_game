@@ -41,10 +41,6 @@ export function getStat(player: Player, seasonYear: number, key: StatKey): Stat 
   return getCurrentPlayerSeasonAttributes(player, seasonYear)[key];
 }
 
-export function getStatValue(player: Player, seasonYear: number, key: StatKey): number {
-  return getStat(player, seasonYear, key).value;
-}
-
 export function getLatestTeamSeasonSnapshot(team: Team): TeamSeasonSnapshot | null {
   if (!team.seasonSnapshots?.length) {
     return null;
