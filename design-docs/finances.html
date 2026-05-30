@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Player Finances — System Specification</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #09090b;
+      color: #f4f4f5;
+      font-family: sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      padding: 2rem;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.2; }
+
+    h1 { font-size: 1.5rem; color: #a1a1aa; font-weight: 600; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; font-weight: 600; color: #e4e4e7; border-bottom: 1px solid #27272a; padding-bottom: 8px; margin-bottom: 10px; }
+    h3 { font-size: 0.95rem; font-weight: 600; color: #e4e4e7; margin-bottom: 6px; }
+
+    p { margin: 0; color: #a1a1aa; }
+
+    .panel {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel-header { display: grid; gap: 6px; }
+
+    .formula-box {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 16px;
+      font-family: ui-monospace, 'Cascadia Code', monospace;
+      font-size: 0.85rem;
+      color: #a5f3fc;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+
+    .formula-box .comment {
+      color: #71717a;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #71717a;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      font-weight: 600;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      vertical-align: middle;
+      border-bottom: 1px solid #1f1f22;
+      font-size: 0.875rem;
+      color: #a1a1aa;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #1f1f22; }
+
+    .highlight {
+      font-weight: 600;
+      color: #f4f4f5;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <div class="panel-header">
+        <h1>Player Finances — System Specification</h1>
+        <p>
+          This document defines the mathematical equations, multipliers, and logic backing player cash valuations 
+          and wage point calculations. Both mechanics are designed to be purely deterministic, side-effect free, 
+          and driven entirely by player overalls, ages, and positions.
+        </p>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel">
+        <h2>1. Player Market Value System</h2>
+        <p>
+          Instead of relying on a flat OVR lookup, Market Value uses a <strong>Blended Effective OVR</strong> 
+          to incorporate developmental potential for younger prospects, followed by a piecewise exponential curve 
+          gated by age phases and position profiles.
+        </p>
+
+        <h3>Effective OVR Formula</h3>
+        <div class="formula-box">
+          <span class="comment">// 1. Headroom gap realization rate (75%)</span>
+          projectedOvr = currentOvr + (potential - currentOvr) * 0.75;
+          <br><br>
+          <span class="comment">// 2. Career segment position (0.0 at age 16, 1.0 at peakEndAge)</span>
+          arcPosition = (age - 16) / (peakEndAge - 16); <span class="comment">// clamped [0.0, 1.0]</span>
+          <br><br>
+          <span class="comment">// 3. Blend OVR (under peakEndAge)</span>
+          effectiveOvr = (arcPosition * currentOvr) + ((1.0 - arcPosition) * projectedOvr);
+        </div>
+
+        <h3>Market Value Base Curve & Floor</h3>
+        <div class="formula-box">
+          exponent = effectiveOvr >= 70 ? 0.2119 : 0.12;
+          <br>
+          baseValue = 500000 * exp(exponent * (effectiveOvr - 70));
+          <br><br>
+          <span class="comment">// Final calculation with career arc, position, and floor clamp</span>
+          marketValue = baseValue * careerArcMultiplier * positionMultiplier;
+          <br>
+          marketValue = Math.max(10000, Math.round(marketValue));
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>2. Player Wage Cost System</h2>
+        <p>
+          Player wages are represented in <strong>points</strong> to simplify squad payroll management. 
+          The base wage scales exponentially with OVR, modified by discrete career phase and position multipliers, 
+          and rounded strictly to the nearest 0.5 points.
+        </p>
+
+        <h3>Wage Formula</h3>
+        <div class="formula-box">
+          baseWage = 0.005249 * exp(0.0828 * OVR);
+          <br><br>
+          rawWage = baseWage * phaseMultiplier * positionMultiplier;
+          <br><br>
+          <span class="comment">// Round to nearest 0.5 points, clamp to 0.5 minimum</span>
+          wageCost = Math.max(0.5, Math.round(rawWage * 2) / 2);
+        </div>
+
+        <div class="card">
+          <h3>Wage Points At-A-Glance</h3>
+          <p>• <strong>55 OVR Player (Junior):</strong> 0.5 points (League Minimum)</p>
+          <p>• <strong>70 OVR Player (Peak Midfielder):</strong> 1.5 points</p>
+          <p>• <strong>95 OVR Player (Peak Forward):</strong> 15.0 points</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>3. Career Multipliers & Multiplier Anchors</h2>
+      <p>
+        Career value multipliers scale dynamically as a player progresses through their lifecycle. 
+        Market Value uses a continuous Career Arc Multiplier interpolated across five anchor points, 
+        while Wages use discrete phase multipliers.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Career Stage</th>
+              <th>Age Range / Points</th>
+              <th>Market Value Multiplier</th>
+              <th>Wage Multiplier</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="highlight">Junior / Start</td>
+              <td>Age 16 to player-specific <code>juniorEndAge</code></td>
+              <td>Starts at <code>0.35x</code>, interpolates linearly to <code>0.82x</code></td>
+              <td><code>0.80x</code> (Flat)</td>
+            </tr>
+            <tr>
+              <td class="highlight">Peak</td>
+              <td><code>juniorEndAge</code> to <code>peakEndAge</code></td>
+              <td>Interpolates from <code>0.82x</code> to <code>1.00x</code></td>
+              <td><code>1.00x</code> (Flat)</td>
+            </tr>
+            <tr>
+              <td class="highlight">Senior</td>
+              <td><code>peakEndAge</code> to <code>seniorEndAge</code></td>
+              <td>Interpolates from <code>1.00x</code> to <code>0.68x</code></td>
+              <td><code>0.95x</code> (Flat)</td>
+            </tr>
+            <tr>
+              <td class="highlight">Decline</td>
+              <td><code>seniorEndAge</code> to Age 42 (Terminal)</td>
+              <td>Interpolates from <code>0.68x</code> down to <code>0.20x</code></td>
+              <td><code>0.75x</code> (Flat)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>4. Position Multipliers</h2>
+      <p>
+        Position multipliers are applied symmetrically across both Market Value and Wages to model real-world market demands 
+        for specific positional roles.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Position</th>
+              <th>Multiplier Value</th>
+              <th>Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="highlight">Forward (FWD)</td>
+              <td><code>1.10x</code></td>
+              <td>Premium pricing for goalscoring capability.</td>
+            </tr>
+            <tr>
+              <td class="highlight">Midfielder (MID)</td>
+              <td><code>1.00x</code></td>
+              <td>Standard market baseline.</td>
+            </tr>
+            <tr>
+              <td class="highlight">Defender (DEF)</td>
+              <td><code>0.90x</code></td>
+              <td>Defensive roles sit slightly below offensive baseline premium.</td>
+            </tr>
+            <tr>
+              <td class="highlight">Goalkeeper (GK)</td>
+              <td><code>0.85x</code></td>
+              <td>Most specialized position, with historically lower market pricing relative to outfield counterparts.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
