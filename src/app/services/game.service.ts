@@ -1718,12 +1718,13 @@ export class GameService {
     const { events, homeScore, awayScore } = matchState;
     const homePlayers = resolveTeamPlayers(homeTeam);
     const awayPlayers = resolveTeamPlayers(awayTeam);
+    const allTeamPlayers = [...homePlayers, ...awayPlayers];
 
     // Create a map of all players for quick lookup
     const allPlayers = new Map<string, Player>();
-    [...homePlayers, ...awayPlayers].forEach(player => {
+    for (const player of allTeamPlayers) {
       allPlayers.set(player.id, player);
-    });
+    }
 
     const statsCache = new Map<string, PlayerCareerStats>();
     const getStats = (player: Player) => {
@@ -1735,7 +1736,18 @@ export class GameService {
       return stats;
     };
 
-    // Update player stats based on events
+    this.processCareerStatsFromEvents(events, allPlayers, getStats);
+    this.processCareerMinutesAndAppearances(events, allTeamPlayers, getStats);
+    this.processCareerCleanSheets(homeTeam, awayTeam, homeScore, awayScore, homePlayers, awayPlayers, getStats);
+    this.processCareerMatchStats([...homePlayerStats, ...awayPlayerStats], allPlayers, getStats);
+    this.processCareerStars(homePlayerStats, awayPlayerStats, homeTeam.id, awayTeam.id, homeScore, awayScore, allPlayers, getStats);
+  }
+
+  private processCareerStatsFromEvents(
+    events: PlayByPlayEvent[],
+    allPlayers: Map<string, Player>,
+    getStats: (player: Player) => PlayerCareerStats
+  ) {
     for (const event of events) {
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
@@ -1783,17 +1795,21 @@ export class GameService {
         this.updatePlayerStatsForEvent(stats, event, playerId, primaryPlayerId, player);
       }
     }
+  }
 
-    // Compute exact minutes played using on/off intervals.
-    // Starters begin on the pitch at minute 0; players can leave via substitution, red card, or injury.
+  private processCareerMinutesAndAppearances(
+    events: PlayByPlayEvent[],
+    allTeamPlayers: Player[],
+    getStats: (player: Player) => PlayerCareerStats
+  ) {
     const matchLength = 90;
     const substitutionsAndDismissals = events
       .filter(e => e.type === EventType.SUBSTITUTION || e.type === EventType.RED_CARD || e.type === EventType.INJURY)
       .sort((left, right) => left.time - right.time);
+
     const minutesOnPitch = new Map<string, number>();
     const activeSince = new Map<string, number | null>();
 
-    const allTeamPlayers = [...homePlayers, ...awayPlayers];
     for (const player of allTeamPlayers) {
       if (player.role === Role.RESERVE) continue;
       minutesOnPitch.set(player.id, 0);
@@ -1834,28 +1850,17 @@ export class GameService {
       }
     }
 
-    activeSince.forEach((startedAt, playerId) => {
-      if (typeof startedAt !== 'number') {
-        return;
-      }
-
+    for (const [playerId, startedAt] of activeSince.entries()) {
+      if (typeof startedAt !== 'number') continue;
       minutesOnPitch.set(playerId, (minutesOnPitch.get(playerId) ?? 0) + (matchLength - startedAt));
-    });
+    }
 
-    // Update minutes played for all players who participated
-    allTeamPlayers.forEach(player => {
+    for (const player of allTeamPlayers) {
       const minutes = minutesOnPitch.get(player.id) ?? 0;
       if (minutes > 0) {
         const stats = getStats(player);
         stats.minutesPlayed += minutes;
-      }
-    });
 
-    // Update matches played for players with any pitch time
-    allTeamPlayers.forEach(player => {
-      const minutes = minutesOnPitch.get(player.id) ?? 0;
-      if (minutes > 0) {
-        const stats = getStats(player);
         if (stats.gamesStarted === undefined) {
           stats.gamesStarted = stats.matchesPlayed;
         }
@@ -1869,9 +1874,18 @@ export class GameService {
           stats.gamesSubbed++;
         }
       }
-    });
+    }
+  }
 
-    // Update clean sheets for goalkeepers
+  private processCareerCleanSheets(
+    homeTeam: Team,
+    awayTeam: Team,
+    homeScore: number,
+    awayScore: number,
+    homePlayers: Player[],
+    awayPlayers: Player[],
+    getStats: (player: Player) => PlayerCareerStats
+  ) {
     const homeGoalkeeper = homePlayers.find(p => p.id === homeTeam.formationAssignments['gk_1']);
     const awayGoalkeeper = awayPlayers.find(p => p.id === awayTeam.formationAssignments['gk_1']);
 
@@ -1883,33 +1897,50 @@ export class GameService {
       const stats = getStats(awayGoalkeeper);
       stats.cleanSheets++;
     }
+  }
 
-    // Accumulate assists and totalMatchRating from per-match player stats.
-    [...homePlayerStats, ...awayPlayerStats].forEach(ps => {
-      const player = [...homePlayers, ...awayPlayers].find(p => p.id === ps.playerId);
-      if (!player) return;
+  private processCareerMatchStats(
+    playerStats: PlayerStatistics[],
+    allPlayers: Map<string, Player>,
+    getStats: (player: Player) => PlayerCareerStats
+  ) {
+    for (const ps of playerStats) {
+      const player = allPlayers.get(ps.playerId);
+      if (!player) continue;
       const stats = getStats(player);
       stats.assists += ps.assists;
       if (ps.rating !== 0) {
         stats.totalMatchRating += ps.rating;
       }
-    });
+    }
+  }
 
-    // Determine stars and increment nomination counts.
+  private processCareerStars(
+    homePlayerStats: PlayerStatistics[],
+    awayPlayerStats: PlayerStatistics[],
+    homeTeamId: string,
+    awayTeamId: string,
+    homeScore: number,
+    awayScore: number,
+    allPlayers: Map<string, Player>,
+    getStats: (player: Player) => PlayerCareerStats
+  ) {
     const winningTeamId = homeScore > awayScore
-      ? homeTeam.id
+      ? homeTeamId
       : awayScore > homeScore
-        ? awayTeam.id
+        ? awayTeamId
         : null;
-    const stars = rankThreeStars(homePlayerStats, awayPlayerStats, winningTeamId, homeTeam.id, awayTeam.id);
-    stars.forEach(star => {
-      const player = [...homePlayers, ...awayPlayers].find(p => p.id === star.stats.playerId);
-      if (!player) return;
+
+    const stars = rankThreeStars(homePlayerStats, awayPlayerStats, winningTeamId, homeTeamId, awayTeamId);
+
+    for (const star of stars) {
+      const player = allPlayers.get(star.stats.playerId);
+      if (!player) continue;
       const stats = getStats(player);
       if (star.rank === 1) stats.starNominations.first++;
       else if (star.rank === 2) stats.starNominations.second++;
       else stats.starNominations.third++;
-    });
+    }
   }
 
   private extractKeyEvents(events: PlayByPlayEvent[]): MatchEvent[] {
