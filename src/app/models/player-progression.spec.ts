@@ -262,12 +262,12 @@ describe('Player Progression', () => {
       } as unknown as Player;
 
       // Age: 16 (0.35x career arc multiplier)
-      // projectedOvr = 40 + (99 - 40) * 0.85 = 90.15
+      // projectedOvr = 40 + (99 - 40) * 0.75 = 84.25
       // arcPosition = 0 (16-16)/(28-16) = 0
-      // blendWeight = 0.0 -> effectiveOvr = 90.15
-      // Base: 500000 * exp(0.2119 * (90.15 - 70)) = 35753131
-      // Final: 35753131 * 0.35 * 1.0 = 12513596
-      expect(calculateMarketValue(player, 2028)).toBe(12513596);
+      // blendWeight = 0.0 -> effectiveOvr = 84.25
+      // Base: 500000 * exp(0.2119 * (84.25 - 70)) = 10241291
+      // Final: 10241291 * 0.35 * 1.0 = 3584452
+      expect(calculateMarketValue(player, 2028)).toBe(3584452);
     });
 
     it('prices a young low-potential filler at the minimum floor of 10,000', () => {

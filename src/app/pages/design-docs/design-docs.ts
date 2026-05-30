@@ -18,6 +18,11 @@ const DESIGN_DOCS: DesignDoc[] = [
     label: 'PlayerSeasonAttributes Usage',
     path: '/design-docs/player-season-attributes-usage.html',
     description: 'Where each seasonal stat enters Variant B and match setup'
+  },
+  {
+    label: 'Player Finances Specification',
+    path: '/design-docs/finances.html',
+    description: 'Deterministic market value and wage point formulas'
   }
 ];
 
