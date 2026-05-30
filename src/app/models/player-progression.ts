@@ -133,14 +133,32 @@ export function getCareerArcMultiplier(player: Player, age: number): number {
   return yStart + (age - xStart) * (yEnd - yStart) / (xEnd - xStart);
 }
 
+export const POTENTIAL_GAP_REALIZATION_RATE = 0.75;
+
 export function calculateMarketValue(player: Player, seasonYear: number): number {
   const birthday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
   const age = computeAge(birthday, seasonAnchorDate(seasonYear));
   const attributes = getCurrentPlayerSeasonAttributes(player, seasonYear);
   const overall = attributes.overall.value;
 
-  const exponent = overall >= 70 ? 0.2119 : 0.12;
-  const baseValue = 500000 * Math.exp(exponent * (overall - 70));
+  // Blended Overall incorporating potential for young players
+  const rawPotential = player.progression?.potential;
+  const potential = typeof rawPotential === 'number' && !isNaN(rawPotential)
+    ? Math.max(overall, rawPotential)
+    : overall;
+  const projectedOvr = overall + (potential - overall) * POTENTIAL_GAP_REALIZATION_RATE;
+
+  let arcPosition = 1.0;
+  const peakEndAge = player.progression.peakEndAge;
+  if (age < peakEndAge && peakEndAge > 16) {
+    arcPosition = Math.max(0.0, Math.min(1.0, (age - 16) / (peakEndAge - 16)));
+  }
+
+  const blendWeight = arcPosition;
+  const effectiveOvr = (blendWeight * overall) + ((1.0 - blendWeight) * projectedOvr);
+
+  const exponent = effectiveOvr >= 70 ? 0.2119 : 0.12;
+  const baseValue = 500000 * Math.exp(exponent * (effectiveOvr - 70));
   const arcMultiplier = getCareerArcMultiplier(player, age);
 
   let positionMultiplier = 1.0;

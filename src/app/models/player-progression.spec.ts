@@ -252,6 +252,39 @@ describe('Player Progression', () => {
       // OVR 50 Midfielder, Peak: 500000 * exp(0.12 * -20) * 1.0 * 1.0 = 45359
       expect(calculateMarketValue(player, 2028)).toBe(45359);
     });
+
+    it('prices a young high-potential wonderkid significantly higher than their current OVR suggests', () => {
+      const player = {
+        position: Position.MIDFIELDER,
+        personal: { birthday: new Date('2012-01-01') }, // 16 years old in 2028
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 40 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32, potential: 99 }
+      } as unknown as Player;
+
+      // Age: 16 (0.35x career arc multiplier)
+      // projectedOvr = 40 + (99 - 40) * 0.85 = 90.15
+      // arcPosition = 0 (16-16)/(28-16) = 0
+      // blendWeight = 0.0 -> effectiveOvr = 90.15
+      // Base: 500000 * exp(0.2119 * (90.15 - 70)) = 35753131
+      // Final: 35753131 * 0.35 * 1.0 = 12513596
+      expect(calculateMarketValue(player, 2028)).toBe(12513596);
+    });
+
+    it('prices a young low-potential filler at the minimum floor of 10,000', () => {
+      const player = {
+        position: Position.MIDFIELDER,
+        personal: { birthday: new Date('2012-01-01') }, // 16 years old in 2028
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 40 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32, potential: 45 }
+      } as unknown as Player;
+
+      // Age: 16 (0.35x career arc multiplier)
+      // projectedOvr = 40 + (45 - 40) * 0.85 = 44.25
+      // arcPosition = 0 -> effectiveOvr = 44.25
+      // Base: 500000 * exp(0.12 * (44.25 - 70)) = 22751
+      // Final: 22751 * 0.35 = 7963 -> Clamps to 10000 floor
+      expect(calculateMarketValue(player, 2028)).toBe(10000);
+    });
   });
 
   describe('calculatePlayerWageCost', () => {
