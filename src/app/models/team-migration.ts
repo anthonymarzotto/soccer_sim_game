@@ -64,16 +64,3 @@ export function normalizeTeamFormation(
   };
 }
 
-/**
- * Check if a team is in a legacy (pre-schema) state.
- * Returns true if:
- * - selectedFormationId is missing
- * - formationAssignments is empty or missing
- */
-export function isLegacyTeamState(team: Team): boolean {
-  return (
-    !team.selectedFormationId ||
-    !team.formationAssignments ||
-    Object.keys(team.formationAssignments).length === 0
-  );
-}
