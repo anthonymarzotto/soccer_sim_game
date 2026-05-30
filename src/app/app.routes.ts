@@ -6,6 +6,7 @@ import { TeamDetailsComponent } from './pages/team-details/team-details';
 import { TeamScheduleComponent } from './pages/team-schedule/team-schedule';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
 import { PlayerStatsComponent } from './pages/player-stats/player-stats';
+import { PlayerAttributesComponent } from './pages/player-attributes/player-attributes';
 import { ScheduleComponent } from './pages/schedule/schedule';
 import { SettingsComponent } from './pages/settings/settings';
 import { WatchGameComponent } from './pages/watch-game/watch-game';
@@ -33,6 +34,7 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'standings', component: StandingsComponent },
   { path: 'player-stats', component: PlayerStatsComponent },
+  { path: 'player-attributes', component: PlayerAttributesComponent },
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },
   { path: 'team/:id', component: TeamDetailsComponent },
   { path: 'team/:id/schedule', component: TeamScheduleComponent },

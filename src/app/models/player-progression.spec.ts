@@ -5,7 +5,10 @@ import {
   phaseGrowthWeight,
   phaseDecayWeight,
   getStatKeysForCategory,
-  calculateOverall
+  calculateOverall,
+  getCareerArcMultiplier,
+  calculateMarketValue,
+  calculatePlayerWageCost
 } from './player-progression';
 
 describe('Player Progression', () => {
@@ -164,6 +167,164 @@ describe('Player Progression', () => {
       const player = { progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 } } as Player;
       expect(derivePhase(33, player)).toBe(Phase.Decline);
       expect(derivePhase(40, player)).toBe(Phase.Decline);
+    });
+  });
+
+  describe('getCareerArcMultiplier', () => {
+    const player = {
+      progression: {
+        juniorEndAge: 21,
+        peakEndAge: 28,
+        seniorEndAge: 32
+      }
+    } as Player;
+
+    it('returns exact values at anchors', () => {
+      expect(getCareerArcMultiplier(player, 16)).toBeCloseTo(0.35);
+      expect(getCareerArcMultiplier(player, 21)).toBeCloseTo(0.82);
+      expect(getCareerArcMultiplier(player, 28)).toBeCloseTo(1.00);
+      expect(getCareerArcMultiplier(player, 32)).toBeCloseTo(0.68);
+      expect(getCareerArcMultiplier(player, 42)).toBeCloseTo(0.20);
+    });
+
+    it('clips values outside anchors', () => {
+      expect(getCareerArcMultiplier(player, 12)).toBeCloseTo(0.35);
+      expect(getCareerArcMultiplier(player, 45)).toBeCloseTo(0.20);
+    });
+
+    it('interpolates linearly in between anchors', () => {
+      // midway between 16 and 21 (18.5) -> 0.585
+      expect(getCareerArcMultiplier(player, 18.5)).toBeCloseTo(0.585);
+      // midway between 28 and 32 (30) -> 0.84
+      expect(getCareerArcMultiplier(player, 30)).toBeCloseTo(0.84);
+    });
+  });
+
+  describe('calculateMarketValue', () => {
+    it('calculates the target market value for a 70 OVR peak player', () => {
+      const player = {
+        position: Position.MIDFIELDER,
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 70 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // Age: as of 2028-01-01, birthday 2000-01-01 is 28 years old (Peak, multiplier 1.0)
+      // OVR: 70
+      // 500000 * exp(0.2119 * 0) * 1.0 * 1.0 = 500,000
+      expect(calculateMarketValue(player, 2028)).toBe(500000);
+    });
+
+    it('applies position and age progression modifiers correctly', () => {
+      const player = {
+        position: Position.FORWARD, // 1.1x multiplier
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 85 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // Age: 28 (Peak, 1.0x multiplier)
+      // Base: 500000 * exp(0.2119 * 15) = 12005355.3...
+      // Value: 12005355.3... * 1.0 (arc) * 1.1 (FWD) = 13205891
+      expect(calculateMarketValue(player, 2028)).toBe(13205891);
+    });
+
+    it('enforces a minimum floor of 10k', () => {
+      const player = {
+        position: Position.GOALKEEPER, // 0.85x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2045, overall: { value: 45 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // Extremely old and low overall: should hit the floor of 10k
+      expect(calculateMarketValue(player, 2045)).toBe(10000);
+    });
+
+    it('calculates distinct non-flatlined values for lower overalls', () => {
+      const player = {
+        position: Position.MIDFIELDER, // 1.0x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 50 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // OVR 50 Midfielder, Peak: 500000 * exp(0.12 * -20) * 1.0 * 1.0 = 45359
+      expect(calculateMarketValue(player, 2028)).toBe(45359);
+    });
+
+    it('prices a young high-potential wonderkid significantly higher than their current OVR suggests', () => {
+      const player = {
+        position: Position.MIDFIELDER,
+        personal: { birthday: new Date('2012-01-01') }, // 16 years old in 2028
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 40 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32, potential: 99 }
+      } as unknown as Player;
+
+      // Age: 16 (0.35x career arc multiplier)
+      // projectedOvr = 40 + (99 - 40) * 0.75 = 84.25
+      // arcPosition = 0 (16-16)/(28-16) = 0
+      // blendWeight = 0.0 -> effectiveOvr = 84.25
+      // Base: 500000 * exp(0.2119 * (84.25 - 70)) = 10241291
+      // Final: 10241291 * 0.35 * 1.0 = 3584452
+      expect(calculateMarketValue(player, 2028)).toBe(3584452);
+    });
+
+    it('prices a young low-potential filler at the minimum floor of 10,000', () => {
+      const player = {
+        position: Position.MIDFIELDER,
+        personal: { birthday: new Date('2012-01-01') }, // 16 years old in 2028
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 40 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32, potential: 45 }
+      } as unknown as Player;
+
+      // Age: 16 (0.35x career arc multiplier)
+      // projectedOvr = 40 + (45 - 40) * 0.75 = 43.75
+      // arcPosition = 0 -> effectiveOvr = 43.75
+      // Base: 500000 * exp(0.12 * (43.75 - 70)) = 24604
+      // Final: 24604 * 0.35 = 8611 -> Clamps to 10000 floor
+      expect(calculateMarketValue(player, 2028)).toBe(10000);
+    });
+  });
+
+  describe('calculatePlayerWageCost', () => {
+    it('calculates the target wage for a 70 OVR peak player', () => {
+      const player = {
+        position: Position.MIDFIELDER, // 1.0x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 70 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // Base: 0.005249 * exp(0.0828 * 70) = 1.727
+      // Rounded to nearest 0.5: 1.5
+      expect(calculatePlayerWageCost(player, 2028)).toBe(1.5);
+    });
+
+    it('calculates the target wage for an expensive 95 OVR forward peak player', () => {
+      const player = {
+        position: Position.FORWARD, // 1.1x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 95 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // Base: 0.005249 * exp(0.0828 * 95) = 13.68
+      // Forward multiplier: 1.1x -> 15.05
+      // Rounded to nearest 0.5: 15.0
+      expect(calculatePlayerWageCost(player, 2028)).toBe(15.0);
+    });
+
+    it('applies phase discounts and enforces minimum floor of 0.5', () => {
+      const player = {
+        position: Position.GOALKEEPER, // 0.85x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2045, overall: { value: 45 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      } as unknown as Player;
+
+      // Very old/decline player: raw is very tiny, but should be clamped to 0.5 floor
+      expect(calculatePlayerWageCost(player, 2045)).toBe(0.5);
     });
   });
 

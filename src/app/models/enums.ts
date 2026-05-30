@@ -108,6 +108,7 @@ export enum EventImportance {
 export enum TeamDetailsViewMode {
   BIO = 'bio',
   STATS = 'stats',
+  FINANCES = 'finances',
   SEASON_HISTORY = 'season_history'
 }
 

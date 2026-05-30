@@ -172,6 +172,16 @@
                 </svg>
                 Stats
               </button>
+              <button (click)="setViewMode(ViewMode.FINANCES)"
+                [class]="viewMode() === ViewMode.FINANCES ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="1" x2="12" y2="23"></line>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Finances
+              </button>
               <button (click)="setViewMode(ViewMode.SEASON_HISTORY)"
                 [class]="viewMode() === ViewMode.SEASON_HISTORY ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
                 class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
@@ -184,7 +194,7 @@
             </div>
           </div>
 
-          @if (viewMode() === ViewMode.BIO || viewMode() === ViewMode.STATS) {
+          @if (viewMode() === ViewMode.BIO || viewMode() === ViewMode.STATS || viewMode() === ViewMode.FINANCES) {
           @if (readinessIssues().length > 0) {
           <div class="rounded-2xl border border-red-800 bg-red-950/30 px-4 py-3 shadow-xl">
             <div class="mb-2 flex items-start justify-between gap-3">
@@ -220,12 +230,17 @@
                 <th scope="col" class="px-4 py-4 font-medium text-center w-16">Fatigue</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-24">Rating</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
-                } @else {
+                } @else if (viewMode() === ViewMode.STATS) {
                 <th scope="col" class="px-4 py-4 font-medium text-center w-16">GP</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-20">Min</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-16">G</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-16">A</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-20">Cards</th>
+                } @else if (viewMode() === ViewMode.FINANCES) {
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
+                <th scope="col" class="px-4 py-4 font-medium text-right w-32">Market Value</th>
+                <th scope="col" class="px-4 py-4 font-medium text-center w-24">Wage Cost</th>
                 }
               </tr>
             </thead>
@@ -314,7 +329,7 @@
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ??
                   '--' }}</td>
-                } @else {
+                } @else if (viewMode() === ViewMode.STATS) {
                 @let stats = getRowStats(row.player);
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
                 </td>
@@ -330,6 +345,25 @@
                     <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
                       || 0 }}</span>
                   </span>
+                </td>
+                } @else if (viewMode() === ViewMode.FINANCES) {
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                  @if (row.player) {
+                  {{ getPlayerOverall(row.player) }}
+                  } @else { -- }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">
+                  {{ getPlayerAge(row.player) ?? '--' }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono w-32">
+                  @if (row.player) {
+                  {{ getPlayerMarketValue(row.player) | currency:'USD':'symbol':'1.0-0' }}
+                  } @else { -- }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
+                  @if (row.player) {
+                  {{ getPlayerWageCost(row.player) | number:'1.1-1' }} pts
+                  } @else { -- }
                 </td>
                 }
               </tr>
@@ -406,7 +440,7 @@
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ??
                   '--' }}</td>
-                } @else {
+                } @else if (viewMode() === ViewMode.STATS) {
                 @let stats = getRowStats(row.player);
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
                 </td>
@@ -422,6 +456,25 @@
                     <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
                       || 0 }}</span>
                   </span>
+                </td>
+                } @else if (viewMode() === ViewMode.FINANCES) {
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                  @if (row.player) {
+                  {{ getPlayerOverall(row.player) }}
+                  } @else { -- }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">
+                  {{ getPlayerAge(row.player) ?? '--' }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono w-32">
+                  @if (row.player) {
+                  {{ getPlayerMarketValue(row.player) | currency:'USD':'symbol':'1.0-0' }}
+                  } @else { -- }
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
+                  @if (row.player) {
+                  {{ getPlayerWageCost(row.player) | number:'1.1-1' }} pts
+                  } @else { -- }
                 </td>
                 }
               </tr>
@@ -485,7 +538,7 @@
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--'
                   }}</td>
-                } @else {
+                } @else if (viewMode() === ViewMode.STATS) {
                 @let stats = getCurrentSeasonStats(player);
                 <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
                 </td>
@@ -501,6 +554,19 @@
                     <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
                       || 0 }}</span>
                   </span>
+                </td>
+                } @else if (viewMode() === ViewMode.FINANCES) {
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                  {{ getPlayerOverall(player) }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">
+                  {{ getPlayerAge(player) ?? '--' }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono w-32">
+                  {{ getPlayerMarketValue(player) | currency:'USD':'symbol':'1.0-0' }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
+                  {{ getPlayerWageCost(player) | number:'1.1-1' }} pts
                 </td>
                 }
               </tr>
