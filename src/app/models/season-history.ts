@@ -15,14 +15,6 @@ export function createEmptyTeamStats(): TeamStats {
   };
 }
 
-export function getLatestPlayerSeasonAttributes(player: Player): PlayerSeasonAttributes | null {
-  if (!player.seasonAttributes?.length) {
-    return null;
-  }
-
-  return player.seasonAttributes[player.seasonAttributes.length - 1] ?? null;
-}
-
 export function getPlayerSeasonAttributesForYear(player: Player, seasonYear: number): PlayerSeasonAttributes | null {
   return (player.seasonAttributes ?? []).find(attributes => attributes.seasonYear === seasonYear) ?? null;
 }
