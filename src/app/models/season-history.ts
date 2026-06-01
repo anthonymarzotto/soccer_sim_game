@@ -15,6 +15,14 @@ export function createEmptyTeamStats(): TeamStats {
   };
 }
 
+export function getLatestPlayerSeasonAttributes(player: Player): PlayerSeasonAttributes | null {
+  if (!player.seasonAttributes?.length) {
+    return null;
+  }
+
+  return player.seasonAttributes[player.seasonAttributes.length - 1] ?? null;
+}
+
 export function getPlayerSeasonAttributesForYear(player: Player, seasonYear: number): PlayerSeasonAttributes | null {
   return (player.seasonAttributes ?? []).find(attributes => attributes.seasonYear === seasonYear) ?? null;
 }
@@ -31,6 +39,10 @@ export function getCurrentPlayerSeasonAttributes(player: Player, seasonYear: num
 
 export function getStat(player: Player, seasonYear: number, key: StatKey): Stat {
   return getCurrentPlayerSeasonAttributes(player, seasonYear)[key];
+}
+
+export function getStatValue(player: Player, seasonYear: number, key: StatKey): number {
+  return getStat(player, seasonYear, key).value;
 }
 
 export function getLatestTeamSeasonSnapshot(team: Team): TeamSeasonSnapshot | null {
@@ -70,6 +82,10 @@ export function isPlayerInjured(player: Player): boolean {
  */
 export function isPlayerEligible(player: Player): boolean {
   return !isPlayerInjured(player);
+}
+
+export function getInjuredPlayers(players: Player[]): Player[] {
+  return players.filter(isPlayerInjured);
 }
 
 export function withSortedUniqueSeasons<T extends { seasonYear: number }>(records: T[]): T[] {
