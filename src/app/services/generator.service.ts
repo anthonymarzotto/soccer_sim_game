@@ -7,7 +7,7 @@ import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createEmptyTeamStats } from '../models/season-history';
 import { buildStat } from '../models/stat-definitions';
 import { birthdayForAge } from '../models/player-age';
-import { calculateOverall } from '../models/player-progression';
+import { calculateOverall, calculatePlayerWageCost } from '../models/player-progression';
 import { clamp } from '../utils/math';
 
 @Injectable({
@@ -32,8 +32,53 @@ export class GeneratorService {
   generateLeague(): { teams: Team[], schedule: Match[], currentSeasonYear: number } {
     const currentSeasonYear = new Date().getFullYear();
     const teams: Team[] = this.teamNames.map((name, index) => this.generateTeam(index.toString(), name, currentSeasonYear));
-    const schedule = this.generateSchedule(teams, currentSeasonYear);
-    return { teams, schedule, currentSeasonYear };
+    
+    // Sort generated teams by overall strength (starter overall average) descending
+    const teamsWithStrength = teams.map(team => {
+      const starters = team.players.filter(p => p.role === RoleEnum.STARTER);
+      const sum = starters.reduce((acc, p) => {
+        const overall = p.seasonAttributes[0]?.overall?.value ?? 50;
+        return acc + overall;
+      }, 0);
+      const strength = starters.length > 0 ? sum / starters.length : 50;
+      return { team, strength };
+    });
+    
+    teamsWithStrength.sort((a, b) => b.strength - a.strength);
+    
+    // Assign fixed tiers:
+    // Tier 1 (3 teams), Tier 2 (4 teams), Tier 3 (6 teams), Tier 4 (5 teams), Tier 5 (2 teams)
+    const tierConfig = [
+      { tier: 1, count: 3, budget: 25000000, cap: 56 },
+      { tier: 2, count: 4, budget: 14000000, cap: 42 },
+      { tier: 3, count: 6, budget: 7000000, cap: 29 },
+      { tier: 4, count: 5, budget: 3500000, cap: 21 },
+      { tier: 5, count: 2, budget: 1500000, cap: 17 }
+    ];
+    
+    let teamIndex = 0;
+    for (const conf of tierConfig) {
+      for (let i = 0; i < conf.count; i++) {
+        const teamObj = teamsWithStrength[teamIndex];
+        const team = teamObj.team;
+        
+        // Calculate initial wagePointsUsed
+        const wagePointsUsed = team.players.reduce((sum, p) => sum + calculatePlayerWageCost(p, currentSeasonYear), 0);
+        
+        team.finances = {
+          tier: conf.tier,
+          transferBudget: conf.budget,
+          wagePointsCap: conf.cap,
+          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100
+        };
+        
+        teamIndex++;
+      }
+    }
+    
+    const finalTeams = teamsWithStrength.map(x => x.team);
+    const schedule = this.generateSchedule(finalTeams, currentSeasonYear);
+    return { teams: finalTeams, schedule, currentSeasonYear };
   }
 
   generateScheduleForSeason(teams: Team[], seasonYear: number): Match[] {
@@ -112,7 +157,13 @@ export class GeneratorService {
         seasonYear: currentSeasonYear,
         playerIds: players.map(player => player.id),
         stats: createEmptyTeamStats()
-      }]
+      }],
+      finances: {
+        tier: 5,
+        transferBudget: 1500000,
+        wagePointsCap: 26,
+        wagePointsUsed: 0
+      }
     };
   }
 

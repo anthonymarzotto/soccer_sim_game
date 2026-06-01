@@ -343,6 +343,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
       players,
       playerIds: players.map(player => player.id),
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: {
         gk_1: 'p1',
         def_l: 'p2',

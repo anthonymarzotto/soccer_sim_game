@@ -277,6 +277,78 @@
         </table>
       </div>
     </section>
+
+    <section class="panel">
+      <h2>5. Club Tiers & Financial Constraints</h2>
+      <p>
+        Clubs in the league are sorted descending by starter overall strength and assigned to one of five fixed financial tiers.
+        Tiers enforce strict boundaries on both spending capital (Transfer Budget cash) and ongoing overhead limits (Wage Points caps).
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th>Allocated Teams</th>
+              <th>Transfer Budget (Cash)</th>
+              <th>Wage Points Cap (Points)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="highlight">Tier 1 (Elite)</td>
+              <td>3 Teams</td>
+              <td><code>$25,000,000</code></td>
+              <td><code>56 pts</code></td>
+            </tr>
+            <tr>
+              <td class="highlight">Tier 2 (Challenger)</td>
+              <td>4 Teams</td>
+              <td><code>$14,000,000</code></td>
+              <td><code>42 pts</code></td>
+            </tr>
+            <tr>
+              <td class="highlight">Tier 3 (Contender)</td>
+              <td>6 Teams</td>
+              <td><code>$7,000,000</code></td>
+              <td><code>29 pts</code></td>
+            </tr>
+            <tr>
+              <td class="highlight">Tier 4 (Mid-Table)</td>
+              <td>5 Teams</td>
+              <td><code>$3,500,000</code></td>
+              <td><code>21 pts</code></td>
+            </tr>
+            <tr>
+              <td class="highlight">Tier 5 (Underdog)</td>
+              <td>2 Teams</td>
+              <td><code>$1,500,000</code></td>
+              <td><code>17 pts</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>League Finances Dashboard</h3>
+          <p>
+            Accessible via the main sidebar under <strong>League Finances</strong>, this page provides a dynamically sortable, 
+            league-wide breakdown of all 20 clubs. Users can contrast and sort clubs on OVR, Tier, Transfer Budget, 
+            Squad Value, and Wage Point utilization percentage.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Team Financials Card</h3>
+          <p>
+            Exposed directly in the left-sidebar of any team's details page. It renders the club's active Tier badge, 
+            Transfer Budget, dynamically computed total Squad Value (sum of all roster player valuations), 
+            and a color-coded wage points utilization meter.
+          </p>
+        </div>
+      </div>
+    </section>
   </main>
 </body>
 </html>

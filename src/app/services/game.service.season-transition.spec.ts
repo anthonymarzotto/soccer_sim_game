@@ -24,6 +24,7 @@ describe('GameService — season transition log', () => {
       playerIds: players.map(p => p.id),
       stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: {},
       seasonSnapshots: [{
         seasonYear: 2026,

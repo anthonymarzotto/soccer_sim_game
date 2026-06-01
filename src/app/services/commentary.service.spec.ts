@@ -186,6 +186,7 @@ function createTeam(id: string, name: string, players: Player[]): Team {
     players,
     playerIds: players.map(player => player.id),
     selectedFormationId: 'test-formation',
+    finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
     formationAssignments: {
       slot_1: players[0].id,
       slot_2: players[1].id

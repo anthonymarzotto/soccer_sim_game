@@ -73,6 +73,7 @@ function makeTeam(starters: Player[], bench: Player[] = [], id = 'team-1'): Team
     players: allPlayers,
     playerIds,
     selectedFormationId: 'test',
+    finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
     formationAssignments,
     stats,
     seasonSnapshots: [{ seasonYear: 2026, playerIds, stats }]

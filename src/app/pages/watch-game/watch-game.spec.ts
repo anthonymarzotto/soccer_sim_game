@@ -58,6 +58,7 @@ describe('WatchGameComponent', () => {
     players,
     playerIds: players.map(player => player.id),
     selectedFormationId: 'test',
+    finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
     formationAssignments: players
       .filter(player => player.role === Role.STARTER)
       .reduce<Record<string, string>>((assignments, player, index) => {

@@ -33,6 +33,7 @@ describe('ScheduleStateService', () => {
           last5: []
         },
         selectedFormationId: 'formation_4_4_2',
+        finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
         formationAssignments: {}
       })),
       schedule: [],

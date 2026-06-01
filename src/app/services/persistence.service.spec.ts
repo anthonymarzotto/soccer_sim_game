@@ -46,6 +46,7 @@ describe('PersistenceService', () => {
         last5: [{ result: MatchResult.DRAW, opponentName: 'Opponent', goalsFor: 0, goalsAgainst: 0, isHome: true }]
       },
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { gk_1: `${id}-p1` }
     };
   }

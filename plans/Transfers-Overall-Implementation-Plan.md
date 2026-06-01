@@ -31,17 +31,22 @@ interface TeamFinances {
 }
 ```
 
-Tier is derived from initial squad quality at generation — teams that generated high `teamQuality` get high tiers. The distribution across 20 teams is fixed:
+Tier is derived from initial squad quality at generation — teams that generated high `teamQuality` get high tiers. The distribution across 20 teams is fixed, and each tier maps to specific starting cash transfer budgets and points-based roster wage caps:
 
-| Tier | Teams | Wage Cap |
-|------|-------|----------|
-| 1 | 2–3 | 60 pts |
-| 2 | 4–5 | 45 pts |
-| 3 | 6–8 | 32 pts |
-| 4 | 5–6 | 22 pts |
-| 5 | 2–3 | 14 pts |
+| Tier | Teams | Wage Cap | Initial Transfer Budget |
+| :---: | :---: | :---: | :---: |
+| 1 | 3 | 56 pts | $25,000,000 |
+| 2 | 4 | 42 pts | $14,000,000 |
+| 3 | 6 | 29 pts | $7,000,000 |
+| 4 | 5 | 21 pts | $3,500,000 |
+| 5 | 2 | 17 pts | $1,500,000 |
 
 Each player gets a wage point cost derived from their `overall` and `phase` — a pure function, not stored. Transfer budgets are seeded at generation proportional to tier. Tier 1 clubs start with meaningfully more spending power; Tier 5 clubs start lean.
+
+**Frontend UI Extensions Implemented:**
+- **League Finances Dashboard (`/finances`)**: A dedicated page providing a responsive table layout showing all 20 clubs. Users can interactively sort on Club Name, OVR, Tier, Transfer Budget, Squad Value, and Wage Utilization, with the user's club visually highlighted.
+- **Team Financials Card**: Renders in the team details left sidebar, detailing the club's Tier badge, Transfer Budget, dynamically computed total Squad Value, and a visual progress meter showing wage headroom.
+- **Navigation Integration**: A "League Finances" link inside the main sidebar menu.
 
 **Why second:** Tier is the foundation everything else sits on. It needs to exist before windows, listings, or contracts mean anything.
 

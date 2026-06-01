@@ -1,6 +1,7 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team } from '../models/types';
+import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team, TeamFinances } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
+import { calculatePlayerWageCost } from '../models/player-progression';
 import {
   getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
@@ -27,6 +28,7 @@ export interface PersistedTeam {
   selectedFormationId: string;
   formationAssignments: Record<string, string>;
   seasonSnapshots: NonNullable<Team['seasonSnapshots']>;
+  finances: TeamFinances;
 }
 
 export interface PersistedLeagueSnapshot {
@@ -72,7 +74,10 @@ export class LeagueAssemblyService {
               last5: [...currentSnapshot.stats.last5]
             }
           }
-        ])
+        ]),
+        finances: {
+          ...normalizedTeam.finances
+        }
       };
     });
   }
@@ -202,15 +207,24 @@ export class LeagueAssemblyService {
         player => !seasonSnapshot.playerIds.includes(player.id)
       );
 
+      const fullPlayers = [...orderedPlayers, ...missingFromOrder];
+      const wagePointsUsed = fullPlayers.reduce((sum, p) => sum + calculatePlayerWageCost(p, currentSeasonYear), 0);
+
       return normalizeTeamRoster({
         id: teamRecord.id,
         name: teamRecord.name,
-        players: [...orderedPlayers, ...missingFromOrder],
+        players: fullPlayers,
         playerIds: seasonSnapshot.playerIds,
         stats: seasonSnapshot.stats,
         selectedFormationId: teamRecord.selectedFormationId,
         formationAssignments: teamRecord.formationAssignments,
-        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots)
+        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots),
+        finances: {
+          tier: teamRecord.finances.tier,
+          transferBudget: teamRecord.finances.transferBudget,
+          wagePointsCap: teamRecord.finances.wagePointsCap,
+          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100
+        }
       });
     });
 

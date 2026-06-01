@@ -175,6 +175,7 @@ export class NormalizedDbService {
         goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
       },
       selectedFormationId: '',
+      finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 },
       formationAssignments: {},
       seasonSnapshots: [{
         seasonYear,

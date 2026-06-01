@@ -101,6 +101,19 @@ export class TeamDetailsComponent {
     return this.gameService.calculateTeamOverall(t);
   });
 
+  squadMarketValue = computed(() => {
+    const t = this.team();
+    if (!t) return 0;
+    return this.gameService.getPlayersForTeam(t.id)
+      .reduce((sum, p) => sum + this.getPlayerMarketValue(p), 0);
+  });
+
+  wageUtilization = computed(() => {
+    const t = this.team();
+    if (!t || !t.finances || t.finances.wagePointsCap === 0) return 0;
+    return (t.finances.wagePointsUsed / t.finances.wagePointsCap) * 100;
+  });
+
   formationSlots = computed(() => {
     const t = this.team();
     if (!t) return [];
