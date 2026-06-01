@@ -160,33 +160,7 @@ export class NormalizedDbService {
   }
 
   private toPersistedPlayers(players: Player[], seasonYear: number): PersistedPlayerRecord[] {
-    if (players.length === 0) return [];
-    // Wrap as a single virtual team so we can reuse the canonical serializer.
-    // If extractPlayers ever gains team-level logic (e.g. cross-referencing team
-    // stats or roster order), this virtual team will need to carry real data or
-    // extractPlayers should expose a player-only overload instead.
-    const virtualTeam: Team = {
-      id: '__normalized_db_virtual__',
-      name: '__virtual__',
-      players,
-      playerIds: players.map(p => p.id),
-      stats: {
-        played: 0, won: 0, drawn: 0, lost: 0,
-        goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
-      },
-      selectedFormationId: '',
-      finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 },
-      formationAssignments: {},
-      seasonSnapshots: [{
-        seasonYear,
-        playerIds: players.map(p => p.id),
-        stats: {
-          played: 0, won: 0, drawn: 0, lost: 0,
-          goalsFor: 0, goalsAgainst: 0, points: 0, last5: []
-        }
-      }]
-    };
-    return this.leagueAssembly.extractPlayers([virtualTeam], seasonYear);
+    return players.map(p => this.leagueAssembly.serializePlayer(p, seasonYear));
   }
 
 }

@@ -227,3 +227,12 @@ export function calculatePlayerWageCost(player: Player, seasonYear: number): num
   const rawWage = baseWage * phaseMultiplier * positionMultiplier;
   return Math.max(0.5, Math.round(rawWage * 2) / 2);
 }
+
+export function calculateSquadTotalWageCost(players: Player[], seasonYear: number): number {
+  return players.reduce((sum, p) => sum + calculatePlayerWageCost(p, seasonYear), 0);
+}
+
+export function calculateSquadTotalMarketValue(players: Player[], seasonYear: number): number {
+  return players.reduce((sum, p) => sum + calculateMarketValue(p, seasonYear), 0);
+}
+

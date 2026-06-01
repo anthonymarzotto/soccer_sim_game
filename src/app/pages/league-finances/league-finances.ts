@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
-import { calculateMarketValue } from '../../models/player-progression';
+import { calculateSquadTotalMarketValue } from '../../models/player-progression';
 
 interface DecoratedTeam {
   id: string;
@@ -41,7 +41,7 @@ export class LeagueFinancesComponent {
 
     return teams.map(team => {
       const players = this.gameService.getPlayersForTeam(team.id);
-      const squadValue = players.reduce((sum, p) => sum + calculateMarketValue(p, seasonYear), 0);
+      const squadValue = calculateSquadTotalMarketValue(players, seasonYear);
       const overall = this.gameService.calculateTeamOverall(team);
       const wagePointsCap = team.finances?.wagePointsCap ?? 1;
       const wagePointsUsed = team.finances?.wagePointsUsed ?? 0;

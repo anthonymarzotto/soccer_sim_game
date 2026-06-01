@@ -1,7 +1,7 @@
 import { Injectable, isDevMode } from '@angular/core';
 import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team, TeamFinances } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
-import { calculatePlayerWageCost } from '../models/player-progression';
+import { calculateSquadTotalWageCost } from '../models/player-progression';
 import {
   getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
@@ -82,53 +82,57 @@ export class LeagueAssemblyService {
     });
   }
 
+  serializePlayer(player: Player, seasonYear: number): PersistedPlayerRecord {
+    const seasonAttributes = withSortedUniqueSeasons(player.seasonAttributes ?? []);
+    const hasCurrentSeasonAttrs = seasonAttributes.some(attrs => attrs.seasonYear === seasonYear);
+    if (!hasCurrentSeasonAttrs) {
+      throw new Error(
+        `serializePlayer: missing season-${seasonYear} seasonAttributes for player "${player.id}" (${player.name}). ` +
+        `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
+      );
+    }
+
+    const birthdayDate = player.personal.birthday instanceof Date
+      ? player.personal.birthday
+      : new Date(player.personal.birthday as unknown as string);
+    if (isNaN(birthdayDate.getTime())) {
+      throw new Error(
+        `serializePlayer: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
+      );
+    }
+    if (!this.isValidPlayerConditionValue(player.mood) || !this.isValidPlayerConditionValue(player.fatigue)) {
+      throw new Error(
+        `serializePlayer: invalid mood/fatigue for player "${player.id}" (${player.name}).`
+      );
+    }
+
+    return {
+      id: player.id,
+      name: player.name,
+      teamId: player.teamId,
+      position: player.position,
+      role: player.role,
+      personal: {
+        height: player.personal.height,
+        weight: player.personal.weight,
+        nationality: player.personal.nationality,
+        birthday: birthdayDate.toISOString()
+      },
+      seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
+      careerStats: player.careerStats,
+      mood: player.mood,
+      fatigue: player.fatigue,
+      injuries: player.injuries ?? [],
+      progression: player.progression
+    };
+  }
+
   extractPlayers(teams: Team[], seasonYear?: number): PersistedPlayerRecord[] {
     const resolvedSeasonYear = seasonYear ?? this.resolveCurrentSeasonYear(teams);
 
-    return teams.flatMap(team => normalizeTeamRoster(team).players.map(player => {
-      const seasonAttributes = withSortedUniqueSeasons(player.seasonAttributes ?? []);
-      const hasCurrentSeasonAttrs = seasonAttributes.some(attrs => attrs.seasonYear === resolvedSeasonYear);
-      if (!hasCurrentSeasonAttrs) {
-        throw new Error(
-          `extractPlayers: missing season-${resolvedSeasonYear} seasonAttributes for player "${player.id}" (${player.name}). ` +
-          `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
-        );
-      }
-
-      const birthdayDate = player.personal.birthday instanceof Date
-        ? player.personal.birthday
-        : new Date(player.personal.birthday as unknown as string);
-      if (isNaN(birthdayDate.getTime())) {
-        throw new Error(
-          `extractPlayers: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
-        );
-      }
-      if (!this.isValidPlayerConditionValue(player.mood) || !this.isValidPlayerConditionValue(player.fatigue)) {
-        throw new Error(
-          `extractPlayers: invalid mood/fatigue for player "${player.id}" (${player.name}).`
-        );
-      }
-
-      return {
-        id: player.id,
-        name: player.name,
-        teamId: player.teamId,
-        position: player.position,
-        role: player.role,
-        personal: {
-          height: player.personal.height,
-          weight: player.personal.weight,
-          nationality: player.personal.nationality,
-          birthday: birthdayDate.toISOString()
-        },
-        seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
-        careerStats: player.careerStats,
-        mood: player.mood,
-        fatigue: player.fatigue,
-        injuries: player.injuries ?? [],
-        progression: player.progression
-      };
-    }));
+    return teams.flatMap(team => normalizeTeamRoster(team).players.map(player =>
+      this.serializePlayer(player, resolvedSeasonYear)
+    ));
   }
 
   private serializeSeasonAttributes(attrs: PlayerSeasonAttributes): PersistedPlayerSeasonAttributesRecord {
@@ -208,7 +212,7 @@ export class LeagueAssemblyService {
       );
 
       const fullPlayers = [...orderedPlayers, ...missingFromOrder];
-      const wagePointsUsed = fullPlayers.reduce((sum, p) => sum + calculatePlayerWageCost(p, currentSeasonYear), 0);
+      const wagePointsUsed = calculateSquadTotalWageCost(fullPlayers, currentSeasonYear);
 
       return normalizeTeamRoster({
         id: teamRecord.id,
