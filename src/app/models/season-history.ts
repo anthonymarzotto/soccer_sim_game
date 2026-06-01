@@ -84,10 +84,6 @@ export function isPlayerEligible(player: Player): boolean {
   return !isPlayerInjured(player);
 }
 
-export function getInjuredPlayers(players: Player[]): Player[] {
-  return players.filter(isPlayerInjured);
-}
-
 export function withSortedUniqueSeasons<T extends { seasonYear: number }>(records: T[]): T[] {
   const bySeason = new Map<number, T>();
   const duplicateSeasons = new Set<number>();
