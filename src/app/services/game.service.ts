@@ -1054,6 +1054,12 @@ export class GameService {
    * Used by the CPU lineup refresher (`dressBestPlayers`) and by the user-team
    * "Quick Fix" entry point (`optimizeUserTeamLineup`).
    */
+  private calculatePlayerOverall(resolvedSeasonYear: number, player: Player): number {
+    const baseOverall = getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
+    const fatigue = player.fatigue ?? 0;
+    return scaleOverallWithFatigue(baseOverall, calculateFatigueModifier(fatigue));
+  }
+
   private dressTeamLineup(team: Team, seasonYear?: number): Team {
     const predefinedFormations = this.formationLibrary.listPredefinedFormations();
     const fallbackFormationId = this.formationLibrary.getDefaultFormationId();
@@ -1064,15 +1070,9 @@ export class GameService {
     const players = teamPlayers.map(p => ({ ...p, role: Role.RESERVE }));
     const resolvedSeasonYear = seasonYear ?? this.getCurrentLeagueSeasonYear();
 
-    const overallOf = (player: Player) => {
-      const baseOverall = getCurrentPlayerSeasonAttributes(player, resolvedSeasonYear).overall.value;
-      const fatigue = player.fatigue ?? 0;
-      return scaleOverallWithFatigue(baseOverall, calculateFatigueModifier(fatigue));
-    };
+    const overallOf = this.calculatePlayerOverall.bind(this, resolvedSeasonYear);
 
-    const eligible = (player: Player) => isPlayerEligible(player);
-
-    const byPosition = this.groupAndSortEligiblePlayers(players, eligible, overallOf);
+    const byPosition = this.groupAndSortEligiblePlayers(players, isPlayerEligible, overallOf);
 
     const { bestFormationId, formationAssignments } = this.evaluateAndSelectFormation(
       predefinedFormations,
@@ -1081,7 +1081,7 @@ export class GameService {
       overallOf
     );
 
-    this.assignPlayerRoles(players, formationAssignments, byPosition, eligible, overallOf);
+    this.assignPlayerRoles(players, formationAssignments, byPosition, isPlayerEligible, overallOf);
 
     return this.withSyncedPlayerIds({ ...team, selectedFormationId: bestFormationId, players, formationAssignments });
   }
