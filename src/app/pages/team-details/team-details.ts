@@ -74,6 +74,8 @@ export class TeamDetailsComponent {
 
   userTeamId = computed(() => this.gameService.league()?.userTeamId);
   isSchemaMismatchBlocking = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
+  transferWindowPhase = this.gameService.transferWindowPhase;
+  weeksRemainingInWindow = this.gameService.weeksRemainingInWindow;
 
   team = computed(() => {
     const id = this.teamId();

@@ -12,8 +12,21 @@
 
   <!-- Season Controls -->
   @if (hasLeague()) {
-    <div class="px-4 py-3 border-b border-zinc-800">
+    <div class="px-4 py-3 border-b border-zinc-800 space-y-3">
       <app-season-controls></app-season-controls>
+      
+      @if (transferWindowPhase() !== 'closed') {
+        <div class="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider select-none border"
+             [class.bg-emerald-950/40]="transferWindowPhase() === 'summer'"
+             [class.text-emerald-400]="transferWindowPhase() === 'summer'"
+             [class.border-emerald-800/60]="transferWindowPhase() === 'summer'"
+             [class.bg-cyan-950/40]="transferWindowPhase() === 'winter'"
+             [class.text-cyan-400]="transferWindowPhase() === 'winter'"
+             [class.border-cyan-800/60]="transferWindowPhase() === 'winter'">
+          <span class="material-icons text-[14px]">payments</span>
+          <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Window</span>
+        </div>
+      }
     </div>
   }
 

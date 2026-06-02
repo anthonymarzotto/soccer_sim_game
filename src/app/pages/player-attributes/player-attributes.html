@@ -95,10 +95,7 @@
             @for (row of paginatedPlayers(); track row.player.id + '-' + row.seasonYear) {
               <tr
                 class="hover:bg-zinc-800/50 transition-colors"
-                [class.bg-emerald-950/30]="isUserTeamPlayer(row)"
-                [class.ring-1]="isUserTeamPlayer(row)"
-                [class.ring-inset]="isUserTeamPlayer(row)"
-                [class.ring-emerald-600/50]="isUserTeamPlayer(row)">
+                [class.bg-emerald-950]="isUserTeamPlayer(row)">
                 <td class="px-4 py-3 whitespace-nowrap text-zinc-300 col-team">
                   <app-team-badge [teamId]="row.player.teamId" size="sm" [link]="false" />
                 </td>
