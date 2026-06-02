@@ -98,6 +98,54 @@
           </div>
         </div>
 
+        <!-- Financials Card -->
+        @if (team()?.finances) {
+        @let fin = team()!.finances;
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Financials</h2>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Club Tier</span>
+              <span class="px-2 py-0.5 rounded text-xs font-bold border"
+                [class.bg-amber-500/10]="fin.tier === 1" [class.text-amber-400]="fin.tier === 1" [class.border-amber-500/30]="fin.tier === 1"
+                [class.bg-teal-500/10]="fin.tier === 2" [class.text-teal-400]="fin.tier === 2" [class.border-teal-500/30]="fin.tier === 2"
+                [class.bg-orange-500/10]="fin.tier === 3" [class.text-orange-400]="fin.tier === 3" [class.border-orange-500/30]="fin.tier === 3"
+                [class.bg-blue-500/10]="fin.tier === 4" [class.text-blue-400]="fin.tier === 4" [class.border-blue-500/30]="fin.tier === 4"
+                [class.bg-zinc-500/10]="fin.tier === 5" [class.text-zinc-400]="fin.tier === 5" [class.border-zinc-500/30]="fin.tier === 5">
+                Tier {{ fin.tier }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Transfer Budget</span>
+              <span class="font-medium text-emerald-400 font-mono">{{ fin.transferBudget | currency:'USD':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-zinc-500">Squad Value</span>
+              <span class="font-medium text-zinc-300 font-mono">{{ squadMarketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="h-px bg-zinc-800 my-2"></div>
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-zinc-500">Wage Points Cap</span>
+                <span class="font-semibold text-zinc-300 font-mono">{{ fin.wagePointsUsed | number:'1.1-1' }} / {{ fin.wagePointsCap }} pts</span>
+              </div>
+              <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500"
+                  [style.width.%]="wageUtilization()"
+                  [class.bg-emerald-500]="wageUtilization() < 80"
+                  [class.bg-yellow-500]="wageUtilization() >= 80 && wageUtilization() < 95"
+                  [class.bg-red-500]="wageUtilization() >= 95">
+                </div>
+              </div>
+              <div class="flex justify-between text-[11px] text-zinc-500">
+                <span>Roster Wages</span>
+                <span>{{ wageUtilization() | number:'1.0-0' }}% Used</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+
         <a [routerLink]="['/team', teamId(), 'schedule']"
           class="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-all flex items-center justify-center gap-2 shadow-xl group">
           <span class="material-icons text-lg group-hover:scale-110 transition-transform">calendar_today</span>

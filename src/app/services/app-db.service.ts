@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import Dexie, { Table } from 'dexie';
-import { Match, Player, StatKey, TeamSeasonSnapshot } from '../models/types';
+import { Match, Player, StatKey, TeamSeasonSnapshot, TeamFinances } from '../models/types';
 import { Position, Role } from '../models/enums';
 
 interface AppStateRecord<TValue = unknown> {
@@ -16,6 +16,7 @@ export interface PersistedTeamRecord {
   selectedFormationId: string;
   formationAssignments: Record<string, string>;
   seasonSnapshots: TeamSeasonSnapshot[];
+  finances: TeamFinances;
 }
 
 export interface PersistedPlayerPersonalRecord {

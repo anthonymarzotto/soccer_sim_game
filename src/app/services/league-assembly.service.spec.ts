@@ -69,6 +69,7 @@ describe('LeagueAssemblyService', () => {
           ]
         },
         selectedFormationId: 'formation_4_4_2',
+        finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
         formationAssignments: {
           gk_1: 'player-1'
         },

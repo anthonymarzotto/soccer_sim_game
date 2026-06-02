@@ -37,10 +37,7 @@ export class PersistenceService {
   }
 
   private enqueueNormalizedWrite(operation: () => Promise<void>): Promise<void> {
-    const queuedOperation = this.normalizedWriteQueue.then(
-      () => operation(),
-      () => operation()
-    );
+    const queuedOperation = this.normalizedWriteQueue.then(operation, operation);
     this.normalizedWriteQueue = queuedOperation.catch(() => undefined);
     return queuedOperation;
   }

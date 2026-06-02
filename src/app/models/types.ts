@@ -144,6 +144,13 @@ export interface TeamSeasonSnapshot {
   stats: TeamStats;
 }
 
+export interface TeamFinances {
+  tier: number;
+  transferBudget: number;
+  wagePointsCap: number;
+  wagePointsUsed: number;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -154,6 +161,7 @@ export interface Team {
   selectedFormationId: string;  // References a formation schema ID from FormationLibraryService
   formationAssignments: Record<string, string>;  // slotId -> playerId mapping, validated against selectedFormation
   seasonSnapshots?: TeamSeasonSnapshot[];
+  finances: TeamFinances;
 }
 
 export interface TeamLineupSnapshot {

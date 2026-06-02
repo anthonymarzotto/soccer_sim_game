@@ -4,5 +4,6 @@
         "bd": true,
         "printf": true,
         "npx vitest": true
-    }
+    },
+    "terminal.integrated.defaultProfile.windows": "Git Bash"
 }

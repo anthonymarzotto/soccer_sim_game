@@ -1,6 +1,7 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team } from '../models/types';
+import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team, TeamFinances } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
+import { calculateSquadTotalWageCost } from '../models/player-progression';
 import {
   getTeamSeasonSnapshotForYear,
   withSortedUniqueSeasons
@@ -27,6 +28,7 @@ export interface PersistedTeam {
   selectedFormationId: string;
   formationAssignments: Record<string, string>;
   seasonSnapshots: NonNullable<Team['seasonSnapshots']>;
+  finances: TeamFinances;
 }
 
 export interface PersistedLeagueSnapshot {
@@ -72,58 +74,65 @@ export class LeagueAssemblyService {
               last5: [...currentSnapshot.stats.last5]
             }
           }
-        ])
+        ]),
+        finances: {
+          ...normalizedTeam.finances
+        }
       };
     });
+  }
+
+  serializePlayer(player: Player, seasonYear: number): PersistedPlayerRecord {
+    const seasonAttributes = withSortedUniqueSeasons(player.seasonAttributes ?? []);
+    const hasCurrentSeasonAttrs = seasonAttributes.some(attrs => attrs.seasonYear === seasonYear);
+    if (!hasCurrentSeasonAttrs) {
+      throw new Error(
+        `serializePlayer: missing season-${seasonYear} seasonAttributes for player "${player.id}" (${player.name}). ` +
+        `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
+      );
+    }
+
+    const birthdayDate = player.personal.birthday instanceof Date
+      ? player.personal.birthday
+      : new Date(player.personal.birthday as unknown as string);
+    if (isNaN(birthdayDate.getTime())) {
+      throw new Error(
+        `serializePlayer: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
+      );
+    }
+    if (!this.isValidPlayerConditionValue(player.mood) || !this.isValidPlayerConditionValue(player.fatigue)) {
+      throw new Error(
+        `serializePlayer: invalid mood/fatigue for player "${player.id}" (${player.name}).`
+      );
+    }
+
+    return {
+      id: player.id,
+      name: player.name,
+      teamId: player.teamId,
+      position: player.position,
+      role: player.role,
+      personal: {
+        height: player.personal.height,
+        weight: player.personal.weight,
+        nationality: player.personal.nationality,
+        birthday: birthdayDate.toISOString()
+      },
+      seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
+      careerStats: player.careerStats,
+      mood: player.mood,
+      fatigue: player.fatigue,
+      injuries: player.injuries ?? [],
+      progression: player.progression
+    };
   }
 
   extractPlayers(teams: Team[], seasonYear?: number): PersistedPlayerRecord[] {
     const resolvedSeasonYear = seasonYear ?? this.resolveCurrentSeasonYear(teams);
 
-    return teams.flatMap(team => normalizeTeamRoster(team).players.map(player => {
-      const seasonAttributes = withSortedUniqueSeasons(player.seasonAttributes ?? []);
-      const hasCurrentSeasonAttrs = seasonAttributes.some(attrs => attrs.seasonYear === resolvedSeasonYear);
-      if (!hasCurrentSeasonAttrs) {
-        throw new Error(
-          `extractPlayers: missing season-${resolvedSeasonYear} seasonAttributes for player "${player.id}" (${player.name}). ` +
-          `Persisting would silently corrupt season history. Ensure current-season records exist before saving.`
-        );
-      }
-
-      const birthdayDate = player.personal.birthday instanceof Date
-        ? player.personal.birthday
-        : new Date(player.personal.birthday as unknown as string);
-      if (isNaN(birthdayDate.getTime())) {
-        throw new Error(
-          `extractPlayers: invalid birthday for player "${player.id}" (${player.name}): "${player.personal.birthday}"`
-        );
-      }
-      if (!this.isValidPlayerConditionValue(player.mood) || !this.isValidPlayerConditionValue(player.fatigue)) {
-        throw new Error(
-          `extractPlayers: invalid mood/fatigue for player "${player.id}" (${player.name}).`
-        );
-      }
-
-      return {
-        id: player.id,
-        name: player.name,
-        teamId: player.teamId,
-        position: player.position,
-        role: player.role,
-        personal: {
-          height: player.personal.height,
-          weight: player.personal.weight,
-          nationality: player.personal.nationality,
-          birthday: birthdayDate.toISOString()
-        },
-        seasonAttributes: seasonAttributes.map(attrs => this.serializeSeasonAttributes(attrs)),
-        careerStats: player.careerStats,
-        mood: player.mood,
-        fatigue: player.fatigue,
-        injuries: player.injuries ?? [],
-        progression: player.progression
-      };
-    }));
+    return teams.flatMap(team => normalizeTeamRoster(team).players.map(player =>
+      this.serializePlayer(player, resolvedSeasonYear)
+    ));
   }
 
   private serializeSeasonAttributes(attrs: PlayerSeasonAttributes): PersistedPlayerSeasonAttributesRecord {
@@ -202,15 +211,24 @@ export class LeagueAssemblyService {
         player => !seasonSnapshot.playerIds.includes(player.id)
       );
 
+      const fullPlayers = [...orderedPlayers, ...missingFromOrder];
+      const wagePointsUsed = calculateSquadTotalWageCost(fullPlayers, currentSeasonYear);
+
       return normalizeTeamRoster({
         id: teamRecord.id,
         name: teamRecord.name,
-        players: [...orderedPlayers, ...missingFromOrder],
+        players: fullPlayers,
         playerIds: seasonSnapshot.playerIds,
         stats: seasonSnapshot.stats,
         selectedFormationId: teamRecord.selectedFormationId,
         formationAssignments: teamRecord.formationAssignments,
-        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots)
+        seasonSnapshots: withSortedUniqueSeasons(teamRecord.seasonSnapshots),
+        finances: {
+          tier: teamRecord.finances.tier,
+          transferBudget: teamRecord.finances.transferBudget,
+          wagePointsCap: teamRecord.finances.wagePointsCap,
+          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100
+        }
       });
     });
 

@@ -8,7 +8,9 @@ import {
   calculateOverall,
   getCareerArcMultiplier,
   calculateMarketValue,
-  calculatePlayerWageCost
+  calculatePlayerWageCost,
+  calculateSquadTotalWageCost,
+  calculateSquadTotalMarketValue
 } from './player-progression';
 
 describe('Player Progression', () => {
@@ -328,4 +330,32 @@ describe('Player Progression', () => {
     });
   });
 
+  describe('squad sum helpers', () => {
+    const players = [
+      {
+        position: Position.MIDFIELDER, // 1.0x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 70 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      },
+      {
+        position: Position.FORWARD, // 1.1x
+        personal: { birthday: new Date('2000-01-01') },
+        seasonAttributes: [{ seasonYear: 2028, overall: { value: 95 } }],
+        progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
+      }
+    ] as unknown as Player[];
+
+    it('should sum squad total wage cost', () => {
+      // Player 1: 1.5. Player 2: 15.0. Sum: 16.5
+      expect(calculateSquadTotalWageCost(players, 2028)).toBe(16.5);
+    });
+
+    it('should sum squad total market value', () => {
+      // Player 1: 500,000. Player 2: 109,910,126. Sum: 110,410,126
+      expect(calculateSquadTotalMarketValue(players, 2028)).toBe(110410126);
+    });
+  });
+
 });
+

@@ -14,7 +14,7 @@ import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
 import { getActiveInjury, isPlayerInjured } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
-import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
+import { calculateMarketValue, calculatePlayerWageCost, calculateSquadTotalMarketValue } from '../../models/player-progression';
 
 type TeamDetailsRowStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'gamesStarted' | 'gamesSubbed' | 'minutesPlayed' | 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'totalMatchRating' | 'starNominations'>;
 
@@ -99,6 +99,20 @@ export class TeamDetailsComponent {
     const t = this.team();
     if (!t) return 0;
     return this.gameService.calculateTeamOverall(t);
+  });
+
+  squadMarketValue = computed(() => {
+    const t = this.team();
+    if (!t) return 0;
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (year === undefined) return 0;
+    return calculateSquadTotalMarketValue(this.gameService.getPlayersForTeam(t.id), year);
+  });
+
+  wageUtilization = computed(() => {
+    const t = this.team();
+    if (!t || !t.finances || t.finances.wagePointsCap === 0) return 0;
+    return (t.finances.wagePointsUsed / t.finances.wagePointsCap) * 100;
   });
 
   formationSlots = computed(() => {

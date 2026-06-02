@@ -140,7 +140,8 @@ describe('GameService persistence integration', () => {
     expect(persistenceSpy.saveLeague).toHaveBeenCalledWith({
       teams: [],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026 });
+      currentWeek: 1, currentSeasonYear: 2026
+    });
   });
 
   it('should clear state and persisted league', async () => {
@@ -188,6 +189,7 @@ describe('GameService persistence integration', () => {
       playerIds: ['player-1', 'player-2'],
       stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { gk_1: 'player-1' },
       seasonSnapshots: [{
         seasonYear: 2026,
@@ -237,6 +239,7 @@ describe('GameService persistence integration', () => {
       playerIds: ['player-1'],
       stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { gk_1: 'player-1' },
       seasonSnapshots: [{
         seasonYear: 2026,
@@ -310,6 +313,7 @@ describe('GameService persistence integration', () => {
       players: [injuredStarter, benchPlayer],
       playerIds: ['player-1', 'player-2'],
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { gk_1: 'player-1' },
       stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
       seasonSnapshots: [{
@@ -354,7 +358,8 @@ describe('GameService persistence integration', () => {
       schedule: [
         { id: 'final-match', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: true, homeScore: 2, awayScore: 1 }
       ],
-      currentWeek: 1, currentSeasonYear: 2026 });
+      currentWeek: 1, currentSeasonYear: 2026
+    });
     await service.ensureHydrated();
 
     expect(service.isSeasonComplete()).toBe(true);
@@ -438,6 +443,7 @@ describe('GameService persistence integration', () => {
             }
           }],
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p1' }
         }
       ],
@@ -539,6 +545,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: {
             gk_1: 'p1'
           }
@@ -559,11 +566,13 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: {}
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -615,13 +624,15 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: {
             gk_1: 'p1'
           }
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -665,6 +676,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: {
             gk_1: 'p1'
           },
@@ -685,7 +697,8 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -720,6 +733,7 @@ describe('GameService persistence integration', () => {
       players: [healthyStarter, injuredBench],
       playerIds: ['player-1', 'player-2'],
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { gk_1: 'player-1' },
       stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
       seasonSnapshots: [{
@@ -781,6 +795,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_old',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: {
             gk_1: 'p1',
             def_1: 'p2'
@@ -788,7 +803,8 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service, formationLibrarySpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     vi.mocked(formationLibrarySpy.getFormationSlots).mockImplementation((formationId: string) => {
@@ -860,11 +876,13 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p1' }
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -911,6 +929,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p1' }
         },
         {
@@ -940,6 +959,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p2' }
         }
       ],
@@ -952,7 +972,8 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -1068,6 +1089,7 @@ describe('GameService persistence integration', () => {
       playerIds: ['home-def'],
       stats: emptyStats,
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { slot_0: 'home-def' },
       seasonSnapshots: [{ seasonYear: 2026, playerIds: ['home-def'], stats: emptyStats }]
     } as unknown as Team;
@@ -1078,6 +1100,7 @@ describe('GameService persistence integration', () => {
       playerIds: ['away-att'],
       stats: emptyStats,
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { slot_0: 'away-att' },
       seasonSnapshots: [{ seasonYear: 2026, playerIds: ['away-att'], stats: emptyStats }]
     } as unknown as Team;
@@ -1176,6 +1199,7 @@ describe('GameService persistence integration', () => {
       playerIds: ['home-pass', 'home-score'],
       stats: emptyStats,
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { slot_0: 'home-pass', slot_1: 'home-score' },
       seasonSnapshots: [{ seasonYear: 2026, playerIds: ['home-pass', 'home-score'], stats: emptyStats }]
     } as unknown as Team;
@@ -1186,6 +1210,7 @@ describe('GameService persistence integration', () => {
       playerIds: ['away-1'],
       stats: emptyStats,
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: { slot_0: 'away-1' },
       seasonSnapshots: [{ seasonYear: 2026, playerIds: ['away-1'], stats: emptyStats }]
     } as unknown as Team;
@@ -1295,6 +1320,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p1' }
         },
         {
@@ -1324,6 +1350,7 @@ describe('GameService persistence integration', () => {
             last5: [MatchResult.DRAW]
           },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p2' }
         }
       ],
@@ -1336,7 +1363,8 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -1437,6 +1465,7 @@ describe('GameService persistence integration', () => {
           playerIds: ['p1'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p1' }
         },
         {
@@ -1457,6 +1486,7 @@ describe('GameService persistence integration', () => {
           playerIds: ['p2'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p2' }
         }
       ],
@@ -1469,7 +1499,8 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -1557,6 +1588,7 @@ describe('GameService persistence integration', () => {
           playerIds: ['p-starter', 'p-sub'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: '' }
         },
         {
@@ -1566,11 +1598,13 @@ describe('GameService persistence integration', () => {
           playerIds: ['p-opp'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p-opp' }
         }
       ],
       schedule: [{ id: 'match-sub-red', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -1659,6 +1693,7 @@ describe('GameService persistence integration', () => {
           playerIds: ['p-home', 'p-home-gk'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p-home-gk' }
         },
         {
@@ -1668,11 +1703,13 @@ describe('GameService persistence integration', () => {
           playerIds: ['p-away-gk'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
           formationAssignments: { gk_1: 'p-away-gk' }
         }
       ],
       schedule: [{ id: 'match-shot-goal', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
-      currentWeek: 1, currentSeasonYear: 2026 };
+      currentWeek: 1, currentSeasonYear: 2026
+    };
 
     const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
     await service.ensureHydrated();
@@ -1766,8 +1803,8 @@ describe('GameService simulation engine', () => {
           useValue: {
             loadLeague: vi.fn().mockResolvedValue({
               teams: [
-                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} },
-                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } }
               ],
               schedule: [{ id: 'm1', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: false }],
               currentWeek: 1,
@@ -1823,8 +1860,8 @@ describe('GameService simulation engine', () => {
           useValue: {
             loadLeague: vi.fn().mockResolvedValue({
               teams: [
-                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} },
-                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {} }
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } }
               ],
               schedule: [{ id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false }],
               currentWeek: 1,
@@ -1980,6 +2017,7 @@ describe('GameService dressBestPlayers', () => {
       playerIds: players.map(p => p.id),
       stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
       selectedFormationId: 'formation_4_4_2',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
       formationAssignments: {},
       seasonSnapshots: [{ seasonYear: SEASON_YEAR, playerIds: players.map(p => p.id), stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }]
     };
@@ -2274,17 +2312,17 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1',   preferredPosition: Position.GOALKEEPER, label: 'GK',  coordinates: { x: 50, y: 5  }, zone: FieldZone.DEFENSE  },
-        { slotId: 'def_l',  preferredPosition: Position.DEFENDER,   label: 'LB',  coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE  },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER,   label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE  },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER,   label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE  },
-        { slotId: 'def_r',  preferredPosition: Position.DEFENDER,   label: 'RB',  coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE  },
-        { slotId: 'mid_l',  preferredPosition: Position.MIDFIELDER, label: 'LM',  coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_l', preferredPosition: Position.MIDFIELDER, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
         { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
         { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_r',  preferredPosition: Position.MIDFIELDER, label: 'RM',  coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l',  preferredPosition: Position.FORWARD,    label: 'LS',  coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK   },
-        { slotId: 'att_r',  preferredPosition: Position.FORWARD,    label: 'RS',  coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK   },
+        { slotId: 'mid_r', preferredPosition: Position.MIDFIELDER, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
       ]
     };
 
@@ -2294,23 +2332,23 @@ describe('GameService dressBestPlayers', () => {
     });
 
     const players = [
-      makePlayer('gk1',   Position.GOALKEEPER, 80),
-      makePlayer('def1',  Position.DEFENDER,   80),
-      makePlayer('def2',  Position.DEFENDER,   80),
-      makePlayer('def3',  Position.DEFENDER,   80),
-      makePlayer('def4',  Position.DEFENDER,   80),
+      makePlayer('gk1', Position.GOALKEEPER, 80),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
       // 2 extra healthy defenders that should backfill the bench
-      makePlayer('def5',  Position.DEFENDER,   75),
-      makePlayer('def6',  Position.DEFENDER,   74),
-      makePlayer('mid1',  Position.MIDFIELDER, 80),
-      makePlayer('mid2',  Position.MIDFIELDER, 80),
-      makePlayer('mid3',  Position.MIDFIELDER, 80),
-      makePlayer('mid4',  Position.MIDFIELDER, 80),
+      makePlayer('def5', Position.DEFENDER, 75),
+      makePlayer('def6', Position.DEFENDER, 74),
+      makePlayer('mid1', Position.MIDFIELDER, 80),
+      makePlayer('mid2', Position.MIDFIELDER, 80),
+      makePlayer('mid3', Position.MIDFIELDER, 80),
+      makePlayer('mid4', Position.MIDFIELDER, 80),
       // 2 bench-eligible midfielders who are injured → leave 2 open bench slots
       injuredMid('mid5'),
       injuredMid('mid6'),
-      makePlayer('fwd1',  Position.FORWARD,    80),
-      makePlayer('fwd2',  Position.FORWARD,    80),
+      makePlayer('fwd1', Position.FORWARD, 80),
+      makePlayer('fwd2', Position.FORWARD, 80),
     ];
 
     const service = buildService([formation442]);

@@ -2,6 +2,7 @@ import {Router, Routes} from '@angular/router';
 import {inject} from '@angular/core';
 import { HomeComponent } from './pages/home/home';
 import { StandingsComponent } from './pages/standings/standings';
+import { LeagueFinancesComponent } from './pages/league-finances/league-finances';
 import { TeamDetailsComponent } from './pages/team-details/team-details';
 import { TeamScheduleComponent } from './pages/team-schedule/team-schedule';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
@@ -33,6 +34,7 @@ const redirectToUserTeam = () => {
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'standings', component: StandingsComponent },
+  { path: 'finances', component: LeagueFinancesComponent },
   { path: 'player-stats', component: PlayerStatsComponent },
   { path: 'player-attributes', component: PlayerAttributesComponent },
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },
