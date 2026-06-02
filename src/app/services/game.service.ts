@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase } from '../models/types';
+import { TransferService } from './transfer.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { computeAge, seasonAnchorDate } from '../models/player-age';
@@ -74,6 +75,16 @@ export class GameService {
   private seasonTransitionLogState = signal<SeasonTransitionLog | null>(null);
 
   public league = this.leagueState.asReadonly();
+  private transferService = inject(TransferService);
+  public transferWindowPhase = computed<TransferWindowPhase>(() => {
+    const l = this.leagueState();
+    return l ? this.transferService.getTransferWindowPhase(l.currentWeek) : 'closed';
+  });
+  public weeksRemainingInWindow = computed<number>(() => {
+    const l = this.leagueState();
+    return l ? this.transferService.getWeeksRemainingInWindow(l.currentWeek) : 0;
+  });
+
   public unreadSeasonTransitionLog = computed(() => {
     const log = this.seasonTransitionLogState();
     return (log && !log.isRead) ? log : null;

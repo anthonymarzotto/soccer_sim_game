@@ -309,3 +309,6 @@ export interface SeasonTransitionLog {
   isRead: boolean;
   dismissedTeamIds: string[];  // teams whose events have been dismissed from team-details
 }
+
+export type TransferWindowPhase = 'summer' | 'winter' | 'closed';
+

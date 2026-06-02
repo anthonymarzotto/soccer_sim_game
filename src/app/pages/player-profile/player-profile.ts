@@ -39,6 +39,22 @@ export class PlayerProfileComponent {
   isDev = isDevMode();
 
   playerId = toSignal(this.route.paramMap.pipe(map(params => params.get('id'))), { initialValue: null });
+  transferWindowPhase = this.gameService.transferWindowPhase;
+  isUserTeamPlayer = computed(() => {
+    const p = this.player();
+    const userTeamId = this.gameService.league()?.userTeamId;
+    return !!p && !!userTeamId && p.teamId === userTeamId;
+  });
+  showMockOfferModal = signal(false);
+
+  makeTransferOffer() {
+    if (this.transferWindowPhase() === 'closed') return;
+    this.showMockOfferModal.set(true);
+  }
+
+  closeMockOfferModal() {
+    this.showMockOfferModal.set(false);
+  }
 
   player = computed(() => {
     const id = this.playerId();

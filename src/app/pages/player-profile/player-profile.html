@@ -55,6 +55,31 @@
         </div>
       </div>
       <div class="ml-auto flex items-center gap-3">
+        @if (!isUserTeamPlayer()) {
+          <div class="relative group">
+            <button
+              (click)="makeTransferOffer()"
+              [disabled]="transferWindowPhase() === 'closed'"
+              class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
+              [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+              [class.text-zinc-950]="transferWindowPhase() === 'summer'"
+              [class.hover:bg-emerald-600]="transferWindowPhase() === 'summer'"
+              [class.bg-cyan-500]="transferWindowPhase() === 'winter'"
+              [class.text-zinc-950]="transferWindowPhase() === 'winter'"
+              [class.hover:bg-cyan-600]="transferWindowPhase() === 'winter'"
+              [class.bg-zinc-800]="transferWindowPhase() === 'closed'"
+              [class.text-zinc-400]="transferWindowPhase() === 'closed'">
+              <span class="material-icons text-[14px]">payments</span>
+              <span>Make Transfer Offer</span>
+            </button>
+            
+            @if (transferWindowPhase() === 'closed') {
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 hidden group-hover:block bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg text-center shadow-xl pointer-events-none z-30">
+                Transfer window is closed. Opens Week 1 (Summer) or Week 20 (Winter).
+              </div>
+            }
+          </div>
+        }
         @let chip = currentSeasonRatingChip();
         <div class="flex flex-col items-end gap-0.5 text-xs">
           <span class="font-semibold text-amber-400 text-base">{{ chip.avgRating }}</span>
@@ -941,6 +966,51 @@
               </table>
             </div>
           </div>
+
+          <!-- Mock Offer Confirmation Modal -->
+          @if (showMockOfferModal()) {
+            <div class="fixed inset-0 flex items-center justify-center z-50 p-4">
+              <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="closeMockOfferModal()" (keydown)="closeMockOfferModal()" tabindex="0" role="button" aria-label="Close modal"></div>
+              
+              <div class="relative bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl z-10 transition-all duration-300 transform scale-100">
+                <div class="absolute top-0 left-0 w-full h-1"
+                     [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+                     [class.bg-cyan-500]="transferWindowPhase() === 'winter'"></div>
+                
+                <div class="p-6">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="flex items-center justify-center w-10 h-10 rounded-lg"
+                         [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
+                         [class.text-emerald-400]="transferWindowPhase() === 'summer'"
+                         [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
+                         [class.text-cyan-400]="transferWindowPhase() === 'winter'">
+                      <span class="material-icons text-xl">handshake</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Transfer Offer</h3>
+                  </div>
+                  
+                  <p class="text-sm text-zinc-300 leading-relaxed mb-6">
+                    You are about to initiate a transfer offer for <strong class="text-white">{{ p.name }}</strong>. 
+                    The market value is estimated at <strong class="text-emerald-400 font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</strong>.
+                  </p>
+                  
+                  <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-4 mb-6">
+                    <span class="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Architectural Status</span>
+                    <div class="text-xs text-zinc-400 leading-relaxed">
+                      <span class="text-emerald-400 font-semibold">Increment 3 Complete!</span> Gating week boundaries are successfully active. The negotiation and bid execution logic will be fully wired up in <strong class="text-white">Increment 5 — Transfer Offers & Execution</strong>.
+                    </div>
+                  </div>
+                  
+                  <div class="flex gap-3">
+                    <button (click)="closeMockOfferModal()"
+                            class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer text-center">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
         }
     } @else {
       <div class="text-center py-12 text-zinc-500">

@@ -78,7 +78,7 @@
           <tbody class="divide-y divide-zinc-800">
             @for (team of sortedTeams(); track team.id; let i = $index) {
             <tr class="hover:bg-zinc-800/50 transition-colors group"
-              [class.bg-emerald-950/20]="team.id === userTeamId()">
+              [class.bg-emerald-950]="team.id === userTeamId()">
               <td class="px-6 py-4 whitespace-nowrap text-zinc-500 font-mono text-center">
                 {{ i + 1 }}
               </td>

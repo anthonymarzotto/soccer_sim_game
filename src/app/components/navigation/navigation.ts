@@ -28,6 +28,7 @@ export class NavigationComponent {
 
   appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
+  transferWindowPhase = this.gameService.transferWindowPhase;
   isLocalhost = computed(() => this.localhostService.isLocalhost());
   displayedVersion = computed(() => `${APP_VERSION}.${resolveSchemaVersion(this.settingsService.currentDataSchemaVersion)}`);
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;

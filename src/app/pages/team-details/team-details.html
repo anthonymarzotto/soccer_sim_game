@@ -24,6 +24,77 @@
         }
       </div>
     </div>
+    
+    @if (transferWindowPhase() !== 'closed') {
+      <div class="relative overflow-hidden rounded-2xl border p-6 shadow-2xl backdrop-blur-md bg-zinc-900/80 transition-all duration-300"
+           [class.border-emerald-500/30]="transferWindowPhase() === 'summer'"
+           [class.shadow-emerald-500/5]="transferWindowPhase() === 'summer'"
+           [class.border-cyan-500/30]="transferWindowPhase() === 'winter'"
+           [class.shadow-cyan-500/5]="transferWindowPhase() === 'winter'">
+        
+        <div class="absolute inset-0 opacity-10 pointer-events-none"
+             [class.bg-gradient-to-r]="true"
+             [class.from-emerald-500]="transferWindowPhase() === 'summer'"
+             [class.to-transparent]="transferWindowPhase() === 'summer'"
+             [class.from-cyan-500]="transferWindowPhase() === 'winter'"
+             [class.to-transparent]="transferWindowPhase() === 'winter'"></div>
+        
+        <div class="relative flex flex-col md:flex-row md:items-center justify-between gap-4 z-10">
+          <div class="flex items-start gap-4">
+            <div class="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 animate-pulse"
+                 [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
+                 [class.text-emerald-400]="transferWindowPhase() === 'summer'"
+                 [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
+                 [class.text-cyan-400]="transferWindowPhase() === 'winter'">
+              <span class="material-icons text-2xl">payments</span>
+            </div>
+            
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Transfer Window Open</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider animate-pulse"
+                      [class.bg-emerald-500/20]="transferWindowPhase() === 'summer'"
+                      [class.text-emerald-300]="transferWindowPhase() === 'summer'"
+                      [class.bg-cyan-500/20]="transferWindowPhase() === 'winter'"
+                      [class.text-cyan-300]="transferWindowPhase() === 'winter'">
+                  Active
+                </span>
+              </h2>
+              @if (transferWindowPhase() === 'summer') {
+                <p class="text-sm text-zinc-400 mt-1">
+                  @if (weeksRemainingInWindow() > 1) {
+                    You have <strong class="text-white font-semibold">{{ weeksRemainingInWindow() }} weeks remaining</strong> (including this week) to recruit new talent, strengthen your squad, or sell surplus players to balance your wage cap.
+                  } @else {
+                    This is the <strong class="text-amber-400 font-semibold">final week</strong> of the summer window! Make your final squad improvements or adjustments before it closes.
+                  }
+                </p>
+              } @else {
+                <p class="text-sm text-zinc-400 mt-1">
+                  @if (weeksRemainingInWindow() > 1) {
+                    You have <strong class="text-white font-semibold">{{ weeksRemainingInWindow() }} weeks remaining</strong> (including this week) to make emergency signings, cover for key injuries, or adjust roster wages for the home stretch.
+                  } @else {
+                    This is the <strong class="text-amber-400 font-semibold">final week</strong> of the winter window! Secure any mid-season coverages before it closes.
+                  }
+                </p>
+              }
+            </div>
+          </div>
+          
+          <div class="shrink-0 flex items-center gap-3">
+             <a routerLink="/finances"
+                class="rounded-lg px-3 py-2 text-xs font-semibold transition-colors cursor-pointer select-none"
+                [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+                [class.text-zinc-950]="transferWindowPhase() === 'summer'"
+                [class.hover:bg-emerald-600]="transferWindowPhase() === 'summer'"
+                [class.bg-cyan-500]="transferWindowPhase() === 'winter'"
+                [class.text-zinc-950]="transferWindowPhase() === 'winter'"
+                [class.hover:bg-cyan-600]="transferWindowPhase() === 'winter'">
+               Explore Market
+             </a>
+          </div>
+        </div>
+      </div>
+    }
 
     @if (teamTransitionEvents().length > 0) {
     <div
