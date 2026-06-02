@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
 import { TransferWindowPhase } from '../models/types';
 
+export const SUMMER_WINDOW_START = 1;
+export const SUMMER_WINDOW_END = 3;
+export const WINTER_WINDOW_START = 20;
+export const WINTER_WINDOW_END = 22;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -12,9 +17,9 @@ export class TransferService {
    * Closed: All other weeks
    */
   getTransferWindowPhase(week: number): TransferWindowPhase {
-    if (week >= 1 && week <= 3) {
+    if (week >= SUMMER_WINDOW_START && week <= SUMMER_WINDOW_END) {
       return 'summer';
-    } else if (week >= 20 && week <= 22) {
+    } else if (week >= WINTER_WINDOW_START && week <= WINTER_WINDOW_END) {
       return 'winter';
     }
     return 'closed';
@@ -27,10 +32,11 @@ export class TransferService {
   getWeeksRemainingInWindow(week: number): number {
     const phase = this.getTransferWindowPhase(week);
     if (phase === 'summer') {
-      return 3 - week + 1;
+      return SUMMER_WINDOW_END - week + 1;
     } else if (phase === 'winter') {
-      return 22 - week + 1;
+      return WINTER_WINDOW_END - week + 1;
     }
     return 0;
   }
 }
+
