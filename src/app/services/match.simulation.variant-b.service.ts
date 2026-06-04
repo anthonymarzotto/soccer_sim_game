@@ -112,32 +112,32 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   baseTickMax: 3,
   midfieldTickMin: 2,
   midfieldTickMax: 5,
-  attackTickMin: 2,
-  attackTickMax: 4,
+  attackTickMin: 1,
+  attackTickMax: 3,
   lateCloseBoostTicks: 1,
 
   movementStepBase: 2.4,
   movementStepRandom: 3.0,
   lateUrgencyMultiplier: 1.2,
 
-  passWeightBase: 0.57,
+  passWeightBase: 0.62,
   carryWeightBase: 0.12,
-  shotWeightBase: 0.24,
+  shotWeightBase: 0.17,
   foulWeightBase: 0.03,
   outOfWindowShotMultiplier: 0.27,
 
-  onTargetBase: 0.31,
-  onTargetSkillScale: 0.0045,
+  onTargetBase: 0.25,
+  onTargetSkillScale: 0.0012,
   onTargetWidePenalty: 0.06,
   onTargetFatiguePenalty: 0.04,
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.25,
-  goalChanceSkillVsKeeperScale: 0.0033,
+  goalChanceBase: 0.17,
+  goalChanceSkillVsKeeperScale: 0.0008,
   goalChanceWidePenalty: 0.035,
   goalChanceMin: 0.1,
-  goalChanceMax: 0.55,
+  goalChanceMax: 0.42,
 
   homeAdvantageGoalBonus: 0.04,
 };
@@ -226,7 +226,7 @@ export class MatchSimulationVariantBService {
         break;
       }
 
-      const ticks = this.determineTicksForMinute(currentState, minute);
+      const ticks = this.determineTicksForMinute(currentState, minute, simulatedHomeTeam.id);
       let forfeited = false;
 
       for (let tick = 0; tick < ticks; tick++) {
@@ -424,15 +424,27 @@ export class MatchSimulationVariantBService {
     homeTeam: Team,
     awayTeam: Team,
   ): { home: TacticalSetup; away: TacticalSetup } {
+    const homeTactics = this.fieldService.calculateTeamTactics(
+      homeTeam,
+      this.currentSeasonYear,
+    );
+    const awayTactics = this.fieldService.calculateTeamTactics(
+      awayTeam,
+      this.currentSeasonYear,
+    );
+
+    // Mirror away team's formation coordinates so they align with the y=100 (defending) end of the pitch.
+    awayTactics.formation.positions = awayTactics.formation.positions.map((pos) => ({
+      ...pos,
+      coordinates: {
+        x: 100 - pos.coordinates.x,
+        y: 100 - pos.coordinates.y,
+      },
+    }));
+
     return {
-      home: this.fieldService.calculateTeamTactics(
-        homeTeam,
-        this.currentSeasonYear,
-      ),
-      away: this.fieldService.calculateTeamTactics(
-        awayTeam,
-        this.currentSeasonYear,
-      ),
+      home: homeTactics,
+      away: awayTactics,
     };
   }
 
@@ -486,10 +498,17 @@ export class MatchSimulationVariantBService {
     state.fatigueTimeline.push(timelineEntry);
   }
 
-  private determineTicksForMinute(state: MatchState, minute: number): number {
-    const zone = this.fieldService.getZoneFromY(
-      state.ballPossession.location.y,
-    );
+  private determineTicksForMinute(
+    state: MatchState,
+    minute: number,
+    homeTeamId: string,
+  ): number {
+    const isHomePossession = state.ballPossession.teamId === homeTeamId;
+    const relativeY = isHomePossession
+      ? state.ballPossession.location.y
+      : 100 - state.ballPossession.location.y;
+
+    const zone = this.fieldService.getZoneFromY(relativeY);
     const scoreDelta = Math.abs(state.homeScore - state.awayScore);
     const lateGame = minute >= 75;
 
@@ -563,7 +582,8 @@ export class MatchSimulationVariantBService {
     minute: number,
   ): MatchAction {
     const location = state.ballPossession.location;
-    const zone = this.fieldService.getZoneFromY(location.y);
+    const relativeY = currentTeam === TeamSide.HOME ? location.y : 100 - location.y;
+    const zone = this.fieldService.getZoneFromY(relativeY);
     const shootingWindow = this.isInShootingWindow(currentTeam, location.y);
     const teamTactics = tactics[currentTeam];
     const teamFatigue = fatigue[currentTeam].find(
@@ -652,6 +672,9 @@ export class MatchSimulationVariantBService {
 
     shotWeight += chainQuality * 0.03;
     passWeight -= chainQuality * 0.01;
+
+    const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
+    shotWeight *= (1 - pressure * 0.5);
 
     if (!shootingWindow) {
       shotWeight *= this.activeTuning.outOfWindowShotMultiplier;
@@ -940,11 +963,11 @@ export class MatchSimulationVariantBService {
 
     if (attackingY < 55) {
       successChance += 0.04;
-    } else if (attackingY > 78) {
-      successChance -= 0.03;
+    } else if (attackingY > 55) {
+      successChance -= (attackingY - 55) * 0.0025;
     }
 
-    successChance -= pressure * 0.23;
+    successChance -= pressure * 0.40;
     successChance += this.calculateCarryShapeModifier(state, currentTeam);
 
     if (carrierFatigue && carrierFatigue.fatigueLevel > 70) {
@@ -1884,7 +1907,13 @@ export class MatchSimulationVariantBService {
       baseChance -= 5;
     }
 
-    baseChance -= pressure * 4;
+    baseChance -= pressure * 28;
+
+    const attackingY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
+    if (attackingY > 50) {
+      baseChance -= (attackingY - 50) * 0.15;
+    }
+
     baseChance += this.calculatePassShapeModifier(
       currentLocation,
       currentTeam,
@@ -2016,13 +2045,11 @@ export class MatchSimulationVariantBService {
     const defendingTeam =
       currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
     const defendingTactics = tactics[defendingTeam];
-    const zone = this.fieldService.getZoneFromY(
-      state.ballPossession.location.y,
-    );
-    const attackingZone =
-      currentTeam === TeamSide.HOME
-        ? zone === FieldZone.ATTACK
-        : zone === FieldZone.DEFENSE;
+    const relativeY = currentTeam === TeamSide.HOME
+      ? state.ballPossession.location.y
+      : 100 - state.ballPossession.location.y;
+    const zone = this.fieldService.getZoneFromY(relativeY);
+    const attackingZone = zone === FieldZone.ATTACK;
     const midfieldZone = zone === FieldZone.MIDFIELD;
 
     let pressure = defendingTactics.pressingIntensity / 100;
@@ -2041,7 +2068,39 @@ export class MatchSimulationVariantBService {
 
     pressure += this.calculateShapePressureModifier(state, currentTeam);
 
-    return this.clamp(pressure, 0.1, 0.75);
+    // Scale pressure based on defending players' defensive attributes
+    const players = defendingTeam === TeamSide.HOME
+      ? this.activeRosters?.homePlayers
+      : this.activeRosters?.awayPlayers;
+
+    if (players && players.length > 0) {
+      let totalWeight = 0;
+      let totalSkill = 0;
+      for (const player of players) {
+        let weight = 0;
+        if (player.position === PositionEnum.DEFENDER) {
+          weight = 1.5;
+        } else if (player.position === PositionEnum.GOALKEEPER) {
+          weight = 0.0;
+        } else {
+          weight = 1.0;
+        }
+
+        if (weight > 0) {
+          const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
+          const playerSkill = (attrs.tackling.value + attrs.speed.value) / 2;
+          totalSkill += playerSkill * weight;
+          totalWeight += weight;
+        }
+      }
+
+      if (totalWeight > 0) {
+        const defendingSkill = totalSkill / totalWeight;
+        pressure += (defendingSkill - 70) * 0.007;
+      }
+    }
+
+    return this.clamp(pressure, 0.1, 0.80);
   }
 
   private getLateGameScorelineState(
@@ -2628,7 +2687,7 @@ export class MatchSimulationVariantBService {
     if (shooterFatigue && shooterFatigue.fatigueLevel > 75) {
       onTargetChance -= this.activeTuning.onTargetFatiguePenalty;
     }
-    onTargetChance -= pressure * 0.02;
+    onTargetChance -= pressure * 0.15;
     onTargetChance += chainQuality * 0.02;
     onTargetChance += shotShapeModifier.onTargetBonus;
 
@@ -2694,7 +2753,7 @@ export class MatchSimulationVariantBService {
 
     goalChance -=
       (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
-    goalChance -= pressure * 0.015;
+    goalChance -= pressure * 0.12;
     goalChance += chainQuality * 0.015;
     goalChance += shotShapeModifier.goalChanceBonus;
     if (isHomeInPossession) {
@@ -3416,21 +3475,26 @@ export class MatchSimulationVariantBService {
     awayTeam: Team,
   ): MatchShapeState {
     return {
-      home: this.buildShapeSlots(homeTeam),
-      away: this.buildShapeSlots(awayTeam),
+      home: this.buildShapeSlots(homeTeam, false),
+      away: this.buildShapeSlots(awayTeam, true),
     };
   }
 
-  private buildShapeSlots(team: Team): ActiveShapeSlot[] {
+  private buildShapeSlots(team: Team, isAway: boolean): ActiveShapeSlot[] {
     // Match-time shape starts from the saved formation assignments, then diverges in-memory after dismissals and tactical rebalances.
-    return this.fieldService.getFormationSlots(team).map((slot) => ({
-      slotId: slot.slotId,
-      playerId: team.formationAssignments[slot.slotId] || null,
-      coordinates: { ...slot.coordinates },
-      zone: slot.zone,
-      role: slot.label,
-      preferredPosition: slot.position,
-    }));
+    return this.fieldService.getFormationSlots(team).map((slot) => {
+      const coordinates = isAway
+        ? { x: 100 - slot.coordinates.x, y: 100 - slot.coordinates.y }
+        : { ...slot.coordinates };
+      return {
+        slotId: slot.slotId,
+        playerId: team.formationAssignments[slot.slotId] || null,
+        coordinates,
+        zone: slot.zone,
+        role: slot.label,
+        preferredPosition: slot.position,
+      };
+    });
   }
 
   private checkForfeitCondition(): TeamSide | null {
@@ -3563,8 +3627,9 @@ export class MatchSimulationVariantBService {
     const defendingTeam =
       currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
     const defendingShape = this.activeMatchShape[defendingTeam];
-    const zone = this.fieldService.getZoneFromY(location.y);
-    const defendingZone = this.resolveDefendingShapeZone(currentTeam, zone);
+    const relativeY = currentTeam === TeamSide.HOME ? location.y : 100 - location.y;
+    const zone = this.fieldService.getZoneFromY(relativeY);
+    const defendingZone = this.resolveDefendingShapeZone(zone);
     const zoneSlots = defendingShape.filter(
       (slot) => slot.zone === defendingZone,
     );
@@ -3593,13 +3658,8 @@ export class MatchSimulationVariantBService {
   }
 
   private resolveDefendingShapeZone(
-    currentTeam: TeamSide,
     zone: FieldZone,
   ): FieldZone {
-    if (currentTeam === TeamSide.AWAY) {
-      return zone;
-    }
-
     if (zone === FieldZone.DEFENSE) {
       return FieldZone.ATTACK;
     }
