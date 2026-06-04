@@ -133,7 +133,7 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.17,
+  goalChanceBase: 0.185,
   goalChanceSkillVsKeeperScale: 0.0008,
   goalChanceWidePenalty: 0.035,
   goalChanceMin: 0.1,
@@ -2753,7 +2753,7 @@ export class MatchSimulationVariantBService {
 
     goalChance -=
       (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
-    goalChance -= pressure * 0.12;
+    goalChance -= pressure * 0.09;
     goalChance += chainQuality * 0.015;
     goalChance += shotShapeModifier.goalChanceBonus;
     if (isHomeInPossession) {
