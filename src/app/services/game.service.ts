@@ -5,7 +5,7 @@ import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { computeAge, seasonAnchorDate } from '../models/player-age';
 import { gaussianRandom, clamp, lerp } from '../utils/math';
-import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall } from '../models/player-progression';
+import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall, calculatePlayerWageCost, calculateMarketValue } from '../models/player-progression';
 import { Phase } from '../models/enums';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
@@ -226,7 +226,7 @@ export class GameService {
     });
   }
 
-  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): void {
+  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings'>): void {
     if (this.isHydrating()) {
       return;
     }
@@ -297,8 +297,11 @@ export class GameService {
       teams: optimizedTeams,
       schedule,
       currentWeek: 1,
-      currentSeasonYear
+      currentSeasonYear,
+      transferListings: []
     };
+
+    league.transferListings = this.runCpuAutoListingForLeague(league);
 
     this.leagueState.set(league);
     this.persistLeague(league);
@@ -422,14 +425,215 @@ export class GameService {
     const league = this.leagueState();
     if (!league) return;
 
+    const previousPhase = this.transferService.getTransferWindowPhase(league.currentWeek);
+    const nextWeek = league.currentWeek + 1;
+    const nextPhase = this.transferService.getTransferWindowPhase(nextWeek);
+
+    let transferListings = league.transferListings ?? [];
+    if (nextPhase === 'closed') {
+      if (previousPhase !== 'closed') {
+        transferListings = [];
+      }
+    } else {
+      // Re-evaluate listings weekly when transfer window is active
+      const userTeamId = league.userTeamId;
+      const userListings = userTeamId
+        ? transferListings.filter(playerId => {
+          const player = this.getPlayer(playerId);
+          return player && player.teamId === userTeamId;
+        })
+        : [];
+
+      const newLeagueStateForAutoListing: League = {
+        ...league,
+        transferListings: userListings
+      };
+      transferListings = this.runCpuAutoListingForLeague(newLeagueStateForAutoListing);
+    }
+
     const updatedLeague: League = {
       ...league,
-      currentWeek: league.currentWeek + 1,
-      teams: this.advanceWeekForPlayers(league.teams, league.currentSeasonYear, league.currentWeek)
+      currentWeek: nextWeek,
+      teams: this.advanceWeekForPlayers(league.teams, league.currentSeasonYear, league.currentWeek),
+      transferListings
     };
 
     this.leagueState.set(updatedLeague);
     this.persistChangedTeamsAndPlayers(league.teams, updatedLeague.teams);
+    this.persistLeagueMetadata(updatedLeague);
+  }
+
+  runCpuAutoListingForLeague(league: League): string[] {
+    const nextListings: string[] = [];
+    const currentSeasonYear = league.currentSeasonYear;
+    const userTeamId = league.userTeamId;
+
+    if (userTeamId && league.transferListings) {
+      const userListings = league.transferListings.filter(playerId => {
+        const player = this.getPlayer(playerId);
+        return player && player.teamId === userTeamId;
+      });
+      nextListings.push(...userListings);
+    }
+
+    for (const team of league.teams) {
+      if (userTeamId && team.id === userTeamId) {
+        continue;
+      }
+
+      const players = resolveTeamPlayers(team);
+      const gkList: Player[] = [];
+      const defList: Player[] = [];
+      const midList: Player[] = [];
+      const fwdList: Player[] = [];
+
+      for (const p of players) {
+        if (p.position === Position.GOALKEEPER) gkList.push(p);
+        else if (p.position === Position.DEFENDER) defList.push(p);
+        else if (p.position === Position.MIDFIELDER) midList.push(p);
+        else if (p.position === Position.FORWARD) fwdList.push(p);
+      }
+
+      const schema = this.formationLibrary.getFormationSlots(team.selectedFormationId);
+      let gkStartersCount = 0;
+      let defStartersCount = 0;
+      let midStartersCount = 0;
+      let fwdStartersCount = 0;
+
+      if (schema) {
+        for (const slot of schema) {
+          if (slot.preferredPosition === Position.GOALKEEPER) gkStartersCount++;
+          else if (slot.preferredPosition === Position.DEFENDER) defStartersCount++;
+          else if (slot.preferredPosition === Position.MIDFIELDER) midStartersCount++;
+          else if (slot.preferredPosition === Position.FORWARD) fwdStartersCount++;
+        }
+      } else {
+        gkStartersCount = 1;
+        defStartersCount = 4;
+        midStartersCount = 4;
+        fwdStartersCount = 2;
+      }
+
+      const playerWageRatios = players.map(p => {
+        const wage = calculatePlayerWageCost(p, currentSeasonYear);
+        const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
+        const ratio = wage / overall;
+        return { id: p.id, ratio };
+      });
+      playerWageRatios.sort((a, b) => b.ratio - a.ratio);
+      const worstCount = Math.ceil(players.length * 0.2);
+      const worstWageRatioIds = new Set(playerWageRatios.slice(0, worstCount).map(x => x.id));
+
+      const playerValues = players.map(p => {
+        const val = calculateMarketValue(p, currentSeasonYear);
+        return { id: p.id, val };
+      });
+      playerValues.sort((a, b) => b.val - a.val);
+      const topValueCount = Math.ceil(players.length * 0.2);
+      const topValueIds = new Set(playerValues.slice(0, topValueCount).map(x => x.id));
+
+      const processPosition = (posPlayers: Player[], posMin: number, posStartersCount: number) => {
+        if (posPlayers.length <= posMin) {
+          return;
+        }
+
+        const sorted = [...posPlayers].sort((a, b) => {
+          const ovrA = getCurrentPlayerSeasonAttributes(a, currentSeasonYear).overall.value;
+          const ovrB = getCurrentPlayerSeasonAttributes(b, currentSeasonYear).overall.value;
+          return ovrB - ovrA;
+        });
+
+        const topPlayers = sorted.slice(0, posStartersCount);
+        const hasInjuryInTop = topPlayers.some(p => !isPlayerEligible(p));
+
+        const posCandidates: { player: Player; overall: number }[] = [];
+
+        for (let i = 0; i < sorted.length; i++) {
+          const p = sorted[i];
+
+          if (i < posMin) {
+            continue;
+          }
+
+          if (hasInjuryInTop && p.role === Role.STARTER && i >= posStartersCount) {
+            continue;
+          }
+
+          const age = computeAge(p.personal.birthday, seasonAnchorDate(currentSeasonYear));
+          const phase = derivePhase(age, p);
+          const isDeclining = phase === Phase.Decline;
+          const isWageInefficient = worstWageRatioIds.has(p.id);
+          const isValuableYouth = age <= 21 && topValueIds.has(p.id);
+
+          if (isDeclining || isWageInefficient || isValuableYouth) {
+            const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
+            posCandidates.push({ player: p, overall });
+          }
+        }
+
+        posCandidates.sort((a, b) => a.overall - b.overall);
+
+        const limit = posPlayers.length - posMin;
+        const selected = posCandidates.slice(0, limit);
+
+        for (const item of selected) {
+          nextListings.push(item.player.id);
+        }
+      };
+
+      processPosition(gkList, 1, gkStartersCount);
+      processPosition(defList, 3, defStartersCount);
+      processPosition(midList, 3, midStartersCount);
+      processPosition(fwdList, 2, fwdStartersCount);
+    }
+
+    return nextListings;
+  }
+
+  addPlayerToTransferList(playerId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+    const league = this.leagueState();
+    if (!league) return;
+
+    const player = this.getPlayer(playerId);
+    if (!player || player.teamId !== league.userTeamId) {
+      return;
+    }
+
+    if (league.transferListings?.includes(playerId)) {
+      return;
+    }
+
+    const transferListings = [...(league.transferListings ?? []), playerId];
+    const updatedLeague: League = {
+      ...league,
+      transferListings
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistLeagueMetadata(updatedLeague);
+  }
+
+  removePlayerFromTransferList(playerId: string) {
+    if (!this.canMutateLeagueState()) {
+      return;
+    }
+    const league = this.leagueState();
+    if (!league) return;
+
+    if (!league.transferListings?.includes(playerId)) {
+      return;
+    }
+
+    const transferListings = (league.transferListings ?? []).filter(id => id !== playerId);
+    const updatedLeague: League = {
+      ...league,
+      transferListings
+    };
+
+    this.leagueState.set(updatedLeague);
     this.persistLeagueMetadata(updatedLeague);
   }
 
@@ -676,7 +880,12 @@ export class GameService {
 
     const l = this.leagueState();
     if (l) {
-      const updatedLeague: League = { ...l, userTeamId: teamId };
+      const transferListings = (l.transferListings ?? []).filter(playerId => {
+        const player = this.getPlayer(playerId);
+        return player && player.teamId !== teamId;
+      });
+
+      const updatedLeague: League = { ...l, userTeamId: teamId, transferListings };
       this.leagueState.set(updatedLeague);
       this.persistLeagueMetadata(updatedLeague);
     }
@@ -1535,13 +1744,13 @@ export class GameService {
 
     // Update league state with results
     this.updateLeagueWithMatchResult(
-      match, 
-      matchState, 
-      preparedHomeTeam, 
-      preparedAwayTeam, 
-      keyEvents, 
-      matchStats, 
-      matchReport, 
+      match,
+      matchState,
+      preparedHomeTeam,
+      preparedAwayTeam,
+      keyEvents,
+      matchStats,
+      matchReport,
       homeLineup,
       awayLineup,
       endedByForfeit
@@ -2309,8 +2518,11 @@ export class GameService {
       teams: this.dressBestPlayers(seededTeams, nextSeasonYear),
       schedule: retainedSchedule,
       currentSeasonYear: nextSeasonYear,
-      currentWeek: 1
+      currentWeek: 1,
+      transferListings: []
     };
+
+    updatedLeague.transferListings = this.runCpuAutoListingForLeague(updatedLeague);
 
     this.leagueState.set(updatedLeague);
     this.persistLeague(updatedLeague);

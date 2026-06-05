@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, OnDestroy, effect, ElementRef, ViewChild, isDevMode } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
 import { CommentaryService } from '../../services/commentary.service';
@@ -87,7 +87,7 @@ interface LiveRatingTooltipState {
 @Component({
   selector: 'app-watch-game',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, MatchSummaryComponent, DecimalPipe],
+  imports: [MatchSummaryComponent, DecimalPipe],
   templateUrl: './watch-game.html',
 })
 export class WatchGameComponent implements OnInit, OnDestroy {
@@ -226,7 +226,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     if (!match) return;
 
     this.match.set(match);
-    
+
     let home: Team | null = null;
     let away: Team | null = null;
 
@@ -287,7 +287,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
 
   private applyLineupSnapshot(team: Team, snapshot?: TeamLineupSnapshot): Team {
     if (!snapshot) return team;
-    
+
     const players = team.players.map(p => ({
       ...p,
       role: snapshot.playerRoles[p.id] ?? p.role

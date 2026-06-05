@@ -124,7 +124,7 @@ describe('GameService persistence integration', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('should hydrate league from persistence', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     expect(service.league()?.currentWeek).toBe(4);
@@ -140,7 +140,8 @@ describe('GameService persistence integration', () => {
     expect(persistenceSpy.saveLeague).toHaveBeenCalledWith({
       teams: [],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     });
   });
 
@@ -156,7 +157,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should persist metadata only when advancing week', async () => {
-    const { service, persistenceSpy } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service, persistenceSpy } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     service.advanceWeek();
@@ -198,7 +199,7 @@ describe('GameService persistence integration', () => {
       }]
     };
 
-    const { service, persistenceSpy } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service, persistenceSpy } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     service.advanceWeek();
@@ -248,7 +249,7 @@ describe('GameService persistence integration', () => {
       }]
     };
 
-    const { service } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [team], schedule: [], currentWeek: 4, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     service.advanceWeek();
@@ -258,7 +259,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should block mutating league operations while schema mismatch is active', async () => {
-    const { service, hasSchemaMismatch, persistenceSpy } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026 });
+    const { service, hasSchemaMismatch, persistenceSpy } = setup({ teams: [], schedule: [], currentWeek: 4, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     hasSchemaMismatch.set(true);
@@ -278,7 +279,7 @@ describe('GameService persistence integration', () => {
     vi.useFakeTimers();
 
     try {
-      const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+      const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
       await service.ensureHydrated();
 
       service.simulateCurrentWeek();
@@ -324,7 +325,7 @@ describe('GameService persistence integration', () => {
     };
 
     const { service } = setup(
-      { teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026 },
+      { teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026, transferListings: [] },
       {
         fieldServiceSpy: {
           validateFormationAssignments: vi.fn().mockReturnValue({
@@ -358,7 +359,8 @@ describe('GameService persistence integration', () => {
       schedule: [
         { id: 'final-match', week: 1, homeTeamId: 'home', awayTeamId: 'away', played: true, homeScore: 2, awayScore: 1 }
       ],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     });
     await service.ensureHydrated();
 
@@ -377,7 +379,8 @@ describe('GameService persistence integration', () => {
         { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false }
       ],
       currentWeek: 1,
-      currentSeasonYear: 2026
+      currentSeasonYear: 2026,
+      transferListings: []
     });
     await service.ensureHydrated();
 
@@ -451,7 +454,8 @@ describe('GameService persistence integration', () => {
         { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'team-1', awayTeamId: 'team-1', played: true, homeScore: 1, awayScore: 0 }
       ],
       currentWeek: 1,
-      currentSeasonYear: 2026
+      currentSeasonYear: 2026,
+      transferListings: []
     };
 
     const { service, generatorSpy, persistenceSpy } = setup(storedLeague as unknown as League);
@@ -497,10 +501,11 @@ describe('GameService persistence integration', () => {
       teams: [],
       schedule: [...season2023, ...season2024, ...season2025],
       currentWeek: 1,
-      currentSeasonYear: 2025
+      currentSeasonYear: 2025,
+      transferListings: []
     };
 
-    const { service, generatorSpy } = setup(storedLeague as unknown as League);
+    const { service, generatorSpy } = setup(storedLeague as League);
     vi.mocked(generatorSpy.generateScheduleForSeason).mockReturnValue([]);
     await service.ensureHydrated();
 
@@ -571,10 +576,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service, persistenceSpy } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     service.clearFormationAssignment('team-1', 'gk_1');
@@ -631,10 +637,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     service.movePlayerToBench('team-1', 'p1');
@@ -697,10 +704,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     service.movePlayerToBench('team-1', 'p1');
@@ -743,7 +751,7 @@ describe('GameService persistence integration', () => {
       }]
     };
 
-    const { service } = setup({ teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     const readiness = service.getMatchReadiness('team-1');
@@ -803,10 +811,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service, formationLibrarySpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service, formationLibrarySpy } = setup(storedLeague as unknown as League);
     vi.mocked(formationLibrarySpy.getFormationSlots).mockImplementation((formationId: string) => {
       if (formationId === 'formation_new') {
         return [
@@ -881,10 +890,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     const players = service.getPlayersForTeam('team-1');
@@ -892,7 +902,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should return balanced probabilities for unknown teams', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     const probabilities = service.getMatchProbabilities('missing-home', 'missing-away');
@@ -972,10 +982,11 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service, persistenceSpy } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service, persistenceSpy } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -1051,7 +1062,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should credit tackles and interceptions only to the turnover winner', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     const emptyStats = {
@@ -1153,7 +1164,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should persist assists from generated player statistics', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
     await service.ensureHydrated();
 
     const emptyStats = {
@@ -1363,10 +1374,11 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -1499,10 +1511,11 @@ describe('GameService persistence integration', () => {
           played: false
         }
       ],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -1603,10 +1616,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [{ id: 'match-sub-red', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -1708,10 +1722,11 @@ describe('GameService persistence integration', () => {
         }
       ],
       schedule: [{ id: 'match-shot-goal', week: 1, homeTeamId: 'team-1', awayTeamId: 'team-2', played: false }],
-      currentWeek: 1, currentSeasonYear: 2026
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
     };
 
-    const { service } = setup(storedLeague as { teams: []; schedule: []; currentWeek: number; currentSeasonYear: number });
+    const { service } = setup(storedLeague as unknown as League);
     await service.ensureHydrated();
 
     const homeTeam = service.getTeam('team-1') as Team;
@@ -1821,7 +1836,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1878,7 +1893,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1923,7 +1938,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
         { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -1972,7 +1987,7 @@ describe('GameService simulation engine', () => {
         { provide: StatisticsService, useValue: statisticsSpy },
         { provide: PostMatchAnalysisService, useValue: reportSpy },
         { provide: FieldService, useValue: {} },
-        { provide: FormationLibraryService, useValue: { listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
       ]
     });
 
@@ -2370,4 +2385,269 @@ describe('GameService dressBestPlayers', () => {
     expect(reservePlayers.map(p => p.id)).toContain('mid6');
   });
 });
+
+describe('GameService transfer listings and CPU heuristics', () => {
+  const SEASON_YEAR = 2026;
+
+  function makePlayer(id: string, teamId: string, position: Position, role: Role, age = 25, overall = 70, overrides: Partial<Player> = {}): Player {
+    const p = createTestPlayer({
+      id,
+      teamId,
+      position,
+      role,
+      age,
+      seasonYear: SEASON_YEAR,
+      defaultStat: overall
+    });
+    // Force the overall value in seasonAttributes
+    p.seasonAttributes[0].overall.value = overall;
+    return {
+      ...p,
+      ...overrides
+    };
+  }
+
+  function makeTeam(id: string, players: Player[]): Team {
+    return {
+      id,
+      name: id,
+      players,
+      playerIds: players.map(p => p.id),
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      selectedFormationId: 'formation_custom',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
+      formationAssignments: {},
+      seasonSnapshots: [{ seasonYear: SEASON_YEAR, playerIds: players.map(p => p.id), stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }]
+    };
+  }
+
+  function setupTransferTest(
+    initialWeek = 1,
+    initialListings: string[] = [],
+    userTeamId = 'team-user',
+    teams: Team[] = []
+  ) {
+    TestBed.resetTestingModule();
+    const mockLeague: League = {
+      teams,
+      schedule: [],
+      currentWeek: initialWeek,
+      currentSeasonYear: SEASON_YEAR,
+      userTeamId,
+      transferListings: initialListings
+    };
+
+    const generatorSpy = {
+      generateLeague: vi.fn(),
+      generateScheduleForSeason: vi.fn().mockReturnValue([]),
+      generatePlayer: vi.fn()
+    };
+
+    const persistenceSpy = {
+      loadLeague: vi.fn().mockResolvedValue(mockLeague),
+      saveLeague: vi.fn().mockResolvedValue(undefined),
+      clearLeague: vi.fn().mockResolvedValue(undefined),
+      saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+      saveTeam: vi.fn().mockResolvedValue(undefined),
+      saveTeamDefinition: vi.fn().mockResolvedValue(undefined),
+      saveMatch: vi.fn().mockResolvedValue(undefined),
+      saveMatchResult: vi.fn().mockResolvedValue(undefined),
+      loadSeasonTransitionLog: vi.fn().mockResolvedValue(null),
+      saveSeasonTransitionLog: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const formationLibrarySpy = {
+      getFormationSlots: vi.fn().mockReturnValue([
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER },
+        { slotId: 'def_1', preferredPosition: Position.DEFENDER },
+        { slotId: 'def_2', preferredPosition: Position.DEFENDER },
+        { slotId: 'def_3', preferredPosition: Position.DEFENDER },
+        { slotId: 'mid_1', preferredPosition: Position.MIDFIELDER },
+        { slotId: 'mid_2', preferredPosition: Position.MIDFIELDER },
+        { slotId: 'mid_3', preferredPosition: Position.MIDFIELDER },
+        { slotId: 'att_1', preferredPosition: Position.FORWARD },
+        { slotId: 'att_2', preferredPosition: Position.FORWARD }
+      ]),
+      listPredefinedFormations: () => [],
+      getAllFormations: () => [],
+      getDefaultFormationId: () => 'formation_custom'
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: generatorSpy },
+        { provide: PersistenceService, useValue: persistenceSpy },
+        { provide: DataSchemaVersionService, useValue: { hasPersistedDataSchemaVersionMismatch: signal(false).asReadonly() } },
+        { provide: MatchSimulationVariantBService, useValue: {} },
+        { provide: CommentaryService, useValue: {} },
+        { provide: StatisticsService, useValue: { generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
+        { provide: PostMatchAnalysisService, useValue: {} },
+        { provide: FieldService, useValue: { validateFormationAssignments: () => ({ isValid: true, errors: [] }) } },
+        { provide: FormationLibraryService, useValue: formationLibrarySpy }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    return { service, generatorSpy, persistenceSpy };
+  }
+
+  it('should initialize empty transferListings on league generation', async () => {
+    const { service } = setupTransferTest(1, [], 'team-user', []);
+    await service.ensureHydrated();
+    expect(service.league()?.transferListings).toEqual([]);
+  });
+
+  it('should run CPU auto listing heuristics and respect positional minimums', async () => {
+    // Minima: 1 GK, 3 DEF, 3 MID, 2 FWD
+    const gk1 = makePlayer('gk1', 'team-cpu', Position.GOALKEEPER, Role.STARTER, 25, 80);
+    const gk2 = makePlayer('gk2', 'team-cpu', Position.GOALKEEPER, Role.RESERVE, 35, 60); // declining, surplus -> list
+
+    const def1 = makePlayer('def1', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80);
+    const def2 = makePlayer('def2', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80);
+    const def3 = makePlayer('def3', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80);
+    const def4 = makePlayer('def4', 'team-cpu', Position.DEFENDER, Role.RESERVE, 35, 60); // declining, surplus -> list
+    const def5 = makePlayer('def5', 'team-cpu', Position.DEFENDER, Role.RESERVE, 25, 70); // healthy, surplus -> do not list
+
+    const mid1 = makePlayer('mid1', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const mid2 = makePlayer('mid2', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const mid3 = makePlayer('mid3', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80); // only 3 MIDs -> no surplus, do not list even if declining
+    const mid3Declining = { ...mid3, personal: { ...mid3.personal, birthday: new Date(1990, 0, 1) } }; // age 36
+
+    const fwd1 = makePlayer('fwd1', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 85);
+    const fwd2 = makePlayer('fwd2', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 85);
+    const fwd3 = makePlayer('fwd3', 'team-cpu', Position.FORWARD, Role.RESERVE, 20, 80); // valuable youth, surplus -> list
+
+    const team = makeTeam('team-cpu', [gk1, gk2, def1, def2, def3, def4, def5, mid1, mid2, mid3Declining, fwd1, fwd2, fwd3]);
+
+    const { service } = setupTransferTest(1, [], 'team-user', [team]);
+    await service.ensureHydrated();
+
+    const listings = service.runCpuAutoListingForLeague(service.league()!);
+    // gk2 (declining surplus), def4 (declining surplus), fwd3 (valuable youth surplus) should be listed.
+    // gk1, def1-3 (not surplus), def5 (not declining/wage/youth), mid3Declining (no surplus) should NOT be listed.
+    expect(listings).toContain('gk2');
+    expect(listings).toContain('def4');
+    expect(listings).toContain('fwd3');
+    expect(listings).not.toContain('gk1');
+    expect(listings).not.toContain('def1');
+    expect(listings).not.toContain('def2');
+    expect(listings).not.toContain('def3');
+    expect(listings).not.toContain('def5');
+    expect(listings).not.toContain('mid3');
+  });
+
+  it('should not list a starter who is only playing due to an injured top-rated player', async () => {
+    // 4 MIDs. Top 3 are mid1 (85), mid2 (80), mid3 (75). mid4 (70) is declining (age 35).
+    // mid2 is injured. mid4 has Role.STARTER.
+    // Since mid2 (top player) is injured, mid4 (declining starter) should be protected and not listed.
+    const mid1 = makePlayer('mid1', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 85);
+    const mid2 = makePlayer('mid2', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    // mid2 is injured (not eligible)
+    mid2.injuries = [{ definitionId: 'sprained_ankle', totalWeeks: 4, weeksRemaining: 2, sustainedInSeason: 2026, sustainedInWeek: 1 }];
+
+    const mid3 = makePlayer('mid3', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 75);
+    const mid4 = makePlayer('mid4', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 35, 70); // declining, starting due to mid2 injury
+
+    const team = makeTeam('team-cpu', [
+      makePlayer('gk1', 'team-cpu', Position.GOALKEEPER, Role.STARTER, 25, 80),
+      makePlayer('def1', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      makePlayer('def2', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      makePlayer('def3', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      mid1, mid2, mid3, mid4,
+      makePlayer('fwd1', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80),
+      makePlayer('fwd2', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80)
+    ]);
+
+    const { service } = setupTransferTest(1, [], 'team-user', [team]);
+    await service.ensureHydrated();
+
+    const listings = service.runCpuAutoListingForLeague(service.league()!);
+    // mid4 should not be listed because of the injury starter safety check
+    expect(listings).not.toContain('mid4');
+
+    // If mid2 is healthy, mid4 should be listed
+    mid2.injuries = [];
+    const listingsHealthy = service.runCpuAutoListingForLeague(service.league()!);
+    expect(listingsHealthy).toContain('mid4');
+  });
+
+  it('should allow user to manually list/delist their own players', async () => {
+    const userPlayer = makePlayer('player-user', 'team-user', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const cpuPlayer = makePlayer('player-cpu', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const teamUser = makeTeam('team-user', [userPlayer]);
+    const teamCpu = makeTeam('team-cpu', [cpuPlayer]);
+
+    const { service } = setupTransferTest(1, [], 'team-user', [teamUser, teamCpu]);
+    await service.ensureHydrated();
+
+    // Add user player
+    service.addPlayerToTransferList('player-user');
+    expect(service.league()?.transferListings).toContain('player-user');
+
+    // Cannot add cpu player manually
+    service.addPlayerToTransferList('player-cpu');
+    expect(service.league()?.transferListings).not.toContain('player-cpu');
+
+    // Remove user player
+    service.removePlayerFromTransferList('player-user');
+    expect(service.league()?.transferListings).not.toContain('player-user');
+  });
+
+  it('should clear listings when transfer window closes, and re-evaluate weekly when open', async () => {
+    const cpuPlayer = makePlayer('player-cpu', 'team-cpu', Position.MIDFIELDER, Role.RESERVE, 35, 60); // declining surplus
+    const teamCpu = makeTeam('team-cpu', [
+      makePlayer('gk1', 'team-cpu', Position.GOALKEEPER, Role.STARTER, 25, 80),
+      makePlayer('def1', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      makePlayer('def2', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      makePlayer('def3', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      makePlayer('mid1', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80),
+      makePlayer('mid2', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80),
+      makePlayer('mid3', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80),
+      cpuPlayer,
+      makePlayer('fwd1', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80),
+      makePlayer('fwd2', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80)
+    ]);
+
+    // Summer window is weeks 1-3. Let's start at week 3.
+    const { service } = setupTransferTest(3, ['player-cpu'], 'team-user', [teamCpu]);
+    await service.ensureHydrated();
+
+    expect(service.league()?.transferListings).toContain('player-cpu');
+
+    // Advance to week 4 (window closes)
+    service.advanceWeek();
+    expect(service.league()?.currentWeek).toBe(4);
+    expect(service.league()?.transferListings).toEqual([]); // cleared!
+
+    // If we start at week 1 (window open) and advance to week 2, it re-evaluates
+    const { service: service2 } = setupTransferTest(1, [], 'team-user', [teamCpu]);
+    await service2.ensureHydrated();
+
+    service2.advanceWeek();
+    expect(service2.league()?.currentWeek).toBe(2);
+    expect(service2.league()?.transferListings).toContain('player-cpu'); // re-evaluated weekly!
+  });
+
+  it('should remove user team players from listings when user changes via setUserTeam', async () => {
+    const player1 = makePlayer('player-1', 'team-1', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const player2 = makePlayer('player-2', 'team-2', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const team1 = makeTeam('team-1', [player1]);
+    const team2 = makeTeam('team-2', [player2]);
+
+    // Start with team-1 as user team, and both players listed
+    const { service } = setupTransferTest(1, ['player-1', 'player-2'], 'team-1', [team1, team2]);
+    await service.ensureHydrated();
+
+    expect(service.league()?.transferListings).toContain('player-1');
+    expect(service.league()?.transferListings).toContain('player-2');
+
+    // Change user team to team-2
+    service.setUserTeam('team-2');
+    // player-2 (new user team player) should be removed from listings
+    expect(service.league()?.transferListings).not.toContain('player-2');
+    expect(service.league()?.transferListings).toContain('player-1');
+  });
+});
+
 

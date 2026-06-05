@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 interface DesignDoc {
@@ -29,7 +28,6 @@ const DESIGN_DOCS: DesignDoc[] = [
 @Component({
   selector: 'app-design-docs',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
   templateUrl: './design-docs.html'
 })
 export class DesignDocsComponent {

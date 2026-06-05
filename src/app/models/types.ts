@@ -290,6 +290,7 @@ export interface League {
   currentWeek: number;
   currentSeasonYear: number;
   userTeamId?: string;
+  transferListings: string[];
 }
 
 export type SeasonTransitionEventCategory = 'retirement'; // extensible later

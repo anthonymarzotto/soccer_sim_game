@@ -41,7 +41,8 @@ describe('GameService — progression and seeding', () => {
         { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: teams[0].id, awayTeamId: teams[0].id, played: true, homeScore: 0, awayScore: 0 }
       ],
       currentWeek: 1,
-      currentSeasonYear: 2026
+      currentSeasonYear: 2026,
+      transferListings: []
     };
   }
 

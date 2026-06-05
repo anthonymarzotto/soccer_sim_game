@@ -1,6 +1,6 @@
 import { AfterRenderRef, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { SettingsService, BadgeStyle } from '../../services/settings.service';
 import { GameService } from '../../services/game.service';
 import { ScheduleStateService } from '../../services/schedule-state.service';
@@ -14,7 +14,7 @@ function resolveSchemaVersion(value: string | (() => string)): string {
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent, TitleCasePipe, FormationEditorComponent],
+  imports: [TeamBadgeComponent, TitleCasePipe, FormationEditorComponent],
   templateUrl: './settings.html',
 })
 export class SettingsComponent {

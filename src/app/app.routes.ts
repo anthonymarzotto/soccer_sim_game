@@ -17,6 +17,7 @@ import { DesignDocsComponent } from './pages/design-docs/design-docs';
 import { ChangelogComponent } from './pages/changelog/changelog';
 import { DebugPlayerProfileComponent } from './pages/debug-player-profile/debug-player-profile';
 import { NewsComponent } from './pages/news/news';
+import { TransferMarketComponent } from './pages/transfer-market/transfer-market';
 import { GameService } from './services/game.service';
 import { localhostGuardFn } from './services/localhost.guard';
 
@@ -35,6 +36,7 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'standings', component: StandingsComponent },
   { path: 'finances', component: LeagueFinancesComponent },
+  { path: 'transfer-market', component: TransferMarketComponent },
   { path: 'player-stats', component: PlayerStatsComponent },
   { path: 'player-attributes', component: PlayerAttributesComponent },
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
@@ -18,7 +18,7 @@ import { calculateMarketValue, calculatePlayerWageCost } from '../../models/play
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TeamBadgeComponent, DecimalPipe, CurrencyPipe],
+  imports: [TeamBadgeComponent, DecimalPipe, CurrencyPipe],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {
@@ -46,6 +46,26 @@ export class PlayerProfileComponent {
     return !!p && !!userTeamId && p.teamId === userTeamId;
   });
   showMockOfferModal = signal(false);
+
+  isPlayerTransferListed = computed(() => {
+    const id = this.playerId();
+    const listings = this.gameService.league()?.transferListings;
+    return !!id && !!listings && listings.includes(id);
+  });
+
+  addToTransferList() {
+    const id = this.playerId();
+    if (id) {
+      this.gameService.addPlayerToTransferList(id);
+    }
+  }
+
+  removeFromTransferList() {
+    const id = this.playerId();
+    if (id) {
+      this.gameService.removePlayerFromTransferList(id);
+    }
+  }
 
   makeTransferOffer() {
     if (this.transferWindowPhase() === 'closed') return;
