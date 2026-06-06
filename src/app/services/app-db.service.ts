@@ -54,6 +54,7 @@ export interface PersistedLeagueMetadataRecord {
   currentWeek: number;
   currentSeasonYear: number;
   userTeamId?: string;
+  transferListings: string[];
   updatedAt: number;
 }
 

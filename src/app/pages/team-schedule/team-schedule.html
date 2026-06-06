@@ -4,13 +4,6 @@
     <!-- Top Nav / Switcher Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
       <div class="flex items-center gap-4">
-        <a [routerLink]="['/team', teamId()]" 
-           class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
-           title="Back to Team Details">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
-        </a>
         <div class="flex items-center gap-3">
           <select id="team-schedule-switcher" 
                   [value]="teamId()" 

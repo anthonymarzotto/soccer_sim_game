@@ -1,0 +1,293 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
+  <div class="max-w-6xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-white">Transfer Market</h1>
+        <p class="text-zinc-400 mt-1">View currently listed players across the league.</p>
+      </div>
+
+      @if (transferWindowPhase() !== 'closed') {
+      <div
+        class="flex items-center gap-2.5 px-4 py-2 rounded-xl text-sm font-semibold uppercase tracking-wider border bg-emerald-950/40 text-emerald-400 border-emerald-800/60 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+        <span class="material-icons text-lg">payments</span>
+        <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Window Open ({{ weeksRemainingInWindow() }}
+          weeks left)</span>
+      </div>
+      } @else {
+      <div
+        class="flex items-center gap-2.5 px-4 py-2 rounded-xl text-sm font-semibold uppercase tracking-wider border bg-zinc-900 border-zinc-800 text-zinc-400">
+        <span class="material-icons text-lg">lock</span>
+        <span>Transfer Window Closed</span>
+      </div>
+      }
+    </div>
+
+    <!-- Closed Window Banner -->
+    @if (transferWindowPhase() === 'closed') {
+    <div
+      class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-2xl space-y-4 my-12">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800 text-zinc-500 mb-2">
+        <span class="material-icons text-3xl">shopping_cart_checkout</span>
+      </div>
+      <h2 class="text-xl font-bold text-white">Market is Currently Closed</h2>
+      <p class="text-sm text-zinc-400 leading-relaxed">
+        The transfer window is currently closed. You can buy or sell players when the next window opens.
+      </p>
+      <div class="text-xs text-emerald-400 font-medium">
+        Opens Week 1 (Summer Window) and Week 20 (Winter Window).
+      </div>
+    </div>
+    } @else {
+    <!-- Active Window Controls & Table -->
+    <div class="space-y-6">
+      <!-- Filters Bar -->
+      <div
+        class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl shadow-lg">
+        <!-- Search -->
+        <div>
+          <label for="search-input"
+            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Search Player</label>
+          <input id="search-input" type="text" [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event); pageIndex.set(0)" placeholder="Enter name..."
+            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium placeholder-zinc-600" />
+        </div>
+
+        <!-- Position Filter -->
+        <div>
+          <label for="position-select"
+            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Position</label>
+          <select id="position-select" [ngModel]="selectedPosition()"
+            (ngModelChange)="selectedPosition.set($event); pageIndex.set(0)"
+            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium">
+            <option value="">All Positions</option>
+            @for (pos of availablePositions(); track pos) {
+            <option [value]="pos">{{ pos }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Team Filter -->
+        <div>
+          <label for="team-select"
+            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Team</label>
+          <select id="team-select" [ngModel]="selectedTeam()"
+            (ngModelChange)="selectedTeam.set($event); pageIndex.set(0)"
+            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium">
+            <option value="">All Teams</option>
+            @for (team of availableTeams(); track team.id) {
+            <option [value]="team.id">{{ team.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- Listings Table -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead
+              class="text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800 bg-zinc-900/70 select-none">
+              <tr>
+                <th scope="col" class="py-4 px-6 font-semibold cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('team')">
+                  Team {{ getSortIndicator('team') }}
+                </th>
+                <th scope="col" class="py-4 px-6 font-semibold cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('name')">
+                  Player {{ getSortIndicator('name') }}
+                </th>
+                <th scope="col" class="py-4 px-6 font-semibold cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('position')">
+                  Position {{ getSortIndicator('position') }}
+                </th>
+                <th scope="col"
+                  class="py-4 px-6 font-semibold text-center cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('overall')">
+                  OVR {{ getSortIndicator('overall') }}
+                </th>
+                <th scope="col"
+                  class="py-4 px-6 font-semibold text-center cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('age')">
+                  Age {{ getSortIndicator('age') }}
+                </th>
+                <th scope="col"
+                  class="py-4 px-6 font-semibold text-right cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('value')">
+                  Market Value {{ getSortIndicator('value') }}
+                </th>
+                <th scope="col"
+                  class="py-4 px-6 font-semibold text-right cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('wage')">
+                  Wage {{ getSortIndicator('wage') }}
+                </th>
+                <th scope="col" class="py-4 px-6 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedPlayers(); track row.player.id) {
+              <tr class="border-b border-zinc-800/60 hover:bg-zinc-800/30 transition-colors"
+                [class.bg-emerald-950/10]="isUserTeamPlayer(row.player)">
+                <!-- Team -->
+                <td class="py-3.5 px-6 font-medium text-zinc-200">
+                  <div class="flex items-center gap-2.5">
+                    <app-team-badge [teamId]="row.team.id" size="sm" [link]="true" />
+                  </div>
+                </td>
+
+                <!-- Name -->
+                <td class="py-3.5 px-6 font-semibold text-white">
+                  <a [routerLink]="['/player', row.player.id]"
+                    class="hover:text-emerald-400 hover:underline transition-colors">
+                    {{ row.player.name }}
+                  </a>
+                </td>
+
+                <!-- Position -->
+                <td class="py-3.5 px-6">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono"
+                    [class.bg-yellow-500/20]="row.player.position === Position.GOALKEEPER"
+                    [class.text-yellow-400]="row.player.position === Position.GOALKEEPER"
+                    [class.bg-blue-500/20]="row.player.position === Position.DEFENDER"
+                    [class.text-blue-400]="row.player.position === Position.DEFENDER"
+                    [class.bg-emerald-500/20]="row.player.position === Position.MIDFIELDER"
+                    [class.text-emerald-400]="row.player.position === Position.MIDFIELDER"
+                    [class.bg-red-500/20]="row.player.position === Position.FORWARD"
+                    [class.text-red-400]="row.player.position === Position.FORWARD">
+                    {{ row.player.position }}
+                  </span>
+                </td>
+
+                <!-- OVR -->
+                <td class="py-3.5 px-6 text-center font-bold text-white">
+                  {{ row.overall }}
+                </td>
+
+                <!-- Age -->
+                <td class="py-3.5 px-6 text-center text-zinc-300">
+                  {{ row.age }}
+                </td>
+
+                <!-- Value -->
+                <td class="py-3.5 px-6 text-right text-emerald-400 font-mono font-medium">
+                  {{ row.value | currency:'USD':'symbol':'1.0-0' }}
+                </td>
+
+                <!-- Wage -->
+                <td class="py-3.5 px-6 text-right text-amber-400 font-mono font-medium">
+                  {{ row.wage | number:'1.1-1' }} pts
+                </td>
+
+                <!-- Actions -->
+                <td class="py-3.5 px-6 text-right">
+                  @if (isUserTeamPlayer(row.player)) {
+                  <button (click)="removePlayerFromTransferList(row.player.id)"
+                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                    Delist
+                  </button>
+                  } @else {
+                  <button (click)="makeTransferOffer(row.player, row.value)"
+                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition-colors cursor-pointer select-none">
+                    Offer
+                  </button>
+                  }
+                </td>
+              </tr>
+              } @empty {
+              <tr>
+                <td colspan="8" class="text-center py-10 text-zinc-500">
+                  No listed players matching current filters.
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Bar -->
+        @if (totalPages() > 1) {
+        <div
+          class="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-900/40 text-xs text-zinc-400 select-none">
+          <div>
+            Showing <span class="font-semibold text-white">{{ pageIndex() * pageSize() + 1 }}</span> to
+            <span class="font-semibold text-white">{{ Math.min((pageIndex() + 1) * pageSize(), totalPlayers()) }}</span>
+            of
+            <span class="font-semibold text-white">{{ totalPlayers() }}</span> players
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button (click)="previousPage()" [disabled]="pageIndex() === 0"
+              class="p-2 rounded-lg bg-zinc-850 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed border border-zinc-800/80 transition-colors text-white">
+              <span class="material-icons text-sm block">chevron_left</span>
+            </button>
+            @for (p of [].constructor(totalPages()); track $index) {
+            <button (click)="goToPage($index)" class="w-8 h-8 rounded-lg font-semibold transition-colors border"
+              [class.bg-emerald-500]="pageIndex() === $index" [class.text-zinc-950]="pageIndex() === $index"
+              [class.border-emerald-600]="pageIndex() === $index" [class.bg-zinc-850]="pageIndex() !== $index"
+              [class.text-white]="pageIndex() !== $index" [class.border-zinc-800/80]="pageIndex() !== $index"
+              [class.hover:bg-zinc-850]="pageIndex() !== $index">
+              {{ $index + 1 }}
+            </button>
+            }
+            <button (click)="nextPage()" [disabled]="pageIndex() === totalPages() - 1"
+              class="p-2 rounded-lg bg-zinc-850 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed border border-zinc-800/80 transition-colors text-white">
+              <span class="material-icons text-sm block">chevron_right</span>
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+</div>
+
+<!-- Mock Offer Confirmation Modal -->
+@if (showMockOfferModal() && selectedPlayerForOffer()) {
+@let p = selectedPlayerForOffer();
+<div class="fixed inset-0 flex items-center justify-center z-50 p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="closeMockOfferModal()"
+    (keydown)="closeMockOfferModal()" tabindex="0" role="button" aria-label="Close modal"></div>
+
+  <div
+    class="relative bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl z-10 transition-all duration-300 transform scale-100">
+    <div class="absolute top-0 left-0 w-full h-1" [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+      [class.bg-cyan-500]="transferWindowPhase() === 'winter'"></div>
+
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center justify-center w-10 h-10 rounded-lg"
+          [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
+          [class.text-emerald-400]="transferWindowPhase() === 'summer'"
+          [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
+          [class.text-cyan-400]="transferWindowPhase() === 'winter'">
+          <span class="material-icons text-xl">handshake</span>
+        </div>
+        <h3 class="text-lg font-bold text-white">Transfer Offer</h3>
+      </div>
+
+      <p class="text-sm text-zinc-300 leading-relaxed mb-6">
+        You are about to initiate a transfer offer for <strong class="text-white">{{ p?.name }}</strong>.
+        The market value is estimated at <strong class="text-emerald-400 font-mono">{{ selectedPlayerValue() |
+          currency:'USD':'symbol':'1.0-0' }}</strong>.
+      </p>
+
+      <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-4 mb-6">
+        <span class="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Architectural
+          Status</span>
+        <div class="text-xs text-zinc-400 leading-relaxed">
+          <span class="text-emerald-400 font-semibold">Increment 3 Complete!</span> Gating week boundaries are
+          successfully active. The negotiation and bid execution logic will be fully wired up in <strong
+            class="text-white">Increment 5 — Transfer Offers & Execution</strong>.
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button (click)="closeMockOfferModal()"
+          class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer text-center">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}

@@ -10,6 +10,7 @@ describe('LeagueAssemblyService', () => {
     currentWeek: 3,
     currentSeasonYear: 2026,
     userTeamId: 'team-1',
+    transferListings: [],
     teams: [
       {
         id: 'team-1',

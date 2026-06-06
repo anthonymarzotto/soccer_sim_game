@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { DecimalPipe, JsonPipe } from '@angular/common';
 import { GameService } from '../../services/game.service';
 import { MatchSimulationVariantBService } from '../../services/match.simulation.variant-b.service';
@@ -42,7 +41,7 @@ interface TickShapeDot {
 @Component({
   selector: 'app-tick-debug',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, JsonPipe],
+  imports: [DecimalPipe, JsonPipe],
   templateUrl: './tick-debug.html'
 })
 export class TickDebugComponent {
@@ -295,7 +294,7 @@ export class TickDebugComponent {
     });
   }
 
-  getPitchPoint(coords: {x: number, y: number}, teamSide?: TeamSide): PitchPoint {
+  getPitchPoint(coords: { x: number, y: number }, teamSide?: TeamSide): PitchPoint {
     const left = 100 - coords.x;
     let top: number;
 

@@ -108,7 +108,7 @@ describe('PersistenceService', () => {
   });
 
   it('should load and save league using normalized persistence', async () => {
-    const league = { teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 };
+    const league = { teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] };
     vi.mocked(normalizedDbSpy.loadLeague).mockResolvedValue(league);
 
     const loaded = await service.loadLeague();
@@ -203,7 +203,7 @@ describe('PersistenceService', () => {
     ).rejects.toThrow('Database write blocked: Persisted data schema version mismatch.');
 
     await expect(
-      service.saveLeague({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026 })
+      service.saveLeague({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] })
     ).rejects.toThrow('Database write blocked: Persisted data schema version mismatch.');
 
     expect(dataSchemaVersionSpy.ensureHydrated).toHaveBeenCalled();

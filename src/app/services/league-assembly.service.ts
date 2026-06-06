@@ -19,6 +19,7 @@ export interface PersistedLeagueMetadata {
   currentWeek: number;
   currentSeasonYear: number;
   userTeamId?: string;
+  transferListings: string[];
   updatedAt: number;
 }
 
@@ -142,12 +143,13 @@ export class LeagueAssemblyService {
     }
     return { seasonYear: attrs.seasonYear, values };
   }
-  toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId'>): PersistedLeagueMetadata {
+  toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings'>): PersistedLeagueMetadata {
     return {
       key: LEAGUE_METADATA_KEY,
       currentWeek: league.currentWeek,
       currentSeasonYear: league.currentSeasonYear,
       userTeamId: league.userTeamId,
+      transferListings: league.transferListings ?? [],
       updatedAt: Date.now()
     };
   }
@@ -244,7 +246,8 @@ export class LeagueAssemblyService {
       })),
       currentWeek: snapshot.metadata?.currentWeek ?? 1,
       currentSeasonYear,
-      userTeamId: snapshot.metadata?.userTeamId
+      userTeamId: snapshot.metadata?.userTeamId,
+      transferListings: snapshot.metadata?.transferListings ?? []
     };
   }
 
