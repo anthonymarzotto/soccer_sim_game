@@ -34,6 +34,8 @@ export class TransferMarketComponent {
 
   protected readonly Math = Math;
   Position = Position;
+  protected readonly calculateMarketValue = calculateMarketValue;
+  protected readonly calculatePlayerWageCost = calculatePlayerWageCost;
   transferWindowPhase = this.gameService.transferWindowPhase;
   weeksRemainingInWindow = this.gameService.weeksRemainingInWindow;
 
@@ -46,13 +48,39 @@ export class TransferMarketComponent {
   pageIndex = signal<number>(0);
   pageSize = signal<number>(20);
 
-  // Mock Modal Offer State
-  showMockOfferModal = signal(false);
+  // Modal Offer State
+  showOfferModal = signal(false);
   selectedPlayerForOffer = signal<Player | null>(null);
   selectedPlayerValue = signal<number>(0);
+  offerBidAmount = signal<number>(0);
+  offerError = signal<string>('');
+  offerSuccess = signal<string>('');
 
   currentSeasonYear = computed(() => this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear());
   userTeamId = computed(() => this.gameService.league()?.userTeamId ?? null);
+
+  userTeam = computed(() => {
+    const uid = this.userTeamId();
+    return uid ? this.gameService.getTeam(uid) : null;
+  });
+
+  userBudget = computed(() => this.userTeam()?.finances.transferBudget ?? 0);
+  userWageHeadroom = computed(() => {
+    const t = this.userTeam();
+    return t ? t.finances.wagePointsCap - t.finances.wagePointsUsed : 0;
+  });
+
+  targetPlayerWage = computed(() => {
+    const p = this.selectedPlayerForOffer();
+    return p ? calculatePlayerWageCost(p, this.currentSeasonYear()) : 0;
+  });
+
+  incomingOffers = computed(() => {
+    const l = this.gameService.league();
+    const uid = this.userTeamId();
+    if (!l || !uid) return [];
+    return (l.transferOffers ?? []).filter(o => o.sellerTeamId === uid && o.status === 'pending');
+  });
 
   availableTeams = computed(() => {
     const league = this.gameService.league();
@@ -218,12 +246,46 @@ export class TransferMarketComponent {
     if (this.transferWindowPhase() === 'closed') return;
     this.selectedPlayerForOffer.set(player);
     this.selectedPlayerValue.set(value);
-    this.showMockOfferModal.set(true);
+    this.offerBidAmount.set(Math.round(value * 1.15));
+    this.offerError.set('');
+    this.offerSuccess.set('');
+    this.showOfferModal.set(true);
   }
 
-  closeMockOfferModal() {
-    this.showMockOfferModal.set(false);
+  closeOfferModal() {
+    this.showOfferModal.set(false);
     this.selectedPlayerForOffer.set(null);
+    this.offerError.set('');
+    this.offerSuccess.set('');
+  }
+
+  submitOffer() {
+    const player = this.selectedPlayerForOffer();
+    if (!player) return;
+    const bid = this.offerBidAmount();
+    if (bid <= 0) {
+      this.offerError.set('Please enter a valid offer amount.');
+      return;
+    }
+    const res = this.gameService.submitTransferOffer(player.id, bid);
+    if (res.success) {
+      this.offerSuccess.set(res.message);
+      this.offerError.set('');
+      setTimeout(() => {
+        this.closeOfferModal();
+      }, 1500);
+    } else {
+      this.offerError.set(res.message);
+      this.offerSuccess.set('');
+    }
+  }
+
+  acceptOffer(offerId: string) {
+    this.gameService.acceptOffer(offerId);
+  }
+
+  rejectOffer(offerId: string) {
+    this.gameService.rejectOffer(offerId);
   }
 
   removePlayerFromTransferList(playerId: string) {

@@ -440,6 +440,19 @@ export class TeamDetailsComponent {
     this.viewMode.set(mode);
   }
 
+  isPlayerTransferListed(playerId: string): boolean {
+    const listings = this.gameService.league()?.transferListings;
+    return !!listings && listings.includes(playerId);
+  }
+
+  addToTransferList(playerId: string) {
+    this.gameService.addPlayerToTransferList(playerId);
+  }
+
+  removeFromTransferList(playerId: string) {
+    this.gameService.removePlayerFromTransferList(playerId);
+  }
+
   getFatigueColor(fatigue: number): string {
     if (fatigue >= this.FATIGUE_EXHAUSTED_THRESHOLD) {
       return this.FATIGUE_EXHAUSTED_COLOR;

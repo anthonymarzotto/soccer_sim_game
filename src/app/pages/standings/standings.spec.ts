@@ -21,7 +21,7 @@ describe('StandingsComponent', () => {
     };
 
     return {
-      league: signal<League | null>({ currentSeasonYear: 2032 } as League).asReadonly(),
+      league: signal<League | null>({ currentSeasonYear: 2032 } as unknown as League).asReadonly(),
       standings: signal<Team[]>([{ id: 't-1', name: 'Rovers', playerIds: [] } as unknown as Team]).asReadonly(),
       getTeamSnapshotForSeason: vi.fn().mockReturnValue({
         seasonYear: 2032,

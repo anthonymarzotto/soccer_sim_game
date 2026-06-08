@@ -15,10 +15,12 @@ import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
 
+import { FormsModule } from '@angular/forms';
+
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TeamBadgeComponent, DecimalPipe, CurrencyPipe],
+  imports: [TeamBadgeComponent, DecimalPipe, CurrencyPipe, FormsModule],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {
@@ -45,7 +47,24 @@ export class PlayerProfileComponent {
     const userTeamId = this.gameService.league()?.userTeamId;
     return !!p && !!userTeamId && p.teamId === userTeamId;
   });
-  showMockOfferModal = signal(false);
+  showOfferModal = signal(false);
+  offerBidAmount = signal<number>(0);
+  offerError = signal<string>('');
+  offerSuccess = signal<string>('');
+
+  userTeam = computed(() => {
+    const uid = this.gameService.league()?.userTeamId;
+    return uid ? this.gameService.getTeam(uid) : null;
+  });
+  userBudget = computed(() => this.userTeam()?.finances.transferBudget ?? 0);
+  userWageHeadroom = computed(() => {
+    const t = this.userTeam();
+    return t ? t.finances.wagePointsCap - t.finances.wagePointsUsed : 0;
+  });
+  targetPlayerWage = computed(() => {
+    const p = this.player();
+    return p ? calculatePlayerWageCost(p, this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear()) : 0;
+  });
 
   isPlayerTransferListed = computed(() => {
     const id = this.playerId();
@@ -69,11 +88,41 @@ export class PlayerProfileComponent {
 
   makeTransferOffer() {
     if (this.transferWindowPhase() === 'closed') return;
-    this.showMockOfferModal.set(true);
+    const p = this.player();
+    if (p) {
+      const val = calculateMarketValue(p, this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear());
+      this.offerBidAmount.set(Math.round(val * 1.15));
+    }
+    this.offerError.set('');
+    this.offerSuccess.set('');
+    this.showOfferModal.set(true);
   }
 
-  closeMockOfferModal() {
-    this.showMockOfferModal.set(false);
+  closeOfferModal() {
+    this.showOfferModal.set(false);
+    this.offerError.set('');
+    this.offerSuccess.set('');
+  }
+
+  submitOffer() {
+    const player = this.player();
+    if (!player) return;
+    const bid = this.offerBidAmount();
+    if (bid <= 0) {
+      this.offerError.set('Please enter a valid offer amount.');
+      return;
+    }
+    const res = this.gameService.submitTransferOffer(player.id, bid);
+    if (res.success) {
+      this.offerSuccess.set(res.message);
+      this.offerError.set('');
+      setTimeout(() => {
+        this.closeOfferModal();
+      }, 1500);
+    } else {
+      this.offerError.set(res.message);
+      this.offerSuccess.set('');
+    }
   }
 
   player = computed(() => {
@@ -132,6 +181,10 @@ export class PlayerProfileComponent {
       const seasonDiff = a.sustainedInSeason - b.sustainedInSeason;
       return seasonDiff !== 0 ? seasonDiff : a.sustainedInWeek - b.sustainedInWeek;
     });
+  });
+
+  transferHistory = computed(() => {
+    return this.player()?.transferHistory ?? [];
   });
 
   getInjuryName(definitionId: string): string {

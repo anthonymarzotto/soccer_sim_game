@@ -1,5 +1,5 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team, TeamFinances } from '../models/types';
+import { League, Match, Player, PlayerProgression, PlayerSeasonAttributes, Team, TeamFinances, TransferOffer } from '../models/types';
 import { normalizeTeamRoster } from '../models/team-players';
 import { calculateSquadTotalWageCost } from '../models/player-progression';
 import {
@@ -20,6 +20,8 @@ export interface PersistedLeagueMetadata {
   currentSeasonYear: number;
   userTeamId?: string;
   transferListings: string[];
+  transferOffers?: TransferOffer[];
+  evaluatedCpuOfferPlayerIds?: string[];
   updatedAt: number;
 }
 
@@ -124,7 +126,8 @@ export class LeagueAssemblyService {
       mood: player.mood,
       fatigue: player.fatigue,
       injuries: player.injuries ?? [],
-      progression: player.progression
+      progression: player.progression,
+      transferHistory: player.transferHistory ?? []
     };
   }
 
@@ -143,13 +146,15 @@ export class LeagueAssemblyService {
     }
     return { seasonYear: attrs.seasonYear, values };
   }
-  toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings'>): PersistedLeagueMetadata {
+  toLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>): PersistedLeagueMetadata {
     return {
       key: LEAGUE_METADATA_KEY,
       currentWeek: league.currentWeek,
       currentSeasonYear: league.currentSeasonYear,
       userTeamId: league.userTeamId,
       transferListings: league.transferListings ?? [],
+      transferOffers: league.transferOffers ?? [],
+      evaluatedCpuOfferPlayerIds: league.evaluatedCpuOfferPlayerIds ?? [],
       updatedAt: Date.now()
     };
   }
@@ -247,7 +252,9 @@ export class LeagueAssemblyService {
       currentWeek: snapshot.metadata?.currentWeek ?? 1,
       currentSeasonYear,
       userTeamId: snapshot.metadata?.userTeamId,
-      transferListings: snapshot.metadata?.transferListings ?? []
+      transferListings: snapshot.metadata?.transferListings ?? [],
+      transferOffers: snapshot.metadata?.transferOffers ?? [],
+      evaluatedCpuOfferPlayerIds: snapshot.metadata?.evaluatedCpuOfferPlayerIds ?? []
     };
   }
 
@@ -320,7 +327,8 @@ export class LeagueAssemblyService {
       mood,
       fatigue,
       injuries: record.injuries ?? [],
-      progression
+      progression,
+      transferHistory: record.transferHistory ?? []
     };
   }
 

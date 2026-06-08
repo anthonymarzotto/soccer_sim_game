@@ -11,6 +11,7 @@ describe('LeagueAssemblyService', () => {
     currentSeasonYear: 2026,
     userTeamId: 'team-1',
     transferListings: [],
+    transferOffers: [],
     teams: [
       {
         id: 'team-1',

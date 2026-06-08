@@ -352,6 +352,9 @@
                 <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
                 <th scope="col" class="px-4 py-4 font-medium text-right w-32">Market Value</th>
                 <th scope="col" class="px-4 py-4 font-medium text-center w-24">Wage Cost</th>
+                @if (isUserTeam() && transferWindowPhase() !== 'closed') {
+                <th scope="col" class="px-4 py-4 font-medium text-right w-32">Transfer List</th>
+                }
                 }
               </tr>
             </thead>
@@ -476,6 +479,23 @@
                   {{ getPlayerWageCost(row.player) | number:'1.1-1' }} pts
                   } @else { -- }
                 </td>
+                @if (isUserTeam() && transferWindowPhase() !== 'closed') {
+                <td class="px-4 py-4 whitespace-nowrap text-right w-32">
+                  @if (row.player) {
+                    @if (isPlayerTransferListed(row.player.id)) {
+                    <button (click)="removeFromTransferList(row.player.id)"
+                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                      Delist
+                    </button>
+                    } @else {
+                    <button (click)="addToTransferList(row.player.id)"
+                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer select-none">
+                      List
+                    </button>
+                    }
+                  } @else { -- }
+                </td>
+                }
                 }
               </tr>
               }
@@ -587,6 +607,23 @@
                   {{ getPlayerWageCost(row.player) | number:'1.1-1' }} pts
                   } @else { -- }
                 </td>
+                @if (isUserTeam() && transferWindowPhase() !== 'closed') {
+                <td class="px-4 py-4 whitespace-nowrap text-right w-32">
+                  @if (row.player) {
+                    @if (isPlayerTransferListed(row.player.id)) {
+                    <button (click)="removeFromTransferList(row.player.id)"
+                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                      Delist
+                    </button>
+                    } @else {
+                    <button (click)="addToTransferList(row.player.id)"
+                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer select-none">
+                      List
+                    </button>
+                    }
+                  } @else { -- }
+                </td>
+                }
                 }
               </tr>
               }
@@ -679,6 +716,21 @@
                 <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
                   {{ getPlayerWageCost(player) | number:'1.1-1' }} pts
                 </td>
+                @if (isUserTeam() && transferWindowPhase() !== 'closed') {
+                <td class="px-4 py-4 whitespace-nowrap text-right w-32">
+                  @if (isPlayerTransferListed(player.id)) {
+                  <button (click)="removeFromTransferList(player.id)"
+                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                    Delist
+                  </button>
+                  } @else {
+                  <button (click)="addToTransferList(player.id)"
+                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer select-none">
+                    List
+                  </button>
+                  }
+                </td>
+                }
                 }
               </tr>
               }

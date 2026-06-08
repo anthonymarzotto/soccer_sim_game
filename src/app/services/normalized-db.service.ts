@@ -136,6 +136,30 @@ export class NormalizedDbService {
     });
   }
 
+  async saveTransfer(buyer: Team, seller: Team, transferredPlayer: Player, seasonYear: number, metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>): Promise<void> {
+    const persistedBuyer = this.leagueAssembly.toPersistedTeams([buyer], seasonYear)[0];
+    const persistedSeller = this.leagueAssembly.toPersistedTeams([seller], seasonYear)[0];
+    const buyerPlayers = buyer.players;
+    const sellerPlayers = seller.players;
+    const nextRecord = this.leagueAssembly.toLeagueMetadata(metadata);
+
+    await this.appDb.withDb(async db => {
+      await db.transaction('rw', db.teams, db.players, db.leagueMetadata, async () => {
+        await db.teams.put(persistedBuyer);
+        await db.teams.put(persistedSeller);
+
+        if (buyerPlayers.length > 0) {
+          await db.players.bulkPut(this.toPersistedPlayers(buyerPlayers, seasonYear));
+        }
+        if (sellerPlayers.length > 0) {
+          await db.players.bulkPut(this.toPersistedPlayers(sellerPlayers, seasonYear));
+        }
+
+        await db.leagueMetadata.put(nextRecord as PersistedLeagueMetadataRecord);
+      });
+    });
+  }
+
   async loadPlayers(): Promise<PersistedPlayerRecord[]> {
     return this.appDb.getAllFromTable<PersistedPlayerRecord>(TABLE_PLAYERS);
   }
@@ -153,7 +177,7 @@ export class NormalizedDbService {
     return records.find(record => record.key === LEAGUE_METADATA_KEY) ?? null;
   }
 
-  async saveLeagueMetadata(metadata: Pick<PersistedLeagueMetadata, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings'>): Promise<void> {
+  async saveLeagueMetadata(metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>): Promise<void> {
     const nextRecord = this.leagueAssembly.toLeagueMetadata(metadata);
 
     await this.appDb.bulkPutToTable(TABLE_LEAGUE_METADATA, [nextRecord]);

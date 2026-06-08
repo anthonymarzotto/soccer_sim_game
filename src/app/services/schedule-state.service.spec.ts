@@ -39,7 +39,8 @@ describe('ScheduleStateService', () => {
       schedule: [],
       currentWeek: 3,
       currentSeasonYear: 2026,
-      transferListings: []
+      transferListings: [],
+      transferOffers: []
     });
 
     TestBed.configureTestingModule({
