@@ -1,11 +1,12 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer } from '../models/types';
 import { TransferService } from './transfer.service';
+import { NormalizedDbService } from './normalized-db.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { computeAge, seasonAnchorDate } from '../models/player-age';
 import { gaussianRandom, clamp, lerp } from '../utils/math';
-import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall, calculatePlayerWageCost, calculateMarketValue } from '../models/player-progression';
+import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall, calculatePlayerWageCost, calculateMarketValue, calculateSquadTotalWageCost } from '../models/player-progression';
 import { Phase } from '../models/enums';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
@@ -149,6 +150,7 @@ export class GameService {
 
   private generator = inject(GeneratorService);
   private persistenceService = inject(PersistenceService);
+  private normalizedDb = inject(NormalizedDbService);
   private rng = inject(RngService);
   private dataSchemaVersionService = inject(DataSchemaVersionService, { optional: true });
   public isMutatingWritesBlockedBySchemaMismatch = computed(
@@ -226,7 +228,7 @@ export class GameService {
     });
   }
 
-  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings'>): void {
+  private persistLeagueMetadata(league: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers'>): void {
     if (this.isHydrating()) {
       return;
     }
@@ -298,7 +300,8 @@ export class GameService {
       schedule,
       currentWeek: 1,
       currentSeasonYear,
-      transferListings: []
+      transferListings: [],
+      transferOffers: []
     };
 
     league.transferListings = this.runCpuAutoListingForLeague(league);
@@ -417,6 +420,66 @@ export class GameService {
     return { rank: index >= 0 ? index + 1 : null, totalTeams: withStats.length };
   }
 
+  private generateCpuOfferForPlayer(player: Player, league: League): TransferOffer | null {
+    const userTeamId = league.userTeamId;
+    if (!userTeamId) return null;
+
+    const currentSeasonYear = league.currentSeasonYear;
+    const playerWage = calculatePlayerWageCost(player, currentSeasonYear);
+    const playerOvr = this.getCurrentSeasonPlayerAttributes(player).overall.value;
+    const playerValue = calculateMarketValue(player, currentSeasonYear);
+
+    const candidates = league.teams.filter(team => {
+      if (team.id === userTeamId) return false;
+
+      const hasBudget = team.finances.transferBudget >= playerValue * 0.9;
+      const hasWageHeadroom = (team.finances.wagePointsCap - team.finances.wagePointsUsed) >= playerWage;
+      if (!hasBudget || !hasWageHeadroom) return false;
+
+      const teamPosPlayers = team.players.filter(p => p.position === player.position);
+      
+      const lowestOvr = teamPosPlayers.length > 0 
+        ? Math.min(...teamPosPlayers.map(p => this.getCurrentSeasonPlayerAttributes(p).overall.value))
+        : 0;
+      const isDirectImprovement = playerOvr > lowestOvr;
+
+      const birthday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
+      const age = computeAge(birthday, seasonAnchorDate(currentSeasonYear));
+      const isYoung = age <= 21;
+      
+      let isProspectImprovement = false;
+      if (isYoung) {
+        const avgValue = teamPosPlayers.length > 0
+          ? teamPosPlayers.reduce((sum, p) => sum + calculateMarketValue(p, currentSeasonYear), 0) / teamPosPlayers.length
+          : 0;
+        isProspectImprovement = playerValue > avgValue;
+      }
+
+      return isDirectImprovement || isProspectImprovement;
+    });
+
+    if (candidates.length > 0) {
+      const buyerTeam = candidates[Math.floor(this.rng.random() * candidates.length)];
+      
+      const minBid = playerValue * 0.9;
+      const maxBid = playerValue * 1.15;
+      const bidFee = Math.round(minBid + this.rng.random() * (maxBid - minBid));
+
+      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      return {
+        id: offerId,
+        buyerTeamId: buyerTeam.id,
+        sellerTeamId: userTeamId,
+        playerId: player.id,
+        fee: bidFee,
+        week: league.currentWeek,
+        status: 'pending'
+      };
+    }
+
+    return null;
+  }
+
   advanceWeek() {
     if (!this.canMutateLeagueState()) {
       return;
@@ -430,13 +493,18 @@ export class GameService {
     const nextPhase = this.transferService.getTransferWindowPhase(nextWeek);
 
     let transferListings = league.transferListings ?? [];
+    let transferOffers = league.transferOffers ?? [];
+    const userTeamId = league.userTeamId;
+    let evaluatedCpuOfferPlayerIds: string[] = [];
+
     if (nextPhase === 'closed') {
       if (previousPhase !== 'closed') {
         transferListings = [];
       }
+      transferOffers = transferOffers.map(o => o.status === 'pending' ? { ...o, status: 'expired' as const } : o);
+      evaluatedCpuOfferPlayerIds = [];
     } else {
       // Re-evaluate listings weekly when transfer window is active
-      const userTeamId = league.userTeamId;
       const userListings = userTeamId
         ? transferListings.filter(playerId => {
           const player = this.getPlayer(playerId);
@@ -449,13 +517,30 @@ export class GameService {
         transferListings: userListings
       };
       transferListings = this.runCpuAutoListingForLeague(newLeagueStateForAutoListing);
+
+      // Generate CPU offers on user's listed players
+      if (userTeamId) {
+        const userListedPlayers = userListings
+          .map(pid => this.getPlayer(pid))
+          .filter((p): p is Player => p !== undefined);
+
+        for (const player of userListedPlayers) {
+          evaluatedCpuOfferPlayerIds.push(player.id);
+          const offer = this.generateCpuOfferForPlayer(player, league);
+          if (offer) {
+            transferOffers = [...transferOffers, offer];
+          }
+        }
+      }
     }
 
     const updatedLeague: League = {
       ...league,
       currentWeek: nextWeek,
       teams: this.advanceWeekForPlayers(league.teams, league.currentSeasonYear, league.currentWeek),
-      transferListings
+      transferListings,
+      transferOffers,
+      evaluatedCpuOfferPlayerIds
     };
 
     this.leagueState.set(updatedLeague);
@@ -607,9 +692,23 @@ export class GameService {
     }
 
     const transferListings = [...(league.transferListings ?? []), playerId];
+    const evaluated = league.evaluatedCpuOfferPlayerIds ?? [];
+    let transferOffers = league.transferOffers ?? [];
+    let nextEvaluated = evaluated;
+
+    if (!evaluated.includes(player.id) && this.transferWindowPhase() !== 'closed') {
+      nextEvaluated = [...evaluated, player.id];
+      const offer = this.generateCpuOfferForPlayer(player, league);
+      if (offer) {
+        transferOffers = [...transferOffers, offer];
+      }
+    }
+
     const updatedLeague: League = {
       ...league,
-      transferListings
+      transferListings,
+      transferOffers,
+      evaluatedCpuOfferPlayerIds: nextEvaluated
     };
 
     this.leagueState.set(updatedLeague);
@@ -635,6 +734,319 @@ export class GameService {
 
     this.leagueState.set(updatedLeague);
     this.persistLeagueMetadata(updatedLeague);
+  }
+
+  submitTransferOffer(playerId: string, fee: number): { success: boolean; message: string; offer?: TransferOffer } {
+    if (!this.canMutateLeagueState()) {
+      return { success: false, message: 'Actions blocked due to version mismatch.' };
+    }
+    const league = this.leagueState();
+    if (!league || !league.userTeamId) {
+      return { success: false, message: 'No active league or user team.' };
+    }
+
+    if (this.transferWindowPhase() === 'closed') {
+      return { success: false, message: 'Transfer window is closed.' };
+    }
+
+    const player = this.getPlayer(playerId);
+    if (!player) {
+      return { success: false, message: 'Player not found.' };
+    }
+
+    const buyerId = league.userTeamId;
+    const sellerId = player.teamId;
+
+    if (buyerId === sellerId) {
+      return { success: false, message: 'Cannot buy your own player.' };
+    }
+
+    const buyer = this.getTeam(buyerId);
+    const seller = this.getTeam(sellerId);
+    if (!buyer || !seller) {
+      return { success: false, message: 'Buyer or seller team not found.' };
+    }
+
+    if (buyer.finances.transferBudget < fee) {
+      return { success: false, message: 'Insufficient transfer budget.' };
+    }
+
+    const playerWage = calculatePlayerWageCost(player, league.currentSeasonYear);
+    const buyerWageHeadroom = buyer.finances.wagePointsCap - buyer.finances.wagePointsUsed;
+    if (buyerWageHeadroom < playerWage) {
+      return { success: false, message: `Insufficient wage points headroom. Player cost is ${playerWage} pts, but you only have ${buyerWageHeadroom.toFixed(1)} pts available.` };
+    }
+
+    const marketValue = calculateMarketValue(player, league.currentSeasonYear);
+    const askingPrice = Math.round(marketValue * 1.15);
+
+    if (fee < askingPrice) {
+      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const newOffer: TransferOffer = {
+        id: offerId,
+        buyerTeamId: buyerId,
+        sellerTeamId: sellerId,
+        playerId: playerId,
+        fee: fee,
+        week: league.currentWeek,
+        status: 'rejected'
+      };
+      
+      const updatedLeague: League = {
+        ...league,
+        transferOffers: [...(league.transferOffers ?? []), newOffer]
+      };
+      this.leagueState.set(updatedLeague);
+      this.persistLeagueMetadata(updatedLeague);
+      
+      return { success: false, message: `Offer rejected. The club requires at least $${askingPrice.toLocaleString()} for this player.`, offer: newOffer };
+    }
+
+    const sellerPlayers = seller.players ?? [];
+    const playersAtPosition = sellerPlayers.filter(p => p.position === player.position);
+    
+    let minLimit = 1;
+    if (player.position === Position.GOALKEEPER) minLimit = 1;
+    else if (player.position === Position.DEFENDER) minLimit = 3;
+    else if (player.position === Position.MIDFIELDER) minLimit = 3;
+    else if (player.position === Position.FORWARD) minLimit = 2;
+
+    if (playersAtPosition.length <= minLimit) {
+      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const newOffer: TransferOffer = {
+        id: offerId,
+        buyerTeamId: buyerId,
+        sellerTeamId: sellerId,
+        playerId: playerId,
+        fee: fee,
+        week: league.currentWeek,
+        status: 'rejected'
+      };
+      
+      const updatedLeague: League = {
+        ...league,
+        transferOffers: [...(league.transferOffers ?? []), newOffer]
+      };
+      this.leagueState.set(updatedLeague);
+      this.persistLeagueMetadata(updatedLeague);
+
+      return { success: false, message: 'Offer rejected. The club cannot sell this player because they do not have enough depth at this position.', offer: newOffer };
+    }
+
+    const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+    const newOffer: TransferOffer = {
+      id: offerId,
+      buyerTeamId: buyerId,
+      sellerTeamId: sellerId,
+      playerId: playerId,
+      fee: fee,
+      week: league.currentWeek,
+      status: 'accepted'
+    };
+
+    const tempLeague: League = {
+      ...league,
+      transferOffers: [...(league.transferOffers ?? []), newOffer]
+    };
+    this.leagueState.set(tempLeague);
+
+    this.executeTransfer(buyerId, sellerId, playerId, fee, newOffer.id);
+    return { success: true, message: 'Offer accepted! Player has been transferred to your team.', offer: newOffer };
+  }
+
+  acceptOffer(offerId: string) {
+    if (!this.canMutateLeagueState()) return;
+    const league = this.leagueState();
+    if (!league) return;
+
+    const offer = (league.transferOffers ?? []).find(o => o.id === offerId);
+    if (!offer || offer.status !== 'pending') return;
+
+    const buyer = this.getTeam(offer.buyerTeamId);
+    const seller = this.getTeam(offer.sellerTeamId);
+    const player = this.getPlayer(offer.playerId);
+    if (!buyer || !seller || !player) return;
+
+    if (buyer.finances.transferBudget < offer.fee) {
+      this.expireOffer(offerId);
+      return;
+    }
+
+    const playerWage = calculatePlayerWageCost(player, league.currentSeasonYear);
+    const buyerWageHeadroom = buyer.finances.wagePointsCap - buyer.finances.wagePointsUsed;
+    if (buyerWageHeadroom < playerWage) {
+      this.expireOffer(offerId);
+      return;
+    }
+
+    this.executeTransfer(offer.buyerTeamId, offer.sellerTeamId, offer.playerId, offer.fee, offerId);
+  }
+
+  rejectOffer(offerId: string) {
+    if (!this.canMutateLeagueState()) return;
+    const league = this.leagueState();
+    if (!league) return;
+
+    const updatedOffers = (league.transferOffers ?? []).map(offer => {
+      if (offer.id === offerId && offer.status === 'pending') {
+        return { ...offer, status: 'rejected' as const };
+      }
+      return offer;
+    });
+
+    const updatedLeague = {
+      ...league,
+      transferOffers: updatedOffers
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistLeagueMetadata(updatedLeague);
+  }
+
+  private expireOffer(offerId: string) {
+    const league = this.leagueState();
+    if (!league) return;
+
+    const updatedOffers = (league.transferOffers ?? []).map(offer => {
+      if (offer.id === offerId) {
+        return { ...offer, status: 'expired' as const };
+      }
+      return offer;
+    });
+
+    const updatedLeague = {
+      ...league,
+      transferOffers: updatedOffers
+    };
+
+    this.leagueState.set(updatedLeague);
+    this.persistLeagueMetadata(updatedLeague);
+  }
+
+  private executeTransfer(buyerId: string, sellerId: string, playerId: string, fee: number, triggerOfferId: string) {
+    const league = this.leagueState();
+    if (!league) return;
+
+    const buyer = this.getTeam(buyerId);
+    const seller = this.getTeam(sellerId);
+    const player = this.getPlayer(playerId);
+
+    if (!buyer || !seller || !player) {
+      throw new Error('Buyer, seller, or player not found');
+    }
+
+    const currentSeasonYear = league.currentSeasonYear;
+
+    const updatedPlayer: Player = {
+      ...player,
+      teamId: buyerId,
+      role: Role.BENCH,
+      transferHistory: [
+        ...(player.transferHistory ?? []),
+        {
+          sellerTeamId: sellerId,
+          buyerTeamId: buyerId,
+          fee: fee,
+          seasonYear: currentSeasonYear,
+          week: league.currentWeek
+        }
+      ]
+    };
+
+    const updatedBuyerPlayers = [...buyer.players, updatedPlayer];
+    const updatedSellerPlayers = seller.players.filter(p => p.id !== playerId);
+
+    const updatedSellerAssignments = { ...seller.formationAssignments };
+    for (const [slotId, slotPlayerId] of Object.entries(updatedSellerAssignments)) {
+      if (slotPlayerId === playerId) {
+        delete updatedSellerAssignments[slotId];
+      }
+    }
+
+    const buyerWithNewPlayers = {
+      ...buyer,
+      players: updatedBuyerPlayers,
+      finances: {
+        ...buyer.finances,
+        transferBudget: buyer.finances.transferBudget - fee,
+        wagePointsUsed: 0
+      }
+    };
+    const sellerWithNewPlayers = {
+      ...seller,
+      players: updatedSellerPlayers,
+      formationAssignments: updatedSellerAssignments,
+      finances: {
+        ...seller.finances,
+        transferBudget: seller.finances.transferBudget + fee,
+        wagePointsUsed: 0
+      }
+    };
+
+    const normalizedBuyer = normalizeTeamRoster(buyerWithNewPlayers);
+    normalizedBuyer.finances.wagePointsUsed = Math.round(calculateSquadTotalWageCost(normalizedBuyer.players, currentSeasonYear) * 100) / 100;
+
+    const normalizedSeller = normalizeTeamRoster(sellerWithNewPlayers);
+    normalizedSeller.finances.wagePointsUsed = Math.round(calculateSquadTotalWageCost(normalizedSeller.players, currentSeasonYear) * 100) / 100;
+
+    const transferListings = (league.transferListings ?? []).filter(id => id !== playerId);
+
+    let updatedOffers = (league.transferOffers ?? []).map(offer => {
+      if (offer.id === triggerOfferId) {
+        return { ...offer, status: 'accepted' as const };
+      }
+      if (offer.playerId === playerId && offer.status === 'pending') {
+        return { ...offer, status: 'expired' as const };
+      }
+      return offer;
+    });
+
+    const tempTeams = league.teams.map(t => {
+      if (t.id === buyerId) return normalizedBuyer;
+      if (t.id === sellerId) return normalizedSeller;
+      return t;
+    });
+    const tempTeamsMap = new Map(tempTeams.map(t => [t.id, t]));
+
+    updatedOffers = updatedOffers.map(offer => {
+      if (offer.status !== 'pending') return offer;
+      
+      const offerBuyer = tempTeamsMap.get(offer.buyerTeamId);
+      const offerPlayer = this.getPlayer(offer.playerId);
+      if (!offerBuyer || !offerPlayer) return { ...offer, status: 'expired' as const };
+
+      const offerPlayerWage = calculatePlayerWageCost(offerPlayer, currentSeasonYear);
+      const offerBuyerWageHeadroom = offerBuyer.finances.wagePointsCap - offerBuyer.finances.wagePointsUsed;
+
+      if (offerBuyer.finances.transferBudget < offer.fee || offerBuyerWageHeadroom < offerPlayerWage) {
+        return { ...offer, status: 'expired' as const };
+      }
+
+      return offer;
+    });
+
+    const updatedTeams = league.teams.map(t => {
+      if (t.id === buyerId) return normalizedBuyer;
+      if (t.id === sellerId) return normalizedSeller;
+      return t;
+    });
+
+    const updatedLeague: League = {
+      ...league,
+      teams: updatedTeams,
+      transferListings,
+      transferOffers: updatedOffers
+    };
+
+    this.leagueState.set(updatedLeague);
+
+    void this.normalizedDb.saveTransfer(normalizedBuyer, normalizedSeller, updatedPlayer, currentSeasonYear, {
+      currentWeek: updatedLeague.currentWeek,
+      currentSeasonYear: updatedLeague.currentSeasonYear,
+      userTeamId: updatedLeague.userTeamId,
+      transferListings: updatedLeague.transferListings,
+      transferOffers: updatedLeague.transferOffers
+    });
   }
 
   /**
@@ -2519,7 +2931,8 @@ export class GameService {
       schedule: retainedSchedule,
       currentSeasonYear: nextSeasonYear,
       currentWeek: 1,
-      transferListings: []
+      transferListings: [],
+      transferOffers: []
     };
 
     updatedLeague.transferListings = this.runCpuAutoListingForLeague(updatedLeague);

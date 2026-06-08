@@ -17,38 +17,43 @@ import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs, createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('GameService persistence integration', () => {
-  function ensureSeasonSnapshots(storedLeague: League | null): League | null {
+  function ensureSeasonSnapshots(storedLeague: Partial<League> | null): League | null {
     if (!storedLeague) {
-      return storedLeague;
+      return null;
     }
 
-    const seasonYear = storedLeague.currentSeasonYear;
-    const teams = storedLeague.teams.map(team => {
+    const seasonYear = storedLeague.currentSeasonYear ?? 2026;
+    const teams = (storedLeague.teams ?? []).map((team) => {
       if ((team.seasonSnapshots?.length ?? 0) > 0) {
-        return team;
+        return team as Team;
       }
 
       return {
         ...team,
         seasonSnapshots: [{
           seasonYear,
-          playerIds: [...team.playerIds],
-          stats: {
+          playerIds: [...(team.playerIds ?? [])],
+          stats: team.stats ? {
             ...team.stats,
-            last5: [...team.stats.last5]
-          }
+            last5: [...(team.stats.last5 ?? [])]
+          } : { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }
         }]
-      };
+      } as unknown as Team;
     });
 
     return {
+      transferListings: [],
+      transferOffers: [],
+      schedule: [],
+      currentWeek: 1,
+      currentSeasonYear: seasonYear,
       ...storedLeague,
       teams
     };
   }
 
   function setup(
-    storedLeague: League | null = null,
+    storedLeague: Partial<League> | null = null,
     options: {
       fieldServiceSpy?: Pick<FieldService, 'validateFormationAssignments'>;
     } = {}
@@ -141,7 +146,8 @@ describe('GameService persistence integration', () => {
       teams: [],
       schedule: [],
       currentWeek: 1, currentSeasonYear: 2026,
-      transferListings: []
+      transferListings: [],
+      transferOffers: []
     });
   });
 
@@ -505,7 +511,7 @@ describe('GameService persistence integration', () => {
       transferListings: []
     };
 
-    const { service, generatorSpy } = setup(storedLeague as League);
+    const { service, generatorSpy } = setup(storedLeague as unknown as League);
     vi.mocked(generatorSpy.generateScheduleForSeason).mockReturnValue([]);
     await service.ensureHydrated();
 
@@ -751,7 +757,7 @@ describe('GameService persistence integration', () => {
       }]
     };
 
-    const { service } = setup({ teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026, transferListings: [] });
+    const { service } = setup({ teams: [team], schedule: [], currentWeek: 7, currentSeasonYear: 2026, transferListings: [], transferOffers: [] });
     await service.ensureHydrated();
 
     const readiness = service.getMatchReadiness('team-1');
@@ -902,7 +908,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should return balanced probabilities for unknown teams', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [], transferOffers: [] });
     await service.ensureHydrated();
 
     const probabilities = service.getMatchProbabilities('missing-home', 'missing-away');
@@ -1062,7 +1068,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should credit tackles and interceptions only to the turnover winner', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [], transferOffers: [] });
     await service.ensureHydrated();
 
     const emptyStats = {
@@ -1164,7 +1170,7 @@ describe('GameService persistence integration', () => {
   });
 
   it('should persist assists from generated player statistics', async () => {
-    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [] });
+    const { service } = setup({ teams: [], schedule: [], currentWeek: 1, currentSeasonYear: 2026, transferListings: [], transferOffers: [] });
     await service.ensureHydrated();
 
     const emptyStats = {
@@ -2434,7 +2440,8 @@ describe('GameService transfer listings and CPU heuristics', () => {
       currentWeek: initialWeek,
       currentSeasonYear: SEASON_YEAR,
       userTeamId,
-      transferListings: initialListings
+      transferListings: initialListings,
+      transferOffers: []
     };
 
     const generatorSpy = {

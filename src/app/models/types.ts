@@ -90,6 +90,7 @@ export interface Player {
   // Current availability is derived via `isPlayerEligible(player)` in season-history.
   injuries: InjuryRecord[];
   progression: PlayerProgression;
+  transferHistory?: PlayerTransfer[];
 }
 
 export interface PlayerCareerStats {
@@ -291,6 +292,26 @@ export interface League {
   currentSeasonYear: number;
   userTeamId?: string;
   transferListings: string[];
+  transferOffers: TransferOffer[];
+  evaluatedCpuOfferPlayerIds?: string[];
+}
+
+export interface PlayerTransfer {
+  sellerTeamId: string;
+  buyerTeamId: string;
+  fee: number;
+  seasonYear: number;
+  week: number;
+}
+
+export interface TransferOffer {
+  id: string;
+  buyerTeamId: string;
+  sellerTeamId: string;
+  playerId: string;
+  fee: number;
+  week: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
 }
 
 export type SeasonTransitionEventCategory = 'retirement'; // extensible later

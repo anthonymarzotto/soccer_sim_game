@@ -43,7 +43,8 @@ describe('GameService — season transition log', () => {
       ],
       currentWeek: 1,
       currentSeasonYear: 2026,
-      transferListings: []
+      transferListings: [],
+      transferOffers: []
     };
   }
 

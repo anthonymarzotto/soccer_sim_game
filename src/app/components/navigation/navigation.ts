@@ -40,6 +40,13 @@ export class NavigationComponent {
   });
 
   unreadSeasonTransitionLog = this.gameService.unreadSeasonTransitionLog;
+  hasPendingTransferOffers = computed(() => {
+    const l = this.gameService.league();
+    const userTeamId = this.userTeamId();
+    if (!l || !userTeamId) return false;
+    return (l.transferOffers ?? []).some(o => o.sellerTeamId === userTeamId && o.status === 'pending');
+  });
+
   toggleDebugMenu() {
     this.isDebugMenuOpen.update(v => !v);
   }

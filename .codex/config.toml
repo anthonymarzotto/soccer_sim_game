@@ -1,0 +1,3 @@
+[windows]
+sandbox = "elevated"   # Recommended
+# sandbox = "unelevated" # Fallback if admin permissions/setup are unavailable

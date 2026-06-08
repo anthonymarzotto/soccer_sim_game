@@ -42,7 +42,8 @@ describe('GameService — progression and seeding', () => {
       ],
       currentWeek: 1,
       currentSeasonYear: 2026,
-      transferListings: []
+      transferListings: [],
+      transferOffers: []
     };
   }
 

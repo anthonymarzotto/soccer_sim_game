@@ -70,7 +70,7 @@ export class PersistenceService {
     await this.enqueueNormalizedWrite(() => this.normalizedDb.clearLeagueData());
   }
 
-  async saveLeagueMetadata(metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings'>): Promise<void> {
+  async saveLeagueMetadata(metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>): Promise<void> {
     await this.doSafeNormalizedWrite(() => this.normalizedDb.saveLeagueMetadata(metadata));
   }
 
