@@ -964,7 +964,7 @@ export class GameService {
     const updatedPlayer: Player = {
       ...player,
       teamId: buyerId,
-      role: Role.BENCH,
+      role: Role.RESERVE,
       transferHistory: [
         ...(player.transferHistory ?? []),
         {

@@ -270,10 +270,10 @@ describe('GameService — Transfer Offer Sub-System', () => {
       expect(updatedBuyer.finances.transferBudget).toBe(10000000 - askingPrice);
       expect(updatedSeller.finances.transferBudget).toBe(10000000 + askingPrice);
 
-      // Check player details: position moved, role is Bench, transferHistory appended
+      // Check player details: position moved, role is Reserve, transferHistory appended
       const transferredPlayer = service.getPlayer('target_player')!;
       expect(transferredPlayer.teamId).toBe('buyer_team');
-      expect(transferredPlayer.role).toBe(Role.BENCH);
+      expect(transferredPlayer.role).toBe(Role.RESERVE);
       expect(transferredPlayer.transferHistory?.length).toBe(1);
       expect(transferredPlayer.transferHistory?.[0]).toMatchObject({
         sellerTeamId: 'seller_team',
