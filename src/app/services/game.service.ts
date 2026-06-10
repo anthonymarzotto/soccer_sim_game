@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
 import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer } from '../models/types';
-import { TransferService } from './transfer.service';
+import { TransferService, SUMMER_WINDOW_START, SUMMER_WINDOW_END, WINTER_WINDOW_START, WINTER_WINDOW_END } from './transfer.service';
 import { NormalizedDbService } from './normalized-db.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
@@ -67,6 +67,18 @@ export class GameService {
   private static readonly WEEK_SIMULATION_LOCK_MS = 350;
   private static readonly MATCH_RETENTION_CAP = 5000;
 
+  public static readonly ASKING_PRICE_MULTIPLIER = 1.15;
+  private static readonly CPU_TRANSFER_MAX_BUYS_SUMMER = 2;
+  private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
+  private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
+  private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 15;
+  private static readonly POSITION_SELL_FLOOR: Readonly<Record<Position, number>> = {
+    [Position.GOALKEEPER]: 1,
+    [Position.DEFENDER]: 3,
+    [Position.MIDFIELDER]: 3,
+    [Position.FORWARD]: 2,
+  };
+
   private leagueState = signal<League | null>(null);
   private hydrationPromise: Promise<void> | null = null;
   private isHydrating = signal(true);
@@ -74,6 +86,7 @@ export class GameService {
   private singleMatchSimulationSessionCount = signal(0);
   private weekSimulationUnlockTimer: ReturnType<typeof setTimeout> | null = null;
   private seasonTransitionLogState = signal<SeasonTransitionLog | null>(null);
+  public seasonTransitionLog = this.seasonTransitionLogState.asReadonly();
 
   public league = this.leagueState.asReadonly();
   private transferService = inject(TransferService);
@@ -465,7 +478,7 @@ export class GameService {
       const maxBid = playerValue * 1.15;
       const bidFee = Math.round(minBid + this.rng.random() * (maxBid - minBid));
 
-      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const offerId = this.generateOfferId();
       return {
         id: offerId,
         buyerTeamId: buyerTeam.id,
@@ -548,6 +561,123 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
+  private runCpuAutoListingForTeam(team: Team, currentSeasonYear: number): string[] {
+    const teamListings: string[] = [];
+    const players = resolveTeamPlayers(team);
+    const gkList: Player[] = [];
+    const defList: Player[] = [];
+    const midList: Player[] = [];
+    const fwdList: Player[] = [];
+
+    for (const p of players) {
+      if (p.position === Position.GOALKEEPER) gkList.push(p);
+      else if (p.position === Position.DEFENDER) defList.push(p);
+      else if (p.position === Position.MIDFIELDER) midList.push(p);
+      else if (p.position === Position.FORWARD) fwdList.push(p);
+    }
+
+    const schema = this.formationLibrary.getFormationSlots(team.selectedFormationId);
+    let gkStartersCount = 0;
+    let defStartersCount = 0;
+    let midStartersCount = 0;
+    let fwdStartersCount = 0;
+
+    if (schema) {
+      for (const slot of schema) {
+        if (slot.preferredPosition === Position.GOALKEEPER) gkStartersCount++;
+        else if (slot.preferredPosition === Position.DEFENDER) defStartersCount++;
+        else if (slot.preferredPosition === Position.MIDFIELDER) midStartersCount++;
+        else if (slot.preferredPosition === Position.FORWARD) fwdStartersCount++;
+      }
+    } else {
+      gkStartersCount = 1;
+      defStartersCount = 4;
+      midStartersCount = 4;
+      fwdStartersCount = 2;
+    }
+
+    const worstWageRatioIds = new Set<string>();
+    const topValueIds = new Set<string>();
+
+    const playerWageRatios = players.map(p => {
+      const wage = calculatePlayerWageCost(p, currentSeasonYear);
+      const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
+      const ratio = wage / overall;
+      return { id: p.id, ratio };
+    });
+    playerWageRatios.sort((a, b) => b.ratio - a.ratio);
+    const worstCount = Math.ceil(players.length * 0.2);
+    for (const x of playerWageRatios.slice(0, worstCount)) {
+      worstWageRatioIds.add(x.id);
+    }
+
+    const playerValues = players.map(p => {
+      const val = calculateMarketValue(p, currentSeasonYear);
+      return { id: p.id, val };
+    });
+    playerValues.sort((a, b) => b.val - a.val);
+    const topValueCount = Math.ceil(players.length * 0.2);
+    for (const x of playerValues.slice(0, topValueCount)) {
+      topValueIds.add(x.id);
+    }
+
+    const processPosition = (posPlayers: Player[], posMin: number, posStartersCount: number) => {
+      if (posPlayers.length <= posMin) {
+        return;
+      }
+
+      const sorted = [...posPlayers].sort((a, b) => {
+        const ovrA = getCurrentPlayerSeasonAttributes(a, currentSeasonYear).overall.value;
+        const ovrB = getCurrentPlayerSeasonAttributes(b, currentSeasonYear).overall.value;
+        return ovrB - ovrA;
+      });
+
+      const topPlayers = sorted.slice(0, posStartersCount);
+      const hasInjuryInTop = topPlayers.some(p => !isPlayerEligible(p));
+
+      const posCandidates: { player: Player; overall: number }[] = [];
+
+      for (let i = 0; i < sorted.length; i++) {
+        const p = sorted[i];
+
+        if (i < posMin) {
+          continue;
+        }
+
+        if (hasInjuryInTop && p.role === Role.STARTER && i >= posStartersCount) {
+          continue;
+        }
+
+        const age = computeAge(p.personal.birthday, seasonAnchorDate(currentSeasonYear));
+        const phase = derivePhase(age, p);
+        const isDeclining = phase === Phase.Decline;
+        const isWageInefficient = worstWageRatioIds.has(p.id);
+        const isValuableYouth = age <= 21 && topValueIds.has(p.id);
+
+        if (isDeclining || isWageInefficient || isValuableYouth) {
+          const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
+          posCandidates.push({ player: p, overall });
+        }
+      }
+
+      posCandidates.sort((a, b) => a.overall - b.overall);
+
+      const limit = posPlayers.length - posMin;
+      const selected = posCandidates.slice(0, limit);
+
+      for (const item of selected) {
+        teamListings.push(item.player.id);
+      }
+    };
+
+    processPosition(gkList, GameService.POSITION_SELL_FLOOR[Position.GOALKEEPER], gkStartersCount);
+    processPosition(defList, GameService.POSITION_SELL_FLOOR[Position.DEFENDER], defStartersCount);
+    processPosition(midList, GameService.POSITION_SELL_FLOOR[Position.MIDFIELDER], midStartersCount);
+    processPosition(fwdList, GameService.POSITION_SELL_FLOOR[Position.FORWARD], fwdStartersCount);
+
+    return teamListings;
+  }
+
   runCpuAutoListingForLeague(league: League): string[] {
     const nextListings: string[] = [];
     const currentSeasonYear = league.currentSeasonYear;
@@ -565,111 +695,7 @@ export class GameService {
       if (userTeamId && team.id === userTeamId) {
         continue;
       }
-
-      const players = resolveTeamPlayers(team);
-      const gkList: Player[] = [];
-      const defList: Player[] = [];
-      const midList: Player[] = [];
-      const fwdList: Player[] = [];
-
-      for (const p of players) {
-        if (p.position === Position.GOALKEEPER) gkList.push(p);
-        else if (p.position === Position.DEFENDER) defList.push(p);
-        else if (p.position === Position.MIDFIELDER) midList.push(p);
-        else if (p.position === Position.FORWARD) fwdList.push(p);
-      }
-
-      const schema = this.formationLibrary.getFormationSlots(team.selectedFormationId);
-      let gkStartersCount = 0;
-      let defStartersCount = 0;
-      let midStartersCount = 0;
-      let fwdStartersCount = 0;
-
-      if (schema) {
-        for (const slot of schema) {
-          if (slot.preferredPosition === Position.GOALKEEPER) gkStartersCount++;
-          else if (slot.preferredPosition === Position.DEFENDER) defStartersCount++;
-          else if (slot.preferredPosition === Position.MIDFIELDER) midStartersCount++;
-          else if (slot.preferredPosition === Position.FORWARD) fwdStartersCount++;
-        }
-      } else {
-        gkStartersCount = 1;
-        defStartersCount = 4;
-        midStartersCount = 4;
-        fwdStartersCount = 2;
-      }
-
-      const playerWageRatios = players.map(p => {
-        const wage = calculatePlayerWageCost(p, currentSeasonYear);
-        const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
-        const ratio = wage / overall;
-        return { id: p.id, ratio };
-      });
-      playerWageRatios.sort((a, b) => b.ratio - a.ratio);
-      const worstCount = Math.ceil(players.length * 0.2);
-      const worstWageRatioIds = new Set(playerWageRatios.slice(0, worstCount).map(x => x.id));
-
-      const playerValues = players.map(p => {
-        const val = calculateMarketValue(p, currentSeasonYear);
-        return { id: p.id, val };
-      });
-      playerValues.sort((a, b) => b.val - a.val);
-      const topValueCount = Math.ceil(players.length * 0.2);
-      const topValueIds = new Set(playerValues.slice(0, topValueCount).map(x => x.id));
-
-      const processPosition = (posPlayers: Player[], posMin: number, posStartersCount: number) => {
-        if (posPlayers.length <= posMin) {
-          return;
-        }
-
-        const sorted = [...posPlayers].sort((a, b) => {
-          const ovrA = getCurrentPlayerSeasonAttributes(a, currentSeasonYear).overall.value;
-          const ovrB = getCurrentPlayerSeasonAttributes(b, currentSeasonYear).overall.value;
-          return ovrB - ovrA;
-        });
-
-        const topPlayers = sorted.slice(0, posStartersCount);
-        const hasInjuryInTop = topPlayers.some(p => !isPlayerEligible(p));
-
-        const posCandidates: { player: Player; overall: number }[] = [];
-
-        for (let i = 0; i < sorted.length; i++) {
-          const p = sorted[i];
-
-          if (i < posMin) {
-            continue;
-          }
-
-          if (hasInjuryInTop && p.role === Role.STARTER && i >= posStartersCount) {
-            continue;
-          }
-
-          const age = computeAge(p.personal.birthday, seasonAnchorDate(currentSeasonYear));
-          const phase = derivePhase(age, p);
-          const isDeclining = phase === Phase.Decline;
-          const isWageInefficient = worstWageRatioIds.has(p.id);
-          const isValuableYouth = age <= 21 && topValueIds.has(p.id);
-
-          if (isDeclining || isWageInefficient || isValuableYouth) {
-            const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
-            posCandidates.push({ player: p, overall });
-          }
-        }
-
-        posCandidates.sort((a, b) => a.overall - b.overall);
-
-        const limit = posPlayers.length - posMin;
-        const selected = posCandidates.slice(0, limit);
-
-        for (const item of selected) {
-          nextListings.push(item.player.id);
-        }
-      };
-
-      processPosition(gkList, 1, gkStartersCount);
-      processPosition(defList, 3, defStartersCount);
-      processPosition(midList, 3, midStartersCount);
-      processPosition(fwdList, 2, fwdStartersCount);
+      nextListings.push(...this.runCpuAutoListingForTeam(team, currentSeasonYear));
     }
 
     return nextListings;
@@ -736,6 +762,11 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
+  calculateAskingPrice(player: Player, currentSeasonYear: number): number {
+    const marketValue = calculateMarketValue(player, currentSeasonYear);
+    return Math.round(marketValue * GameService.ASKING_PRICE_MULTIPLIER);
+  }
+
   submitTransferOffer(playerId: string, fee: number): { success: boolean; message: string; offer?: TransferOffer } {
     if (!this.canMutateLeagueState()) {
       return { success: false, message: 'Actions blocked due to version mismatch.' };
@@ -777,11 +808,10 @@ export class GameService {
       return { success: false, message: `Insufficient wage points headroom. Player cost is ${playerWage} pts, but you only have ${buyerWageHeadroom.toFixed(1)} pts available.` };
     }
 
-    const marketValue = calculateMarketValue(player, league.currentSeasonYear);
-    const askingPrice = Math.round(marketValue * 1.15);
+    const askingPrice = this.calculateAskingPrice(player, league.currentSeasonYear);
 
     if (fee < askingPrice) {
-      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const offerId = this.generateOfferId();
       const newOffer: TransferOffer = {
         id: offerId,
         buyerTeamId: buyerId,
@@ -805,14 +835,10 @@ export class GameService {
     const sellerPlayers = seller.players ?? [];
     const playersAtPosition = sellerPlayers.filter(p => p.position === player.position);
     
-    let minLimit = 1;
-    if (player.position === Position.GOALKEEPER) minLimit = 1;
-    else if (player.position === Position.DEFENDER) minLimit = 3;
-    else if (player.position === Position.MIDFIELDER) minLimit = 3;
-    else if (player.position === Position.FORWARD) minLimit = 2;
+    const minLimit = GameService.POSITION_SELL_FLOOR[player.position];
 
     if (playersAtPosition.length <= minLimit) {
-      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const offerId = this.generateOfferId();
       const newOffer: TransferOffer = {
         id: offerId,
         buyerTeamId: buyerId,
@@ -833,7 +859,7 @@ export class GameService {
       return { success: false, message: 'Offer rejected. The club cannot sell this player because they do not have enough depth at this position.', offer: newOffer };
     }
 
-    const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+    const offerId = this.generateOfferId();
     const newOffer: TransferOffer = {
       id: offerId,
       buyerTeamId: buyerId,
@@ -923,7 +949,44 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
-  private executeTransfer(buyerId: string, sellerId: string, playerId: string, fee: number, triggerOfferId: string) {
+  private generateOfferId(): string {
+    return 'offer_' + Math.floor(this.rng.random() * 1e9).toString(36).padStart(9, '0').slice(0, 9);
+  }
+
+  private rebuildTransferListingsForTradeParties(
+    buyerId: string,
+    sellerId: string,
+    currentSeasonYear: number,
+    currentListings: string[]
+  ): string[] {
+    const league = this.leagueState();
+    if (!league) return currentListings;
+
+    const userTeamId = league.userTeamId;
+    const listingsWithoutTeams = currentListings.filter(pid => {
+      const p = this.getPlayer(pid);
+      return p && p.teamId !== buyerId && p.teamId !== sellerId;
+    });
+
+    const buyerTeam = this.getTeam(buyerId);
+    const sellerTeam = this.getTeam(sellerId);
+
+    const newBuyerListings = (buyerTeam && buyerTeam.id !== userTeamId)
+      ? this.runCpuAutoListingForTeam(buyerTeam, currentSeasonYear) : [];
+    const newSellerListings = (sellerTeam && sellerTeam.id !== userTeamId)
+      ? this.runCpuAutoListingForTeam(sellerTeam, currentSeasonYear) : [];
+
+    return [...listingsWithoutTeams, ...newBuyerListings, ...newSellerListings];
+  }
+
+  private executeTransfer(
+    buyerId: string,
+    sellerId: string,
+    playerId: string,
+    fee: number,
+    triggerOfferId: string,
+    options?: { refreshCpuTeamListings?: boolean }
+  ) {
     const league = this.leagueState();
     if (!league) return;
 
@@ -940,7 +1003,7 @@ export class GameService {
     const updatedPlayer: Player = {
       ...player,
       teamId: buyerId,
-      role: Role.BENCH,
+      role: Role.RESERVE,
       transferHistory: [
         ...(player.transferHistory ?? []),
         {
@@ -1031,22 +1094,306 @@ export class GameService {
       return t;
     });
 
-    const updatedLeague: League = {
+    let finalLeague: League = {
       ...league,
       teams: updatedTeams,
       transferListings,
       transferOffers: updatedOffers
     };
 
-    this.leagueState.set(updatedLeague);
+    this.leagueState.set(finalLeague);
+
+    if (options?.refreshCpuTeamListings) {
+      const refreshedListings = this.rebuildTransferListingsForTradeParties(
+        buyerId,
+        sellerId,
+        currentSeasonYear,
+        finalLeague.transferListings ?? []
+      );
+      finalLeague = { ...finalLeague, transferListings: refreshedListings };
+      this.leagueState.set(finalLeague);
+    }
 
     void this.normalizedDb.saveTransfer(normalizedBuyer, normalizedSeller, updatedPlayer, currentSeasonYear, {
-      currentWeek: updatedLeague.currentWeek,
-      currentSeasonYear: updatedLeague.currentSeasonYear,
-      userTeamId: updatedLeague.userTeamId,
-      transferListings: updatedLeague.transferListings,
-      transferOffers: updatedLeague.transferOffers
+      currentWeek: finalLeague.currentWeek,
+      currentSeasonYear: finalLeague.currentSeasonYear,
+      userTeamId: finalLeague.userTeamId,
+      transferListings: finalLeague.transferListings,
+      transferOffers: finalLeague.transferOffers
     });
+  }
+
+  private runCpuToCpuTransferPass() {
+    const league = this.leagueState();
+    if (!league) return;
+
+    const phase = this.transferWindowPhase();
+    if (phase === 'closed') return;
+
+    const currentSeasonYear = league.currentSeasonYear;
+    const userTeamId = league.userTeamId;
+
+    // Define limits
+    const maxBuys = phase === 'summer' ? GameService.CPU_TRANSFER_MAX_BUYS_SUMMER : GameService.CPU_TRANSFER_MAX_BUYS_WINTER;
+
+    // Helper: count transactions in the current window for each CPU team
+    const getTransactionCounts = () => {
+      const buyCounts = new Map<string, number>();
+      for (const team of league.teams) {
+        buyCounts.set(team.id, 0);
+      }
+
+      const windowStart = phase === 'summer' ? SUMMER_WINDOW_START : WINTER_WINDOW_START;
+      const windowEnd = phase === 'summer' ? SUMMER_WINDOW_END : WINTER_WINDOW_END;
+
+      for (const team of league.teams) {
+        for (const player of team.players) {
+          if (player.transferHistory) {
+            for (const record of player.transferHistory) {
+              if (
+                record.seasonYear === currentSeasonYear &&
+                record.week >= windowStart &&
+                record.week <= windowEnd
+              ) {
+                buyCounts.set(record.buyerTeamId, (buyCounts.get(record.buyerTeamId) ?? 0) + 1);
+              }
+            }
+          }
+        }
+      }
+      return buyCounts;
+    };
+
+    const buyCounts = getTransactionCounts();
+
+    // Shuffled CPU teams
+    const cpuTeams = league.teams.filter(t => t.id !== userTeamId);
+    // Shuffle using this.rng.random()
+    for (let i = cpuTeams.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng.random() * (i + 1));
+      [cpuTeams[i], cpuTeams[j]] = [cpuTeams[j], cpuTeams[i]];
+    }
+
+    // Weakness evaluation helper
+    const getPositionWeakness = (team: Team, position: Position): {
+      score: number;
+      depth: number;
+      requiredStarters: number;
+      averageOverall: number;
+    } => {
+      const posPlayers = team.players.filter(p => p.position === position);
+      const schema = this.formationLibrary.getFormationSlots(team.selectedFormationId);
+
+      let requiredStarters = 0;
+      if (schema) {
+        for (const slot of schema) {
+          if (slot.preferredPosition === position) {
+            requiredStarters++;
+          }
+        }
+      } else {
+        if (position === Position.GOALKEEPER) requiredStarters = 1;
+        else if (position === Position.DEFENDER) requiredStarters = 4;
+        else if (position === Position.MIDFIELDER) requiredStarters = 4;
+        else if (position === Position.FORWARD) requiredStarters = 2;
+      }
+
+      const depth = posPlayers.length;
+      let depthScore = 0;
+
+      if (depth < requiredStarters) {
+        depthScore = (requiredStarters - depth) * 50;
+      } else if (depth === requiredStarters) {
+        depthScore = 20;
+      } else if (depth === requiredStarters + 1) {
+        depthScore = 5;
+      }
+
+      const sortedPosPlayers = [...posPlayers].sort((a, b) => {
+        const ovrA = this.getCurrentSeasonPlayerAttributes(a).overall.value;
+        const ovrB = this.getCurrentSeasonPlayerAttributes(b).overall.value;
+        return ovrB - ovrA;
+      });
+
+      const topStarters = sortedPosPlayers.slice(0, requiredStarters);
+      const sumOverall = topStarters.reduce(
+        (sum, p) => sum + this.getCurrentSeasonPlayerAttributes(p).overall.value,
+        0
+      );
+      const averageOverall = requiredStarters > 0 ? (topStarters.length > 0 ? sumOverall / topStarters.length : 0) : 0;
+
+      const allPlayersSorted = [...team.players].sort((a, b) => {
+        const ovrA = this.getCurrentSeasonPlayerAttributes(a).overall.value;
+        const ovrB = this.getCurrentSeasonPlayerAttributes(b).overall.value;
+        return ovrB - ovrA;
+      });
+      const top11 = allPlayersSorted.slice(0, 11);
+      const sumTop11 = top11.reduce(
+        (sum, p) => sum + this.getCurrentSeasonPlayerAttributes(p).overall.value,
+        0
+      );
+      const teamTop11Average = top11.length > 0 ? sumTop11 / top11.length : 0;
+
+      const qualityDiff = teamTop11Average - averageOverall;
+      let qualityScore = 0;
+      if (qualityDiff > 0) {
+        qualityScore = qualityDiff * 4;
+      }
+
+      return {
+        score: depthScore + qualityScore,
+        depth,
+        requiredStarters,
+        averageOverall
+      };
+    };
+
+    for (const buyerSnapshot of cpuTeams) {
+      const buyerTeam = this.getTeam(buyerSnapshot.id);
+      if (!buyerTeam) continue;
+
+      // 1. Weekly activity chance check
+      if (this.rng.random() >= GameService.CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE) {
+        continue;
+      }
+
+      // 2. Buy cap check
+      const currentBuys = buyCounts.get(buyerTeam.id) ?? 0;
+      if (currentBuys >= maxBuys) {
+        continue;
+      }
+
+      // 3. Compute weaknesses
+      const positions = [Position.GOALKEEPER, Position.DEFENDER, Position.MIDFIELDER, Position.FORWARD];
+      const weaknesses = positions.map(pos => {
+        const evaluation = getPositionWeakness(buyerTeam, pos);
+        return { position: pos, ...evaluation };
+      });
+
+      // Sort by weakness score descending
+      weaknesses.sort((a, b) => b.score - a.score);
+
+      for (const w of weaknesses) {
+        if (w.score <= 0) {
+          continue; // No weakness at this position
+        }
+
+        // Fetch candidate listed players
+        const listings = this.leagueState()?.transferListings ?? [];
+        const candidates: Player[] = [];
+
+        for (const pid of listings) {
+          const player = this.getPlayer(pid);
+          if (
+            player &&
+            player.position === w.position &&
+            player.teamId !== buyerTeam.id &&
+            player.teamId !== userTeamId &&
+            isPlayerEligible(player)
+          ) {
+            candidates.push(player);
+          }
+        }
+
+        // Filter valid candidates
+        const validCandidates: { player: Player; askingPrice: number; overall: number }[] = [];
+
+        for (const player of candidates) {
+          const seller = this.getTeam(player.teamId);
+          if (!seller) continue;
+
+          // 1. Safety roster size floor
+          if (seller.players.length <= GameService.CPU_TRANSFER_MIN_ROSTER_SIZE) {
+            continue;
+          }
+
+          // 2. Live position depth check
+          const sellerPlayersAtPosition = seller.players.filter(p => p.position === player.position);
+          const minLimit = GameService.POSITION_SELL_FLOOR[player.position];
+
+          if (sellerPlayersAtPosition.length <= minLimit) {
+            continue;
+          }
+
+          // 3. Budget and wage headroom checks
+          const askingPrice = this.calculateAskingPrice(player, currentSeasonYear);
+          if (buyerTeam.finances.transferBudget < askingPrice) {
+            continue;
+          }
+
+          const playerWage = calculatePlayerWageCost(player, currentSeasonYear);
+          const buyerWageHeadroom = buyerTeam.finances.wagePointsCap - buyerTeam.finances.wagePointsUsed;
+          if (buyerWageHeadroom < playerWage) {
+            continue;
+          }
+
+          // 4. Quality checks
+          const playerOvr = this.getCurrentSeasonPlayerAttributes(player).overall.value;
+          const playerValue = calculateMarketValue(player, currentSeasonYear);
+          
+          // OVR floor: lowest OVR player at position
+          const buyerPosPlayers = buyerTeam.players.filter(p => p.position === player.position);
+          const lowestOvr = buyerPosPlayers.length > 0
+            ? Math.min(...buyerPosPlayers.map(p => this.getCurrentSeasonPlayerAttributes(p).overall.value))
+            : 0;
+
+          // Average market value for prospect checking
+          const avgValue = buyerPosPlayers.length > 0
+            ? buyerPosPlayers.reduce((sum, p) => sum + calculateMarketValue(p, currentSeasonYear), 0) / buyerPosPlayers.length
+            : 0;
+
+          const birthday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
+          const age = computeAge(birthday, seasonAnchorDate(currentSeasonYear));
+          
+          const isDepthNecessity = w.depth < w.requiredStarters;
+          const isDirectQualityImprovement = playerOvr > lowestOvr;
+          const isProspectImprovement = (age <= 21) && (playerValue > avgValue);
+
+          if (isDepthNecessity || isDirectQualityImprovement || isProspectImprovement) {
+            validCandidates.push({ player, askingPrice, overall: playerOvr });
+          }
+        }
+
+        if (validCandidates.length > 0) {
+          // Sort valid candidates by overall rating descending
+          validCandidates.sort((a, b) => b.overall - a.overall);
+          const selectedCandidate = validCandidates[0];
+
+          const offerId = this.generateOfferId();
+          const newOffer: TransferOffer = {
+            id: offerId,
+            buyerTeamId: buyerTeam.id,
+            sellerTeamId: selectedCandidate.player.teamId,
+            playerId: selectedCandidate.player.id,
+            fee: selectedCandidate.askingPrice,
+            week: league.currentWeek,
+            status: 'accepted'
+          };
+
+          // Re-fetch current state to ensure thread-safety with signals
+          const freshLeague = this.leagueState()!;
+          const tempLeague: League = {
+            ...freshLeague,
+            transferOffers: [...(freshLeague.transferOffers ?? []), newOffer]
+          };
+          this.leagueState.set(tempLeague);
+
+          this.executeTransfer(
+            buyerTeam.id,
+            selectedCandidate.player.teamId,
+            selectedCandidate.player.id,
+            selectedCandidate.askingPrice,
+            newOffer.id,
+            { refreshCpuTeamListings: true }
+          );
+
+          // Increment buy count in map
+          buyCounts.set(buyerTeam.id, currentBuys + 1);
+
+          break;
+        }
+      }
+    }
   }
 
   /**
@@ -1194,6 +1541,8 @@ export class GameService {
       }
 
       while (!this.isSeasonComplete()) {
+        this.runCpuToCpuTransferPass();
+
         const league = this.leagueState()!;
         const matches = league.schedule.filter(
           m => m.week === league.currentWeek && m.seasonYear === league.currentSeasonYear && !m.played
@@ -1238,7 +1587,10 @@ export class GameService {
     this.isSimulatingWeekState.set(true);
 
     try {
-      const matches = l.schedule.filter(m => m.week === l.currentWeek && m.seasonYear === l.currentSeasonYear);
+      this.runCpuToCpuTransferPass();
+
+      const freshLeague = this.leagueState()!;
+      const matches = freshLeague.schedule.filter(m => m.week === freshLeague.currentWeek && m.seasonYear === freshLeague.currentSeasonYear);
 
       matches.forEach(match => {
         if (match.played) return;

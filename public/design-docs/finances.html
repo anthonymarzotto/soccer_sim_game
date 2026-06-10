@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Player Finances — System Specification</title>
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -24,13 +27,40 @@
       gap: 20px;
     }
 
-    h1, h2, h3 { margin: 0; line-height: 1.2; }
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.2;
+    }
 
-    h1 { font-size: 1.5rem; color: #a1a1aa; font-weight: 600; margin-bottom: 0.25rem; }
-    h2 { font-size: 1.1rem; font-weight: 600; color: #e4e4e7; border-bottom: 1px solid #27272a; padding-bottom: 8px; margin-bottom: 10px; }
-    h3 { font-size: 0.95rem; font-weight: 600; color: #e4e4e7; margin-bottom: 6px; }
+    h1 {
+      font-size: 1.5rem;
+      color: #a1a1aa;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
 
-    p { margin: 0; color: #a1a1aa; }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e4e4e7;
+      border-bottom: 1px solid #27272a;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e4e4e7;
+      margin-bottom: 6px;
+    }
+
+    p {
+      margin: 0;
+      color: #a1a1aa;
+    }
 
     .panel {
       background: #18181b;
@@ -41,7 +71,10 @@
       gap: 16px;
     }
 
-    .panel-header { display: grid; gap: 6px; }
+    .panel-header {
+      display: grid;
+      gap: 6px;
+    }
 
     .formula-box {
       background: #09090b;
@@ -105,8 +138,13 @@
       color: #a1a1aa;
     }
 
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #1f1f22; }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover td {
+      background: #1f1f22;
+    }
 
     .highlight {
       font-weight: 600;
@@ -114,14 +152,15 @@
     }
   </style>
 </head>
+
 <body>
   <main>
     <section class="panel">
       <div class="panel-header">
         <h1>Player Finances — System Specification</h1>
         <p>
-          This document defines the mathematical equations, multipliers, and logic backing player cash valuations 
-          and wage point calculations. Both mechanics are designed to be purely deterministic, side-effect free, 
+          This document defines the mathematical equations, multipliers, and logic backing player cash valuations
+          and wage point calculations. Both mechanics are designed to be purely deterministic, side-effect free,
           and driven entirely by player overalls, ages, and positions. It also documents how those values are used
           by club budgets, wage caps, transfer listings, and transfer offer resolution.
         </p>
@@ -132,8 +171,8 @@
       <section class="panel">
         <h2>1. Player Market Value System</h2>
         <p>
-          Instead of relying on a flat OVR lookup, Market Value uses a <strong>Blended Effective OVR</strong> 
-          to incorporate developmental potential for younger prospects, followed by a piecewise exponential curve 
+          Instead of relying on a flat OVR lookup, Market Value uses a <strong>Blended Effective OVR</strong>
+          to incorporate developmental potential for younger prospects, followed by a piecewise exponential curve
           gated by age phases and position profiles.
         </p>
 
@@ -165,8 +204,8 @@
       <section class="panel">
         <h2>2. Player Wage Cost System</h2>
         <p>
-          Player wages are represented in <strong>points</strong> to simplify squad payroll management. 
-          The base wage scales exponentially with OVR, modified by discrete career phase and position multipliers, 
+          Player wages are represented in <strong>points</strong> to simplify squad payroll management.
+          The base wage scales exponentially with OVR, modified by discrete career phase and position multipliers,
           and rounded strictly to the nearest 0.5 points.
         </p>
 
@@ -192,8 +231,8 @@
     <section class="panel">
       <h2>3. Career Multipliers & Multiplier Anchors</h2>
       <p>
-        Career value multipliers scale dynamically as a player progresses through their lifecycle. 
-        Market Value uses a continuous Career Arc Multiplier interpolated across five anchor points, 
+        Career value multipliers scale dynamically as a player progresses through their lifecycle.
+        Market Value uses a continuous Career Arc Multiplier interpolated across five anchor points,
         while Wages use discrete phase multipliers.
       </p>
 
@@ -240,7 +279,8 @@
     <section class="panel">
       <h2>4. Position Multipliers</h2>
       <p>
-        Position multipliers are applied symmetrically across both Market Value and Wages to model real-world market demands 
+        Position multipliers are applied symmetrically across both Market Value and Wages to model real-world market
+        demands
         for specific positional roles.
       </p>
 
@@ -272,7 +312,8 @@
             <tr>
               <td class="highlight">Goalkeeper (GK)</td>
               <td><code>0.85x</code></td>
-              <td>Most specialized position, with historically lower market pricing relative to outfield counterparts.</td>
+              <td>Most specialized position, with historically lower market pricing relative to outfield counterparts.
+              </td>
             </tr>
           </tbody>
         </table>
@@ -282,8 +323,10 @@
     <section class="panel">
       <h2>5. Club Tiers & Financial Constraints</h2>
       <p>
-        Clubs in the league are sorted descending by starter overall strength and assigned to one of five fixed financial tiers.
-        Tiers enforce strict boundaries on both spending capital (Transfer Budget cash) and ongoing overhead limits (Wage Points caps).
+        Clubs in the league are sorted descending by starter overall strength and assigned to one of five fixed
+        financial tiers.
+        Tiers enforce strict boundaries on both spending capital (Transfer Budget cash) and ongoing overhead limits
+        (Wage Points caps).
       </p>
 
       <div class="table-wrap">
@@ -335,16 +378,17 @@
         <div class="card">
           <h3>League Finances Dashboard</h3>
           <p>
-            Accessible via the main sidebar under <strong>League Finances</strong>, this page provides a dynamically sortable, 
-            league-wide breakdown of all 20 clubs. Users can contrast and sort clubs on OVR, Tier, Transfer Budget, 
+            Accessible via the main sidebar under <strong>League Finances</strong>, this page provides a dynamically
+            sortable,
+            league-wide breakdown of all 20 clubs. Users can contrast and sort clubs on OVR, Tier, Transfer Budget,
             Squad Value, and Wage Point utilization percentage.
           </p>
         </div>
         <div class="card">
           <h3>Team Financials Card</h3>
           <p>
-            Exposed directly in the left-sidebar of any team's details page. It renders the club's active Tier badge, 
-            Transfer Budget, dynamically computed total Squad Value (sum of all roster player valuations), 
+            Exposed directly in the left-sidebar of any team's details page. It renders the club's active Tier badge,
+            Transfer Budget, dynamically computed total Squad Value (sum of all roster player valuations),
             and a color-coded wage points utilization meter.
           </p>
         </div>
@@ -363,8 +407,10 @@
         <div class="card">
           <h3>User Bid Flow</h3>
           <p>
-            Transfer offers are blocked outside active transfer windows and cannot target players already on the user's team.
-            The bid modal defaults the offer amount to <code>115%</code> of Market Value, displays the user's Transfer Budget,
+            Transfer offers are blocked outside active transfer windows and cannot target players already on the user's
+            team.
+            The bid modal defaults the offer amount to <code>115%</code> of Market Value, displays the user's Transfer
+            Budget,
             current Wage Headroom, and the target player's Wage Point Cost, then disables submission if the bid exceeds
             available cash or the player's wage exceeds remaining cap space.
           </p>
@@ -372,9 +418,21 @@
         <div class="card">
           <h3>Incoming CPU Offers</h3>
           <p>
-            CPU clubs evaluate user-listed players during active windows and may create pending offers if they can afford
+            CPU clubs evaluate user-listed players during active windows and may create pending offers if they can
+            afford
             the bid, have enough wage headroom, and the player improves their positional depth or youth value. Incoming
             offers appear above the listed-player table with Accept and Decline actions.
+          </p>
+        </div>
+        <div class="card">
+          <h3>CPU-to-CPU Transfers</h3>
+          <p>
+            During active transfer windows, CPU clubs dynamically trade with each other weekly. A CPU club has a
+            <code>40%</code>
+            weekly chance to search the listings. It targets its weakest positions based on roster depth and overall
+            quality,
+            purchasing the best-matching listed player if they satisfy budget constraints, wage cap limits, and improve
+            the squad.
           </p>
         </div>
       </div>
@@ -408,7 +466,8 @@
             <tr>
               <td class="highlight"><code>expired</code></td>
               <td>Offer is no longer actionable.</td>
-              <td>Transfer window closes, the target player transfers elsewhere, or buyer budget/wage headroom becomes invalid.</td>
+              <td>Transfer window closes, the target player transfers elsewhere, or buyer budget/wage headroom becomes
+                invalid.</td>
             </tr>
           </tbody>
         </table>
@@ -434,6 +493,35 @@
         seller.wagePointsUsed = recalculateSquadWages(seller.players);
       </div>
 
+      <h3>CPU-to-CPU Transfer Heuristics & Constraints</h3>
+      <div class="formula-box">
+        <span class="comment">// 1. Weekly Execution Heuristics</span>
+        activityChance = 0.40; <span class="comment">// 40% weekly activity check</span>
+        maxBuys = summer ? 2 : 1; <span class="comment">// Summer cap is 2, Winter cap is 1</span>
+        <br><br>
+        <span class="comment">// 2. Positional Weakness Calculation</span>
+        depthScore = depth < requiredStarters ? (requiredStarters - depth) * 50 : (depth==requiredStarters ? 20 :
+          (depth==requiredStarters + 1 ? 5 : 0)); qualityScore=teamTop11Average> averageOverall ? (teamTop11Average -
+          averageOverall) * 4 : 0;
+          weaknessScore = depthScore + qualityScore;
+          <br><br>
+          <span class="comment">// 3. Purchase Eligibility Checks</span>
+          seller.players.length > 15; <span class="comment">// Seller safety roster limit</span>
+          sellerPlayersAtPosition.length > minPositionLimit; <span class="comment">// Positional depth safety
+            floor</span>
+          buyer.transferBudget >= askingPrice; <span class="comment">// Affordability check (askingPrice = Market Value
+            * 1.15)</span>
+          buyer.wagePointsCap - buyer.wagePointsUsed >= playerWage; <span class="comment">// Wage points check</span>
+          <br><br>
+          <span class="comment">// 4. Buyer Team Improvement Triggers</span>
+          isDepthNecessity = w.depth < w.requiredStarters; <span class="comment">// Lacks required starters at
+            position</span>
+            isDirectQualityImprovement = playerOvr > lowestOvrAtPosition; <span class="comment">// OVR > lowest OVR at
+              position</span>
+            isProspectImprovement = age <= 21 && playerMarketValue> averageMarketValueAtPosition; <span
+                class="comment">// Young and above average value</span>
+      </div>
+
       <div class="grid-2">
         <div class="card">
           <h3>Persisted Transfer Metadata</h3>
@@ -446,8 +534,10 @@
         <div class="card">
           <h3>Schema Impact</h3>
           <p>
-            The persisted transfer fields are part of data schema version <code>N</code>. Existing persisted leagues from
-            older schema versions should be treated as incompatible until regenerated or migrated through the app's schema
+            The persisted transfer fields are part of data schema version <code>N</code>. Existing persisted leagues
+            from
+            older schema versions should be treated as incompatible until regenerated or migrated through the app's
+            schema
             version safeguards.
           </p>
         </div>
@@ -455,4 +545,5 @@
     </section>
   </main>
 </body>
+
 </html>
