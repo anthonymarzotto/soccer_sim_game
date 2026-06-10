@@ -18,11 +18,11 @@
       }
     </div>
 
-    @if (!log()) {
+    @if (allNewsItems().length === 0) {
     <!-- Empty state -->
     <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center">
       <span class="material-icons text-4xl text-zinc-600 mb-3 block">newspaper</span>
-      <p class="text-zinc-400">No news yet. Complete a season to see end-of-season reports.</p>
+      <p class="text-zinc-400">No news yet. Complete matches or transfers to see news updates.</p>
     </div>
     } @else {
     <!-- Filter bar -->
@@ -31,45 +31,37 @@
         by team</label>
       <select id="news-team-filter" [value]="filterTeamId()" (change)="setFilter($any($event.target).value)"
         class="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm cursor-pointer hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600">
-        <option value="">All Teams ({{ teamGroups().length }})</option>
-        @for (group of teamGroups(); track group.teamId) {
-        <option [value]="group.teamId">{{ group.teamName }}</option>
+        <option value="">All Teams ({{ teams().length }})</option>
+        @for (team of teams(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
         }
       </select>
     </div>
 
-    @if (visibleGroups().length === 0) {
+    @if (visibleItems().length === 0) {
     <div class="text-center py-12 text-zinc-500">No events match the selected filter.</div>
     } @else {
-    <!-- Team groups -->
-    <div class="space-y-6">
-      @for (group of visibleGroups(); track group.teamId) {
-      <div class="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden shadow-xl">
-        <!-- Team header -->
-        <div class="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-          <a [routerLink]="['/team', group.teamId]"
-            class="font-semibold text-white hover:text-emerald-400 transition-colors">{{ group.teamName }}</a>
-          <span class="text-xs text-zinc-500 font-mono">{{ group.events.length }} event{{ group.events.length === 1 ? ''
-            : 's' }}</span>
-        </div>
-        <!-- Events -->
-        <div class="p-4 space-y-2">
-          @for (event of group.events; track event.playerIds[0]) {
-          <div class="rounded-lg p-4 border transition-colors" [ngClass]="event.isUserTeam
-                      ? 'bg-zinc-800/50 border-blue-500/30 hover:border-blue-400/50'
-                      : 'bg-zinc-800/30 border-zinc-700/30'">
-            <div class="flex items-start gap-3">
-              <span class="material-icons text-base mt-0.5 shrink-0"
-                [ngClass]="event.isUserTeam ? 'text-blue-400' : 'text-zinc-500'">
-                person_off
-              </span>
-              <div>
-                <div class="font-medium text-white text-sm">{{ event.headline }}</div>
-                <div class="text-xs text-zinc-400 mt-0.5">{{ event.detail }}</div>
-              </div>
+    <!-- News timeline -->
+    <div class="space-y-4">
+      @for (item of visibleItems(); track item.id) {
+      <div class="rounded-xl p-4 border transition-colors bg-zinc-900/60 overflow-hidden shadow-md"
+        [ngClass]="item.isUserTeam
+                   ? 'bg-zinc-800/50 border-blue-500/30 hover:border-blue-400/50'
+                   : 'bg-zinc-850/30 border-zinc-800/60 hover:border-zinc-750/50'">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <span class="material-icons text-base mt-0.5 shrink-0"
+              [ngClass]="item.isUserTeam ? 'text-blue-400' : 'text-zinc-500'">
+              {{ item.category === 'transfer' ? 'swap_horiz' : 'person_off' }}
+            </span>
+            <div>
+              <div class="font-medium text-white text-sm">{{ item.headline }}</div>
+              <div class="text-xs text-zinc-400 mt-0.5">{{ item.detail }}</div>
             </div>
           </div>
-          }
+          <span class="text-xs font-mono text-zinc-500 shrink-0 select-none bg-zinc-800/50 px-2 py-0.5 rounded border border-zinc-700/30">
+            S{{ item.seasonYear }} @if (item.week > 0) { W{{ item.week }} } @else { Pre }
+          </span>
         </div>
       </div>
       }

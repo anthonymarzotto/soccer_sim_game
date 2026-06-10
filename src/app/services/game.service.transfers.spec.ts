@@ -589,4 +589,189 @@ describe('GameService — Transfer Offer Sub-System', () => {
       expect(service.league()?.transferOffers?.length).toBe(1);
     });
   });
+
+  describe('CPU-to-CPU transfers', () => {
+    it('should not run CPU-to-CPU transfers outside the transfer window', async () => {
+      const userTeam = makeTeam('user_team', []);
+      const buyerTeam = makeTeam('cpu_buyer', [
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER })
+      ]);
+      const sellerTeam = makeTeam('cpu_seller', [
+        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER }),
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER })
+      ]);
+      const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
+      league.currentWeek = 4; // Transfer window closed
+      league.transferListings = ['seller_p1'];
+
+      // Mock RNG to make sure activity check would pass (random < 0.4, e.g. 0.1)
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+
+      // Since window is closed, no transfers should occur
+      expect(service.league()?.transferOffers?.length ?? 0).toBe(0);
+    });
+
+    it('should execute CPU-to-CPU transfer when conditions are met', async () => {
+      const userTeam = makeTeam('user_team', []);
+      
+      // Buyer has a midfielder depth deficit (only 1 player, default formation needs 3)
+      const buyerTeam = makeTeam('cpu_buyer', [
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+      ], 20000000);
+      
+      // Seller has surplus midfielders (4 players)
+      const sellerMid1 = createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 });
+      const sellerTeam = makeTeam('cpu_seller', [
+        sellerMid1,
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+      ]);
+
+      // Ensure seller team has > 15 players overall for the safety roster limit
+      for (let i = 5; i <= 17; i++) {
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+      }
+      sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
+      sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
+
+      const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
+      league.currentWeek = 1; // Summer window open
+      league.transferListings = ['seller_p1'];
+
+      // Mock RNG: activity check (random < 0.4, e.g. 0.1)
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+
+      const updatedOffers = service.league()?.transferOffers ?? [];
+      expect(updatedOffers.length).toBe(1);
+      expect(updatedOffers[0].status).toBe('accepted');
+      expect(updatedOffers[0].buyerTeamId).toBe('cpu_buyer');
+      expect(updatedOffers[0].sellerTeamId).toBe('cpu_seller');
+      expect(updatedOffers[0].playerId).toBe('seller_p1');
+
+      const transferredPlayer = service.getPlayer('seller_p1')!;
+      expect(transferredPlayer.teamId).toBe('cpu_buyer');
+      
+      // Ensure listing recalculation removed him from listings
+      expect(service.league()?.transferListings).not.toContain('seller_p1');
+    });
+
+    it('should respect the buy caps (summer = 2, winter = 1)', async () => {
+      const userTeam = makeTeam('user_team', []);
+      
+      // Buyer has a midfielder depth deficit and huge budget
+      const buyerTeam = makeTeam('cpu_buyer', [
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+      ], 50000000);
+      
+      // Seller has surplus midfielders and plenty of players
+      const sellerTeam = makeTeam('cpu_seller', [
+        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p5', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p6', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 })
+      ]);
+      for (let i = 7; i <= 20; i++) {
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+      }
+      sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
+      sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
+
+      const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
+      league.currentWeek = 20; // Winter window open (max buys = 1)
+      league.transferListings = ['seller_p1', 'seller_p2', 'seller_p3'];
+
+      // Mock RNG: activity check (random < 0.4, e.g. 0.1)
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+
+      // Only 1 trade should be allowed in winter window for this buyer
+      const updatedOffers = service.league()?.transferOffers ?? [];
+      expect(updatedOffers.length).toBe(1);
+    });
+
+    it('should respect the seller minimum roster size safety floor (15 players)', async () => {
+      const userTeam = makeTeam('user_team', []);
+      
+      const buyerTeam = makeTeam('cpu_buyer', [
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+      ], 15000000);
+      
+      // Seller team only has 14 players overall (below the 15-player safety floor)
+      const sellerTeam = makeTeam('cpu_seller', [
+        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+      ]);
+      for (let i = 5; i <= 14; i++) {
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+      }
+      sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
+      sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
+
+      const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
+      league.currentWeek = 1; // Summer window
+      league.transferListings = ['seller_p1'];
+
+      // Mock RNG: activity check (random < 0.4, e.g. 0.1)
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+
+      // Seller roster size is 14 <= 15 (min roster size is 15 to sell), so no transfer
+      expect(service.league()?.transferOffers?.length ?? 0).toBe(0);
+    });
+
+    it('should allow buying a young prospect based on market value even if they do not exceed OVR floor', async () => {
+      const userTeam = makeTeam('user_team', []);
+      
+      // Buyer has midfielders with OVR 85, so OVR floor is 85.
+      const buyerTeam = makeTeam('cpu_buyer', [
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 85 })
+      ], 20000000);
+      
+      // Candidate is age 19, OVR 70, but has high potential/value (market value is high)
+      const youngProspect = createTestPlayer({ id: 'prospect', teamId: 'cpu_seller', position: Position.MIDFIELDER, age: 19, defaultStat: 70 });
+      const sellerTeam = makeTeam('cpu_seller', [
+        youngProspect,
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+      ]);
+      for (let i = 5; i <= 18; i++) {
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+      }
+      sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
+      sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
+
+      const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
+      league.currentWeek = 1;
+      league.transferListings = ['prospect'];
+
+      // Mock RNG: activity check (random < 0.4, e.g. 0.1)
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+
+      // Buyer team should buy the young prospect since they represent a prospect improvement
+      const updatedOffers = service.league()?.transferOffers ?? [];
+      expect(updatedOffers.length).toBe(1);
+      expect(updatedOffers[0].playerId).toBe('prospect');
+    });
+  });
 });
