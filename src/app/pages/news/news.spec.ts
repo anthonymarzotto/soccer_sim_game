@@ -211,6 +211,95 @@ describe('NewsComponent', () => {
     expect(visible[0].id).toBe('retirement-p-1-t-1');
   });
 
+  it('keeps retirement items visible after the transition log is marked read', () => {
+    const gameServiceStub = createGameServiceStub({
+      log: {
+        seasonYear: 2026,
+        events: [
+          {
+            category: 'retirement',
+            headline: 'John Smith Retires',
+            detail: 'John Smith has announced retirement.',
+            teamId: 't-1',
+            playerIds: ['p-1'],
+            isUserTeam: false
+          }
+        ],
+        isRead: true,
+        dismissedTeamIds: []
+      }
+    });
+
+    TestBed.configureTestingModule({
+      imports: [NewsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: GameService, useValue: gameServiceStub }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NewsComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.unreadLog()).toBeNull();
+    expect(component.allNewsItems().filter(item => item.category === 'retirement').length).toBe(1);
+  });
+
+  it('includes transfer history from prior seasons', () => {
+    const gameServiceStub = createGameServiceStub({
+      log: null,
+      currentSeasonYear: 2027,
+      teams: [
+        {
+          id: 't-1',
+          name: 'Arsenal',
+          players: [
+            {
+              id: 'p-3',
+              name: 'Alice Cooper',
+              transferHistory: [
+                {
+                  sellerTeamId: 't-2',
+                  buyerTeamId: 't-1',
+                  fee: 3000000,
+                  seasonYear: 2026,
+                  week: 10
+                },
+                {
+                  sellerTeamId: 't-2',
+                  buyerTeamId: 't-1',
+                  fee: 5000000,
+                  seasonYear: 2027,
+                  week: 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 't-2',
+          name: 'Chelsea',
+          players: []
+        }
+      ] as Partial<Team>[]
+    });
+
+    TestBed.configureTestingModule({
+      imports: [NewsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: GameService, useValue: gameServiceStub }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NewsComponent);
+    const component = fixture.componentInstance;
+
+    const transfers = component.allNewsItems().filter(item => item.category === 'transfer');
+    expect(transfers.length).toBe(2);
+    expect(transfers.map(item => item.seasonYear)).toEqual([2027, 2026]);
+  });
+
   it('dismisses all unread transition events when Mark All Read is clicked', () => {
     const gameServiceStub = createGameServiceStub();
 

@@ -72,6 +72,12 @@ export class GameService {
   private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
   private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
   private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 15;
+  private static readonly POSITION_SELL_FLOOR: Readonly<Record<Position, number>> = {
+    [Position.GOALKEEPER]: 1,
+    [Position.DEFENDER]: 3,
+    [Position.MIDFIELDER]: 3,
+    [Position.FORWARD]: 2,
+  };
 
   private leagueState = signal<League | null>(null);
   private hydrationPromise: Promise<void> | null = null;
@@ -472,7 +478,7 @@ export class GameService {
       const maxBid = playerValue * 1.15;
       const bidFee = Math.round(minBid + this.rng.random() * (maxBid - minBid));
 
-      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const offerId = this.generateOfferId();
       return {
         id: offerId,
         buyerTeamId: buyerTeam.id,
@@ -664,10 +670,10 @@ export class GameService {
       }
     };
 
-    processPosition(gkList, 1, gkStartersCount);
-    processPosition(defList, 3, defStartersCount);
-    processPosition(midList, 3, midStartersCount);
-    processPosition(fwdList, 2, fwdStartersCount);
+    processPosition(gkList, GameService.POSITION_SELL_FLOOR[Position.GOALKEEPER], gkStartersCount);
+    processPosition(defList, GameService.POSITION_SELL_FLOOR[Position.DEFENDER], defStartersCount);
+    processPosition(midList, GameService.POSITION_SELL_FLOOR[Position.MIDFIELDER], midStartersCount);
+    processPosition(fwdList, GameService.POSITION_SELL_FLOOR[Position.FORWARD], fwdStartersCount);
 
     return teamListings;
   }
@@ -805,7 +811,7 @@ export class GameService {
     const askingPrice = this.calculateAskingPrice(player, league.currentSeasonYear);
 
     if (fee < askingPrice) {
-      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const offerId = this.generateOfferId();
       const newOffer: TransferOffer = {
         id: offerId,
         buyerTeamId: buyerId,
@@ -829,14 +835,10 @@ export class GameService {
     const sellerPlayers = seller.players ?? [];
     const playersAtPosition = sellerPlayers.filter(p => p.position === player.position);
     
-    let minLimit = 1;
-    if (player.position === Position.GOALKEEPER) minLimit = 1;
-    else if (player.position === Position.DEFENDER) minLimit = 3;
-    else if (player.position === Position.MIDFIELDER) minLimit = 3;
-    else if (player.position === Position.FORWARD) minLimit = 2;
+    const minLimit = GameService.POSITION_SELL_FLOOR[player.position];
 
     if (playersAtPosition.length <= minLimit) {
-      const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+      const offerId = this.generateOfferId();
       const newOffer: TransferOffer = {
         id: offerId,
         buyerTeamId: buyerId,
@@ -857,7 +859,7 @@ export class GameService {
       return { success: false, message: 'Offer rejected. The club cannot sell this player because they do not have enough depth at this position.', offer: newOffer };
     }
 
-    const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+    const offerId = this.generateOfferId();
     const newOffer: TransferOffer = {
       id: offerId,
       buyerTeamId: buyerId,
@@ -947,7 +949,44 @@ export class GameService {
     this.persistLeagueMetadata(updatedLeague);
   }
 
-  private executeTransfer(buyerId: string, sellerId: string, playerId: string, fee: number, triggerOfferId: string) {
+  private generateOfferId(): string {
+    return 'offer_' + Math.floor(this.rng.random() * 1e9).toString(36).padStart(9, '0').slice(0, 9);
+  }
+
+  private rebuildTransferListingsForTradeParties(
+    buyerId: string,
+    sellerId: string,
+    currentSeasonYear: number,
+    currentListings: string[]
+  ): string[] {
+    const league = this.leagueState();
+    if (!league) return currentListings;
+
+    const userTeamId = league.userTeamId;
+    const listingsWithoutTeams = currentListings.filter(pid => {
+      const p = this.getPlayer(pid);
+      return p && p.teamId !== buyerId && p.teamId !== sellerId;
+    });
+
+    const buyerTeam = this.getTeam(buyerId);
+    const sellerTeam = this.getTeam(sellerId);
+
+    const newBuyerListings = (buyerTeam && buyerTeam.id !== userTeamId)
+      ? this.runCpuAutoListingForTeam(buyerTeam, currentSeasonYear) : [];
+    const newSellerListings = (sellerTeam && sellerTeam.id !== userTeamId)
+      ? this.runCpuAutoListingForTeam(sellerTeam, currentSeasonYear) : [];
+
+    return [...listingsWithoutTeams, ...newBuyerListings, ...newSellerListings];
+  }
+
+  private executeTransfer(
+    buyerId: string,
+    sellerId: string,
+    playerId: string,
+    fee: number,
+    triggerOfferId: string,
+    options?: { refreshCpuTeamListings?: boolean }
+  ) {
     const league = this.leagueState();
     if (!league) return;
 
@@ -1055,50 +1094,33 @@ export class GameService {
       return t;
     });
 
-    const updatedLeague: League = {
+    let finalLeague: League = {
       ...league,
       teams: updatedTeams,
       transferListings,
       transferOffers: updatedOffers
     };
 
-    this.leagueState.set(updatedLeague);
+    this.leagueState.set(finalLeague);
+
+    if (options?.refreshCpuTeamListings) {
+      const refreshedListings = this.rebuildTransferListingsForTradeParties(
+        buyerId,
+        sellerId,
+        currentSeasonYear,
+        finalLeague.transferListings ?? []
+      );
+      finalLeague = { ...finalLeague, transferListings: refreshedListings };
+      this.leagueState.set(finalLeague);
+    }
 
     void this.normalizedDb.saveTransfer(normalizedBuyer, normalizedSeller, updatedPlayer, currentSeasonYear, {
-      currentWeek: updatedLeague.currentWeek,
-      currentSeasonYear: updatedLeague.currentSeasonYear,
-      userTeamId: updatedLeague.userTeamId,
-      transferListings: updatedLeague.transferListings,
-      transferOffers: updatedLeague.transferOffers
+      currentWeek: finalLeague.currentWeek,
+      currentSeasonYear: finalLeague.currentSeasonYear,
+      userTeamId: finalLeague.userTeamId,
+      transferListings: finalLeague.transferListings,
+      transferOffers: finalLeague.transferOffers
     });
-  }
-
-  private updateListingsForTeams(buyerId: string, sellerId: string, currentSeasonYear: number) {
-    const league = this.leagueState();
-    if (!league) return;
-
-    const userTeamId = league.userTeamId;
-    const currentListings = league.transferListings ?? [];
-    
-    // Filter out any player belonging to either buyer or seller
-    const listingsWithoutTeams = currentListings.filter(pid => {
-      const p = this.getPlayer(pid);
-      return p && p.teamId !== buyerId && p.teamId !== sellerId;
-    });
-
-    const buyerTeam = this.getTeam(buyerId);
-    const sellerTeam = this.getTeam(sellerId);
-
-    const newBuyerListings = (buyerTeam && buyerTeam.id !== userTeamId) ? this.runCpuAutoListingForTeam(buyerTeam, currentSeasonYear) : [];
-    const newSellerListings = (sellerTeam && sellerTeam.id !== userTeamId) ? this.runCpuAutoListingForTeam(sellerTeam, currentSeasonYear) : [];
-
-    const updatedLeague = {
-      ...league,
-      transferListings: [...listingsWithoutTeams, ...newBuyerListings, ...newSellerListings]
-    };
-
-    this.leagueState.set(updatedLeague);
-    this.persistLeagueMetadata(updatedLeague);
   }
 
   private runCpuToCpuTransferPass() {
@@ -1226,7 +1248,10 @@ export class GameService {
       };
     };
 
-    for (const buyerTeam of cpuTeams) {
+    for (const buyerSnapshot of cpuTeams) {
+      const buyerTeam = this.getTeam(buyerSnapshot.id);
+      if (!buyerTeam) continue;
+
       // 1. Weekly activity chance check
       if (this.rng.random() >= GameService.CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE) {
         continue;
@@ -1247,8 +1272,6 @@ export class GameService {
 
       // Sort by weakness score descending
       weaknesses.sort((a, b) => b.score - a.score);
-
-      let transferExecutedForTeam = false;
 
       for (const w of weaknesses) {
         if (w.score <= 0) {
@@ -1286,11 +1309,7 @@ export class GameService {
 
           // 2. Live position depth check
           const sellerPlayersAtPosition = seller.players.filter(p => p.position === player.position);
-          let minLimit = 1;
-          if (player.position === Position.GOALKEEPER) minLimit = 1;
-          else if (player.position === Position.DEFENDER) minLimit = 3;
-          else if (player.position === Position.MIDFIELDER) minLimit = 3;
-          else if (player.position === Position.FORWARD) minLimit = 2;
+          const minLimit = GameService.POSITION_SELL_FLOOR[player.position];
 
           if (sellerPlayersAtPosition.length <= minLimit) {
             continue;
@@ -1340,7 +1359,7 @@ export class GameService {
           validCandidates.sort((a, b) => b.overall - a.overall);
           const selectedCandidate = validCandidates[0];
 
-          const offerId = 'offer_' + Math.random().toString(36).substr(2, 9);
+          const offerId = this.generateOfferId();
           const newOffer: TransferOffer = {
             id: offerId,
             buyerTeamId: buyerTeam.id,
@@ -1364,22 +1383,15 @@ export class GameService {
             selectedCandidate.player.teamId,
             selectedCandidate.player.id,
             selectedCandidate.askingPrice,
-            newOffer.id
+            newOffer.id,
+            { refreshCpuTeamListings: true }
           );
-
-          // Update listings for buyer and seller teams
-          this.updateListingsForTeams(buyerTeam.id, selectedCandidate.player.teamId, currentSeasonYear);
 
           // Increment buy count in map
           buyCounts.set(buyerTeam.id, currentBuys + 1);
 
-          transferExecutedForTeam = true;
-          break; // Move to the next buyer team
+          break;
         }
-      }
-
-      if (transferExecutedForTeam) {
-        // Break out of weaknesses, already did a transfer
       }
     }
   }

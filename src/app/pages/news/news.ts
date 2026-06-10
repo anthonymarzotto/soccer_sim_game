@@ -41,7 +41,7 @@ export type NewsCategoryFilter = 'all' | NewsItem['category'];
 export class NewsComponent {
   private gameService = inject(GameService);
 
-  log = this.gameService.unreadSeasonTransitionLog;
+  unreadLog = this.gameService.unreadSeasonTransitionLog;
   fullTransitionLog = this.gameService.seasonTransitionLog;
 
   filterTeamId = signal<string>('');
@@ -70,7 +70,7 @@ export class NewsComponent {
       for (const event of log.events) {
         if (dismissed.has(event.teamId)) continue;
         items.push({
-          id: `retirement-${event.playerIds[0]}-${event.teamId}`,
+          id: `retirement-${event.playerIds.join('-')}-${event.teamId}`,
           category: 'retirement',
           seasonYear: transitionYear,
           week: 0,
@@ -83,37 +83,33 @@ export class NewsComponent {
       }
     }
 
-    // 2. Gather completed transfers from player history for the current season
-    const currentSeasonYear = league.currentSeasonYear;
+    // 2. Gather completed transfers from player transfer history
     const teamNameById = new Map(league.teams.map(t => [t.id, t.name]));
 
     for (const team of league.teams) {
       for (const player of team.players) {
         if (player.transferHistory) {
           for (const transfer of player.transferHistory) {
-            // Filter to only show the current season's transfers
-            if (transfer.seasonYear === currentSeasonYear) {
-              const isUser = userTeamId ? (transfer.buyerTeamId === userTeamId || transfer.sellerTeamId === userTeamId) : false;
-              const buyerName = teamNameById.get(transfer.buyerTeamId) ?? transfer.buyerTeamId;
-              const sellerName = teamNameById.get(transfer.sellerTeamId) ?? transfer.sellerTeamId;
+            const isUser = userTeamId ? (transfer.buyerTeamId === userTeamId || transfer.sellerTeamId === userTeamId) : false;
+            const buyerName = teamNameById.get(transfer.buyerTeamId) ?? transfer.buyerTeamId;
+            const sellerName = teamNameById.get(transfer.sellerTeamId) ?? transfer.sellerTeamId;
 
-              items.push({
-                id: `transfer-${player.id}-${transfer.seasonYear}-${transfer.week}`,
-                category: 'transfer',
-                seasonYear: transfer.seasonYear,
-                week: transfer.week,
-                headline: `${player.name} Transfer`,
-                detail: `${player.name} has completed a transfer from ${sellerName} to ${buyerName} for $${transfer.fee.toLocaleString()}.`,
-                isUserTeam: isUser,
-                playerId: player.id,
-                playerName: player.name,
-                buyerTeamId: transfer.buyerTeamId,
-                buyerTeamName: buyerName,
-                sellerTeamId: transfer.sellerTeamId,
-                sellerTeamName: sellerName,
-                fee: transfer.fee
-              });
-            }
+            items.push({
+              id: `transfer-${player.id}-${transfer.seasonYear}-${transfer.week}`,
+              category: 'transfer',
+              seasonYear: transfer.seasonYear,
+              week: transfer.week,
+              headline: `${player.name} Transfer`,
+              detail: `${player.name} has completed a transfer from ${sellerName} to ${buyerName} for $${transfer.fee.toLocaleString()}.`,
+              isUserTeam: isUser,
+              playerId: player.id,
+              playerName: player.name,
+              buyerTeamId: transfer.buyerTeamId,
+              buyerTeamName: buyerName,
+              sellerTeamId: transfer.sellerTeamId,
+              sellerTeamName: sellerName,
+              fee: transfer.fee
+            });
           }
         }
       }
