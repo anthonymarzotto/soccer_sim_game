@@ -163,6 +163,54 @@ describe('NewsComponent', () => {
     expect(visible.map(v => v.id)).toContain('retirement-p-2-t-2');
   });
 
+  it('filters news items by category', () => {
+    const gameServiceStub = createGameServiceStub();
+
+    TestBed.configureTestingModule({
+      imports: [NewsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: GameService, useValue: gameServiceStub }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NewsComponent);
+    const component = fixture.componentInstance;
+
+    component.setCategoryFilter('transfer');
+    let visible = component.visibleItems();
+    expect(visible.length).toBe(1);
+    expect(visible[0].category).toBe('transfer');
+    expect(visible[0].id).toBe('transfer-p-3-2027-2');
+
+    component.setCategoryFilter('retirement');
+    visible = component.visibleItems();
+    expect(visible.length).toBe(2);
+    expect(visible.every(item => item.category === 'retirement')).toBe(true);
+  });
+
+  it('combines team and category filters', () => {
+    const gameServiceStub = createGameServiceStub();
+
+    TestBed.configureTestingModule({
+      imports: [NewsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: GameService, useValue: gameServiceStub }
+      ]
+    });
+
+    const fixture = TestBed.createComponent(NewsComponent);
+    const component = fixture.componentInstance;
+
+    component.setFilter('t-1');
+    component.setCategoryFilter('retirement');
+
+    const visible = component.visibleItems();
+    expect(visible.length).toBe(1);
+    expect(visible[0].id).toBe('retirement-p-1-t-1');
+  });
+
   it('dismisses all unread transition events when Mark All Read is clicked', () => {
     const gameServiceStub = createGameServiceStub();
 

@@ -30,6 +30,7 @@ export interface TransferNewsItem extends BaseNewsItem {
 }
 
 export type NewsItem = RetirementNewsItem | TransferNewsItem;
+export type NewsCategoryFilter = 'all' | NewsItem['category'];
 
 @Component({
   selector: 'app-news',
@@ -44,6 +45,7 @@ export class NewsComponent {
   fullTransitionLog = this.gameService.seasonTransitionLog;
 
   filterTeamId = signal<string>('');
+  filterCategory = signal<NewsCategoryFilter>('all');
 
   /** All teams in the league, sorted alphabetically for the filter. */
   teams = computed(() => {
@@ -129,23 +131,35 @@ export class NewsComponent {
     });
   });
 
-  /** Filtered news items based on filterTeamId() */
+  /** Filtered news items based on filterTeamId() and filterCategory() */
   visibleItems = computed<NewsItem[]>(() => {
-    const filter = this.filterTeamId();
+    const teamFilter = this.filterTeamId();
+    const categoryFilter = this.filterCategory();
     const all = this.allNewsItems();
-    if (!filter) return all;
 
     return all.filter(item => {
+      if (categoryFilter !== 'all' && item.category !== categoryFilter) {
+        return false;
+      }
+
+      if (!teamFilter) {
+        return true;
+      }
+
       if (item.category === 'retirement') {
-        return item.teamId === filter;
+        return item.teamId === teamFilter;
       } else {
-        return item.buyerTeamId === filter || item.sellerTeamId === filter;
+        return item.buyerTeamId === teamFilter || item.sellerTeamId === teamFilter;
       }
     });
   });
 
   setFilter(teamId: string) {
     this.filterTeamId.set(teamId);
+  }
+
+  setCategoryFilter(category: NewsCategoryFilter) {
+    this.filterCategory.set(category);
   }
 
   dismiss() {
