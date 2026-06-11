@@ -64,6 +64,18 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## Running Unit Tests
+
+To run all unit tests non-interactively (without watch mode):
+- On Windows PowerShell (to bypass script execution policies blocking `npm.ps1`):
+  ```powershell
+  npm.cmd run test -- --watch=false
+  ```
+- On other platforms/shells:
+  ```bash
+  npm run test -- --watch=false
+  ```
+
 <!-- START SEMBLE INTEGRATION FOR SUB-AGENTS -->
 ## Code Search
 
