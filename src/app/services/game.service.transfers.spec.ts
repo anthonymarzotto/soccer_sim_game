@@ -192,6 +192,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 100, 10);
       const sellerTeam = makeTeam('seller_team', [targetPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER })]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
+      league.transferListings = [targetPlayer.id]; // player is listed
 
       const { service } = setup({ league });
       await service.ensureHydrated();
@@ -199,12 +200,45 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const result = service.submitTransferOffer('target_player', lowBid);
       expect(result.success).toBe(false);
       expect(result.message).toContain('Offer rejected');
-      expect(result.message).toContain(askingPrice.toLocaleString());
+      expect(result.message).toContain('requires a higher fee for this listed player');
       
       const offers = service.league()?.transferOffers ?? [];
       expect(offers.length).toBe(1);
       expect(offers[0].status).toBe('rejected');
       expect(offers[0].fee).toBe(lowBid);
+    });
+
+    it('should reject unlisted player offer and apply role-based starter premium (e.g., 1.40x to 1.60x)', async () => {
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const seller_p2 = createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const seller_p3 = createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 60 });
+      const seller_p4 = createTestPlayer({ id: 'seller_p4', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 60 });
+      
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER });
+      const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 100, 10);
+      const sellerTeam = makeTeam('seller_team', [targetPlayer, seller_p2, seller_p3, seller_p4]);
+      const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team'); // player is unlisted
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      // targetPlayer is unlisted, overall 80 (highest starter midfielder).
+      // Multiplier should be 1.60x.
+      const marketValue = calculateMarketValue(targetPlayer, 2026);
+      const expectedAskingPrice = Math.round(marketValue * 1.60);
+
+      // Offer slightly below the 1.60x asking price
+      const bid = expectedAskingPrice - 10000;
+      const result = service.submitTransferOffer('target_player', bid);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Offer rejected');
+      expect(result.message).toContain('not looking to sell this player');
+      
+      // Try again with exact asking price (should be accepted)
+      const acceptResult = service.submitTransferOffer('target_player', expectedAskingPrice);
+      expect(acceptResult.success).toBe(true);
+      expect(acceptResult.message).toContain('Offer accepted');
     });
 
     it('should reject offer and save record as rejected if seller lacks squad depth at the position', async () => {
@@ -222,6 +256,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.MIDFIELDER })
       ]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
+      league.transferListings = [targetPlayer.id];
 
       const { service } = setup({ league });
       await service.ensureHydrated();
@@ -253,6 +288,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       sellerTeam.formationAssignments = { mid_1: 'target_player', mid_2: 'seller_p2' };
 
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
+      league.transferListings = [targetPlayer.id];
 
       const { service, normalizedDbSpy } = setup({ league });
       await service.ensureHydrated();
@@ -272,7 +308,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const updatedBuyer = service.getTeam('buyer_team')!;
       const updatedSeller = service.getTeam('seller_team')!;
       expect(updatedBuyer.finances.transferBudget).toBe(10000000 - askingPrice);
-      expect(updatedSeller.finances.transferBudget).toBe(10000000 + askingPrice);
+      expect(updatedSeller.finances.transferBudget).toBe(10000000 + Math.round(askingPrice * 0.9));
 
       // Check player details: position moved, role is Reserve, transferHistory appended
       const transferredPlayer = service.getPlayer('target_player')!;
@@ -332,7 +368,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const updatedUser = service.getTeam('user_team')!;
       const updatedCpu = service.getTeam('cpu_team')!;
       
-      expect(updatedUser.finances.transferBudget).toBe(12000000); // 10M initial + 2M fee
+      expect(updatedUser.finances.transferBudget).toBe(11800000); // 10M initial + 1.8M fee (2M * 0.9)
       expect(updatedCpu.finances.transferBudget).toBe(3000000); // 5M initial - 2M fee
 
       // Lineup cleaned up
@@ -876,6 +912,41 @@ describe('GameService — Transfer Offer Sub-System', () => {
         { buyerTeamId: 'cpu_hub', sellerTeamId: 'cpu_def_seller', playerId: 'def_for_sale' },
       ]);
       expect(service.getPlayer('def_for_sale')?.teamId).toBe('cpu_hub');
+    });
+
+    it('should not allow newly transferred CPU players to be auto-listed again in the same season', async () => {
+      const transferredPlayer = createTestPlayer({
+        id: 'hot_potato',
+        teamId: 'cpu_team_1',
+        position: Position.MIDFIELDER,
+        defaultStat: 80
+      });
+      transferredPlayer.transferHistory = [{
+        sellerTeamId: 'cpu_team_2',
+        buyerTeamId: 'cpu_team_1',
+        fee: 1000000,
+        seasonYear: 2026,
+        week: 1
+      }];
+
+      const team = makeTeam('cpu_team_1', [
+        transferredPlayer,
+        createTestPlayer({ id: 'p2', teamId: 'cpu_team_1', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'p3', teamId: 'cpu_team_1', position: Position.MIDFIELDER, defaultStat: 75 }),
+        createTestPlayer({ id: 'p4', teamId: 'cpu_team_1', position: Position.MIDFIELDER, defaultStat: 75 })
+      ]);
+      team.playerIds = team.players.map(p => p.id);
+      team.seasonSnapshots![0].playerIds = team.playerIds;
+
+      const userTeam = makeTeam('user_team', []);
+      const league = makeLeague([userTeam, team], 'user_team');
+      league.currentWeek = 1;
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      const listings = service.runCpuAutoListingForLeague(service.league()!);
+      expect(listings).not.toContain('hot_potato');
     });
   });
 });
