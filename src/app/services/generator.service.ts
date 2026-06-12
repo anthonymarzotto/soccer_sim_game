@@ -49,11 +49,11 @@ export class GeneratorService {
     // Assign fixed tiers:
     // Tier 1 (3 teams), Tier 2 (4 teams), Tier 3 (6 teams), Tier 4 (5 teams), Tier 5 (2 teams)
     const tierConfig = [
-      { tier: 1, count: 3, budget: 25000000, cap: 56 },
-      { tier: 2, count: 4, budget: 14000000, cap: 42 },
-      { tier: 3, count: 6, budget: 7000000, cap: 29 },
-      { tier: 4, count: 5, budget: 3500000, cap: 21 },
-      { tier: 5, count: 2, budget: 1500000, cap: 17 }
+      { tier: 1, count: 3, budget: 2500000, cap: 56 },
+      { tier: 2, count: 4, budget: 1400000, cap: 42 },
+      { tier: 3, count: 6, budget: 700000, cap: 29 },
+      { tier: 4, count: 5, budget: 350000, cap: 21 },
+      { tier: 5, count: 2, budget: 150000, cap: 17 }
     ];
 
     let teamIndex = 0;
@@ -160,7 +160,7 @@ export class GeneratorService {
       }],
       finances: {
         tier: 5,
-        transferBudget: 1500000,
+        transferBudget: 150000,
         wagePointsCap: 26,
         wagePointsUsed: 0
       }

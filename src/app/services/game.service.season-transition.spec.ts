@@ -202,4 +202,54 @@ describe('GameService — season transition log', () => {
     // Every event should be a retirement
     expect(savedLog.events.every((e: { category: string }) => e.category === 'retirement')).toBe(true);
   });
+
+  it('startNewSeason — awards prize money based on rank and adds to transferBudget', async () => {
+    const team1 = makeTeam('team-1', [], 'Team One');
+    const team2 = makeTeam('team-2', [], 'Team Two');
+    const team3 = makeTeam('team-3', [], 'Team Three');
+
+    // Override the stats in the 2026 snapshot to give them points
+    team1.seasonSnapshots = [{
+      seasonYear: 2026,
+      playerIds: [],
+      stats: { played: 10, won: 3, drawn: 1, lost: 6, goalsFor: 10, goalsAgainst: 12, points: 10, last5: [] }
+    }];
+    team2.seasonSnapshots = [{
+      seasonYear: 2026,
+      playerIds: [],
+      stats: { played: 10, won: 1, drawn: 2, lost: 7, goalsFor: 5, goalsAgainst: 15, points: 5, last5: [] }
+    }];
+    team3.seasonSnapshots = [{
+      seasonYear: 2026,
+      playerIds: [],
+      stats: { played: 10, won: 0, drawn: 2, lost: 8, goalsFor: 2, goalsAgainst: 20, points: 2, last5: [] }
+    }];
+
+    // Set initial budgets
+    team1.finances = { tier: 1, transferBudget: 2500000, wagePointsCap: 56, wagePointsUsed: 40 };
+    team2.finances = { tier: 2, transferBudget: 1400000, wagePointsCap: 42, wagePointsUsed: 30 };
+    team3.finances = { tier: 3, transferBudget: 700000, wagePointsCap: 29, wagePointsUsed: 20 };
+
+    const league = makeLeague([team1, team2, team3], 'team-1');
+    const { service } = setup(league, null);
+    await service.ensureHydrated();
+
+    service.startNewSeason();
+
+    const updatedLeague = service.league();
+    expect(updatedLeague).toBeDefined();
+
+    const updatedTeam1 = updatedLeague!.teams.find(t => t.id === 'team-1');
+    const updatedTeam2 = updatedLeague!.teams.find(t => t.id === 'team-2');
+    const updatedTeam3 = updatedLeague!.teams.find(t => t.id === 'team-3');
+
+    // We have 3 teams. Ranks:
+    // team-1: Rank 1 -> prize = 200,000. Decayed budget = 2,500,000 * 0.8 = 2,000,000. Total = 2,200,000
+    // team-2: Rank 2 -> prize = 150,000. Decayed budget = 1,400,000 * 0.8 = 1,120,000. Total = 1,270,000
+    // team-3: Rank 3 -> prize = 100,000. Decayed budget = 700,000 * 0.8 = 560,000. Total = 660,000
+
+    expect(updatedTeam1!.finances.transferBudget).toBe(2200000);
+    expect(updatedTeam2!.finances.transferBudget).toBe(1270000);
+    expect(updatedTeam3!.finances.transferBudget).toBe(660000);
+  });
 });

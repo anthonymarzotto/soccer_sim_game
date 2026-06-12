@@ -119,23 +119,23 @@ describe('GeneratorService', () => {
         const f = team.finances;
         switch (f.tier) {
           case 1:
-            expect(f.transferBudget).toBe(25000000);
+            expect(f.transferBudget).toBe(2500000);
             expect(f.wagePointsCap).toBe(56);
             break;
           case 2:
-            expect(f.transferBudget).toBe(14000000);
+            expect(f.transferBudget).toBe(1400000);
             expect(f.wagePointsCap).toBe(42);
             break;
           case 3:
-            expect(f.transferBudget).toBe(7000000);
+            expect(f.transferBudget).toBe(700000);
             expect(f.wagePointsCap).toBe(29);
             break;
           case 4:
-            expect(f.transferBudget).toBe(3500000);
+            expect(f.transferBudget).toBe(350000);
             expect(f.wagePointsCap).toBe(21);
             break;
           case 5:
-            expect(f.transferBudget).toBe(1500000);
+            expect(f.transferBudget).toBe(150000);
             expect(f.wagePointsCap).toBe(17);
             break;
         }

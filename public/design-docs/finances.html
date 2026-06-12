@@ -343,31 +343,31 @@
             <tr>
               <td class="highlight">Tier 1 (Elite)</td>
               <td>3 Teams</td>
-              <td><code>$25,000,000</code></td>
+              <td><code>$2,500,000</code></td>
               <td><code>56 pts</code></td>
             </tr>
             <tr>
               <td class="highlight">Tier 2 (Challenger)</td>
               <td>4 Teams</td>
-              <td><code>$14,000,000</code></td>
+              <td><code>$1,400,000</code></td>
               <td><code>42 pts</code></td>
             </tr>
             <tr>
               <td class="highlight">Tier 3 (Contender)</td>
               <td>6 Teams</td>
-              <td><code>$7,000,000</code></td>
+              <td><code>$700,000</code></td>
               <td><code>29 pts</code></td>
             </tr>
             <tr>
               <td class="highlight">Tier 4 (Mid-Table)</td>
               <td>5 Teams</td>
-              <td><code>$3,500,000</code></td>
+              <td><code>$350,000</code></td>
               <td><code>21 pts</code></td>
             </tr>
             <tr>
               <td class="highlight">Tier 5 (Underdog)</td>
               <td>2 Teams</td>
-              <td><code>$1,500,000</code></td>
+              <td><code>$150,000</code></td>
               <td><code>17 pts</code></td>
             </tr>
           </tbody>
@@ -405,34 +405,29 @@
 
       <div class="grid-2">
         <div class="card">
-          <h3>User Bid Flow</h3>
+          <h3>User Bid Flow & Asking Price</h3>
           <p>
-            Transfer offers are blocked outside active transfer windows and cannot target players already on the user's
-            team.
-            The bid modal defaults the offer amount to <code>115%</code> of Market Value, displays the user's Transfer
-            Budget,
-            current Wage Headroom, and the target player's Wage Point Cost, then disables submission if the bid exceeds
-            available cash or the player's wage exceeds remaining cap space.
+            Transfer offers are blocked outside active transfer windows and cannot target players already on the user's team.
+            The bid modal defaults the offer amount to <code>115%</code> of Market Value, displays the user's Transfer Budget,
+            current Wage Headroom, and the target player's Wage Point Cost. Submissions are disabled if the bid exceeds available cash or the player's wage exceeds remaining cap space.
+            The seller's asking price depends on listed status: listed players require a flat <code>1.15x</code> premium. Unlisted players command a premium multiplier based on OVR relative to positional peers on their roster: Starters (1.40x to 1.60x), Bench (1.25x to 1.35x), and Reserves (1.15x).
           </p>
         </div>
         <div class="card">
           <h3>Incoming CPU Offers</h3>
           <p>
-            CPU clubs evaluate user-listed players during active windows and may create pending offers if they can
-            afford
+            CPU clubs evaluate user-listed players during active windows and may create pending offers if they can afford
             the bid, have enough wage headroom, and the player improves their positional depth or youth value. Incoming
-            offers appear above the listed-player table with Accept and Decline actions.
+            offers appear above the listed-player table with Accept and Decline actions. CPU teams bid up to 1.15x of the player's market value.
           </p>
         </div>
         <div class="card">
           <h3>CPU-to-CPU Transfers</h3>
           <p>
-            During active transfer windows, CPU clubs dynamically trade with each other weekly. A CPU club has a
-            <code>40%</code>
-            weekly chance to search the listings. It targets its weakest positions based on roster depth and overall
-            quality,
+            During active transfer windows, CPU clubs dynamically trade with each other weekly. A CPU club has a <code>40%</code>
+            weekly chance to search the listings. It targets its weakest positions based on roster depth and overall quality,
             purchasing the best-matching listed player if they satisfy budget constraints, wage cap limits, and improve
-            the squad.
+            the squad. To prevent instant re-sale chains, CPU teams cannot list or auto-list players acquired in the current season.
           </p>
         </div>
       </div>
@@ -461,7 +456,7 @@
             <tr>
               <td class="highlight"><code>rejected</code></td>
               <td>Offer was refused and remains only as history.</td>
-              <td>User declines a CPU bid, or a user bid is below the seller's asking price / roster-depth floor.</td>
+              <td>User declines a CPU bid, or a user bid is below the seller's asking price / roster-depth floor. Rejection reasons return vague flavor text (e.g. "demands a substantial premium") instead of the exact figure.</td>
             </tr>
             <tr>
               <td class="highlight"><code>expired</code></td>
@@ -483,10 +478,10 @@
         <span class="comment">// Seller roster safety floor before selling</span>
         GK >= 1, DEF >= 3, MID >= 3, FWD >= 2;
         <br><br>
-        <span class="comment">// Accepted transfer mutations</span>
+        <span class="comment">// Accepted transfer mutations (Buyer pays full fee; Seller receives 90% after 10% agent commission)</span>
         buyer.transferBudget -= fee;
         <br>
-        seller.transferBudget += fee;
+        seller.transferBudget += Math.round(fee * 0.9);
         <br>
         buyer.wagePointsUsed = recalculateSquadWages(buyer.players);
         <br>
@@ -507,19 +502,19 @@
           <br><br>
           <span class="comment">// 3. Purchase Eligibility Checks</span>
           seller.players.length > 15; <span class="comment">// Seller safety roster limit</span>
-          sellerPlayersAtPosition.length > minPositionLimit; <span class="comment">// Positional depth safety
-            floor</span>
-          buyer.transferBudget >= askingPrice; <span class="comment">// Affordability check (askingPrice = Market Value
-            * 1.15)</span>
+          sellerPlayersAtPosition.length > minPositionLimit; <span class="comment">// Positional depth safety floor</span>
+          buyer.transferBudget >= askingPrice; <span class="comment">// Affordability check (askingPrice = calculateAskingPrice(player))</span>
           buyer.wagePointsCap - buyer.wagePointsUsed >= playerWage; <span class="comment">// Wage points check</span>
           <br><br>
           <span class="comment">// 4. Buyer Team Improvement Triggers</span>
-          isDepthNecessity = w.depth < w.requiredStarters; <span class="comment">// Lacks required starters at
-            position</span>
-            isDirectQualityImprovement = playerOvr > lowestOvrAtPosition; <span class="comment">// OVR > lowest OVR at
-              position</span>
-            isProspectImprovement = age <= 21 && playerMarketValue> averageMarketValueAtPosition; <span
-                class="comment">// Young and above average value</span>
+          isDepthNecessity = w.depth < w.requiredStarters; <span class="comment">// Lacks required starters at position</span>
+          isDirectQualityImprovement = playerOvr > lowestOvrAtPosition; <span class="comment">// OVR > lowest OVR at position</span>
+          isProspectImprovement = age <= 21 && playerMarketValue> averageMarketValueAtPosition; <span class="comment">// Young and above average value</span>
+          <br><br>
+          <span class="comment">// 5. Hot-Potato / Anti-Flip Constraint</span>
+          hasBeenTransferredThisSeason = player.transferHistory.some(r => r.seasonYear == currentSeasonYear);
+          <br>
+          preventAutoListing = hasBeenTransferredThisSeason; <span class="comment">// CPU will not list players bought in same season</span>
       </div>
 
       <div class="grid-2">
@@ -539,6 +534,56 @@
             older schema versions should be treated as incompatible until regenerated or migrated through the app's
             schema
             version safeguards.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>7. Season Rollover & Economic Stabilizers</h2>
+      <p>
+        To prevent hyper-inflation and maintain league financial equilibrium over multiple seasons,
+        two stabilizers are applied at the end of each season: <strong>Transfer Budget Decay</strong>
+        and <strong>Prize Money Allocation</strong>.
+      </p>
+
+      <h3>Transfer Budget Decay</h3>
+      <p>
+        Prior to awarding prize money at the end of a season, all clubs decay their unspent transfer budgets
+        by <strong>20%</strong> (meaning they retain 80% of their existing budget). This decay establishes
+        a progressive upper limit on club wealth accumulation, preventing top-tier clubs from hoarding unlimited cash.
+      </p>
+
+      <h3>Prize Money Formula</h3>
+      <p>
+        Season-end prize money is awarded to all teams based on their final league standings rank:
+      </p>
+      <div class="formula-box">
+        BASE_PRIZE = $100,000;
+        <br>
+        RANK_BONUS = $50,000;
+        <br><br>
+        prizeMoney = BASE_PRIZE + (totalTeams - rank) * RANK_BONUS;
+        <br><br>
+        <span class="comment">// Final rollover budget calculation</span>
+        nextSeasonBudget = (currentBudget * 0.8) + prizeMoney;
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Economic Equilibrium</h3>
+          <p>
+            Under this system, the maximum theoretical budget for a team is limited to <code>5x</code> their annual prize money.
+            For example, the league champion (1st place) can reach a maximum long-term transfer budget of <code>$5,250,000</code> (assuming a 20-team league),
+            while the 20th place team is capped at <code>$500,000</code>. This naturally keeps budgets aligned with player valuations.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Transaction Tax</h3>
+          <p>
+            A <strong>10% agent commission fee</strong> is deducted from the seller's proceeds on every transfer.
+            While the buying club pays 100% of the negotiated fee, the selling club only receives 90%.
+            This acts as an additional deflationary sink, removing currency from the game's economy on every transaction.
           </p>
         </div>
       </div>

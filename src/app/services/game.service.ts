@@ -68,6 +68,8 @@ export class GameService {
   private static readonly MATCH_RETENTION_CAP = 5000;
 
   public static readonly ASKING_PRICE_MULTIPLIER = 1.15;
+  public static readonly BASE_PRIZE = 100000;
+  public static readonly RANK_BONUS = 50000;
   private static readonly CPU_TRANSFER_MAX_BUYS_SUMMER = 2;
   private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
   private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
@@ -563,7 +565,13 @@ export class GameService {
 
   private runCpuAutoListingForTeam(team: Team, currentSeasonYear: number): string[] {
     const teamListings: string[] = [];
-    const players = resolveTeamPlayers(team);
+    const allPlayers = resolveTeamPlayers(team);
+    const players = allPlayers.filter(p => {
+      const hasTransferredThisSeason = (p.transferHistory ?? []).some(
+        record => record.seasonYear === currentSeasonYear
+      );
+      return !hasTransferredThisSeason;
+    });
     const gkList: Player[] = [];
     const defList: Player[] = [];
     const midList: Player[] = [];
@@ -764,7 +772,62 @@ export class GameService {
 
   calculateAskingPrice(player: Player, currentSeasonYear: number): number {
     const marketValue = calculateMarketValue(player, currentSeasonYear);
-    return Math.round(marketValue * GameService.ASKING_PRICE_MULTIPLIER);
+    const league = this.leagueState();
+    if (!league) {
+      return Math.round(marketValue * GameService.ASKING_PRICE_MULTIPLIER);
+    }
+
+    const isListed = (league.transferListings ?? []).includes(player.id);
+    if (isListed) {
+      return Math.round(marketValue * GameService.ASKING_PRICE_MULTIPLIER);
+    }
+
+    const seller = this.getTeam(player.teamId);
+    if (!seller) {
+      return Math.round(marketValue * GameService.ASKING_PRICE_MULTIPLIER);
+    }
+
+    let multiplier = 1.15;
+
+    if (player.role === Role.STARTER) {
+      const peers = seller.players.filter(p => p.position === player.position && p.role === Role.STARTER);
+      if (peers.length <= 1) {
+        multiplier = 1.60;
+      } else {
+        const overalls = peers.map(p => this.getCurrentSeasonPlayerAttributes(p).overall.value);
+        const minOvr = Math.min(...overalls);
+        const maxOvr = Math.max(...overalls);
+        if (maxOvr === minOvr) {
+          multiplier = 1.50;
+        } else {
+          const currentOvr = this.getCurrentSeasonPlayerAttributes(player).overall.value;
+          const rawT = (currentOvr - minOvr) / (maxOvr - minOvr);
+          const t = Math.max(0, Math.min(1, rawT));
+          multiplier = 1.40 + t * 0.20;
+        }
+      }
+    } else if (player.role === Role.BENCH) {
+      const peers = seller.players.filter(p => p.position === player.position && p.role === Role.BENCH);
+      if (peers.length <= 1) {
+        multiplier = 1.35;
+      } else {
+        const overalls = peers.map(p => this.getCurrentSeasonPlayerAttributes(p).overall.value);
+        const minOvr = Math.min(...overalls);
+        const maxOvr = Math.max(...overalls);
+        if (maxOvr === minOvr) {
+          multiplier = 1.30;
+        } else {
+          const currentOvr = this.getCurrentSeasonPlayerAttributes(player).overall.value;
+          const rawT = (currentOvr - minOvr) / (maxOvr - minOvr);
+          const t = Math.max(0, Math.min(1, rawT));
+          multiplier = 1.25 + t * 0.10;
+        }
+      }
+    } else {
+      multiplier = 1.15;
+    }
+
+    return Math.round(marketValue * multiplier);
   }
 
   submitTransferOffer(playerId: string, fee: number): { success: boolean; message: string; offer?: TransferOffer } {
@@ -829,7 +892,12 @@ export class GameService {
       this.leagueState.set(updatedLeague);
       this.persistLeagueMetadata(updatedLeague);
       
-      return { success: false, message: `Offer rejected. The club requires at least $${askingPrice.toLocaleString()} for this player.`, offer: newOffer };
+      const isListed = (league.transferListings ?? []).includes(player.id);
+      const rejectMessage = isListed
+        ? 'Offer rejected. The club requires a higher fee for this listed player.'
+        : 'Offer rejected. The club is not looking to sell this player and demands a substantial premium.';
+
+      return { success: false, message: rejectMessage, offer: newOffer };
     }
 
     const sellerPlayers = seller.players ?? [];
@@ -1041,7 +1109,7 @@ export class GameService {
       formationAssignments: updatedSellerAssignments,
       finances: {
         ...seller.finances,
-        transferBudget: seller.finances.transferBudget + fee,
+        transferBudget: seller.finances.transferBudget + Math.round(fee * 0.9),
         wagePointsUsed: 0
       }
     };
@@ -3215,7 +3283,8 @@ export class GameService {
 
     const nextSeasonYear = league.currentSeasonYear + 1;
 
-    // Step 1: Prep teams with next season's snapshots
+    // Step 1: Prep teams with next season's snapshots and award prize money
+    const totalTeams = league.teams.length;
     const teamsWithNextSnapshot = league.teams.map(team => {
       const currentSnapshot = this.getTeamSnapshotForSeason(team, league.currentSeasonYear);
       const nextSnapshot = {
@@ -3224,10 +3293,22 @@ export class GameService {
         stats: createEmptyTeamStats()
       };
 
+      const standing = this.getLeagueStandingsRankForSeason(team.id, league.currentSeasonYear);
+      const rank = standing.rank ?? totalTeams;
+      const prizeMoney = GameService.BASE_PRIZE + (totalTeams - rank) * GameService.RANK_BONUS;
+
+      const currentFinances = team.finances || { tier: 3, transferBudget: 0, wagePointsCap: 29, wagePointsUsed: 0 };
+      const decayedBudget = Math.round(currentFinances.transferBudget * 0.8);
+      const updatedFinances = {
+        ...currentFinances,
+        transferBudget: decayedBudget + prizeMoney
+      };
+
       return this.withSyncedPlayerIds({
         ...team,
         stats: nextSnapshot.stats,
         playerIds: [...nextSnapshot.playerIds],
+        finances: updatedFinances,
         seasonSnapshots: withSortedUniqueSeasons([...(team.seasonSnapshots ?? []), nextSnapshot])
       });
     });
