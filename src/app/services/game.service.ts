@@ -801,7 +801,8 @@ export class GameService {
           multiplier = 1.50;
         } else {
           const currentOvr = this.getCurrentSeasonPlayerAttributes(player).overall.value;
-          const t = (currentOvr - minOvr) / (maxOvr - minOvr);
+          const rawT = (currentOvr - minOvr) / (maxOvr - minOvr);
+          const t = Math.max(0, Math.min(1, rawT));
           multiplier = 1.40 + t * 0.20;
         }
       }
@@ -817,7 +818,8 @@ export class GameService {
           multiplier = 1.30;
         } else {
           const currentOvr = this.getCurrentSeasonPlayerAttributes(player).overall.value;
-          const t = (currentOvr - minOvr) / (maxOvr - minOvr);
+          const rawT = (currentOvr - minOvr) / (maxOvr - minOvr);
+          const t = Math.max(0, Math.min(1, rawT));
           multiplier = 1.25 + t * 0.10;
         }
       }

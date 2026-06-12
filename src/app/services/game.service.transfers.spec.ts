@@ -948,5 +948,26 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const listings = service.runCpuAutoListingForLeague(service.league()!);
       expect(listings).not.toContain('hot_potato');
     });
+
+    it('should clamp the peer overall interpolation factor t to [0, 1] in calculateAskingPrice', async () => {
+      // Create a starter with overall 95, and peers with overalls 70 and 80.
+      // The starter overall (95) is above maxOvr (80), rawT would be (95 - 70) / (80 - 70) = 2.5.
+      // Clamping should force t to 1.0, yielding the max starter multiplier of 1.60x.
+      const targetPlayer = createTestPlayer({ id: 'super_starter', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 95 });
+      const peer1 = createTestPlayer({ id: 'peer1', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const peer2 = createTestPlayer({ id: 'peer2', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 70 });
+
+      const buyerTeam = makeTeam('buyer_team', []);
+      const sellerTeam = makeTeam('seller_team', [targetPlayer, peer1, peer2]);
+      const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      const marketValue = calculateMarketValue(targetPlayer, 2026);
+      const expectedAskingPrice = Math.round(marketValue * 1.60); // 1.40 + 1.0 * 0.20 = 1.60
+      const askingPrice = service.calculateAskingPrice(targetPlayer, 2026);
+      expect(askingPrice).toBe(expectedAskingPrice);
+    });
   });
 });
