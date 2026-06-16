@@ -176,6 +176,7 @@ describe('NewsComponent', () => {
 
     const fixture = TestBed.createComponent(NewsComponent);
     const component = fixture.componentInstance;
+    component.setFilter('');
 
     component.setCategoryFilter('transfer');
     let visible = component.visibleItems();
@@ -241,7 +242,6 @@ describe('NewsComponent', () => {
     const fixture = TestBed.createComponent(NewsComponent);
     const component = fixture.componentInstance;
 
-    expect(component.unreadLog()).toBeNull();
     expect(component.allNewsItems().filter(item => item.category === 'retirement').length).toBe(1);
   });
 
@@ -300,21 +300,4 @@ describe('NewsComponent', () => {
     expect(transfers.map(item => item.seasonYear)).toEqual([2027, 2026]);
   });
 
-  it('dismisses all unread transition events when Mark All Read is clicked', () => {
-    const gameServiceStub = createGameServiceStub();
-
-    TestBed.configureTestingModule({
-      imports: [NewsComponent],
-      providers: [
-        provideRouter([]),
-        { provide: GameService, useValue: gameServiceStub }
-      ]
-    });
-
-    const fixture = TestBed.createComponent(NewsComponent);
-    const component = fixture.componentInstance;
-
-    component.dismiss();
-    expect(gameServiceStub.markSeasonTransitionLogRead).toHaveBeenCalled();
-  });
 });

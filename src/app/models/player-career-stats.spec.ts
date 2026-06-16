@@ -25,7 +25,8 @@ describe('player-career-stats defaults', () => {
       fouls: 0,
       foulsSuffered: 0,
       totalMatchRating: 0,
-      starNominations: { first: 0, second: 0, third: 0 }
+      starNominations: { first: 0, second: 0, third: 0 },
+      wage: 0
     });
   });
 
@@ -59,5 +60,11 @@ describe('player-career-stats defaults', () => {
       expect(formatGamesPlayed({ matchesPlayed: 9, gamesStarted: 5, gamesSubbed: 4 })).toBe('5(4)');
       expect(formatGamesPlayed({ matchesPlayed: 4, gamesStarted: 0, gamesSubbed: 4 })).toBe('0(4)');
     });
+  });
+
+  it('should include marketValue when provided', () => {
+    const stats = createEmptyPlayerCareerStats(2026, 'team-1', 5.5, 500000);
+    expect(stats.wage).toBe(5.5);
+    expect(stats.marketValue).toBe(500000);
   });
 });

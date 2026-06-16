@@ -12,7 +12,7 @@ import { FormationLibraryService } from './formation-library.service';
 import { PersistenceService } from './persistence.service';
 import { DataSchemaVersionService } from './data-schema-version.service';
 import { Role } from '../models/enums';
-import { League, SeasonTransitionLog, Team } from '../models/types';
+import { League, SeasonTransitionLog, Team, SeasonTransitionEvent } from '../models/types';
 import { createTestPlayer } from '../testing/test-player-fixtures';
 
 describe('GameService — season transition log', () => {
@@ -251,5 +251,45 @@ describe('GameService — season transition log', () => {
     expect(updatedTeam1!.finances.transferBudget).toBe(2200000);
     expect(updatedTeam2!.finances.transferBudget).toBe(1270000);
     expect(updatedTeam3!.finances.transferBudget).toBe(660000);
+  });
+
+  it('startNewSeason — expired contracts renew, final-year contracts trigger events, and wagePointsUsed is updated', async () => {
+    const playerWithExpiredContract = createTestPlayer({
+      id: 'expired-player',
+      teamId: 'team-1',
+      age: 25,
+      seasonYear: 2026,
+      contract: {
+        agreedWageCost: 2.5,
+        expiresAfterSeason: 2026
+      }
+    });
+
+    const league = makeLeague([
+      makeTeam('team-1', [playerWithExpiredContract], 'Test FC')
+    ], 'team-1');
+
+    const { service, persistenceSpy } = setup(league, null);
+    await service.ensureHydrated();
+
+    service.startNewSeason();
+
+    const updatedLeague = service.league();
+    expect(updatedLeague).toBeDefined();
+
+    const updatedPlayer = updatedLeague!.teams[0].players.find(p => p.id === 'expired-player');
+    expect(updatedPlayer).toBeDefined();
+
+    expect(updatedPlayer!.contract.expiresAfterSeason).toBeGreaterThan(2026);
+
+    const savedLog = vi.mocked(persistenceSpy.saveSeasonTransitionLog).mock.calls[0]?.[0];
+    expect(savedLog).toBeDefined();
+
+    const contractEvents = savedLog.events.filter((e: SeasonTransitionEvent) => e.category === 'contract');
+    expect(contractEvents.length).toBeGreaterThan(0);
+    expect(contractEvents[0].playerIds).toContain('expired-player');
+
+    const expectedWageTotal = updatedPlayer!.contract.agreedWageCost;
+    expect(updatedLeague!.teams[0].finances.wagePointsUsed).toBe(expectedWageTotal);
   });
 });

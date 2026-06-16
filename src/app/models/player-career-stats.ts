@@ -2,7 +2,7 @@ import { PlayerCareerStats } from './types';
 
 type PlayerCareerRatingStats = Pick<PlayerCareerStats, 'matchesPlayed' | 'totalMatchRating'>;
 
-export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string): PlayerCareerStats {
+export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string, wage = 0, marketValue?: number): PlayerCareerStats {
   return {
     seasonYear,
     teamId,
@@ -24,7 +24,9 @@ export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string)
     fouls: 0,
     foulsSuffered: 0,
     totalMatchRating: 0,
-    starNominations: { first: 0, second: 0, third: 0 }
+    starNominations: { first: 0, second: 0, third: 0 },
+    wage,
+    ...(marketValue !== undefined ? { marketValue } : {})
   };
 }
 

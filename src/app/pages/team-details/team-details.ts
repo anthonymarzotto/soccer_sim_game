@@ -83,19 +83,7 @@ export class TeamDetailsComponent {
     return this.gameService.getTeam(id);
   });
 
-  teamTransitionEvents = computed(() => {
-    const log = this.gameService.unreadSeasonTransitionLog();
-    const teamId = this.teamId();
-    if (!log || !teamId) return [];
-    const dismissed = new Set(log.dismissedTeamIds);
-    if (dismissed.has(teamId)) return [];
-    return log.events.filter(e => e.teamId === teamId);
-  });
 
-  dismissTeamNews() {
-    const teamId = this.teamId();
-    if (teamId) this.gameService.dismissTeamTransitionEvents(teamId);
-  }
 
   teamOverall = computed(() => {
     const t = this.team();
@@ -209,6 +197,13 @@ export class TeamDetailsComponent {
     const year = this.gameService.league()?.currentSeasonYear;
     if (year === undefined) return 0;
     return calculatePlayerWageCost(player, year);
+  }
+
+  getPlayerContractYearsRemaining(player: Player): number {
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (year === undefined || !player.contract) return 0;
+    const remaining = player.contract.expiresAfterSeason - year + 1;
+    return remaining > 0 ? remaining : 0;
   }
 
   /**

@@ -46,6 +46,7 @@ export interface PersistedPlayerRecord {
   injuries: Player['injuries'];
   progression: Player['progression'];
   transferHistory?: Player['transferHistory'];
+  contract: Player['contract'];
 }
 
 export type PersistedMatchRecord = Match;

@@ -10,7 +10,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 type NumericPlayerCareerStatColumn = Exclude<{
   [K in keyof PlayerCareerStats]: PlayerCareerStats[K] extends number ? K : never;
-}[keyof PlayerCareerStats], 'seasonYear' | 'totalMatchRating'>;
+}[keyof PlayerCareerStats], 'seasonYear' | 'totalMatchRating' | undefined>;
 
 type SortColumn = 'name' | 'team' | 'position' | NumericPlayerCareerStatColumn | 'averageRating' | 'starsFirst' | 'starsSecond' | 'starsThird';
 type SortableValue = string | number;

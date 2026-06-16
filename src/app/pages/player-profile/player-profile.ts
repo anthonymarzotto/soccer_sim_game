@@ -171,6 +171,14 @@ export class PlayerProfileComponent {
     return calculatePlayerWageCost(p, year);
   });
 
+  contractYearsRemaining = computed<number | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || !p.contract || year === undefined) return null;
+    const remaining = p.contract.expiresAfterSeason - year + 1;
+    return remaining > 0 ? remaining : 0;
+  });
+
   /**
    * Returns the player's injury records in chronological order
    * (oldest first). Includes both healed and active records.
@@ -266,14 +274,14 @@ export class PlayerProfileComponent {
   goalkeeperView = signal<'list' | 'chart'>('list');
 
   // Season stats category toggle
-  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline' | 'ratings'>('offensive');
+  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline' | 'ratings' | 'finances'>('offensive');
 
   // Toggle methods
   toggleMentalView() {
     this.mentalView.update(v => v === 'list' ? 'chart' : 'list');
   }
 
-  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline' | 'ratings') {
+  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline' | 'ratings' | 'finances') {
     this.seasonStatsView.set(view);
   }
 
@@ -419,6 +427,17 @@ export class PlayerProfileComponent {
 
   getCareerStatsForSeason(seasonYear: number): PlayerCareerStats | null {
     return this.careerStatsBySeasonYear().get(seasonYear) || null;
+  }
+
+  getMarketValueForSeason(stats: PlayerCareerStats): number {
+    if (stats.marketValue !== undefined) {
+      return stats.marketValue;
+    }
+    const p = this.player();
+    if (!p) return 0;
+    const attrs = p.seasonAttributes?.find(a => a.seasonYear === stats.seasonYear);
+    if (!attrs) return 0;
+    return calculateMarketValue(p, stats.seasonYear);
   }
 
   getTotalCareerStats = computed(() => {

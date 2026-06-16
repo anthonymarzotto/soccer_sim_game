@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { GameService } from '../../services/game.service';
 
 export interface BaseNewsItem {
   id: string;
-  category: 'retirement' | 'transfer';
+  category: 'retirement' | 'transfer' | 'contract';
   seasonYear: number;
   week: number;
   headline: string;
@@ -29,23 +30,35 @@ export interface TransferNewsItem extends BaseNewsItem {
   fee: number;
 }
 
-export type NewsItem = RetirementNewsItem | TransferNewsItem;
+export interface ContractNewsItem extends BaseNewsItem {
+  category: 'contract';
+  teamId: string;
+  playerIds: string[];
+}
+
+export type NewsItem = RetirementNewsItem | TransferNewsItem | ContractNewsItem;
 export type NewsCategoryFilter = 'all' | NewsItem['category'];
 
 @Component({
   selector: 'app-news',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass],
+  imports: [NgClass, FormsModule],
   templateUrl: './news.html',
 })
 export class NewsComponent {
   private gameService = inject(GameService);
 
-  unreadLog = this.gameService.unreadSeasonTransitionLog;
   fullTransitionLog = this.gameService.seasonTransitionLog;
 
   filterTeamId = signal<string>('');
   filterCategory = signal<NewsCategoryFilter>('all');
+
+  constructor() {
+    const userTeamId = this.gameService.league()?.userTeamId;
+    if (userTeamId) {
+      this.filterTeamId.set(userTeamId);
+    }
+  }
 
   /** All teams in the league, sorted alphabetically for the filter. */
   teams = computed(() => {
@@ -66,12 +79,11 @@ export class NewsComponent {
     const log = this.fullTransitionLog();
     if (log) {
       const transitionYear = log.seasonYear + 1;
-      const dismissed = new Set(log.dismissedTeamIds);
       for (const event of log.events) {
-        if (dismissed.has(event.teamId)) continue;
+        const mappedCategory = event.category === 'contract' ? 'contract' : 'retirement';
         items.push({
-          id: `retirement-${event.playerIds.join('-')}-${event.teamId}`,
-          category: 'retirement',
+          id: `${mappedCategory}-${event.playerIds.join('-')}-${event.teamId}`,
+          category: mappedCategory,
           seasonYear: transitionYear,
           week: 0,
           headline: event.headline,
@@ -79,7 +91,7 @@ export class NewsComponent {
           isUserTeam: event.isUserTeam,
           teamId: event.teamId,
           playerIds: event.playerIds
-        });
+        } as NewsItem);
       }
     }
 
@@ -142,7 +154,7 @@ export class NewsComponent {
         return true;
       }
 
-      if (item.category === 'retirement') {
+      if (item.category === 'retirement' || item.category === 'contract') {
         return item.teamId === teamFilter;
       } else {
         return item.buyerTeamId === teamFilter || item.sellerTeamId === teamFilter;
@@ -156,9 +168,5 @@ export class NewsComponent {
 
   setCategoryFilter(category: NewsCategoryFilter) {
     this.filterCategory.set(category);
-  }
-
-  dismiss() {
-    this.gameService.markSeasonTransitionLogRead();
   }
 }

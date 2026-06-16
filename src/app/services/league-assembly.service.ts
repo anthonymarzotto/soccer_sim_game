@@ -127,7 +127,8 @@ export class LeagueAssemblyService {
       fatigue: player.fatigue,
       injuries: player.injuries ?? [],
       progression: player.progression,
-      transferHistory: player.transferHistory ?? []
+      transferHistory: player.transferHistory ?? [],
+      contract: player.contract
     };
   }
 
@@ -328,7 +329,8 @@ export class LeagueAssemblyService {
       fatigue,
       injuries: record.injuries ?? [],
       progression,
-      transferHistory: record.transferHistory ?? []
+      transferHistory: record.transferHistory ?? [],
+      contract: record.contract
     };
   }
 

@@ -75,6 +75,11 @@ export interface PlayerSeasonAttributes {
   overall: Stat;
 }
 
+export interface PlayerContract {
+  agreedWageCost: number;     // Locked-in wage points cost
+  expiresAfterSeason: number; // The season year when the contract expires (e.g. 2027)
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -91,6 +96,7 @@ export interface Player {
   injuries: InjuryRecord[];
   progression: PlayerProgression;
   transferHistory?: PlayerTransfer[];
+  contract: PlayerContract;
 }
 
 export interface PlayerCareerStats {
@@ -115,6 +121,8 @@ export interface PlayerCareerStats {
   foulsSuffered: number;
   totalMatchRating: number;
   starNominations: { first: number; second: number; third: number };
+  wage: number;
+  marketValue?: number;
 }
 
 /**
@@ -314,7 +322,7 @@ export interface TransferOffer {
   status: 'pending' | 'accepted' | 'rejected' | 'expired';
 }
 
-export type SeasonTransitionEventCategory = 'retirement'; // extensible later
+export type SeasonTransitionEventCategory = 'retirement' | 'contract'; // extensible later
 
 export interface SeasonTransitionEvent {
   category: SeasonTransitionEventCategory;

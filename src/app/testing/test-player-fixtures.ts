@@ -1,6 +1,7 @@
-import { Player, PlayerPersonal, PlayerSeasonAttributes, Position, Role, StatKey } from '../models/types';
+import { Player, PlayerPersonal, PlayerSeasonAttributes, Position, Role, StatKey, PlayerContract } from '../models/types';
 import { STAT_KEYS, buildStat } from '../models/stat-definitions';
 import { birthdayForAge } from '../models/player-age';
+import { calculatePlayerWageCost } from '../models/player-progression';
 
 export type StatOverrides = Partial<Record<StatKey, number>>;
 
@@ -48,9 +49,10 @@ export function createTestPlayer(opts: {
   stats?: StatOverrides;
   defaultStat?: number;
   seasonAttributes?: PlayerSeasonAttributes[];
+  contract?: PlayerContract;
 }): Player {
   const seasonYear = opts.seasonYear ?? new Date().getUTCFullYear();
-  return {
+  const playerWithoutContract = {
     id: opts.id,
     name: opts.name ?? opts.id,
     teamId: opts.teamId ?? 'team-1',
@@ -78,6 +80,17 @@ export function createTestPlayer(opts: {
       peakEndAge: 28,
       seniorEndAge: 32
     }
+  } as unknown as Player;
+
+  const defaultWage = calculatePlayerWageCost(playerWithoutContract, seasonYear);
+  const contract = opts.contract ?? {
+    agreedWageCost: defaultWage,
+    expiresAfterSeason: seasonYear + 2
+  };
+
+  return {
+    ...playerWithoutContract,
+    contract
   };
 }
 
@@ -114,6 +127,10 @@ export function createTestPersistedPlayer(opts: {
   for (const key of STAT_KEYS) {
     values[key] = opts.stats?.[key] ?? opts.defaultStat ?? 70;
   }
+  const contract = {
+    agreedWageCost: 1.5,
+    expiresAfterSeason: seasonYear + 2
+  };
   return {
     id: opts.id,
     name: opts.name ?? opts.id,
@@ -137,6 +154,7 @@ export function createTestPersistedPlayer(opts: {
       juniorEndAge: 22,
       peakEndAge: 28,
       seniorEndAge: 32
-    }
+    },
+    contract
   };
 }

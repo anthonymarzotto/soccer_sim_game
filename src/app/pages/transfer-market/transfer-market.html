@@ -87,7 +87,7 @@
       }
       <!-- Filters Bar -->
       <div
-        class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl shadow-lg">
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl shadow-lg">
         <!-- Search -->
         <div>
           <label for="search-input"
@@ -122,6 +122,23 @@
             @for (team of availableTeams(); track team.id) {
             <option [value]="team.id">{{ team.name }}</option>
             }
+          </select>
+        </div>
+
+        <!-- Market Value Filter -->
+        <div>
+          <label for="value-select"
+            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Max Market Value</label>
+          <select id="value-select" [ngModel]="maxMarketValue()"
+            (ngModelChange)="maxMarketValue.set(+$event); pageIndex.set(0)"
+            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium">
+            <option value="0">Any Value</option>
+            <option value="250000">Under $250k</option>
+            <option value="500000">Under $500k</option>
+            <option value="1000000">Under $1M</option>
+            <option value="2000000">Under $2M</option>
+            <option value="5000000">Under $5M</option>
+            <option value="10000000">Under $10M</option>
           </select>
         </div>
       </div>
@@ -164,6 +181,11 @@
                   class="py-4 px-6 font-semibold text-right cursor-pointer hover:text-white transition-colors"
                   (click)="toggleSort('wage')">
                   Wage {{ getSortIndicator('wage') }}
+                </th>
+                <th scope="col"
+                  class="py-4 px-6 font-semibold text-center cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleSort('contract')">
+                  Contract {{ getSortIndicator('contract') }}
                 </th>
                 <th scope="col" class="py-4 px-6 font-semibold text-right">Actions</th>
               </tr>
@@ -222,6 +244,11 @@
                   {{ row.wage | number:'1.1-1' }} pts
                 </td>
 
+                <!-- Contract -->
+                <td class="py-3.5 px-6 text-center text-zinc-300 font-mono font-medium">
+                  {{ row.contract }} yr
+                </td>
+
                 <!-- Actions -->
                 <td class="py-3.5 px-6 text-right">
                   @if (isUserTeamPlayer(row.player)) {
@@ -239,7 +266,7 @@
               </tr>
               } @empty {
               <tr>
-                <td colspan="8" class="text-center py-10 text-zinc-500">
+                <td colspan="9" class="text-center py-10 text-zinc-500">
                   No listed players matching current filters.
                 </td>
               </tr>

@@ -52,54 +52,6 @@
         </div>
       </div>
       <div class="ml-auto flex items-center gap-3">
-        @if (!isUserTeamPlayer()) {
-          <div class="relative group">
-            <button
-              (click)="makeTransferOffer()"
-              [disabled]="transferWindowPhase() === 'closed'"
-              class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
-              [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
-              [class.text-zinc-950]="transferWindowPhase() === 'summer'"
-              [class.hover:bg-emerald-600]="transferWindowPhase() === 'summer'"
-              [class.bg-cyan-500]="transferWindowPhase() === 'winter'"
-              [class.text-zinc-950]="transferWindowPhase() === 'winter'"
-              [class.hover:bg-cyan-600]="transferWindowPhase() === 'winter'"
-              [class.bg-zinc-800]="transferWindowPhase() === 'closed'"
-              [class.text-zinc-400]="transferWindowPhase() === 'closed'">
-              <span class="material-icons text-[14px]">payments</span>
-              <span>Make Transfer Offer</span>
-            </button>
-            
-            @if (transferWindowPhase() === 'closed') {
-              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 hidden group-hover:block bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg text-center shadow-xl pointer-events-none z-30">
-                Transfer window is closed. Opens Week 1 (Summer) or Week 20 (Winter).
-              </div>
-            }
-          </div>
-        }
-
-        @if (isUserTeamPlayer()) {
-          <div class="relative group">
-            @if (isPlayerTransferListed()) {
-              <button
-                (click)="removeFromTransferList()"
-                class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-red-950/40 text-red-400 border border-red-800/60 hover:bg-red-900 hover:text-white cursor-pointer select-none"
-              >
-                <span class="material-icons text-[14px]">remove_circle</span>
-                <span>Remove from Transfer List</span>
-              </button>
-            } @else {
-              <button
-                (click)="addToTransferList()"
-                [disabled]="transferWindowPhase() === 'closed'"
-                class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
-              >
-                <span class="material-icons text-[14px]">add_circle</span>
-                <span>Add to Transfer List</span>
-              </button>
-            }
-          </div>
-        }
         @let chip = currentSeasonRatingChip();
         <div class="flex flex-col items-end gap-0.5 text-xs">
           <span class="font-semibold text-amber-400 text-base">{{ chip.avgRating }}</span>
@@ -138,36 +90,111 @@
         </div>
       }
 
-      <!-- Personal Details - Thin box spanning the page -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-        <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Personal Details
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-            <span class="text-zinc-500">Age</span>
-            <span class="font-medium text-white">{{ playerAge() }}</span>
+      <!-- Details Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Personal Details -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Personal Details
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+              <span class="text-zinc-500">Age</span>
+              <span class="font-medium text-white">{{ playerAge() }}</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+              <span class="text-zinc-500">Nationality</span>
+              <span class="font-medium text-white">{{ p?.personal?.nationality }}</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+              <span class="text-zinc-500">Height</span>
+              <span class="font-medium text-white">{{ p?.personal?.height }} cm</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+              <span class="text-zinc-500">Weight</span>
+              <span class="font-medium text-white">{{ p?.personal?.weight }} kg</span>
+            </div>
           </div>
-          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-            <span class="text-zinc-500">Nationality</span>
-            <span class="font-medium text-white">{{ p?.personal?.nationality }}</span>
-          </div>
-          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-            <span class="text-zinc-500">Height</span>
-            <span class="font-medium text-white">{{ p?.personal?.height }} cm</span>
-          </div>
-          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-            <span class="text-zinc-500">Weight</span>
-            <span class="font-medium text-white">{{ p?.personal?.weight }} kg</span>
-          </div>
-          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-            <span class="text-zinc-500">Value</span>
-            <span class="font-medium text-emerald-400 font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
-          </div>
-          <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-            <span class="text-zinc-500">Wage</span>
-            <span class="font-medium text-amber-400 font-mono">{{ wageCost() | number:'1.1-1' }} pts</span>
+        </div>
+
+        <!-- Contract & Finances -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+          <div class="space-y-6">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Contract & Finances
+            </h2>
+            
+            <!-- First Line: Market Value & Transfer Button -->
+            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-4">
+              <div class="flex flex-col">
+                <span class="text-zinc-500 text-xs uppercase tracking-wider">Market Value</span>
+                <span class="font-semibold text-emerald-400 font-mono text-lg mt-0.5">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
+              </div>
+              <div>
+                @if (!isUserTeamPlayer()) {
+                  <div class="relative group">
+                    <button
+                      (click)="makeTransferOffer()"
+                      [disabled]="transferWindowPhase() === 'closed'"
+                      class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
+                      [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+                      [class.text-zinc-950]="transferWindowPhase() === 'summer'"
+                      [class.hover:bg-emerald-600]="transferWindowPhase() === 'summer'"
+                      [class.bg-cyan-500]="transferWindowPhase() === 'winter'"
+                      [class.text-zinc-950]="transferWindowPhase() === 'winter'"
+                      [class.hover:bg-cyan-600]="transferWindowPhase() === 'winter'"
+                      [class.bg-zinc-800]="transferWindowPhase() === 'closed'"
+                      [class.text-zinc-400]="transferWindowPhase() === 'closed'">
+                      <span class="material-icons text-[14px]">payments</span>
+                      <span>Make Transfer Offer</span>
+                    </button>
+                    
+                    @if (transferWindowPhase() === 'closed') {
+                      <div class="absolute bottom-full right-0 mb-2 w-52 hidden group-hover:block bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg text-center shadow-xl pointer-events-none z-30 font-normal">
+                        Transfer window is closed. Opens Week 1 (Summer) or Week 20 (Winter).
+                      </div>
+                    }
+                  </div>
+                }
+
+                @if (isUserTeamPlayer()) {
+                  <div class="relative group">
+                    @if (isPlayerTransferListed()) {
+                      <button
+                        (click)="removeFromTransferList()"
+                        class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-red-950/40 text-red-400 border border-red-800/60 hover:bg-red-900 hover:text-white cursor-pointer select-none"
+                      >
+                        <span class="material-icons text-[14px]">remove_circle</span>
+                        <span>Remove from Transfer List</span>
+                      </button>
+                    } @else {
+                      <button
+                        (click)="addToTransferList()"
+                        [disabled]="transferWindowPhase() === 'closed'"
+                        class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
+                      >
+                        <span class="material-icons text-[14px]">add_circle</span>
+                        <span>Add to Transfer List</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Second Line: Wage & Contract Length -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+              <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+                <span class="text-zinc-500 text-xs">Wage</span>
+                <span class="font-medium text-amber-400 font-mono">{{ wageCost() | number:'1.1-1' }} pts</span>
+              </div>
+              <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
+                <span class="text-zinc-500 text-xs">Contract Length</span>
+                <span class="font-medium text-zinc-300 font-mono">{{ contractYearsRemaining() }} yr <span class="text-xs text-zinc-500">({{ p?.contract?.expiresAfterSeason }})</span></span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -779,6 +806,11 @@
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Ratings
               </button>
+              <button (click)="setSeasonStatsView('finances')" 
+                      [class]="statsView === 'finances' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                Finances
+              </button>
             </div>
           </div>
 
@@ -808,11 +840,14 @@
                       <th class="text-right py-3 px-4 font-semibold">Suffered</th>
                       <th class="text-right py-3 px-4 font-semibold">Yellow</th>
                       <th class="text-right py-3 px-4 font-semibold">Red</th>
-                    } @else {
+                    } @else if (statsView === 'ratings') {
                       <th class="text-right py-3 px-4 font-semibold">Avg Rating</th>
                       <th class="text-right py-3 px-4 font-semibold">🥇</th>
                       <th class="text-right py-3 px-4 font-semibold">🥈</th>
                       <th class="text-right py-3 px-4 font-semibold">🥉</th>
+                    } @else if (statsView === 'finances') {
+                      <th class="text-right py-3 px-4 font-semibold">Wage</th>
+                      <th class="text-right py-3 px-4 font-semibold">Market Value</th>
                     }
                   </tr>
                 </thead>
@@ -840,11 +875,14 @@
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.foulsSuffered || 0 }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ s.yellowCards || 0 }}</td>
                         <td class="py-3 px-4 text-right text-red-400 font-mono">{{ s.redCards || 0 }}</td>
-                      } @else {
+                      } @else if (statsView === 'ratings') {
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ formatAverageRating(s) }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.first }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.second }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.third }}</td>
+                      } @else if (statsView === 'finances') {
+                        <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ s.wage | number:'1.1-1' }}</td>
+                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ getMarketValueForSeason(s) | currency:'USD':'symbol':'1.0-0' }}</td>
                       }
                     </tr>
                   }
@@ -872,12 +910,15 @@
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.foulsSuffered }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ totals.yellowCards }}</td>
                         <td class="py-3 px-4 text-right text-red-400 font-mono">{{ totals.redCards }}</td>
-                      } @else {
+                      } @else if (statsView === 'ratings') {
                         @let stars = totalStarNominations();
                         <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ stars.first }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ stars.second }}</td>
                         <td class="py-3 px-4 text-right text-white font-mono">{{ stars.third }}</td>
+                      } @else if (statsView === 'finances') {
+                        <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
+                        <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
                       }
                     </tr>
                   }

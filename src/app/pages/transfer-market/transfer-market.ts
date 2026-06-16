@@ -10,7 +10,7 @@ import { getCurrentPlayerSeasonAttributes } from '../../models/season-history';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
-type SortColumn = 'name' | 'team' | 'position' | 'overall' | 'age' | 'value' | 'wage';
+type SortColumn = 'name' | 'team' | 'position' | 'overall' | 'age' | 'value' | 'wage' | 'contract';
 type SortableValue = string | number;
 
 interface TransferRow {
@@ -20,6 +20,7 @@ interface TransferRow {
   age: number;
   value: number;
   wage: number;
+  contract: number;
 }
 
 @Component({
@@ -43,6 +44,7 @@ export class TransferMarketComponent {
   selectedTeam = signal<string>('');
   selectedPosition = signal<string>('');
   searchQuery = signal<string>('');
+  maxMarketValue = signal<number>(0);
   sortColumn = signal<SortColumn>('overall');
   sortDirection = signal<'asc' | 'desc'>('desc');
   pageIndex = signal<number>(0);
@@ -112,6 +114,7 @@ export class TransferMarketComponent {
       const age = computeAge(player.personal.birthday, seasonAnchorDate(year));
       const value = calculateMarketValue(player, year);
       const wage = calculatePlayerWageCost(player, year);
+      const contract = Math.max(0, player.contract.expiresAfterSeason - year + 1);
 
       rows.push({
         player,
@@ -120,6 +123,7 @@ export class TransferMarketComponent {
         age,
         value,
         wage,
+        contract,
       });
     }
 
@@ -133,10 +137,12 @@ export class TransferMarketComponent {
     const query = this.searchQuery().toLowerCase();
 
     // 1. Filter
+    const maxVal = this.maxMarketValue();
     const filtered = rows.filter(row => {
       if (teamFilter && row.player.teamId !== teamFilter) return false;
       if (positionFilter && row.player.position !== positionFilter) return false;
       if (query && !row.player.name.toLowerCase().includes(query)) return false;
+      if (maxVal > 0 && row.value > maxVal) return false;
       return true;
     });
 

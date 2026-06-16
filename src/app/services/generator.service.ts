@@ -7,7 +7,7 @@ import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createEmptyTeamStats } from '../models/season-history';
 import { buildStat } from '../models/stat-definitions';
 import { birthdayForAge } from '../models/player-age';
-import { calculateOverall, calculateSquadTotalWageCost } from '../models/player-progression';
+import { calculateOverall, calculateSquadTotalWageCost, calculatePlayerWageCost, calculateMarketValue } from '../models/player-progression';
 import { clamp } from '../utils/math';
 
 @Injectable({
@@ -180,7 +180,7 @@ export class GeneratorService {
     const progression = this.generatePlayerProgression(values.overall, position);
     const seasonAttributes = this.generatePlayerSeasonAttributes(currentSeasonYear, values);
 
-    return {
+    const playerWithoutContract = {
       id,
       name,
       teamId,
@@ -188,12 +188,27 @@ export class GeneratorService {
       role,
       personal: { height, weight, birthday, nationality },
       seasonAttributes: [seasonAttributes],
-      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId)],
+      careerStats: [],
       mood: 100,
       fatigue: 0,
       injuries: [],
       progression
+    } as unknown as Player;
+
+    const initialWage = calculatePlayerWageCost(playerWithoutContract, currentSeasonYear);
+    const contractYears = Math.floor(Math.random() * 4) + 1;
+    const contract = {
+      agreedWageCost: initialWage,
+      expiresAfterSeason: currentSeasonYear + contractYears - 1
     };
+
+    const playerWithContract: Player = {
+      ...playerWithoutContract,
+      contract,
+      careerStats: [createEmptyPlayerCareerStats(currentSeasonYear, teamId, initialWage, calculateMarketValue(playerWithoutContract, currentSeasonYear))]
+    };
+
+    return playerWithContract;
   }
 
   private generatePlayerPersonalDetails(): { firstName: string, lastName: string, name: string, height: number, weight: number, nationality: string } {

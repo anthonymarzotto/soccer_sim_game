@@ -2390,6 +2390,45 @@ describe('GameService dressBestPlayers', () => {
     expect(reservePlayers.map(p => p.id)).toContain('mid5');
     expect(reservePlayers.map(p => p.id)).toContain('mid6');
   });
+
+  it('should skip dressing the user team when not simulating a whole season, but dress it when simulating a whole season', () => {
+    const players = [
+      makePlayer('gk1', Position.GOALKEEPER, 80),
+      makePlayer('def1', Position.DEFENDER, 80),
+      makePlayer('def2', Position.DEFENDER, 80),
+      makePlayer('def3', Position.DEFENDER, 80),
+      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('mid1', Position.MIDFIELDER, 80),
+      makePlayer('mid2', Position.MIDFIELDER, 80),
+      makePlayer('mid3', Position.MIDFIELDER, 80),
+      makePlayer('mid4', Position.MIDFIELDER, 80),
+      makePlayer('fwd1', Position.FORWARD, 80),
+      makePlayer('fwd2', Position.FORWARD, 80),
+    ];
+    const service = buildService([]);
+    // Set user team ID on the service's leagueState signal
+    (service as unknown as { leagueState: { set(value: League): void } }).leagueState.set({
+      userTeamId: 'user-team',
+      teams: [],
+      schedule: [],
+      currentWeek: 1,
+      currentSeasonYear: SEASON_YEAR,
+      transferListings: [],
+      transferOffers: []
+    } as unknown as League);
+
+    const userTeam = makeTeam('user-team', players);
+    // Initially, players roles are RESERVE. If skipped, they remain RESERVE.
+    const [resultNotSimulating] = callDressBestPlayers(service, [userTeam]);
+    expect(resultNotSimulating.players.every(p => p.role === Role.RESERVE)).toBe(true);
+
+    // Now set simulating whole season to true
+    (service as unknown as { isSimulatingWholeSeasonState: { set(value: boolean): void } }).isSimulatingWholeSeasonState.set(true);
+    const [resultSimulating] = callDressBestPlayers(service, [userTeam]);
+    expect(resultSimulating.selectedFormationId).toBe('formation_4_4_2');
+    expect(resultSimulating.formationAssignments['gk_1']).toBe('gk1');
+    expect(resultSimulating.players.some(p => p.role === Role.STARTER)).toBe(true);
+  });
 });
 
 describe('GameService transfer listings and CPU heuristics', () => {
