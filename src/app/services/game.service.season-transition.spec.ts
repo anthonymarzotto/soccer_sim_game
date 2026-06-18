@@ -251,6 +251,15 @@ describe('GameService — season transition log', () => {
     expect(updatedTeam1!.finances.transferBudget).toBe(2200000);
     expect(updatedTeam2!.finances.transferBudget).toBe(1270000);
     expect(updatedTeam3!.finances.transferBudget).toBe(660000);
+
+    expect(updatedTeam1!.finances.financeHistory).toBeDefined();
+    expect(updatedTeam1!.finances.financeHistory!.length).toBe(1);
+    expect(updatedTeam1!.finances.financeHistory![0]).toMatchObject({
+      category: 'prize_money',
+      amount: 200000,
+      seasonYear: 2026,
+      week: 0
+    });
   });
 
   it('startNewSeason — expired contracts renew, final-year contracts trigger events, and wagePointsUsed is updated', async () => {

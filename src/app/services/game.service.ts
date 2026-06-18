@@ -560,7 +560,16 @@ export class GameService {
           ...team,
           finances: {
             ...finances,
-            transferBudget: (finances.transferBudget ?? 0) - penalty
+            transferBudget: (finances.transferBudget ?? 0) - penalty,
+            financeHistory: [
+              ...(finances.financeHistory ?? []),
+              {
+                category: 'luxury_tax' as const,
+                amount: -penalty,
+                seasonYear: league.currentSeasonYear,
+                week: league.currentWeek
+              }
+            ]
           }
         };
       }
@@ -3358,7 +3367,16 @@ export class GameService {
       const decayedBudget = Math.round(currentFinances.transferBudget * 0.8);
       const updatedFinances = {
         ...currentFinances,
-        transferBudget: decayedBudget + prizeMoney
+        transferBudget: decayedBudget + prizeMoney,
+        financeHistory: [
+          ...(currentFinances.financeHistory ?? []),
+          {
+            category: 'prize_money' as const,
+            amount: prizeMoney,
+            seasonYear: league.currentSeasonYear,
+            week: 0
+          }
+        ]
       };
 
       return this.withSyncedPlayerIds({

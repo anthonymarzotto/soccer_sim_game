@@ -1086,84 +1086,103 @@
                      [class.bg-cyan-500]="transferWindowPhase() === 'winter'"></div>
                 
                 <div class="p-6 space-y-4">
-                  <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-lg"
-                         [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
-                         [class.text-emerald-400]="transferWindowPhase() === 'summer'"
-                         [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
-                         [class.text-cyan-400]="transferWindowPhase() === 'winter'">
-                      <span class="material-icons text-xl">handshake</span>
+                  @if (isSubmitting()) {
+                    <div class="flex flex-col items-center justify-center py-8 space-y-4 select-none">
+                      <div class="relative w-20 h-20 flex items-center justify-center">
+                        <div class="absolute inset-0 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+                        <span class="material-icons text-4xl text-white animate-[spin_3s_linear_infinite]">sports_soccer</span>
+                        <span class="absolute -top-1 -right-1 material-icons text-emerald-400 text-lg animate-bounce delay-100">payments</span>
+                        <span class="absolute -bottom-1 -left-1 material-icons text-amber-500 text-lg animate-bounce delay-300">monetization_on</span>
+                      </div>
+                      <div class="text-center space-y-1">
+                        <p class="text-sm font-bold text-white tracking-wide animate-pulse">Arranging transfer...</p>
+                        <p class="text-xs text-zinc-400">Negotiating terms with agent and club 🤝</p>
+                      </div>
                     </div>
-                    <h3 class="text-lg font-bold text-white">Make Transfer Offer</h3>
-                  </div>
-                  
-                  <p class="text-sm text-zinc-300 leading-relaxed">
-                    Submit an offer to buy <strong class="text-white">{{ player()?.name }}</strong>. 
-                    The market value is estimated at <strong class="text-emerald-400 font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</strong>.
-                  </p>
-                  
-                  <!-- Financial Status -->
-                  <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-3.5 space-y-2 text-xs">
-                    <div class="flex justify-between">
-                      <span class="text-zinc-500">Your Transfer Budget:</span>
-                      <span class="text-zinc-200 font-mono font-medium">{{ userBudget() | currency:'USD':'symbol':'1.0-0' }}</span>
+                  } @else if (offerSuccess()) {
+                    <div class="flex flex-col items-center justify-center py-8 space-y-4 select-none">
+                      <div class="flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span class="material-icons text-3xl animate-bounce">check_circle</span>
+                      </div>
+                      <div class="text-center space-y-1">
+                        <p class="text-sm font-bold text-white tracking-wide">Transfer Accepted!</p>
+                        <p class="text-xs text-zinc-400">{{ offerSuccess() }}</p>
+                      </div>
                     </div>
-                    <div class="flex justify-between">
-                      <span class="text-zinc-500">Your Wage Headroom:</span>
-                      <span class="text-zinc-200 font-mono font-medium">{{ userWageHeadroom() | number:'1.1-1' }} pts</span>
+                  } @else {
+                    <div class="flex items-center gap-3">
+                      <div class="flex items-center justify-center w-10 h-10 rounded-lg"
+                           [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
+                           [class.text-emerald-400]="transferWindowPhase() === 'summer'"
+                           [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
+                           [class.text-cyan-400]="transferWindowPhase() === 'winter'">
+                        <span class="material-icons text-xl">handshake</span>
+                      </div>
+                      <h3 class="text-lg font-bold text-white">Make Transfer Offer</h3>
                     </div>
-                    <div class="border-t border-zinc-800/60 pt-2 flex justify-between">
-                      <span class="text-zinc-500">Player Wage Cost:</span>
-                      <span class="text-amber-400 font-mono font-medium">{{ targetPlayerWage() | number:'1.1-1' }} pts</span>
+                    
+                    <p class="text-sm text-zinc-300 leading-relaxed">
+                      Submit an offer to buy <strong class="text-white">{{ player()?.name }}</strong>. 
+                      The market value is estimated at <strong class="text-emerald-400 font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</strong>.
+                    </p>
+                    
+                    <!-- Financial Status -->
+                    <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-3.5 space-y-2 text-xs">
+                      <div class="flex justify-between">
+                        <span class="text-zinc-500">Your Transfer Budget:</span>
+                        <span class="text-zinc-200 font-mono font-medium">{{ userBudget() | currency:'USD':'symbol':'1.0-0' }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-zinc-500">Your Wage Headroom:</span>
+                        <span class="text-zinc-200 font-mono font-medium">{{ userWageHeadroom() | number:'1.1-1' }} pts</span>
+                      </div>
+                      <div class="border-t border-zinc-800/60 pt-2 flex justify-between">
+                        <span class="text-zinc-500">Player Wage Cost:</span>
+                        <span class="text-amber-400 font-mono font-medium">{{ targetPlayerWage() | number:'1.1-1' }} pts</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <!-- Bid Input -->
-                  <div class="space-y-1.5">
-                    <label for="bid-amount-profile" class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">Offer Amount ($)</label>
-                    <input id="bid-amount-profile" type="number" [ngModel]="offerBidAmount()"
-                      (ngModelChange)="offerBidAmount.set($any($event))"
-                      class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-mono font-semibold" />
-                  </div>
+                    <!-- Bid Input -->
+                    <div class="space-y-1.5">
+                      <label for="bid-amount-profile" class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">Offer Amount ($)</label>
+                      <input id="bid-amount-profile" type="text" [value]="formatCurrency(offerBidAmount())"
+                        (input)="onBidInput($event)"
+                        class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-mono font-semibold" />
+                    </div>
 
-                  <!-- Validation Errors -->
-                  @if (offerBidAmount() > userBudget()) {
-                  <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
-                    <span class="material-icons text-sm">warning</span>
-                    <span>Insufficient transfer budget (bid exceeds your available budget).</span>
-                  </div>
-                  } @else if (targetPlayerWage() > userWageHeadroom()) {
-                  <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
-                    <span class="material-icons text-sm">warning</span>
-                    <span>Insufficient wage cap headroom (player exceeds your available headroom).</span>
-                  </div>
+                    <!-- Validation Errors -->
+                    @if (offerBidAmount() > userBudget()) {
+                    <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+                      <span class="material-icons text-sm">warning</span>
+                      <span>Insufficient transfer budget (bid exceeds your available budget).</span>
+                    </div>
+                    } @else if (targetPlayerWage() > userWageHeadroom()) {
+                    <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+                      <span class="material-icons text-sm">warning</span>
+                      <span>Insufficient wage cap headroom (player exceeds your available headroom).</span>
+                    </div>
+                    }
+
+                    <!-- Status Alerts -->
+                    @if (offerError()) {
+                    <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+                      <span class="material-icons text-sm">error</span>
+                      <span>{{ offerError() }}</span>
+                    </div>
+                    }
+
+                    <div class="flex gap-3 pt-2">
+                      <button (click)="closeOfferModal()"
+                              class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer text-center">
+                        Cancel
+                      </button>
+                      <button (click)="submitOffer()"
+                              [disabled]="offerBidAmount() <= 0 || offerBidAmount() > userBudget() || targetPlayerWage() > userWageHeadroom()"
+                              class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer text-center select-none">
+                        Submit Offer
+                      </button>
+                    </div>
                   }
-
-                  <!-- Status Alerts -->
-                  @if (offerError()) {
-                  <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
-                    <span class="material-icons text-sm">error</span>
-                    <span>{{ offerError() }}</span>
-                  </div>
-                  }
-                  @if (offerSuccess()) {
-                  <div class="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-3">
-                    <span class="material-icons text-sm">check_circle</span>
-                    <span>{{ offerSuccess() }}</span>
-                  </div>
-                  }
-
-                  <div class="flex gap-3 pt-2">
-                    <button (click)="closeOfferModal()"
-                            class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer text-center">
-                      Cancel
-                    </button>
-                    <button (click)="submitOffer()"
-                            [disabled]="offerBidAmount() <= 0 || offerBidAmount() > userBudget() || targetPlayerWage() > userWageHeadroom() || !!offerSuccess()"
-                            class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer text-center select-none">
-                      Submit Offer
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>

@@ -52,6 +52,7 @@ export class TransferMarketComponent {
 
   // Modal Offer State
   showOfferModal = signal(false);
+  isSubmitting = signal(false);
   selectedPlayerForOffer = signal<Player | null>(null);
   selectedPlayerValue = signal<number>(0);
   offerBidAmount = signal<number>(0);
@@ -253,6 +254,7 @@ export class TransferMarketComponent {
     this.selectedPlayerForOffer.set(player);
     this.selectedPlayerValue.set(value);
     this.offerBidAmount.set(Math.round(value * 1.15));
+    this.isSubmitting.set(false);
     this.offerError.set('');
     this.offerSuccess.set('');
     this.showOfferModal.set(true);
@@ -261,8 +263,59 @@ export class TransferMarketComponent {
   closeOfferModal() {
     this.showOfferModal.set(false);
     this.selectedPlayerForOffer.set(null);
+    this.isSubmitting.set(false);
     this.offerError.set('');
     this.offerSuccess.set('');
+  }
+
+  formatCurrency(value: number): string {
+    if (!value) return '';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  }
+
+  onBidInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const originalValue = target.value;
+    const cursorPosition = target.selectionStart ?? 0;
+
+    const digitsBeforeCursor = originalValue.slice(0, cursorPosition).replace(/[^0-9]/g, '').length;
+
+    const clean = originalValue.replace(/[^0-9]/g, '');
+    const numValue = clean ? parseInt(clean, 10) : 0;
+
+    this.offerBidAmount.set(numValue);
+
+    const formatted = this.formatCurrency(numValue);
+    target.value = formatted;
+
+    let newCursor = 0;
+    let digitCount = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/[0-9]/.test(formatted[i])) {
+        digitCount++;
+      }
+      if (digitCount === digitsBeforeCursor) {
+        newCursor = i + 1;
+        break;
+      }
+    }
+
+    if (formatted === '') {
+      newCursor = 0;
+    } else if (digitCount < digitsBeforeCursor || cursorPosition === originalValue.length) {
+      newCursor = formatted.length;
+    }
+
+    target.setSelectionRange(newCursor, newCursor);
+  }
+
+  getAgentFee(fee: number): number {
+    return fee - Math.round(fee * 0.9);
   }
 
   submitOffer() {
@@ -273,17 +326,24 @@ export class TransferMarketComponent {
       this.offerError.set('Please enter a valid offer amount.');
       return;
     }
-    const res = this.gameService.submitTransferOffer(player.id, bid);
-    if (res.success) {
-      this.offerSuccess.set(res.message);
-      this.offerError.set('');
-      setTimeout(() => {
-        this.closeOfferModal();
-      }, 1500);
-    } else {
-      this.offerError.set(res.message);
-      this.offerSuccess.set('');
-    }
+    this.isSubmitting.set(true);
+    this.offerError.set('');
+    this.offerSuccess.set('');
+
+    setTimeout(() => {
+      const res = this.gameService.submitTransferOffer(player.id, bid);
+      this.isSubmitting.set(false);
+      if (res.success) {
+        this.offerSuccess.set(res.message);
+        this.offerError.set('');
+        setTimeout(() => {
+          this.closeOfferModal();
+        }, 1000);
+      } else {
+        this.offerError.set(res.message);
+        this.offerSuccess.set('');
+      }
+    }, 1500);
   }
 
   acceptOffer(offerId: string) {

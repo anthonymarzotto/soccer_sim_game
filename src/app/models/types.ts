@@ -153,11 +153,19 @@ export interface TeamSeasonSnapshot {
   stats: TeamStats;
 }
 
+export interface FinanceTransaction {
+  category: 'prize_money' | 'luxury_tax';
+  amount: number; // Positive for prize money, negative for luxury tax penalty
+  seasonYear: number;
+  week: number;
+}
+
 export interface TeamFinances {
   tier: number;
   transferBudget: number;
   wagePointsCap: number;
   wagePointsUsed: number;
+  financeHistory?: FinanceTransaction[];
 }
 
 export interface Team {
@@ -322,7 +330,7 @@ export interface TransferOffer {
   status: 'pending' | 'accepted' | 'rejected' | 'expired';
 }
 
-export type SeasonTransitionEventCategory = 'retirement' | 'contract'; // extensible later
+export type SeasonTransitionEventCategory = 'retirement' | 'contract' | 'finance'; // extensible later
 
 export interface SeasonTransitionEvent {
   category: SeasonTransitionEventCategory;

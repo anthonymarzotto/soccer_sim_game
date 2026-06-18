@@ -235,7 +235,8 @@ export class LeagueAssemblyService {
           tier: teamRecord.finances.tier,
           transferBudget: teamRecord.finances.transferBudget,
           wagePointsCap: teamRecord.finances.wagePointsCap,
-          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100
+          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100,
+          financeHistory: teamRecord.finances.financeHistory ?? []
         }
       });
     });

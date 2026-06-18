@@ -986,6 +986,15 @@ describe('GameService — Transfer Offer Sub-System', () => {
       expect(updatedTeam).toBeDefined();
 
       expect(updatedTeam!.finances.transferBudget).toBe(9900000);
+
+      expect(updatedTeam!.finances.financeHistory).toBeDefined();
+      expect(updatedTeam!.finances.financeHistory!.length).toBe(1);
+      expect(updatedTeam!.finances.financeHistory![0]).toMatchObject({
+        category: 'luxury_tax',
+        amount: -100000,
+        seasonYear: 2026,
+        week: 1
+      });
     });
 
     it('should list unaffordable final-year contract renewals for CPU teams', async () => {
