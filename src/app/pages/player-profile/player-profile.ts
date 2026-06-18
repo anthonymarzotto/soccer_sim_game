@@ -491,8 +491,8 @@ export class PlayerProfileComponent {
     }
     const p = this.player();
     if (!p) return 0;
-    const attrs = p.seasonAttributes?.find(a => a.seasonYear === stats.seasonYear);
-    if (!attrs) return 0;
+    const hasAttrs = p.seasonAttributes?.some(a => a.seasonYear === stats.seasonYear);
+    if (!hasAttrs) return 0;
     return calculateMarketValue(p, stats.seasonYear);
   }
 

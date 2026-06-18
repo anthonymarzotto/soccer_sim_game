@@ -608,6 +608,9 @@ export class GameService {
       const isFinalYear = p.contract.expiresAfterSeason === currentSeasonYear;
       let isRenewalUnaffordable = false;
       if (isFinalYear) {
+        // Note: Using current season attributes/overall is intentional here since 
+        // next season progression hasn't run yet. calculatePlayerMarketWageCost 
+        // will safely fall back to the latest attributes while using the updated age.
         const nextSeasonMarketWage = calculatePlayerMarketWageCost(p, currentSeasonYear + 1);
         const agreedWageCost = p.contract.agreedWageCost;
         const headroom = (team.finances.wagePointsCap ?? 0) - (team.finances.wagePointsUsed ?? 0);

@@ -1170,6 +1170,12 @@
                       <span>{{ offerError() }}</span>
                     </div>
                     }
+                    @if (offerSuccess()) {
+                    <div class="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-3">
+                      <span class="material-icons text-sm">check_circle</span>
+                      <span>{{ offerSuccess() }}</span>
+                    </div>
+                    }
 
                     <div class="flex gap-3 pt-2">
                       <button (click)="closeOfferModal()"
