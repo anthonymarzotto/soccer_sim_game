@@ -183,9 +183,23 @@ export function calculateMarketValue(player: Player, seasonYear: number): number
 }
 
 export function calculatePlayerWageCost(player: Player, seasonYear: number): number {
+  if (player.contract) {
+    return player.contract.agreedWageCost;
+  }
+  return calculatePlayerMarketWageCost(player, seasonYear);
+}
+
+export function calculatePlayerMarketWageCost(player: Player, seasonYear: number): number {
   const birthday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
   const age = computeAge(birthday, seasonAnchorDate(seasonYear));
-  const attributes = getCurrentPlayerSeasonAttributes(player, seasonYear);
+  let attributes = player.seasonAttributes?.find(a => a.seasonYear === seasonYear);
+  if (!attributes && player.seasonAttributes && player.seasonAttributes.length > 0) {
+    const sortedAttrs = [...player.seasonAttributes].sort((a, b) => b.seasonYear - a.seasonYear);
+    attributes = sortedAttrs[0];
+  }
+  if (!attributes) {
+    throw new Error(`calculatePlayerMarketWageCost: no season attributes found for player "${player.id}".`);
+  }
   const overall = attributes.overall.value;
 
   const baseWage = 0.005249 * Math.exp(0.0828 * overall);

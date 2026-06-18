@@ -127,7 +127,8 @@ export class LeagueAssemblyService {
       fatigue: player.fatigue,
       injuries: player.injuries ?? [],
       progression: player.progression,
-      transferHistory: player.transferHistory ?? []
+      transferHistory: player.transferHistory ?? [],
+      contract: player.contract
     };
   }
 
@@ -234,7 +235,8 @@ export class LeagueAssemblyService {
           tier: teamRecord.finances.tier,
           transferBudget: teamRecord.finances.transferBudget,
           wagePointsCap: teamRecord.finances.wagePointsCap,
-          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100
+          wagePointsUsed: Math.round(wagePointsUsed * 100) / 100,
+          financeHistory: teamRecord.finances.financeHistory ?? []
         }
       });
     });
@@ -328,7 +330,8 @@ export class LeagueAssemblyService {
       fatigue,
       injuries: record.injuries ?? [],
       progression,
-      transferHistory: record.transferHistory ?? []
+      transferHistory: record.transferHistory ?? [],
+      contract: record.contract
     };
   }
 

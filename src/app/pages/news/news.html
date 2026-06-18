@@ -6,17 +6,7 @@
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-white">League News</h1>
         <p class="text-zinc-400 mt-1">Transfers, retirements, and season news</p>
-        @if (unreadLog()) {
-        <p class="text-xs text-emerald-400/80 mt-1">Unread end-of-season report for season {{ unreadLog()!.seasonYear }}</p>
-        }
       </div>
-      @if (unreadLog()) {
-      <button (click)="dismiss()"
-        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 hover:text-white text-sm font-medium transition-colors">
-        <span class="material-icons text-base">done_all</span>
-        Mark All Read
-      </button>
-      }
     </div>
 
     @if (allNewsItems().length === 0) {
@@ -30,7 +20,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div class="flex items-center gap-3">
         <label for="news-team-filter" class="text-xs text-zinc-500 uppercase tracking-wide font-semibold shrink-0">Team</label>
-        <select id="news-team-filter" [value]="filterTeamId()" (change)="setFilter($any($event.target).value)"
+        <select id="news-team-filter" [ngModel]="filterTeamId()" (ngModelChange)="setFilter($event)"
           class="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm cursor-pointer hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600">
           <option value="">All Teams ({{ teams().length }})</option>
           @for (team of teams(); track team.id) {
@@ -45,6 +35,8 @@
           <option value="all">All Categories</option>
           <option value="transfer">Transfers</option>
           <option value="retirement">Retirements</option>
+          <option value="contract">Contracts</option>
+          <option value="finance">Finances</option>
         </select>
       </div>
     </div>
@@ -63,7 +55,7 @@
           <div class="flex items-start gap-3">
             <span class="material-icons text-base mt-0.5 shrink-0"
               [ngClass]="item.isUserTeam ? 'text-emerald-400' : 'text-zinc-500'">
-              {{ item.category === 'transfer' ? 'swap_horiz' : 'person_off' }}
+              {{ item.category === 'transfer' ? 'swap_horiz' : (item.category === 'contract' ? 'history_edu' : (item.category === 'finance' ? 'payments' : 'person_off')) }}
             </span>
             <div>
               <div class="font-medium text-white text-sm">{{ item.headline }}</div>

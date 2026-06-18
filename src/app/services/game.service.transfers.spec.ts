@@ -969,5 +969,86 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const askingPrice = service.calculateAskingPrice(targetPlayer, 2026);
       expect(askingPrice).toBe(expectedAskingPrice);
     });
+
+    it('should charge a weekly luxury tax when a team is over its wage cap', async () => {
+      const p1 = createTestPlayer({ id: 'p1', teamId: 'user_team', position: Position.MIDFIELDER });
+      const userTeam = makeTeam('user_team', [p1], 10000000, 60, 70);
+      const league = makeLeague([userTeam], 'user_team');
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      service.advanceWeek();
+
+      const updatedLeague = service.league();
+      expect(updatedLeague).toBeDefined();
+      const updatedTeam = updatedLeague!.teams.find(t => t.id === 'user_team');
+      expect(updatedTeam).toBeDefined();
+
+      expect(updatedTeam!.finances.transferBudget).toBe(9900000);
+
+      expect(updatedTeam!.finances.financeHistory).toBeDefined();
+      expect(updatedTeam!.finances.financeHistory!.length).toBe(1);
+      expect(updatedTeam!.finances.financeHistory![0]).toMatchObject({
+        category: 'luxury_tax',
+        amount: -100000,
+        seasonYear: 2026,
+        week: 1
+      });
+    });
+
+    it('should list unaffordable final-year contract renewals for CPU teams', async () => {
+      const expensivePlayer = createTestPlayer({
+        id: 'expensive_player',
+        teamId: 'cpu_team',
+        position: Position.MIDFIELDER,
+        defaultStat: 85,
+        contract: {
+          agreedWageCost: 2,
+          expiresAfterSeason: 2026
+        }
+      });
+      const p2 = createTestPlayer({ id: 'p2', teamId: 'cpu_team', position: Position.MIDFIELDER });
+      const p3 = createTestPlayer({ id: 'p3', teamId: 'cpu_team', position: Position.MIDFIELDER });
+      const p4 = createTestPlayer({ id: 'p4', teamId: 'cpu_team', position: Position.MIDFIELDER });
+
+      const cpuTeam = makeTeam('cpu_team', [expensivePlayer, p2, p3, p4], 5000000, 65, 64);
+      cpuTeam.playerIds = cpuTeam.players.map(p => p.id);
+      cpuTeam.seasonSnapshots![0].playerIds = cpuTeam.playerIds;
+
+      const userTeam = makeTeam('user_team', []);
+      const league = makeLeague([userTeam, cpuTeam], 'user_team');
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      const listings = service.runCpuAutoListingForLeague(service.league()!);
+      expect(listings).toContain('expensive_player');
+    });
+
+    it('should treat all players as potential listing candidates when CPU team exceeds wage cap', async () => {
+      const p1 = createTestPlayer({ id: 'p1', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const p2 = createTestPlayer({ id: 'p2', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 75 });
+      const p3 = createTestPlayer({ id: 'p3', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const p4 = createTestPlayer({ id: 'p4', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 65 });
+
+      const cpuTeam = makeTeam('cpu_team', [p1, p2, p3, p4], 5000000, 65, 70);
+      cpuTeam.playerIds = cpuTeam.players.map(p => p.id);
+      cpuTeam.seasonSnapshots![0].playerIds = cpuTeam.playerIds;
+
+      const userTeam = makeTeam('user_team', []);
+      const league = makeLeague([userTeam, cpuTeam], 'user_team');
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      const listings = service.runCpuAutoListingForLeague(service.league()!);
+      expect(listings.length).toBeGreaterThan(0);
+      const firstListedIndex = listings.indexOf('p4');
+      const secondListedIndex = listings.indexOf('p3');
+      if (firstListedIndex !== -1 && secondListedIndex !== -1) {
+        expect(firstListedIndex).toBeLessThan(secondListedIndex);
+      }
+    });
   });
 });

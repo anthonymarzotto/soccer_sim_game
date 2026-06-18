@@ -39,7 +39,7 @@ export class NavigationComponent {
     return league?.userTeamId;
   });
 
-  unreadSeasonTransitionLog = this.gameService.unreadSeasonTransitionLog;
+
   hasPendingTransferOffers = computed(() => {
     const l = this.gameService.league();
     const userTeamId = this.userTeamId();

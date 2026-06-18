@@ -48,6 +48,7 @@ export class PlayerProfileComponent {
     return !!p && !!userTeamId && p.teamId === userTeamId;
   });
   showOfferModal = signal(false);
+  isSubmitting = signal(false);
   offerBidAmount = signal<number>(0);
   offerError = signal<string>('');
   offerSuccess = signal<string>('');
@@ -93,6 +94,7 @@ export class PlayerProfileComponent {
       const val = calculateMarketValue(p, this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear());
       this.offerBidAmount.set(Math.round(val * 1.15));
     }
+    this.isSubmitting.set(false);
     this.offerError.set('');
     this.offerSuccess.set('');
     this.showOfferModal.set(true);
@@ -100,8 +102,55 @@ export class PlayerProfileComponent {
 
   closeOfferModal() {
     this.showOfferModal.set(false);
+    this.isSubmitting.set(false);
     this.offerError.set('');
     this.offerSuccess.set('');
+  }
+
+  formatCurrency(value: number): string {
+    if (!value) return '';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  }
+
+  onBidInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const originalValue = target.value;
+    const cursorPosition = target.selectionStart ?? 0;
+
+    const digitsBeforeCursor = originalValue.slice(0, cursorPosition).replace(/[^0-9]/g, '').length;
+
+    const clean = originalValue.replace(/[^0-9]/g, '');
+    const numValue = clean ? parseInt(clean, 10) : 0;
+
+    this.offerBidAmount.set(numValue);
+
+    const formatted = this.formatCurrency(numValue);
+    target.value = formatted;
+
+    let newCursor = 0;
+    let digitCount = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/[0-9]/.test(formatted[i])) {
+        digitCount++;
+      }
+      if (digitCount === digitsBeforeCursor) {
+        newCursor = i + 1;
+        break;
+      }
+    }
+
+    if (formatted === '') {
+      newCursor = 0;
+    } else if (digitCount < digitsBeforeCursor || cursorPosition === originalValue.length) {
+      newCursor = formatted.length;
+    }
+
+    target.setSelectionRange(newCursor, newCursor);
   }
 
   submitOffer() {
@@ -112,17 +161,24 @@ export class PlayerProfileComponent {
       this.offerError.set('Please enter a valid offer amount.');
       return;
     }
-    const res = this.gameService.submitTransferOffer(player.id, bid);
-    if (res.success) {
-      this.offerSuccess.set(res.message);
-      this.offerError.set('');
-      setTimeout(() => {
-        this.closeOfferModal();
-      }, 1500);
-    } else {
-      this.offerError.set(res.message);
-      this.offerSuccess.set('');
-    }
+    this.isSubmitting.set(true);
+    this.offerError.set('');
+    this.offerSuccess.set('');
+
+    setTimeout(() => {
+      const res = this.gameService.submitTransferOffer(player.id, bid);
+      this.isSubmitting.set(false);
+      if (res.success) {
+        this.offerSuccess.set(res.message);
+        this.offerError.set('');
+        setTimeout(() => {
+          this.closeOfferModal();
+        }, 1000);
+      } else {
+        this.offerError.set(res.message);
+        this.offerSuccess.set('');
+      }
+    }, 1500);
   }
 
   player = computed(() => {
@@ -169,6 +225,14 @@ export class PlayerProfileComponent {
     const year = this.gameService.league()?.currentSeasonYear;
     if (!p || year === undefined) return null;
     return calculatePlayerWageCost(p, year);
+  });
+
+  contractYearsRemaining = computed<number | null>(() => {
+    const p = this.player();
+    const year = this.gameService.league()?.currentSeasonYear;
+    if (!p || !p.contract || year === undefined) return null;
+    const remaining = p.contract.expiresAfterSeason - year + 1;
+    return remaining > 0 ? remaining : 0;
   });
 
   /**
@@ -266,14 +330,14 @@ export class PlayerProfileComponent {
   goalkeeperView = signal<'list' | 'chart'>('list');
 
   // Season stats category toggle
-  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline' | 'ratings'>('offensive');
+  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline' | 'ratings' | 'finances'>('offensive');
 
   // Toggle methods
   toggleMentalView() {
     this.mentalView.update(v => v === 'list' ? 'chart' : 'list');
   }
 
-  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline' | 'ratings') {
+  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline' | 'ratings' | 'finances') {
     this.seasonStatsView.set(view);
   }
 
@@ -419,6 +483,17 @@ export class PlayerProfileComponent {
 
   getCareerStatsForSeason(seasonYear: number): PlayerCareerStats | null {
     return this.careerStatsBySeasonYear().get(seasonYear) || null;
+  }
+
+  getMarketValueForSeason(stats: PlayerCareerStats): number {
+    if (stats.marketValue !== undefined) {
+      return stats.marketValue;
+    }
+    const p = this.player();
+    if (!p) return 0;
+    const hasAttrs = p.seasonAttributes?.some(a => a.seasonYear === stats.seasonYear);
+    if (!hasAttrs) return 0;
+    return calculateMarketValue(p, stats.seasonYear);
   }
 
   getTotalCareerStats = computed(() => {

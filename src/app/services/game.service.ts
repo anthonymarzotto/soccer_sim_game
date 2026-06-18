@@ -6,7 +6,7 @@ import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
 import { computeAge, seasonAnchorDate } from '../models/player-age';
 import { gaussianRandom, clamp, lerp } from '../utils/math';
-import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall, calculatePlayerWageCost, calculateMarketValue, calculateSquadTotalWageCost } from '../models/player-progression';
+import { derivePhase, phaseGrowthWeight, phaseDecayWeight, getStatKeysForCategory, calculateOverall, calculatePlayerWageCost, calculatePlayerMarketWageCost, calculateMarketValue, calculateSquadTotalWageCost } from '../models/player-progression';
 import { Phase } from '../models/enums';
 import { GeneratorService } from './generator.service';
 import { MatchSimulationVariantBService } from './match.simulation.variant-b.service';
@@ -85,6 +85,7 @@ export class GameService {
   private hydrationPromise: Promise<void> | null = null;
   private isHydrating = signal(true);
   private isSimulatingWeekState = signal(false);
+  private isSimulatingWholeSeasonState = signal(false);
   private singleMatchSimulationSessionCount = signal(0);
   private weekSimulationUnlockTimer: ReturnType<typeof setTimeout> | null = null;
   private seasonTransitionLogState = signal<SeasonTransitionLog | null>(null);
@@ -549,10 +550,36 @@ export class GameService {
       }
     }
 
+    const advancedTeams = this.advanceWeekForPlayers(league.teams, league.currentSeasonYear, league.currentWeek);
+    const teamsWithLuxuryTax = advancedTeams.map(team => {
+      const finances = team.finances;
+      const excess = (finances.wagePointsUsed ?? 0) - (finances.wagePointsCap ?? 0);
+      if (excess > 0) {
+        const penalty = Math.round(excess * 10000);
+        return {
+          ...team,
+          finances: {
+            ...finances,
+            transferBudget: (finances.transferBudget ?? 0) - penalty,
+            financeHistory: [
+              ...(finances.financeHistory ?? []),
+              {
+                category: 'luxury_tax' as const,
+                amount: -penalty,
+                seasonYear: league.currentSeasonYear,
+                week: league.currentWeek
+              }
+            ]
+          }
+        };
+      }
+      return team;
+    });
+
     const updatedLeague: League = {
       ...league,
       currentWeek: nextWeek,
-      teams: this.advanceWeekForPlayers(league.teams, league.currentSeasonYear, league.currentWeek),
+      teams: teamsWithLuxuryTax,
       transferListings,
       transferOffers,
       evaluatedCpuOfferPlayerIds
@@ -572,6 +599,45 @@ export class GameService {
       );
       return !hasTransferredThisSeason;
     });
+
+    // 1. Contract & Wage Cap listing logic
+    const capExceeded = (team.finances.wagePointsUsed ?? 0) > (team.finances.wagePointsCap ?? 0);
+    const contractCandidates: Player[] = [];
+
+    for (const p of players) {
+      const isFinalYear = p.contract.expiresAfterSeason === currentSeasonYear;
+      let isRenewalUnaffordable = false;
+      if (isFinalYear) {
+        // Note: Using current season attributes/overall is intentional here since 
+        // next season progression hasn't run yet. calculatePlayerMarketWageCost 
+        // will safely fall back to the latest attributes while using the updated age.
+        const nextSeasonMarketWage = calculatePlayerMarketWageCost(p, currentSeasonYear + 1);
+        const agreedWageCost = p.contract.agreedWageCost;
+        const headroom = (team.finances.wagePointsCap ?? 0) - (team.finances.wagePointsUsed ?? 0);
+        if (nextSeasonMarketWage - agreedWageCost > headroom) {
+          isRenewalUnaffordable = true;
+        }
+      }
+
+      if (isRenewalUnaffordable || capExceeded) {
+        contractCandidates.push(p);
+      }
+    }
+
+    if (contractCandidates.length > 0) {
+      // Sort by overall ascending (lower overall first)
+      contractCandidates.sort((a, b) => {
+        const ovrA = getCurrentPlayerSeasonAttributes(a, currentSeasonYear).overall.value;
+        const ovrB = getCurrentPlayerSeasonAttributes(b, currentSeasonYear).overall.value;
+        return ovrA - ovrB;
+      });
+
+      for (const p of contractCandidates) {
+        if (!teamListings.includes(p.id)) {
+          teamListings.push(p.id);
+        }
+      }
+    }
     const gkList: Player[] = [];
     const defList: Player[] = [];
     const midList: Player[] = [];
@@ -683,7 +749,7 @@ export class GameService {
     processPosition(midList, GameService.POSITION_SELL_FLOOR[Position.MIDFIELDER], midStartersCount);
     processPosition(fwdList, GameService.POSITION_SELL_FLOOR[Position.FORWARD], fwdStartersCount);
 
-    return teamListings;
+    return [...new Set(teamListings)];
   }
 
   runCpuAutoListingForLeague(league: League): string[] {
@@ -1599,6 +1665,7 @@ export class GameService {
     }
 
     this.isSimulatingWeekState.set(true);
+    this.isSimulatingWholeSeasonState.set(true);
 
     try {
       // Refresh lineups once before the loop; updateLeagueWithMatchResult re-dresses
@@ -1634,6 +1701,7 @@ export class GameService {
         this.advanceWeek();
       }
     } finally {
+      this.isSimulatingWholeSeasonState.set(false);
       this.weekSimulationUnlockTimer = setTimeout(() => {
         this.isSimulatingWeekState.set(false);
         this.weekSimulationUnlockTimer = null;
@@ -2092,7 +2160,7 @@ export class GameService {
   private dressBestPlayers(teams: Team[], seasonYear?: number): Team[] {
     const userTeamId = this.leagueState()?.userTeamId;
     return teams.map(team => {
-      if (team.id === userTeamId) return team; // Skip optimizing the user's team
+      if (team.id === userTeamId && !this.isSimulatingWholeSeasonState()) return team; // Skip optimizing the user's team unless simulating a whole season
       return this.dressTeamLineup(team, seasonYear);
     });
   }
@@ -2457,7 +2525,8 @@ export class GameService {
       fouls: 0,
       foulsSuffered: 0,
       totalMatchRating: 0,
-      starNominations: { first: 0, second: 0, third: 0 }
+      starNominations: { first: 0, second: 0, third: 0 },
+      wage: 0
     };
 
     player.careerStats.forEach(season => {
@@ -2720,7 +2789,7 @@ export class GameService {
 
     if (!statsEntry) {
       // Create new entry for current season using factory
-      statsEntry = createEmptyPlayerCareerStats(currentSeasonYear, teamId);
+      statsEntry = createEmptyPlayerCareerStats(currentSeasonYear, teamId, player.contract.agreedWageCost, calculateMarketValue(player, currentSeasonYear));
       player.careerStats.push(statsEntry);
     }
 
@@ -3301,7 +3370,16 @@ export class GameService {
       const decayedBudget = Math.round(currentFinances.transferBudget * 0.8);
       const updatedFinances = {
         ...currentFinances,
-        transferBudget: decayedBudget + prizeMoney
+        transferBudget: decayedBudget + prizeMoney,
+        financeHistory: [
+          ...(currentFinances.financeHistory ?? []),
+          {
+            category: 'prize_money' as const,
+            amount: prizeMoney,
+            seasonYear: league.currentSeasonYear,
+            week: 0
+          }
+        ]
       };
 
       return this.withSyncedPlayerIds({
@@ -3313,7 +3391,7 @@ export class GameService {
       });
     });
 
-    // Step 2: Assess Retirements
+        // Step 2: Assess Retirements
     const { updatedTeams: teamsAfterRetirements, transitionLog } = this.assessRetirements(
       teamsWithNextSnapshot,
       league.currentSeasonYear,
@@ -3326,25 +3404,60 @@ export class GameService {
       const seededPlayers = resolveTeamPlayers(team).map(player => {
         const hasSeededAttributes = (player.seasonAttributes ?? []).some(attributes => attributes.seasonYear === nextSeasonYear);
         const seededSeasonAttributes = hasSeededAttributes ? null : this.generateNextSeasonAttributes(player, nextSeasonYear);
+        const nextAttributes = hasSeededAttributes
+          ? (player.seasonAttributes ?? [])
+          : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes!]);
+
+        const playerWithNextAttrs = {
+          ...player,
+          seasonAttributes: nextAttributes
+        } as unknown as Player;
+
+        let contract = { ...player.contract };
+
+        if (contract.expiresAfterSeason <= league.currentSeasonYear) {
+          const playerWithoutContract = { ...playerWithNextAttrs, contract: undefined } as unknown as Player;
+          const newWage = calculatePlayerWageCost(playerWithoutContract, nextSeasonYear);
+          const duration = Math.floor(this.rng.random() * 4) + 1;
+          contract = {
+            agreedWageCost: newWage,
+            expiresAfterSeason: nextSeasonYear + duration - 1
+          };
+
+          transitionLog.events.push({
+            category: 'contract',
+            headline: `Contract Renewed: ${player.name}`,
+            detail: `${player.name} (${team.name}) has renewed their contract for ${duration} year${duration === 1 ? '' : 's'} (through season ${contract.expiresAfterSeason}) at a new wage of ${contract.agreedWageCost} pts.`,
+            teamId: team.id,
+            playerIds: [player.id],
+            isUserTeam: team.id === league.userTeamId
+          });
+        }
 
         const nextCareerStatsExists = player.careerStats.some(stats => stats.seasonYear === nextSeasonYear);
+        const updatedCareerStats = nextCareerStatsExists
+          ? player.careerStats
+          : [...player.careerStats, createEmptyPlayerCareerStats(nextSeasonYear, team.id, contract.agreedWageCost, calculateMarketValue(playerWithNextAttrs, nextSeasonYear))].sort((left, right) => left.seasonYear - right.seasonYear);
 
         return {
           ...player,
           mood: 100,
           fatigue: 0,
-          seasonAttributes: hasSeededAttributes
-            ? (player.seasonAttributes ?? [])
-            : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes!]),
-          careerStats: nextCareerStatsExists
-            ? player.careerStats
-            : [...player.careerStats, createEmptyPlayerCareerStats(nextSeasonYear, team.id)].sort((left, right) => left.seasonYear - right.seasonYear)
+          seasonAttributes: nextAttributes,
+          contract,
+          careerStats: updatedCareerStats
         };
       });
 
+      const nextSeasonWages = seededPlayers.reduce((sum, p) => sum + p.contract.agreedWageCost, 0);
+
       return this.withSyncedPlayerIds({
         ...team,
-        players: seededPlayers
+        players: seededPlayers,
+        finances: {
+          ...team.finances,
+          wagePointsUsed: Math.round(nextSeasonWages * 100) / 100
+        }
       });
     });
 
