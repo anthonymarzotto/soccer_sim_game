@@ -6,6 +6,7 @@ import { LeagueFinancesComponent } from './pages/league-finances/league-finances
 import { TeamDetailsComponent } from './pages/team-details/team-details';
 import { TeamScheduleComponent } from './pages/team-schedule/team-schedule';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
+import { PlayerGameLogComponent } from './pages/player-game-log/player-game-log';
 import { PlayerStatsComponent } from './pages/player-stats/player-stats';
 import { PlayerAttributesComponent } from './pages/player-attributes/player-attributes';
 import { ScheduleComponent } from './pages/schedule/schedule';
@@ -43,6 +44,7 @@ export const routes: Routes = [
   { path: 'team/:id', component: TeamDetailsComponent },
   { path: 'team/:id/schedule', component: TeamScheduleComponent },
   { path: 'player/:id', component: PlayerProfileComponent },
+  { path: 'player/:id/game-log', component: PlayerGameLogComponent },
   { path: 'schedule', component: ScheduleComponent },
   { path: 'watch/:id', component: WatchGameComponent },
   { path: 'debug/simulation', canActivate: [localhostGuardFn], component: SimulationDebugComponent },

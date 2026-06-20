@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
@@ -20,7 +20,7 @@ import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-player-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TeamBadgeComponent, DecimalPipe, CurrencyPipe, FormsModule],
+  imports: [TeamBadgeComponent, DecimalPipe, CurrencyPipe, FormsModule, RouterLink],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfileComponent {

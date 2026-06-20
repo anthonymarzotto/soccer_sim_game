@@ -1,0 +1,114 @@
+<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
+  <div class="max-w-6xl mx-auto space-y-8">
+    @let p = player();
+
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+      <div class="flex flex-col">
+        <div class="flex items-center gap-3 text-sm text-zinc-400 mb-2">
+          <a routerLink="/player/{{ p?.id }}" class="hover:text-emerald-400 transition-colors flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Back to Profile
+          </a>
+        </div>
+        <h1 class="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+          {{ p?.name }}
+          <span class="text-zinc-500 font-normal">/ Game Log</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Stats Table -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+            <tr>
+              <th scope="col" class="px-4 py-3 w-16">Week</th>
+              <th scope="col" class="px-4 py-3 w-48">Opponent</th>
+              <th scope="col" class="px-4 py-3 w-20 text-center">Result</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">MIN</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">G</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">A</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">SH</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">SOG</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">P</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">P%</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">T</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">INT</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">SV</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">FL</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">YC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">RC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center">RTG</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-zinc-800/60">
+            @for (log of gameLog(); track log.match.id) {
+              <tr class="hover:bg-zinc-800/30 transition-colors group">
+                <td class="px-4 py-3 font-mono text-zinc-400">{{ log.match.week }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="text-zinc-500 font-mono text-xs w-4">{{ log.isHome ? 'vs' : '@' }}</span>
+                    <a [routerLink]="['/team', log.isHome ? log.match.awayTeamId : log.match.homeTeamId]"
+                       class="font-medium text-white group-hover:text-emerald-400 transition-colors">
+                      {{ log.opponentName }}
+                    </a>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <a [routerLink]="['/watch', log.match.id]" class="hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2 py-0.5 rounded border"
+                     [class.bg-emerald-500/10]="log.result === 'W'"
+                     [class.text-emerald-400]="log.result === 'W'"
+                     [class.border-emerald-500/20]="log.result === 'W'"
+                     [class.bg-red-500/10]="log.result === 'L'"
+                     [class.text-red-400]="log.result === 'L'"
+                     [class.border-red-500/20]="log.result === 'L'"
+                     [class.bg-amber-500/10]="log.result === 'D'"
+                     [class.text-amber-400]="log.result === 'D'"
+                     [class.border-amber-500/20]="log.result === 'D'">
+                    <span class="font-bold">{{ log.result }}</span>
+                    <span class="font-mono text-xs">{{ log.teamScore }}-{{ log.oppScore }}</span>
+                  </a>
+                </td>
+
+                @if (log.playerStats && log.playerStats.minutesPlayed > 0) {
+                  <td class="px-4 py-3 text-center font-mono">{{ log.playerStats.minutesPlayed }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-white]="log.playerStats.goals > 0" [class.font-bold]="log.playerStats.goals > 0" [class.text-zinc-500]="log.playerStats.goals === 0">{{ log.playerStats.goals }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-white]="log.playerStats.assists > 0" [class.font-bold]="log.playerStats.assists > 0" [class.text-zinc-500]="log.playerStats.assists === 0">{{ log.playerStats.assists }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.shots === 0">{{ log.playerStats.shots }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.shotsOnTarget === 0">{{ log.playerStats.shotsOnTarget }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.passes === 0">{{ log.playerStats.passes }}</td>
+                  <td class="px-4 py-3 text-center font-mono text-zinc-400">
+                    {{ log.playerStats.passes > 0 ? ((log.playerStats.passesSuccessful / log.playerStats.passes) * 100 | number:'1.0-0') : 0 }}%
+                  </td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.tackles === 0">{{ log.playerStats.tackles }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.interceptions === 0">{{ log.playerStats.interceptions }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.saves === 0">{{ log.playerStats.saves }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-zinc-500]="log.playerStats.fouls === 0">{{ log.playerStats.fouls }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-yellow-400]="log.playerStats.yellowCards > 0" [class.text-zinc-500]="log.playerStats.yellowCards === 0">{{ log.playerStats.yellowCards }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-red-500]="log.playerStats.redCards > 0" [class.text-zinc-500]="log.playerStats.redCards === 0">{{ log.playerStats.redCards }}</td>
+                  <td class="px-4 py-3 text-center font-mono font-bold"
+                      [class.text-emerald-400]="log.playerStats.rating >= 8"
+                      [class.text-zinc-300]="log.playerStats.rating >= 6 && log.playerStats.rating < 8"
+                      [class.text-red-400]="log.playerStats.rating < 6">
+                    {{ log.playerStats.rating | number:'1.1-1' }}
+                  </td>
+                } @else {
+                  <td colspan="14" class="px-4 py-3 text-center text-zinc-600 italic">Did not play</td>
+                }
+              </tr>
+            }
+            @if (gameLog().length === 0) {
+              <tr>
+                <td colspan="17" class="px-4 py-8 text-center text-zinc-500">
+                  No games played in the current season yet.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
