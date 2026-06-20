@@ -5,7 +5,7 @@ import { GameService } from '../../services/game.service';
 
 export interface BaseNewsItem {
   id: string;
-  category: 'retirement' | 'transfer' | 'contract' | 'finance';
+  category: 'retirement' | 'transfer' | 'contract' | 'finance' | 'suspension';
   seasonYear: number;
   week: number;
   headline: string;
@@ -42,7 +42,13 @@ export interface FinanceNewsItem extends BaseNewsItem {
   playerIds: string[];
 }
 
-export type NewsItem = RetirementNewsItem | TransferNewsItem | ContractNewsItem | FinanceNewsItem;
+export interface SuspensionNewsItem extends BaseNewsItem {
+  category: 'suspension';
+  teamId: string;
+  playerIds: string[];
+}
+
+export type NewsItem = RetirementNewsItem | TransferNewsItem | ContractNewsItem | FinanceNewsItem | SuspensionNewsItem;
 export type NewsCategoryFilter = 'all' | NewsItem['category'];
 
 @Component({
@@ -176,7 +182,29 @@ export class NewsComponent {
       }
     }
 
-    // 4. Sort chronologically: newest season first, then newest week first
+    // 4. Gather suspensions from player suspensions history
+    for (const team of league.teams) {
+      for (const player of team.players) {
+        if (player.suspensions) {
+          for (const record of player.suspensions) {
+            const isUser = userTeamId ? (player.teamId === userTeamId) : false;
+            items.push({
+              id: `suspension-${player.id}-${record.sustainedInSeason}-${record.sustainedInWeek}-${record.reason}`,
+              category: 'suspension',
+              seasonYear: record.sustainedInSeason,
+              week: record.sustainedInWeek,
+              headline: `${player.name} Suspended`,
+              detail: `${player.name} has been suspended for ${record.totalGames} game${record.totalGames > 1 ? 's' : ''} due to ${this.getSuspensionReasonText(record.reason)}.`,
+              isUserTeam: isUser,
+              teamId: player.teamId,
+              playerIds: [player.id]
+            } as SuspensionNewsItem);
+          }
+        }
+      }
+    }
+
+    // 5. Sort chronologically: newest season first, then newest week first
     return items.sort((a, b) => {
       if (b.seasonYear !== a.seasonYear) {
         return b.seasonYear - a.seasonYear;
@@ -187,6 +215,20 @@ export class NewsComponent {
       return a.headline.localeCompare(b.headline);
     });
   });
+
+  getSuspensionReasonText(reason: string): string {
+    switch (reason) {
+      case 'SECOND_YELLOW': return 'second yellow card';
+      case 'DOGSO': return 'denying an obvious goal-scoring opportunity';
+      case 'SERIOUS_FOUL': return 'serious foul play';
+      case 'SPITTING': return 'spitting at an opponent';
+      case '5_YELLOWS': return 'yellow card accumulation (5)';
+      case '10_YELLOWS': return 'yellow card accumulation (10)';
+      case '15_YELLOWS': return 'yellow card accumulation (15)';
+      case '20_YELLOWS': return 'yellow card accumulation (20)';
+      default: return 'suspension';
+    }
+  }
 
   /** Filtered news items based on filterTeamId() and filterCategory() */
   visibleItems = computed<NewsItem[]>(() => {
@@ -203,7 +245,7 @@ export class NewsComponent {
         return true;
       }
 
-      if (item.category === 'retirement' || item.category === 'contract' || item.category === 'finance') {
+      if (item.category === 'retirement' || item.category === 'contract' || item.category === 'finance' || item.category === 'suspension') {
         return item.teamId === teamFilter;
       } else {
         return item.buyerTeamId === teamFilter || item.sellerTeamId === teamFilter;

@@ -67,7 +67,7 @@ describe('Match Simulation Variant B Fouls', () => {
     vi.spyOn(internals.rng, 'random')
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.1)
-      .mockReturnValueOnce(0.2);
+      .mockReturnValueOnce(0.80);
 
     internals.handleFoul(
       state,
@@ -113,8 +113,8 @@ describe('Match Simulation Variant B Fouls', () => {
     vi.spyOn(internals.rng, 'random')
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.1)
-      .mockReturnValueOnce(0.95)
-      .mockReturnValueOnce(0.2)
+      .mockReturnValueOnce(0.05)
+      .mockReturnValueOnce(0.5)
       .mockReturnValueOnce(0.1)
       .mockReturnValueOnce(0.1);
 
@@ -145,6 +145,148 @@ describe('Match Simulation Variant B Fouls', () => {
     expect(state.events[1].playerIds).toEqual([awayPlayers[1].id, homePlayers[10].id]);
     expect(state.events[2].playerIds).toEqual([awayPlayers[1].id, homePlayers[10].id]);
     expect(state.events[3].playerIds).toEqual([awayPlayers[1].id, homePlayers[10].id]);
+  });
+
+  it('should roll SPITTING direct red card reason when redRoll is extremely small', () => {
+    const state = createMatchState(homeTeam.id, homePlayers[10].id);
+    const config = createSimulationConfig();
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
+    };
+    const internals = simulationB as unknown as VariantBInternals;
+
+    vi.spyOn(internals.rng, 'random')
+      .mockReturnValueOnce(0) // candidate index
+      .mockReturnValueOnce(0.1) // createRandomId (foul event)
+      .mockReturnValueOnce(0.15) // card given check (< 0.40)
+      .mockReturnValueOnce(0.005) // direct red check (< 0.01)
+      .mockReturnValueOnce(0.0005) // redRoll < 0.001 -> SPITTING
+      .mockReturnValueOnce(0.1); // createRandomId (red card event)
+
+    internals.handleFoul(
+      state,
+      { type: EventType.FOUL, player: homePlayers[10] },
+      tactics,
+      homeTeam,
+      awayTeam,
+      44,
+      config,
+      homePlayers,
+      awayPlayers
+    );
+
+    const redCardEvent = state.events.find(event => event.type === EventType.RED_CARD);
+    expect(redCardEvent).toBeDefined();
+    expect(redCardEvent?.additionalData?.cardReason).toBe('SPITTING');
+  });
+
+  it('should roll DOGSO direct red card reason when relativeY >= 80 and roll satisfies probability', () => {
+    const state = createMatchState(homeTeam.id, homePlayers[10].id);
+    state.ballPossession.location.y = 85; // relativeY = 85
+    const config = createSimulationConfig();
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
+    };
+    const internals = simulationB as unknown as VariantBInternals;
+
+    vi.spyOn(internals.rng, 'random')
+      .mockReturnValueOnce(0) // candidate index
+      .mockReturnValueOnce(0.1) // createRandomId (foul event)
+      .mockReturnValueOnce(0.15) // card given check (< 0.40)
+      .mockReturnValueOnce(0.005) // direct red check (< 0.01)
+      .mockReturnValueOnce(0.5) // redRoll >= 0.001
+      .mockReturnValueOnce(0.8) // DOGSO roll (0.8 < 0.85)
+      .mockReturnValueOnce(0.1); // createRandomId (red card event)
+
+    internals.handleFoul(
+      state,
+      { type: EventType.FOUL, player: homePlayers[10] },
+      tactics,
+      homeTeam,
+      awayTeam,
+      44,
+      config,
+      homePlayers,
+      awayPlayers
+    );
+
+    const redCardEvent = state.events.find(event => event.type === EventType.RED_CARD);
+    expect(redCardEvent).toBeDefined();
+    expect(redCardEvent?.additionalData?.cardReason).toBe('DOGSO');
+  });
+
+  it('should roll SERIOUS_FOUL direct red card reason when relativeY >= 80 and roll exceeds DOGSO threshold', () => {
+    const state = createMatchState(homeTeam.id, homePlayers[10].id);
+    state.ballPossession.location.y = 85; // relativeY = 85
+    const config = createSimulationConfig();
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
+    };
+    const internals = simulationB as unknown as VariantBInternals;
+
+    vi.spyOn(internals.rng, 'random')
+      .mockReturnValueOnce(0) // candidate index
+      .mockReturnValueOnce(0.1) // createRandomId (foul event)
+      .mockReturnValueOnce(0.15) // card given check (< 0.40)
+      .mockReturnValueOnce(0.005) // direct red check (< 0.01)
+      .mockReturnValueOnce(0.5) // redRoll >= 0.001
+      .mockReturnValueOnce(0.9) // DOGSO roll (0.9 >= 0.85)
+      .mockReturnValueOnce(0.1); // createRandomId (red card event)
+
+    internals.handleFoul(
+      state,
+      { type: EventType.FOUL, player: homePlayers[10] },
+      tactics,
+      homeTeam,
+      awayTeam,
+      44,
+      config,
+      homePlayers,
+      awayPlayers
+    );
+
+    const redCardEvent = state.events.find(event => event.type === EventType.RED_CARD);
+    expect(redCardEvent).toBeDefined();
+    expect(redCardEvent?.additionalData?.cardReason).toBe('SERIOUS_FOUL');
+  });
+
+  it('should roll DOGSO direct red card reason when relativeY < 67 and roll satisfies low probability', () => {
+    const state = createMatchState(homeTeam.id, homePlayers[10].id);
+    state.ballPossession.location.y = 50; // relativeY = 50
+    const config = createSimulationConfig();
+    const tactics = {
+      home: fieldService.calculateTeamTactics(homeTeam, 2026, homePlayers),
+      away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
+    };
+    const internals = simulationB as unknown as VariantBInternals;
+
+    vi.spyOn(internals.rng, 'random')
+      .mockReturnValueOnce(0) // candidate index
+      .mockReturnValueOnce(0.1) // createRandomId (foul event)
+      .mockReturnValueOnce(0.15) // card given check (< 0.40)
+      .mockReturnValueOnce(0.005) // direct red check (< 0.01)
+      .mockReturnValueOnce(0.5) // redRoll >= 0.001
+      .mockReturnValueOnce(0.05) // DOGSO roll (0.05 < 0.10)
+      .mockReturnValueOnce(0.1); // createRandomId (red card event)
+
+    internals.handleFoul(
+      state,
+      { type: EventType.FOUL, player: homePlayers[10] },
+      tactics,
+      homeTeam,
+      awayTeam,
+      44,
+      config,
+      homePlayers,
+      awayPlayers
+    );
+
+    const redCardEvent = state.events.find(event => event.type === EventType.RED_CARD);
+    expect(redCardEvent).toBeDefined();
+    expect(redCardEvent?.additionalData?.cardReason).toBe('DOGSO');
   });
 });
 

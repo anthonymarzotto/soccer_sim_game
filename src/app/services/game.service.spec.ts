@@ -15,6 +15,7 @@ import { CommentaryStyle, EventType, FieldZone, MatchPhase, MatchResult, Playing
 import { League, MatchStatistics, Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createTestPersonal as mockPersonal, createTestSeasonAttributes as mockSeasonAttrs, createTestPlayer } from '../testing/test-player-fixtures';
+import { MatchState } from '../models/simulation.types';
 
 describe('GameService persistence integration', () => {
   function ensureSeasonSnapshots(storedLeague: Partial<League> | null): League | null {
@@ -78,10 +79,11 @@ describe('GameService persistence integration', () => {
       })
     };
 
-    const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult' | 'loadSeasonTransitionLog' | 'saveSeasonTransitionLog'> = {
+    const persistenceSpy: Pick<PersistenceService, 'loadLeague' | 'saveLeague' | 'clearLeague' | 'clearSeasonTransitionLog' | 'saveLeagueMetadata' | 'saveTeam' | 'saveTeamDefinition' | 'saveMatch' | 'saveMatchResult' | 'loadSeasonTransitionLog' | 'saveSeasonTransitionLog'> = {
       loadLeague: vi.fn().mockResolvedValue(hydratedLeague),
       saveLeague: vi.fn().mockResolvedValue(undefined),
       clearLeague: vi.fn().mockResolvedValue(undefined),
+      clearSeasonTransitionLog: vi.fn().mockResolvedValue(undefined),
       saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
       saveTeam: vi.fn().mockResolvedValue(undefined),
       saveTeamDefinition: vi.fn().mockResolvedValue(undefined),
@@ -159,7 +161,9 @@ describe('GameService persistence integration', () => {
     await service.clearLeague();
 
     expect(service.league()).toBeNull();
+    expect(service.seasonTransitionLog()).toBeNull();
     expect(persistenceSpy.clearLeague).toHaveBeenCalled();
+    expect(persistenceSpy.clearSeasonTransitionLog).toHaveBeenCalled();
   });
 
   it('should persist metadata only when advancing week', async () => {
@@ -2493,6 +2497,7 @@ describe('GameService transfer listings and CPU heuristics', () => {
       loadLeague: vi.fn().mockResolvedValue(mockLeague),
       saveLeague: vi.fn().mockResolvedValue(undefined),
       clearLeague: vi.fn().mockResolvedValue(undefined),
+      clearSeasonTransitionLog: vi.fn().mockResolvedValue(undefined),
       saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
       saveTeam: vi.fn().mockResolvedValue(undefined),
       saveTeamDefinition: vi.fn().mockResolvedValue(undefined),
@@ -2693,6 +2698,280 @@ describe('GameService transfer listings and CPU heuristics', () => {
     // player-2 (new user team player) should be removed from listings
     expect(service.league()?.transferListings).not.toContain('player-2');
     expect(service.league()?.transferListings).toContain('player-1');
+  });
+});
+
+describe('GameService player suspensions', () => {
+  const SEASON_YEAR = 2026;
+
+  function makePlayer(id: string, teamId: string, position: Position, role: Role, overrides: Partial<Player> = {}): Player {
+    const p = createTestPlayer({
+      id,
+      teamId,
+      position,
+      role,
+      age: 25,
+      seasonYear: SEASON_YEAR,
+      defaultStat: 70
+    });
+    return {
+      ...p,
+      suspensions: [],
+      careerStats: [{
+        seasonYear: SEASON_YEAR,
+        teamId,
+        matchesPlayed: 0,
+        gamesStarted: 0,
+        gamesSubbed: 0,
+        goals: 0,
+        assists: 0,
+        yellowCards: 0,
+        redCards: 0,
+        shots: 0,
+        shotsOnTarget: 0,
+        tackles: 0,
+        interceptions: 0,
+        passes: 0,
+        saves: 0,
+        cleanSheets: 0,
+        minutesPlayed: 0,
+        fouls: 0,
+        foulsSuffered: 0,
+        totalMatchRating: 0,
+        starNominations: { first: 0, second: 0, third: 0 },
+        wage: 2
+      }],
+      ...overrides
+    };
+  }
+
+  function makeTeam(id: string, players: Player[]): Team {
+    return {
+      id,
+      name: id,
+      players,
+      playerIds: players.map(p => p.id),
+      stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+      selectedFormationId: 'formation_custom',
+      finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
+      formationAssignments: {},
+      seasonSnapshots: [{ seasonYear: SEASON_YEAR, playerIds: players.map(p => p.id), stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }]
+    };
+  }
+
+  function setupTransferTest(
+    initialWeek = 1,
+    initialListings: string[] = [],
+    userTeamId = 'team-user',
+    teams: Team[] = []
+  ) {
+    TestBed.resetTestingModule();
+    const mockLeague: League = {
+      teams,
+      schedule: [],
+      currentWeek: initialWeek,
+      currentSeasonYear: SEASON_YEAR,
+      userTeamId,
+      transferListings: initialListings,
+      transferOffers: []
+    };
+
+    const generatorSpy = {
+      generateLeague: vi.fn(),
+      generateScheduleForSeason: vi.fn().mockReturnValue([]),
+      generatePlayer: vi.fn()
+    };
+
+    const persistenceSpy = {
+      loadLeague: vi.fn().mockResolvedValue(mockLeague),
+      saveLeague: vi.fn().mockResolvedValue(undefined),
+      clearLeague: vi.fn().mockResolvedValue(undefined),
+      clearSeasonTransitionLog: vi.fn().mockResolvedValue(undefined),
+      saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+      saveTeam: vi.fn().mockResolvedValue(undefined),
+      saveTeamDefinition: vi.fn().mockResolvedValue(undefined),
+      saveMatch: vi.fn().mockResolvedValue(undefined),
+      saveMatchResult: vi.fn().mockResolvedValue(undefined),
+      loadSeasonTransitionLog: vi.fn().mockResolvedValue(null),
+      saveSeasonTransitionLog: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const formationLibrarySpy = {
+      getFormationSlots: vi.fn().mockReturnValue([
+        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER },
+        { slotId: 'def_1', preferredPosition: Position.DEFENDER },
+        { slotId: 'def_2', preferredPosition: Position.DEFENDER },
+        { slotId: 'def_3', preferredPosition: Position.DEFENDER },
+        { slotId: 'mid_1', preferredPosition: Position.MIDFIELDER },
+        { slotId: 'mid_2', preferredPosition: Position.MIDFIELDER },
+        { slotId: 'mid_3', preferredPosition: Position.MIDFIELDER },
+        { slotId: 'att_1', preferredPosition: Position.FORWARD },
+        { slotId: 'att_2', preferredPosition: Position.FORWARD }
+      ]),
+      listPredefinedFormations: () => [],
+      getAllFormations: () => [],
+      getDefaultFormationId: () => 'formation_custom'
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: generatorSpy },
+        { provide: PersistenceService, useValue: persistenceSpy },
+        { provide: DataSchemaVersionService, useValue: { hasPersistedDataSchemaVersionMismatch: signal(false).asReadonly() } },
+        { provide: MatchSimulationVariantBService, useValue: {} },
+        { provide: CommentaryService, useValue: {} },
+        { provide: StatisticsService, useValue: { generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
+        { provide: PostMatchAnalysisService, useValue: {} },
+        { provide: FieldService, useValue: { validateFormationAssignments: vi.fn().mockReturnValue({ isValid: true, errors: [] }) } },
+        { provide: FormationLibraryService, useValue: formationLibrarySpy }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    return { service, generatorSpy, persistenceSpy };
+  }
+
+  it('should apply red card suspensions for different card reasons', () => {
+    const { service } = setupTransferTest(1, [], 'team-user', []);
+    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const team1 = makeTeam('team-1', [player1]);
+
+    const matchState: MatchState = {
+      ballPossession: {
+        teamId: '',
+        playerWithBall: '',
+        location: { x: 0, y: 0 },
+        phase: MatchPhase.BUILD_UP,
+        passes: 0,
+        timeElapsed: 0
+      },
+      events: [
+        {
+          id: 'e1',
+          type: EventType.RED_CARD,
+          description: '',
+          playerIds: ['p1', 'p2'],
+          location: { x: 0, y: 0 },
+          time: 44,
+          success: false,
+          additionalData: { cardReason: 'SPITTING' }
+        }
+      ],
+      fatigueTimeline: [],
+      currentMinute: 90,
+      homeScore: 0,
+      awayScore: 0,
+      homeShots: 0,
+      awayShots: 0,
+      homeShotsOnTarget: 0,
+      awayShotsOnTarget: 0,
+      homePossession: 50,
+      awayPossession: 50,
+      homeCorners: 0,
+      awayCorners: 0,
+      homeFouls: 0,
+      awayFouls: 0,
+      homeYellowCards: 0,
+      awayYellowCards: 0,
+      homeRedCards: 0,
+      awayRedCards: 0
+    };
+
+    const updatedTeams = service['applyPostMatchSuspensions']([team1], matchState, SEASON_YEAR, 1);
+    const updatedPlayer = updatedTeams[0].players[0];
+    expect(updatedPlayer.suspensions.length).toBe(1);
+    expect(updatedPlayer.suspensions[0].reason).toBe('SPITTING');
+    expect(updatedPlayer.suspensions[0].totalGames).toBe(6);
+    expect(updatedPlayer.suspensions[0].gamesRemaining).toBe(6);
+  });
+
+  it('should apply yellow card accumulation suspensions correctly', () => {
+    const { service } = setupTransferTest(1, [], 'team-user', []);
+    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    // Give 5 yellow cards (milestone check at week 1)
+    player1.careerStats[0].yellowCards = 5;
+    const team1 = makeTeam('team-1', [player1]);
+
+    const matchState: MatchState = {
+      ballPossession: {
+        teamId: '',
+        playerWithBall: '',
+        location: { x: 0, y: 0 },
+        phase: MatchPhase.BUILD_UP,
+        passes: 0,
+        timeElapsed: 0
+      },
+      events: [],
+      fatigueTimeline: [],
+      currentMinute: 90,
+      homeScore: 0,
+      awayScore: 0,
+      homeShots: 0,
+      awayShots: 0,
+      homeShotsOnTarget: 0,
+      awayShotsOnTarget: 0,
+      homePossession: 50,
+      awayPossession: 50,
+      homeCorners: 0,
+      awayCorners: 0,
+      homeFouls: 0,
+      awayFouls: 0,
+      homeYellowCards: 0,
+      awayYellowCards: 0,
+      homeRedCards: 0,
+      awayRedCards: 0
+    };
+
+    const updatedTeams = service['applyPostMatchSuspensions']([team1], matchState, SEASON_YEAR, 1);
+    const updatedPlayer = updatedTeams[0].players[0];
+    expect(updatedPlayer.suspensions.length).toBe(1);
+    expect(updatedPlayer.suspensions[0].reason).toBe('5_YELLOWS');
+    expect(updatedPlayer.suspensions[0].totalGames).toBe(1);
+  });
+
+  it('should stack multiple suspensions and serve them consecutively (only one decays per week)', () => {
+    const { service } = setupTransferTest(1, [], 'team-user', []);
+    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    player1.suspensions = [
+      { reason: 'DOGSO', totalGames: 1, gamesRemaining: 1, sustainedInSeason: SEASON_YEAR, sustainedInWeek: 1 },
+      { reason: 'SERIOUS_FOUL', totalGames: 3, gamesRemaining: 3, sustainedInSeason: SEASON_YEAR, sustainedInWeek: 1 }
+    ];
+
+    // Simulate advancing week for player
+    const updatedPlayer = service['advanceWeekForPlayer'](player1, SEASON_YEAR, 2);
+    expect(updatedPlayer.suspensions[0].gamesRemaining).toBe(0); // DOGSO decays
+    expect(updatedPlayer.suspensions[1].gamesRemaining).toBe(3); // SERIOUS_FOUL untouched
+  });
+
+  it('should skip yellow card increment under FA rules if player is sent off in match', () => {
+    const { service } = setupTransferTest(1, [], 'team-user', []);
+    const player = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const stats = player.careerStats[0];
+
+    const yellowEvent = { type: EventType.YELLOW_CARD, playerIds: ['p1'] };
+
+    // With hasRedCardInMatch = true, yellow card should NOT increment
+    service['updatePlayerStatsForEvent'](stats, yellowEvent, 'p1', 'p1', player, true);
+    expect(stats.yellowCards).toBe(0);
+
+    // With hasRedCardInMatch = false, yellow card SHOULD increment
+    service['updatePlayerStatsForEvent'](stats, yellowEvent, 'p1', 'p1', player, false);
+    expect(stats.yellowCards).toBe(1);
+  });
+
+  it('should raise lineup validation issues when suspended players are selected in starters/bench', async () => {
+    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    player1.suspensions = [{ reason: 'DOGSO', totalGames: 1, gamesRemaining: 1, sustainedInSeason: SEASON_YEAR, sustainedInWeek: 1 }];
+    const team1 = makeTeam('team-1', [player1]);
+    team1.formationAssignments = { def_1: 'p1' };
+
+    const { service } = setupTransferTest(1, [], 'team-1', [team1]);
+    await service.ensureHydrated();
+
+    const readiness = service['buildMatchReadiness'](team1);
+    expect(readiness.isReady).toBe(false);
+    expect(readiness.issues.some((issue) => issue.kind === 'suspended-starter')).toBe(true);
   });
 });
 

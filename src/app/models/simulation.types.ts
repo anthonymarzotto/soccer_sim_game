@@ -53,7 +53,7 @@ export interface VariantBMatchShapeSnapshot {
   away: VariantBShapeSlotSnapshot[];
 }
 
-export type CardReason = 'DIRECT_RED' | 'SECOND_YELLOW';
+export type CardReason = 'SECOND_YELLOW' | 'DOGSO' | 'SERIOUS_FOUL' | 'SPITTING';
 
 export type PassIntentMetadata = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS';
 
@@ -142,6 +142,9 @@ export interface VariantBTuningConfig {
   goalChanceMax: number;
 
   homeAdvantageGoalBonus: number;
+  cardChanceBase: number;
+  directRedChance: number;
+  secondYellowChanceMultiplier: number;
 }
 
 export interface TickTrace {

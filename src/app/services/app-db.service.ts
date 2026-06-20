@@ -44,6 +44,7 @@ export interface PersistedPlayerRecord {
   mood: number;
   fatigue: number;
   injuries: Player['injuries'];
+  suspensions: Player['suspensions'];
   progression: Player['progression'];
   transferHistory?: Player['transferHistory'];
   contract: Player['contract'];

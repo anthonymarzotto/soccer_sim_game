@@ -1,5 +1,5 @@
 import { isDevMode } from '@angular/core';
-import { Player, PlayerSeasonAttributes, Stat, StatKey, Team, TeamSeasonSnapshot, TeamStats } from './types';
+import { Player, PlayerSeasonAttributes, Stat, StatKey, Team, TeamSeasonSnapshot, TeamStats, SuspensionRecord } from './types';
 import { InjuryRecord } from '../data/injuries';
 
 export function createEmptyTeamStats(): TeamStats {
@@ -65,11 +65,30 @@ export function isPlayerInjured(player: Player): boolean {
 }
 
 /**
+ * Returns the active SuspensionRecord for a player (the latest record with
+ * `gamesRemaining > 0`), or null if the player is not suspended.
+ */
+export function getActiveSuspension(player: Player): SuspensionRecord | null {
+  const suspensions = player.suspensions ?? [];
+  for (let i = suspensions.length - 1; i >= 0; i--) {
+    const record = suspensions[i];
+    if (record.gamesRemaining > 0) {
+      return record;
+    }
+  }
+  return null;
+}
+
+export function isPlayerSuspended(player: Player): boolean {
+  return getActiveSuspension(player) !== null;
+}
+
+/**
  * Authoritative gate for selection / readiness. Returns false when the player
- * has an active multi-week injury and should not appear on the pitch or bench.
+ * has an active multi-week injury or suspension and should not appear on the pitch or bench.
  */
 export function isPlayerEligible(player: Player): boolean {
-  return !isPlayerInjured(player);
+  return !isPlayerInjured(player) && !isPlayerSuspended(player);
 }
 
 export function withSortedUniqueSeasons<T extends { seasonYear: number }>(records: T[]): T[] {

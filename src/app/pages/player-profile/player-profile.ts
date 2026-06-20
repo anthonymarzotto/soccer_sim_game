@@ -6,11 +6,11 @@ import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
 import { Position, Role } from '../../models/enums';
-import { PlayerCareerStats, PlayerSeasonAttributes, StatKey } from '../../models/types';
+import { PlayerCareerStats, PlayerSeasonAttributes, StatKey, SuspensionRecord } from '../../models/types';
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
-import { getCurrentPlayerSeasonAttributes, getActiveInjury } from '../../models/season-history';
+import { getCurrentPlayerSeasonAttributes, getActiveInjury, getActiveSuspension } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
@@ -247,6 +247,19 @@ export class PlayerProfileComponent {
     });
   });
 
+  activeSuspension = computed<SuspensionRecord | null>(() => {
+    const p = this.player();
+    return p ? getActiveSuspension(p) : null;
+  });
+
+  suspensionHistory = computed<SuspensionRecord[]>(() => {
+    const records = this.player()?.suspensions ?? [];
+    return [...records].sort((a, b) => {
+      const seasonDiff = a.sustainedInSeason - b.sustainedInSeason;
+      return seasonDiff !== 0 ? seasonDiff : a.sustainedInWeek - b.sustainedInWeek;
+    });
+  });
+
   transferHistory = computed(() => {
     return this.player()?.transferHistory ?? [];
   });
@@ -257,6 +270,26 @@ export class PlayerProfileComponent {
 
   getInjurySeverity(definitionId: string): string {
     return getInjuryDefinition(definitionId)?.severity ?? '—';
+  }
+
+  getSuspensionName(reason: string): string {
+    switch (reason) {
+      case 'SECOND_YELLOW': return 'Second Yellow Card';
+      case 'DOGSO': return 'Denying Goal Opportunity';
+      case 'SERIOUS_FOUL': return 'Serious Foul Play';
+      case 'SPITTING': return 'Spitting at Opponent';
+      case '5_YELLOWS': return '5 Yellow Cards Accumulation';
+      case '10_YELLOWS': return '10 Yellow Cards Accumulation';
+      case '15_YELLOWS': return '15 Yellow Cards Accumulation';
+      case '20_YELLOWS': return '20 Yellow Cards Accumulation';
+      default: return 'Suspension';
+    }
+  }
+
+  formatSuspensionGames(games: number): string {
+    if (games <= 0) return 'Back next game';
+    if (games === 1) return '1 game';
+    return `${games} games`;
   }
 
   getStatDescription(key: StatKey): string {

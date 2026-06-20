@@ -76,6 +76,12 @@ To run all unit tests non-interactively (without watch mode):
   npm run test -- --watch=false
   ```
 
+## 5. Complete and Consistent State Resetting
+
+When implementing functions that clear, reset, or delete primary state (e.g., `clearLeague`):
+- **Clear All Auxiliary State**: Ensure all associated sub-states, logs (like transition logs), cached values, and database records are reset/cleared in tandem.
+- **Update Test Mocks**: Ensure all test suites that mock the service or persistence layer (e.g., `persistenceSpy`) are updated to include mock implementations for the new clear methods to prevent compile-time or run-time test errors.
+
 <!-- START SEMBLE INTEGRATION FOR SUB-AGENTS -->
 ## Code Search
 

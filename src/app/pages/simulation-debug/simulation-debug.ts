@@ -314,6 +314,57 @@ interface FormationOption {
                     />
                     <p class="text-xs text-zinc-500 mt-1">Goal conversion bonus added for home team shots</p>
                   </div>
+
+                  <div>
+                    <label for="cardChanceBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Card Chance Base: {{ cardChanceBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="cardChanceBase"
+                      type="range"
+                      min="0.10"
+                      max="0.60"
+                      step="0.01"
+                      [value]="cardChanceBase()"
+                      (input)="setCardChanceBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Chance of a card (yellow or red) per foul</p>
+                  </div>
+
+                  <div>
+                    <label for="directRedChance" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Direct Red Chance: {{ directRedChance().toFixed(3) }}
+                    </label>
+                    <input
+                      id="directRedChance"
+                      type="range"
+                      min="0.00"
+                      max="0.10"
+                      step="0.005"
+                      [value]="directRedChance()"
+                      (input)="setDirectRedChance($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Chance of a direct red card when a card is shown</p>
+                  </div>
+
+                  <div>
+                    <label for="secondYellowChanceMultiplier" class="block text-xs font-medium text-zinc-300 mb-2">
+                      Second Yellow Multiplier: {{ secondYellowChanceMultiplier().toFixed(2) }}
+                    </label>
+                    <input
+                      id="secondYellowChanceMultiplier"
+                      type="range"
+                      min="0.05"
+                      max="0.60"
+                      step="0.01"
+                      [value]="secondYellowChanceMultiplier()"
+                      (input)="setSecondYellowChanceMultiplier($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Card chance multiplier for players already on a yellow card</p>
+                  </div>
                 </div>
               </div>
             }
@@ -432,6 +483,9 @@ export class SimulationDebugComponent {
   readonly carryWeightBase = signal(0.12);
   readonly shotWeightBase = signal(0.24);
   readonly homeAdvantageGoalBonus = signal(0.04);
+  readonly cardChanceBase = signal(0.40);
+  readonly directRedChance = signal(0.01);
+  readonly secondYellowChanceMultiplier = signal(0.25);
 
   readonly canRun = computed(() => {
     return this.homeTeamId().length > 0 && this.awayTeamId().length > 0 && this.homeTeamId() !== this.awayTeamId();
@@ -613,6 +667,27 @@ export class SimulationDebugComponent {
     }
   }
 
+  setCardChanceBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.cardChanceBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setDirectRedChance(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.directRedChance.set(Math.round(parsed * 1000) / 1000);
+    }
+  }
+
+  setSecondYellowChanceMultiplier(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.secondYellowChanceMultiplier.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
   async runSandbox(): Promise<void> {
     if (!this.canRun() || this.isRunning()) {
       return;
@@ -696,7 +771,10 @@ export class SimulationDebugComponent {
       passWeightBase: this.passWeightBase(),
       carryWeightBase: this.carryWeightBase(),
       shotWeightBase: this.shotWeightBase(),
-      homeAdvantageGoalBonus: this.homeAdvantageGoalBonus()
+      homeAdvantageGoalBonus: this.homeAdvantageGoalBonus(),
+      cardChanceBase: this.cardChanceBase(),
+      directRedChance: this.directRedChance(),
+      secondYellowChanceMultiplier: this.secondYellowChanceMultiplier()
     };
 
     const config: SimulationConfig = {

@@ -68,6 +68,8 @@ export class PersistenceService {
 
   async clearLeague(): Promise<void> {
     await this.enqueueNormalizedWrite(() => this.normalizedDb.clearLeagueData());
+    await this.clearSeasonTransitionLog();
+    await this.clearSelectedWeek();
   }
 
   async saveLeagueMetadata(metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>): Promise<void> {
@@ -112,6 +114,10 @@ export class PersistenceService {
 
   async clearSelectedWeek(): Promise<void> {
     await this.appDb.deleteState(SELECTED_WEEK_KEY);
+  }
+
+  async clearSeasonTransitionLog(): Promise<void> {
+    await this.appDb.deleteState(SEASON_TRANSITION_LOG_KEY);
   }
 
   async loadSeasonTransitionLog(): Promise<SeasonTransitionLog | null> {
