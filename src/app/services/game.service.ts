@@ -1723,7 +1723,7 @@ export class GameService {
         // Check yellow card accumulations
         const statsEntry = player.careerStats.find(s => s.seasonYear === seasonYear);
         const yellowCards = statsEntry ? statsEntry.yellowCards : 0;
-        const hasSuspension = (reason: string) => playerSuspensions.some(s => s.reason === reason);
+        const hasSuspension = (reason: string) => playerSuspensions.some(s => s.reason === reason && s.sustainedInSeason === seasonYear);
 
         const checkAccumulation = (
           threshold: number,
