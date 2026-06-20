@@ -192,6 +192,7 @@ export class GeneratorService {
       mood: 100,
       fatigue: 0,
       injuries: [],
+      suspensions: [],
       progression
     } as unknown as Player;
 

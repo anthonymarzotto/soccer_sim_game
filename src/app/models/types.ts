@@ -2,6 +2,14 @@ import { Position, Role, MatchResult, EventImportance, EventType, PlayingStyle }
 import { Coordinates, PlayByPlayEventAdditionalData } from './simulation.types';
 import { InjuryRecord } from '../data/injuries';
 
+export interface SuspensionRecord {
+  reason: 'SECOND_YELLOW' | 'DOGSO' | 'SERIOUS_FOUL' | 'SPITTING' | '5_YELLOWS' | '10_YELLOWS' | '15_YELLOWS' | '20_YELLOWS';
+  totalGames: number;
+  gamesRemaining: number;
+  sustainedInSeason: number;
+  sustainedInWeek: number;
+}
+
 // Re-export the enums for backward compatibility
 export { Position, Role, MatchResult, EventImportance };
 
@@ -94,6 +102,7 @@ export interface Player {
   // All injuries, past and present. There is no separate `currentInjury` field.
   // Current availability is derived via `isPlayerEligible(player)` in season-history.
   injuries: InjuryRecord[];
+  suspensions: SuspensionRecord[];
   progression: PlayerProgression;
   transferHistory?: PlayerTransfer[];
   contract: PlayerContract;

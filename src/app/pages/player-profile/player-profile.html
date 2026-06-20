@@ -90,6 +90,27 @@
         </div>
       }
 
+      @let suspension = activeSuspension();
+      @if (suspension) {
+        <!-- Active Suspension Banner -->
+        <div class="bg-red-950/40 border border-red-800/60 rounded-2xl p-4 shadow-xl flex items-center gap-4">
+          <span class="text-3xl" aria-hidden="true">🟥</span>
+          <div class="flex-1">
+            <div class="flex items-baseline gap-2">
+              <span class="text-sm font-semibold uppercase tracking-wider text-red-300">Currently Suspended</span>
+            </div>
+            <div class="text-white text-lg font-medium mt-0.5">{{ getSuspensionName(suspension.reason) }}</div>
+            <div class="text-xs text-zinc-400 mt-1">
+              {{ formatSuspensionGames(suspension.gamesRemaining) }} remaining
+              <span class="text-zinc-600">·</span>
+              originally {{ formatSuspensionGames(suspension.totalGames) }}
+              <span class="text-zinc-600">·</span>
+              sustained {{ suspension.sustainedInSeason }} W{{ suspension.sustainedInWeek }}
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Details Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Personal Details -->
@@ -1006,6 +1027,45 @@
                           <span class="text-red-400 font-medium">{{ record.weeksRemaining }} wk left</span>
                         } @else {
                           <span class="text-emerald-500/80">Healed</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        @let suspHistory = suspensionHistory();
+        @if (suspHistory.length > 0) {
+          <!-- Suspension History -->
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span aria-hidden="true">🟥</span>
+              Suspension History
+            </h2>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800">
+                  <tr>
+                    <th class="py-2 pr-4 font-medium">Reason</th>
+                    <th class="py-2 pr-4 font-medium">Sustained</th>
+                    <th class="py-2 pr-4 font-medium text-right">Duration</th>
+                    <th class="py-2 pr-4 font-medium text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (record of suspHistory; track $index) {
+                    <tr class="border-b border-zinc-800/50">
+                      <td class="py-2 pr-4 text-white">{{ getSuspensionName(record.reason) }}</td>
+                      <td class="py-2 pr-4 text-zinc-400 font-mono">{{ record.sustainedInSeason }} W{{ record.sustainedInWeek }}</td>
+                      <td class="py-2 pr-4 text-right text-zinc-300 font-mono">{{ formatSuspensionGames(record.totalGames) }}</td>
+                      <td class="py-2 pr-4 text-right">
+                        @if (record.gamesRemaining > 0) {
+                          <span class="text-red-400 font-medium">{{ formatSuspensionGames(record.gamesRemaining) }} left</span>
+                        } @else {
+                          <span class="text-emerald-500/80">Served</span>
                         }
                       </td>
                     </tr>

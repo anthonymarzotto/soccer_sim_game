@@ -6,13 +6,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { FieldService } from '../../services/field.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
-import { Player, PlayerCareerStats, Role } from '../../models/types';
+import { Player, PlayerCareerStats, Role, SuspensionRecord } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
 import { calculateFatigueModifier, scaleOverallWithFatigue } from '../../models/simulation.types';
 import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
-import { getActiveInjury, isPlayerInjured } from '../../models/season-history';
+import { getActiveInjury, isPlayerInjured, getActiveSuspension, isPlayerSuspended, isPlayerEligible } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { calculateMarketValue, calculatePlayerWageCost, calculateSquadTotalMarketValue } from '../../models/player-progression';
 
@@ -135,17 +135,17 @@ export class TeamDetailsComponent {
 
   starters = computed(() => this.starterRows().map(row => row.player).filter((player): player is Player => player !== null));
 
-  injured = computed(() => {
+  unavailable = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return this.gameService.getPlayersForTeam(t.id).filter(p => isPlayerInjured(p))
+    return this.gameService.getPlayersForTeam(t.id).filter(p => !isPlayerEligible(p))
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
   bench = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH && !isPlayerInjured(p))
+    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH && isPlayerEligible(p))
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
@@ -160,7 +160,7 @@ export class TeamDetailsComponent {
   reserves = computed(() => {
     const t = this.team();
     if (!t) return [];
-    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE && !isPlayerInjured(p))
+    return this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE && isPlayerEligible(p))
       .sort((a, b) => this.positionWeight(a.position) - this.positionWeight(b.position));
   });
 
@@ -276,6 +276,35 @@ export class TeamDetailsComponent {
     if (weeksRemaining <= 0) return 'Back next game';
     if (weeksRemaining === 1) return '1 wk';
     return `${weeksRemaining} wks`;
+  }
+
+  isSuspended(player: Player | null | undefined): boolean {
+    return !!player && isPlayerSuspended(player);
+  }
+
+  getActiveSuspensionFor(player: Player | null | undefined): SuspensionRecord | null {
+    if (!player) return null;
+    return getActiveSuspension(player);
+  }
+
+  getSuspensionName(reason: string): string {
+    switch (reason) {
+      case 'SECOND_YELLOW': return 'Second Yellow Card';
+      case 'DOGSO': return 'Denying Goal Opportunity';
+      case 'SERIOUS_FOUL': return 'Serious Foul Play';
+      case 'SPITTING': return 'Spitting at Opponent';
+      case '5_YELLOWS': return '5 Yellow Cards Accumulation';
+      case '10_YELLOWS': return '10 Yellow Cards Accumulation';
+      case '15_YELLOWS': return '15 Yellow Cards Accumulation';
+      case '20_YELLOWS': return '20 Yellow Cards Accumulation';
+      default: return 'Suspension';
+    }
+  }
+
+  formatSuspensionGames(gamesRemaining: number): string {
+    if (gamesRemaining <= 0) return 'Back next game';
+    if (gamesRemaining === 1) return '1 game';
+    return `${gamesRemaining} games`;
   }
 
   onDragStart(event: DragEvent, playerId: string) {

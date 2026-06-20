@@ -114,6 +114,10 @@ export class PersistenceService {
     await this.appDb.deleteState(SELECTED_WEEK_KEY);
   }
 
+  async clearSeasonTransitionLog(): Promise<void> {
+    await this.appDb.deleteState(SEASON_TRANSITION_LOG_KEY);
+  }
+
   async loadSeasonTransitionLog(): Promise<SeasonTransitionLog | null> {
     return this.appDb.getState<SeasonTransitionLog>(SEASON_TRANSITION_LOG_KEY);
   }

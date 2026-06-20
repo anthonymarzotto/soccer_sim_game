@@ -188,12 +188,13 @@
           <span>View Team Schedule</span>
         </a>
 
-        @if (injured().length > 0) {
+        @if (unavailable().length > 0) {
         <div class="bg-zinc-900 border border-red-900/50 rounded-2xl p-6 shadow-xl">
           <h2 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4">Unavailable</h2>
           <div class="space-y-3">
-            @for (player of injured(); track player.id) {
+            @for (player of unavailable(); track player.id) {
             @let injuryRow = getActiveInjuryFor(player);
+            @let suspensionRow = getActiveSuspensionFor(player);
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="font-mono text-[11px] font-bold shrink-0"
@@ -208,6 +209,10 @@
               <span
                 class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40 cursor-default"
                 [title]="getInjuryName(injuryRow.definitionId)">🩹 {{ formatWeeksOut(injuryRow.weeksRemaining) }}</span>
+              } @else if (suspensionRow) {
+              <span
+                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40 cursor-default"
+                [title]="getSuspensionName(suspensionRow.reason)">🟥 {{ formatSuspensionGames(suspensionRow.gamesRemaining) }}</span>
               }
             </div>
             }
@@ -377,6 +382,16 @@
                     class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40"
                     [title]="getInjuryName(starterInjury.definitionId) + ' — ' + formatWeeksOut(starterInjury.weeksRemaining)">
                     🩹 {{ formatWeeksOut(starterInjury.weeksRemaining) }}
+                  </span>
+                  }
+                  }
+                  @if (isSuspended(row.player)) {
+                  @let activeSuspension = getActiveSuspensionFor(row.player);
+                  @if (activeSuspension) {
+                  <span
+                    class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40"
+                    [title]="getSuspensionName(activeSuspension.reason) + ' — ' + formatSuspensionGames(activeSuspension.gamesRemaining)">
+                    🟥 {{ formatSuspensionGames(activeSuspension.gamesRemaining) }}
                   </span>
                   }
                   }

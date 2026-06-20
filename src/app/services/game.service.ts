@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer } from '../models/types';
+import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer, SuspensionRecord } from '../models/types';
 import { TransferService, SUMMER_WINDOW_START, SUMMER_WINDOW_END, WINTER_WINDOW_START, WINTER_WINDOW_END } from './transfer.service';
 import { NormalizedDbService } from './normalized-db.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
@@ -27,7 +27,8 @@ import {
   getPlayerSeasonAttributesForYear,
   getTeamSeasonSnapshotForYear,
   isPlayerEligible,
-  withSortedUniqueSeasons
+  withSortedUniqueSeasons,
+  getActiveSuspension
 } from '../models/season-history';
 import { SimulationConfig, MatchState, PlayByPlayEvent, calculateFatigueModifier, scaleOverallWithFatigue } from '../models/simulation.types';
 import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
@@ -42,13 +43,15 @@ interface SimulateMatchWithDetailsResult {
 }
 
 export interface TeamMatchReadinessIssue {
-  kind: 'formation' | 'injured-starter' | 'injured-bench';
+  kind: 'formation' | 'injured-starter' | 'injured-bench' | 'suspended-starter' | 'suspended-bench';
   message: string;
   playerId?: string;
   playerName?: string;
   injuryDefinitionId?: string;
   injuryName?: string;
   weeksRemaining?: number;
+  suspensionReason?: string;
+  gamesRemaining?: number;
 }
 
 export interface TeamMatchReadiness {
@@ -332,9 +335,11 @@ export class GameService {
 
   async clearLeague(): Promise<void> {
     this.leagueState.set(null);
+    this.seasonTransitionLogState.set(null);
 
     try {
       await this.persistenceService.clearLeague();
+      await this.persistenceService.clearSeasonTransitionLog();
     } catch (error) {
       console.error('Failed to clear persisted league:', error);
     }
@@ -1580,10 +1585,31 @@ export class GameService {
       });
     }
 
+    let updatedSuspensions = player.suspensions;
+    if (player.suspensions && player.suspensions.length > 0) {
+      const firstActiveIndex = player.suspensions.findIndex(record => {
+        if (record.gamesRemaining <= 0) return false;
+        if (record.sustainedInSeason === currentSeasonYear && record.sustainedInWeek >= currentWeek) {
+          return false;
+        }
+        return true;
+      });
+
+      if (firstActiveIndex !== -1) {
+        updatedSuspensions = player.suspensions.map((record, index) => {
+          if (index === firstActiveIndex) {
+            playerMutated = true;
+            return { ...record, gamesRemaining: record.gamesRemaining - 1 };
+          }
+          return record;
+        });
+      }
+    }
+
     if (!playerMutated) {
       return player;
     }
-    return { ...player, injuries: updatedInjuries, fatigue: nextFatigue };
+    return { ...player, injuries: updatedInjuries, suspensions: updatedSuspensions, fatigue: nextFatigue };
   }
 
   /**
@@ -1626,6 +1652,109 @@ export class GameService {
         teamMutated = true;
         return { ...player, injuries: [...(player.injuries ?? []), record] };
       });
+      return teamMutated ? { ...team, players } : team;
+    });
+  }
+
+  private applyPostMatchSuspensions(
+    teams: Team[],
+    matchState: MatchState,
+    seasonYear: number,
+    week: number
+  ): Team[] {
+    // 1. Determine player suspensions from RED_CARD events
+    const newSuspensionsByPlayerId = new Map<string, SuspensionRecord[]>();
+
+    for (const event of matchState.events) {
+      if (event.type !== EventType.RED_CARD) continue;
+      const playerId = event.playerIds[0];
+      if (!playerId) continue;
+
+      const cardReason = event.additionalData?.cardReason;
+      let totalGames = 3;
+      let reason: SuspensionRecord['reason'] = 'SERIOUS_FOUL';
+
+      if (cardReason === 'SECOND_YELLOW') {
+        totalGames = 1;
+        reason = 'SECOND_YELLOW';
+      } else if (cardReason === 'DOGSO') {
+        totalGames = 1;
+        reason = 'DOGSO';
+      } else if (cardReason === 'SERIOUS_FOUL') {
+        totalGames = 3;
+        reason = 'SERIOUS_FOUL';
+      } else if (cardReason === 'SPITTING') {
+        totalGames = 6;
+        reason = 'SPITTING';
+      } else {
+        totalGames = 3;
+        reason = 'SERIOUS_FOUL';
+      }
+
+      const record: SuspensionRecord = {
+        reason,
+        totalGames,
+        gamesRemaining: totalGames,
+        sustainedInSeason: seasonYear,
+        sustainedInWeek: week
+      };
+
+      const list = newSuspensionsByPlayerId.get(playerId) ?? [];
+      list.push(record);
+      newSuspensionsByPlayerId.set(playerId, list);
+    }
+
+    // 2. Map all teams and players, updating their suspensions (checking for yellow card accumulations too)
+    return teams.map(team => {
+      if (!team.players) return team;
+      let teamMutated = false;
+
+      const players = team.players.map(player => {
+        const playerSuspensions = [...(player.suspensions ?? [])];
+        let playerMutated = false;
+
+        // Add red card suspensions
+        const redCardSuspensions = newSuspensionsByPlayerId.get(player.id);
+        if (redCardSuspensions && redCardSuspensions.length > 0) {
+          playerSuspensions.push(...redCardSuspensions);
+          playerMutated = true;
+        }
+
+        // Check yellow card accumulations
+        const statsEntry = player.careerStats.find(s => s.seasonYear === seasonYear);
+        const yellowCards = statsEntry ? statsEntry.yellowCards : 0;
+        const hasSuspension = (reason: string) => playerSuspensions.some(s => s.reason === reason);
+
+        const checkAccumulation = (
+          threshold: number,
+          milestoneReason: SuspensionRecord['reason'],
+          duration: number,
+          weekLimit?: number
+        ) => {
+          if (yellowCards >= threshold && (!weekLimit || week <= weekLimit) && !hasSuspension(milestoneReason)) {
+            playerSuspensions.push({
+              reason: milestoneReason,
+              totalGames: duration,
+              gamesRemaining: duration,
+              sustainedInSeason: seasonYear,
+              sustainedInWeek: week
+            });
+            playerMutated = true;
+          }
+        };
+
+        checkAccumulation(5, '5_YELLOWS', 1, 19);
+        checkAccumulation(10, '10_YELLOWS', 2, 32);
+        checkAccumulation(15, '15_YELLOWS', 3);
+        checkAccumulation(20, '20_YELLOWS', 4);
+
+        if (playerMutated) {
+          teamMutated = true;
+          return { ...player, suspensions: playerSuspensions };
+        }
+        return player;
+      });
+
       return teamMutated ? { ...team, players } : team;
     });
   }
@@ -1951,6 +2080,7 @@ export class GameService {
 
     const playersById = new Map(players.map(player => [player.id, player]));
     const seenInjuredPlayers = new Set<string>();
+    const seenSuspendedPlayers = new Set<string>();
 
     for (const player of players) {
       if (player.role === Role.RESERVE) {
@@ -1958,16 +2088,21 @@ export class GameService {
       }
 
       const activeInjury = getActiveInjury(player);
-      if (!activeInjury) {
+      if (activeInjury) {
+        seenInjuredPlayers.add(player.id);
+        issues.push(this.createInjuryReadinessIssue(player, activeInjury));
         continue;
       }
 
-      seenInjuredPlayers.add(player.id);
-      issues.push(this.createInjuryReadinessIssue(player, activeInjury));
+      const activeSuspension = getActiveSuspension(player);
+      if (activeSuspension) {
+        seenSuspendedPlayers.add(player.id);
+        issues.push(this.createSuspensionReadinessIssue(player, activeSuspension));
+      }
     }
 
     for (const assignedPlayerId of Object.values(team.formationAssignments ?? {})) {
-      if (!assignedPlayerId || seenInjuredPlayers.has(assignedPlayerId)) {
+      if (!assignedPlayerId || seenInjuredPlayers.has(assignedPlayerId) || seenSuspendedPlayers.has(assignedPlayerId)) {
         continue;
       }
 
@@ -1977,12 +2112,17 @@ export class GameService {
       }
 
       const activeInjury = getActiveInjury(assigned);
-      if (!activeInjury) {
+      if (activeInjury) {
+        seenInjuredPlayers.add(assignedPlayerId);
+        issues.push(this.createInjuryReadinessIssue(assigned, activeInjury));
         continue;
       }
 
-      seenInjuredPlayers.add(assignedPlayerId);
-      issues.push(this.createInjuryReadinessIssue(assigned, activeInjury));
+      const activeSuspension = getActiveSuspension(assigned);
+      if (activeSuspension) {
+        seenSuspendedPlayers.add(assignedPlayerId);
+        issues.push(this.createSuspensionReadinessIssue(assigned, activeSuspension));
+      }
     }
 
     return {
@@ -1993,6 +2133,24 @@ export class GameService {
 
   private formatReadinessWeeksRemaining(weeksRemaining: number): string {
     return weeksRemaining === 1 ? '1 week remaining' : `${weeksRemaining} weeks remaining`;
+  }
+
+  private formatReadinessGamesRemaining(gamesRemaining: number): string {
+    return gamesRemaining === 1 ? '1 game remaining' : `${gamesRemaining} games remaining`;
+  }
+
+  private getSuspensionReasonText(reason: string): string {
+    switch (reason) {
+      case 'SECOND_YELLOW': return 'second yellow card';
+      case 'DOGSO': return 'denying obvious goal scoring opportunity';
+      case 'SERIOUS_FOUL': return 'serious foul play';
+      case 'SPITTING': return 'spitting at an opponent';
+      case '5_YELLOWS': return 'yellow card accumulation';
+      case '10_YELLOWS': return 'yellow card accumulation';
+      case '15_YELLOWS': return 'yellow card accumulation';
+      case '20_YELLOWS': return 'yellow card accumulation';
+      default: return 'suspension';
+    }
   }
 
   private canAssignPlayerToRole(player: Player, role: Role): boolean {
@@ -2015,6 +2173,24 @@ export class GameService {
       injuryDefinitionId: activeInjury.definitionId,
       injuryName,
       weeksRemaining: activeInjury.weeksRemaining
+    };
+  }
+
+  private createSuspensionReadinessIssue(player: Player, activeSuspension: SuspensionRecord): TeamMatchReadinessIssue {
+    const reasonText = this.getSuspensionReasonText(activeSuspension.reason);
+    const availability = this.formatReadinessGamesRemaining(activeSuspension.gamesRemaining);
+    const issueKind = player.role === Role.BENCH ? 'suspended-bench' : 'suspended-starter';
+    const message = player.role === Role.BENCH
+      ? `${player.name} is suspended (${reasonText}, ${availability}) and cannot be on the bench.`
+      : `${player.name} is suspended (${reasonText}, ${availability}) and cannot start.`;
+
+    return {
+      kind: issueKind,
+      message,
+      playerId: player.id,
+      playerName: player.name,
+      suspensionReason: activeSuspension.reason,
+      gamesRemaining: activeSuspension.gamesRemaining
     };
   }
 
@@ -2718,8 +2894,11 @@ export class GameService {
     // Persist injuries sustained during the match onto the team rosters.
     const teamsWithInjuries = this.applyPostMatchInjuries(updatedTeams, matchState, l.currentSeasonYear, l.currentWeek);
 
+    // Persist suspensions sustained during the match/season onto the team rosters.
+    const teamsWithSuspensions = this.applyPostMatchSuspensions(teamsWithInjuries, matchState, l.currentSeasonYear, l.currentWeek);
+
     // Apply accrued fatigue from the match
-    const teamsWithFatigue = this.applyPostMatchFatigue(teamsWithInjuries, matchState);
+    const teamsWithFatigue = this.applyPostMatchFatigue(teamsWithSuspensions, matchState);
 
     const finalizedTeams = this.dressBestPlayers(teamsWithFatigue);
 
@@ -2796,7 +2975,14 @@ export class GameService {
     return statsEntry;
   }
 
-  private updatePlayerStatsForEvent(stats: PlayerCareerStats, event: { type: EventType }, playerId: string, primaryPlayerId: string, player: Player) {
+  private updatePlayerStatsForEvent(
+    stats: PlayerCareerStats,
+    event: { type: EventType },
+    playerId: string,
+    primaryPlayerId: string,
+    player: Player,
+    hasRedCardInMatch: boolean
+  ) {
     // Update career stats based on event type
     switch (event.type) {
       case EventType.TACKLE:
@@ -2823,7 +3009,9 @@ export class GameService {
         break;
       case EventType.YELLOW_CARD:
         if (playerId !== primaryPlayerId) return;
-        stats.yellowCards++;
+        if (!hasRedCardInMatch) {
+          stats.yellowCards++;
+        }
         break;
       case EventType.RED_CARD:
         if (playerId !== primaryPlayerId) return;
@@ -2868,6 +3056,13 @@ export class GameService {
     allPlayers: Map<string, Player>,
     getStats: (player: Player) => PlayerCareerStats
   ): void {
+    const playersWithRedCards = new Set<string>();
+    for (const event of events) {
+      if (event.type === EventType.RED_CARD && event.playerIds[0]) {
+        playersWithRedCards.add(event.playerIds[0]);
+      }
+    }
+
     for (const event of events) {
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
@@ -2912,7 +3107,8 @@ export class GameService {
         if (!player) continue;
 
         const stats = getStats(player);
-        this.updatePlayerStatsForEvent(stats, event, playerId, primaryPlayerId, player);
+        const hasRedCardInMatch = playersWithRedCards.has(playerId);
+        this.updatePlayerStatsForEvent(stats, event, playerId, primaryPlayerId, player, hasRedCardInMatch);
       }
     }
   }

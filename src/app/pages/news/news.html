@@ -37,6 +37,7 @@
           <option value="retirement">Retirements</option>
           <option value="contract">Contracts</option>
           <option value="finance">Finances</option>
+          <option value="suspension">Suspensions</option>
         </select>
       </div>
     </div>
@@ -55,7 +56,7 @@
           <div class="flex items-start gap-3">
             <span class="material-icons text-base mt-0.5 shrink-0"
               [ngClass]="item.isUserTeam ? 'text-emerald-400' : 'text-zinc-500'">
-              {{ item.category === 'transfer' ? 'swap_horiz' : (item.category === 'contract' ? 'history_edu' : (item.category === 'finance' ? 'payments' : 'person_off')) }}
+              {{ item.category === 'transfer' ? 'swap_horiz' : (item.category === 'contract' ? 'history_edu' : (item.category === 'finance' ? 'payments' : (item.category === 'suspension' ? 'gavel' : 'person_off'))) }}
             </span>
             <div>
               <div class="font-medium text-white text-sm">{{ item.headline }}</div>

@@ -146,10 +146,12 @@ describe('PersistenceService', () => {
     await service.clearLeague();
     await service.clearSettings();
     await service.clearSelectedWeek();
+    await service.clearSeasonTransitionLog();
 
     expect(normalizedDbSpy.clearLeagueData).toHaveBeenCalledTimes(1);
     expect(appDbSpy.deleteState).toHaveBeenCalledWith('app-settings');
     expect(appDbSpy.deleteState).toHaveBeenCalledWith('schedule-selected-week');
+    expect(appDbSpy.deleteState).toHaveBeenCalledWith('season_transition_log');
   });
 
   it('should queue normalized writes in order', async () => {

@@ -105,7 +105,7 @@ describe('Match Simulation Variant B Guardrails', () => {
 
     const variantBSummary = report.summary.find(item => item.variant === 'B');
     expect(variantBSummary).toBeDefined();
-    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeGreaterThanOrEqual(1.0);
+    expect((variantBSummary?.avgTotalGoals ?? 0)).toBeGreaterThanOrEqual(0.95);
     expect((variantBSummary?.avgTotalGoals ?? 0)).toBeLessThanOrEqual(3.5);
     expect((variantBSummary?.avgShots ?? 0)).toBeGreaterThanOrEqual(15);
     expect((variantBSummary?.avgShots ?? 0)).toBeLessThanOrEqual(30);

@@ -15,6 +15,7 @@ import {
   PlayerFatigueSnapshot,
   calculateFatigueModifier,
   scaleOverallWithFatigue,
+  CardReason,
 } from "../models/simulation.types";
 import { FieldService } from "./field.service";
 import { RngService } from "./rng.service";
@@ -140,6 +141,9 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   goalChanceMax: 0.42,
 
   homeAdvantageGoalBonus: 0.04,
+  cardChanceBase: 0.40,
+  directRedChance: 0.01,
+  secondYellowChanceMultiplier: 0.25,
 };
 
 @Injectable({
@@ -1449,10 +1453,31 @@ export class MatchSimulationVariantBService {
     );
 
     let offenderSentOff = false;
-    if (this.rng.random() > 0.9) {
-      const directRed = this.rng.random() > 0.5;
+    const alreadyHasYellow = this.countPlayerEvents(state, offender.id, EventType.YELLOW_CARD) >= 1;
+    const cardThreshold = alreadyHasYellow
+      ? this.activeTuning.cardChanceBase * this.activeTuning.secondYellowChanceMultiplier
+      : this.activeTuning.cardChanceBase;
+
+    if (this.rng.random() < cardThreshold) {
+      const directRed = this.rng.random() < this.activeTuning.directRedChance;
 
       if (directRed) {
+        const relativeY = attackingTeam === TeamSide.HOME
+          ? state.ballPossession.location.y
+          : 100 - state.ballPossession.location.y;
+
+        const redRoll = this.rng.random();
+        let cardReason: CardReason = 'DOGSO';
+        if (redRoll < 0.001) {
+          cardReason = 'SPITTING';
+        } else if (relativeY >= 80) {
+          cardReason = this.rng.random() < 0.85 ? 'DOGSO' : 'SERIOUS_FOUL';
+        } else if (relativeY >= 67) {
+          cardReason = this.rng.random() < 0.50 ? 'DOGSO' : 'SERIOUS_FOUL';
+        } else {
+          cardReason = this.rng.random() < 0.10 ? 'DOGSO' : 'SERIOUS_FOUL';
+        }
+
         this.createEvent(
           state,
           EventType.RED_CARD,
@@ -1461,7 +1486,7 @@ export class MatchSimulationVariantBService {
           minute,
           false,
           config,
-          { cardReason: "DIRECT_RED" },
+          { cardReason },
         );
         this.incrementCardCount(state, defendingTeam, EventType.RED_CARD);
         offenderSentOff = true;

@@ -160,6 +160,15 @@ export class CommentaryService {
         if (cardReason === 'SECOND_YELLOW') {
           return `${playerName} is sent off for a second yellow!`;
         }
+        if (cardReason === 'DOGSO') {
+          return `${playerName} is sent off for denying an obvious goal-scoring opportunity!`;
+        }
+        if (cardReason === 'SERIOUS_FOUL') {
+          return `${playerName} receives a straight red card for a serious foul!`;
+        }
+        if (cardReason === 'SPITTING') {
+          return `${playerName} is sent off for spitting at an opponent! What a disgrace!`;
+        }
 
         return `${playerName} receives a red card!`;
       }
