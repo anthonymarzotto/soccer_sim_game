@@ -30,6 +30,10 @@ export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string,
   };
 }
 
+export function scaleMatchRating(rating: number): number {
+  return rating / 10;
+}
+
 export function calculateAverageMatchRating(stats: PlayerCareerRatingStats): number | null {
   if (stats.matchesPlayed <= 0) {
     return null;

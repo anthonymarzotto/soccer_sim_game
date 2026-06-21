@@ -1,4 +1,4 @@
-import { calculateAverageMatchRating, createEmptyPlayerCareerStats, formatAverageMatchRating, formatGamesPlayed } from './player-career-stats';
+import { calculateAverageMatchRating, createEmptyPlayerCareerStats, formatAverageMatchRating, formatGamesPlayed, scaleMatchRating } from './player-career-stats';
 
 describe('player-career-stats defaults', () => {
   it('should include all tracked fields with zero defaults', () => {
@@ -28,6 +28,12 @@ describe('player-career-stats defaults', () => {
       starNominations: { first: 0, second: 0, third: 0 },
       wage: 0
     });
+  });
+
+  it('should scale match rating to 1-10 scale', () => {
+    expect(scaleMatchRating(75)).toBe(7.5);
+    expect(scaleMatchRating(0)).toBe(0);
+    expect(scaleMatchRating(100)).toBe(10);
   });
 
   it('should calculate average match rating on the 1-10 display scale', () => {

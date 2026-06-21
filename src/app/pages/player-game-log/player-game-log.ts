@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
+import { scaleMatchRating } from '../../models/player-career-stats';
 
 @Component({
   selector: 'app-player-game-log',
@@ -14,6 +15,7 @@ import { GameService } from '../../services/game.service';
 export class PlayerGameLogComponent {
   private route = inject(ActivatedRoute);
   gameService = inject(GameService);
+  scaleMatchRating = scaleMatchRating;
 
   playerId = toSignal(this.route.paramMap.pipe(map(params => params.get('id'))), { initialValue: null });
 

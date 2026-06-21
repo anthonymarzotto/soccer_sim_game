@@ -24,23 +24,23 @@
         <table class="w-full text-sm text-left">
           <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
             <tr>
-              <th scope="col" class="px-4 py-3 w-16">Week</th>
-              <th scope="col" class="px-4 py-3 w-48">Opponent</th>
-              <th scope="col" class="px-4 py-3 w-20 text-center">Result</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">MIN</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">G</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">A</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">SH</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">SOG</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">P</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">P%</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">T</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">INT</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">SV</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">FL</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">YC</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">RC</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center">RTG</th>
+              <th scope="col" class="px-4 py-3 w-16" title="Week of the Match">Week</th>
+              <th scope="col" class="px-4 py-3 w-48" title="Opponent Team">Opponent</th>
+              <th scope="col" class="px-4 py-3 w-20 text-center" title="Match Result">Result</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Minutes Played">MIN</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Goals">G</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Assists">A</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots">SH</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots on Target">SOG</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Passes Attempted">P</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Pass Completion Percentage">P%</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Tackles">T</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Interceptions">INT</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Saves">SV</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Fouls Committed">FL</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Yellow Cards">YC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Red Cards">RC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Match Rating">RTG</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-800/60">
@@ -57,7 +57,7 @@
                   </div>
                 </td>
                 <td class="px-4 py-3 text-center">
-                  <a [routerLink]="['/watch', log.match.id]" class="hover:opacity-80 transition-opacity inline-flex items-center gap-1.5 px-2 py-0.5 rounded border"
+                  <a [routerLink]="['/watch', log.match.id]" class="hover:opacity-80 transition-opacity inline-flex items-center px-2 py-0.5 rounded border"
                      [class.bg-emerald-500/10]="log.result === 'W'"
                      [class.text-emerald-400]="log.result === 'W'"
                      [class.border-emerald-500/20]="log.result === 'W'"
@@ -67,7 +67,6 @@
                      [class.bg-amber-500/10]="log.result === 'D'"
                      [class.text-amber-400]="log.result === 'D'"
                      [class.border-amber-500/20]="log.result === 'D'">
-                    <span class="font-bold">{{ log.result }}</span>
                     <span class="font-mono text-xs">{{ log.teamScore }}-{{ log.oppScore }}</span>
                   </a>
                 </td>
@@ -89,10 +88,10 @@
                   <td class="px-4 py-3 text-center font-mono" [class.text-yellow-400]="log.playerStats.yellowCards > 0" [class.text-zinc-500]="log.playerStats.yellowCards === 0">{{ log.playerStats.yellowCards }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-red-500]="log.playerStats.redCards > 0" [class.text-zinc-500]="log.playerStats.redCards === 0">{{ log.playerStats.redCards }}</td>
                   <td class="px-4 py-3 text-center font-mono font-bold"
-                      [class.text-emerald-400]="log.playerStats.rating >= 8"
-                      [class.text-zinc-300]="log.playerStats.rating >= 6 && log.playerStats.rating < 8"
-                      [class.text-red-400]="log.playerStats.rating < 6">
-                    {{ log.playerStats.rating | number:'1.1-1' }}
+                      [class.text-emerald-400]="scaleMatchRating(log.playerStats.rating) >= 8"
+                      [class.text-zinc-300]="scaleMatchRating(log.playerStats.rating) >= 6 && scaleMatchRating(log.playerStats.rating) < 8"
+                      [class.text-red-400]="scaleMatchRating(log.playerStats.rating) < 6">
+                    {{ scaleMatchRating(log.playerStats.rating) | number:'1.1-1' }}
                   </td>
                 } @else {
                   <td colspan="14" class="px-4 py-3 text-center text-zinc-600 italic">Did not play</td>
