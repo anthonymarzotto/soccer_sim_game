@@ -1,13 +1,68 @@
 <div class="space-y-2">
   @if (!gameService.isSeasonComplete() && !isReadOnlyMode()) {
-    <button
-      type="button"
-      (click)="simulateCurrentWeek()"
-      [disabled]="gameService.isAnySimulationInProgress()"
-      class="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-    >
-      Simulate Week {{ gameService.league()?.currentWeek }}
-    </button>
+    <div class="relative w-full">
+      <div class="flex w-full rounded-lg overflow-hidden shadow-sm">
+        <!-- Main Simulate Week Button -->
+        <button
+          type="button"
+          (click)="simulateCurrentWeek()"
+          [disabled]="gameService.isAnySimulationInProgress()"
+          class="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 font-semibold px-3 py-2 text-xs text-left cursor-pointer transition-colors"
+        >
+          Simulate Week {{ gameService.league()?.currentWeek }}
+        </button>
+
+        <!-- Dropdown Toggle Button -->
+        <button
+          type="button"
+          (click)="toggleDropdown($event)"
+          [disabled]="gameService.isAnySimulationInProgress()"
+          class="border-l border-emerald-600/30 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 px-2 py-2 flex items-center justify-center cursor-pointer transition-colors"
+          aria-haspopup="true"
+          [attr.aria-expanded]="isDropdownOpen()"
+        >
+          <span class="material-icons text-base transition-transform duration-200" [class.rotate-180]="isDropdownOpen()">expand_more</span>
+        </button>
+      </div>
+
+      <!-- Dropdown Menu -->
+      @if (isDropdownOpen()) {
+        <div class="absolute left-0 right-0 mt-1 z-50 rounded-lg bg-zinc-800 border border-zinc-700 shadow-xl py-1 text-xs text-zinc-200">
+          <button
+            type="button"
+            (click)="simulateWeeks(4)"
+            class="w-full text-left px-3 py-2 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer flex items-center gap-2"
+          >
+            <span class="material-icons text-sm text-zinc-400">calendar_today</span>
+            <span>Simulate 4 Weeks</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="simulateToWinterWindow()"
+            [disabled]="isWinterWindowOptionDisabled()"
+            class="w-full text-left px-3 py-2 flex items-center gap-2 transition-colors"
+            [class.opacity-45]="isWinterWindowOptionDisabled()"
+            [class.cursor-not-allowed]="isWinterWindowOptionDisabled()"
+            [class.cursor-pointer]="!isWinterWindowOptionDisabled()"
+            [class.hover:bg-zinc-700]="!isWinterWindowOptionDisabled()"
+            [class.hover:text-white]="!isWinterWindowOptionDisabled()"
+          >
+            <span class="material-icons text-sm" [class.text-zinc-400]="!isWinterWindowOptionDisabled()" [class.text-zinc-600]="isWinterWindowOptionDisabled()">ac_unit</span>
+            <span>To Winter Window</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="simulateWholeSeason()"
+            class="w-full text-left px-3 py-2 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer flex items-center gap-2 border-t border-zinc-700/50"
+          >
+            <span class="material-icons text-sm text-zinc-400">flag</span>
+            <span>Full Season</span>
+          </button>
+        </div>
+      }
+    </div>
   }
 
   @if (gameService.isSeasonComplete() && !isReadOnlyMode()) {
@@ -18,17 +73,6 @@
       class="w-full rounded-lg bg-indigo-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
     >
       Start New Season
-    </button>
-  }
-
-  @if (isDevMode && !gameService.isSeasonComplete() && !isReadOnlyMode()) {
-    <button
-      type="button"
-      (click)="simulateWholeSeason()"
-      [disabled]="gameService.isAnySimulationInProgress()"
-      class="w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-    >
-      [Dev] Simulate Whole Season
     </button>
   }
 </div>

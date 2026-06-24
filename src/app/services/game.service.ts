@@ -1784,7 +1784,7 @@ export class GameService {
     });
   }
 
-  simulateWholeSeason(): void {
+  private simulateMultipleWeeks(weeksCount: number, stopAtWinterWindow = false): void {
     if (!this.canMutateLeagueState()) return;
     if (this.isSeasonComplete() || this.isAnySimulationInProgress()) return;
 
@@ -1804,12 +1804,18 @@ export class GameService {
         this.persistRefreshedComputerControlledLineups(initialLeague);
       }
 
-      while (!this.isSeasonComplete()) {
+      let weeksSimulated = 0;
+      while (!this.isSeasonComplete() && weeksSimulated < weeksCount) {
+        const league = this.leagueState()!;
+        if (stopAtWinterWindow && league.currentWeek >= WINTER_WINDOW_START) {
+          break;
+        }
+
         this.runCpuToCpuTransferPass();
 
-        const league = this.leagueState()!;
-        const matches = league.schedule.filter(
-          m => m.week === league.currentWeek && m.seasonYear === league.currentSeasonYear && !m.played
+        const currentLeague = this.leagueState()!;
+        const matches = currentLeague.schedule.filter(
+          m => m.week === currentLeague.currentWeek && m.seasonYear === currentLeague.currentSeasonYear && !m.played
         );
 
         matches.forEach(match => {
@@ -1828,6 +1834,7 @@ export class GameService {
         });
 
         this.advanceWeek();
+        weeksSimulated++;
       }
     } finally {
       this.isSimulatingWholeSeasonState.set(false);
@@ -1836,6 +1843,23 @@ export class GameService {
         this.weekSimulationUnlockTimer = null;
       }, GameService.WEEK_SIMULATION_LOCK_MS);
     }
+  }
+
+  simulateWeeks(weeksCount: number): void {
+    this.simulateMultipleWeeks(weeksCount, false);
+  }
+
+  simulateToWinterTransferWindow(): void {
+    const league = this.leagueState();
+    if (!league) return;
+    const remaining = WINTER_WINDOW_START - league.currentWeek;
+    if (remaining > 0) {
+      this.simulateMultipleWeeks(remaining, true);
+    }
+  }
+
+  simulateWholeSeason(): void {
+    this.simulateMultipleWeeks(999, false);
   }
 
   simulateCurrentWeek(config?: Partial<SimulationConfig>) {

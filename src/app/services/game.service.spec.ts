@@ -1922,6 +1922,188 @@ describe('GameService simulation engine', () => {
     expect(service.league()?.currentWeek).toBe(2);
   });
 
+  it('should simulate multiple weeks correctly up to the specified week count', async () => {
+    TestBed.resetTestingModule();
+
+    const variantBSpy = {
+      simulateMatch: vi.fn().mockReturnValue({
+        currentMinute: 90,
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0
+      })
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        {
+          provide: PersistenceService,
+          useValue: {
+            loadLeague: vi.fn().mockResolvedValue({
+              teams: [
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } }
+              ],
+              schedule: [
+                { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false },
+                { id: 'm2', week: 2, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false },
+                { id: 'm3', week: 3, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false },
+                { id: 'm4', week: 4, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false },
+                { id: 'm5', week: 5, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false }
+              ],
+              currentWeek: 1,
+              currentSeasonYear: 2026
+            }),
+            saveTeam: vi.fn().mockResolvedValue(undefined),
+            saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+            saveMatchResult: vi.fn().mockResolvedValue(undefined),
+            loadSeasonTransitionLog: vi.fn().mockResolvedValue(null)
+          }
+        },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    await service.ensureHydrated();
+
+    service.simulateWeeks(3);
+
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(3);
+    expect(service.league()?.currentWeek).toBe(4);
+  });
+
+  it('should stop simulation early if the season becomes complete', async () => {
+    TestBed.resetTestingModule();
+
+    const variantBSpy = {
+      simulateMatch: vi.fn().mockReturnValue({
+        currentMinute: 90,
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0
+      })
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        {
+          provide: PersistenceService,
+          useValue: {
+            loadLeague: vi.fn().mockResolvedValue({
+              teams: [
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } }
+              ],
+              schedule: [
+                { id: 'm1', week: 1, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false },
+                { id: 'm2', week: 2, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false }
+              ],
+              currentWeek: 1,
+              currentSeasonYear: 2026
+            }),
+            saveTeam: vi.fn().mockResolvedValue(undefined),
+            saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+            saveMatchResult: vi.fn().mockResolvedValue(undefined),
+            loadSeasonTransitionLog: vi.fn().mockResolvedValue(null)
+          }
+        },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    await service.ensureHydrated();
+
+    service.simulateWeeks(5);
+
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(2);
+    expect(service.isSeasonComplete()).toBe(true);
+  });
+
+  it('should simulate up to winter transfer window and stop at week 20', async () => {
+    TestBed.resetTestingModule();
+
+    const variantBSpy = {
+      simulateMatch: vi.fn().mockReturnValue({
+        currentMinute: 90,
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        homeShots: 0,
+        awayShots: 0,
+        homeShotsOnTarget: 0,
+        awayShotsOnTarget: 0
+      })
+    };
+
+    const scheduleList = [];
+    for (let w = 18; w <= 22; w++) {
+      scheduleList.push({ id: `m${w}`, week: w, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false });
+    }
+
+    TestBed.configureTestingModule({
+      providers: [
+        GameService,
+        { provide: GeneratorService, useValue: { generateLeague: vi.fn() } },
+        {
+          provide: PersistenceService,
+          useValue: {
+            loadLeague: vi.fn().mockResolvedValue({
+              teams: [
+                { id: 'home', name: 'Home', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } },
+                { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } }
+              ],
+              schedule: scheduleList,
+              currentWeek: 18,
+              currentSeasonYear: 2026
+            }),
+            saveTeam: vi.fn().mockResolvedValue(undefined),
+            saveLeagueMetadata: vi.fn().mockResolvedValue(undefined),
+            saveMatchResult: vi.fn().mockResolvedValue(undefined),
+            loadSeasonTransitionLog: vi.fn().mockResolvedValue(null)
+          }
+        },
+        { provide: MatchSimulationVariantBService, useValue: variantBSpy },
+        { provide: CommentaryService, useValue: { generateCommentary: vi.fn().mockReturnValue([]) } },
+        { provide: StatisticsService, useValue: { generateMatchStatistics: vi.fn().mockReturnValue({} as MatchStatistics), generatePlayerStatistics: vi.fn().mockReturnValue([]) } },
+        { provide: PostMatchAnalysisService, useValue: { generateMatchReport: vi.fn().mockReturnValue({ homePlayerStats: [], awayPlayerStats: [] }) } },
+        { provide: FieldService, useValue: {} },
+        { provide: FormationLibraryService, useValue: { getFormationSlots: () => undefined, listPredefinedFormations: () => [], getAllFormations: () => [], getDefaultFormationId: () => 'formation_4_4_2' } }
+      ]
+    });
+
+    const service = TestBed.inject(GameService);
+    await service.ensureHydrated();
+
+    service.simulateToWinterTransferWindow();
+
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(2); // simulates week 18 and 19
+    expect(service.league()?.currentWeek).toBe(20);
+  });
+
   it('should block single-match simulation while a week simulation is active', () => {
     TestBed.resetTestingModule();
 
