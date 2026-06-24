@@ -82,6 +82,13 @@ When implementing functions that clear, reset, or delete primary state (e.g., `c
 - **Clear All Auxiliary State**: Ensure all associated sub-states, logs (like transition logs), cached values, and database records are reset/cleared in tandem.
 - **Update Test Mocks**: Ensure all test suites that mock the service or persistence layer (e.g., `persistenceSpy`) are updated to include mock implementations for the new clear methods to prevent compile-time or run-time test errors.
 
+## 6. Persistence & Simulation Flow Invariants
+
+- **Seasonal State**: Use `Player.seasonAttributes` and `Team.seasonSnapshots` for seasonal data. Compute age dynamically from birthday; never persist it.
+- **Rollover Orchestration**: Season rollover must be manual (user-triggered) and route entirely through the single `GameService` orchestrator (covering year increment, schedule generation, and pruning oldest seasons under the 5000 saved-match cap).
+- **Schema Discipline**: Bumping persistence contracts requires incrementing version in `package.json` and syncing `src/app/generated/data-schema-version.ts`.
+- **Simulation Flow Sync**: If structurally editing `match.simulation.variant-b.service.ts` (e.g. action types, gates, tick loops), immediately update the Mermaid diagram in `public/design-docs/simulation-flow.html`.
+
 <!-- START SEMBLE INTEGRATION FOR SUB-AGENTS -->
 ## Code Search
 
