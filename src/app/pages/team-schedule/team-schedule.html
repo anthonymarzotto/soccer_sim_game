@@ -11,7 +11,7 @@
                   class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg -ml-1 px-1"
                   aria-label="Select Team">
             @for (t of allTeamsSorted(); track t.id) {
-              <option [value]="t.id" class="bg-zinc-900 text-white text-base font-normal">
+              <option [value]="t.id" [selected]="t.id === teamId()" class="bg-zinc-900 text-white text-base font-normal">
                 {{ gameService.league()?.userTeamId === t.id ? '★ ' : '' }}{{ t.name }}
               </option>
             }

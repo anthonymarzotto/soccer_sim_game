@@ -19,6 +19,11 @@ function resolveSchemaVersion(value: string | (() => string)): string {
     :host {
       display: block;
     }
+    .active-nav .indicator {
+      transform: translateX(0) scaleY(1.3) !important;
+      opacity: 1 !important;
+      background-color: #10b981 !important;
+    }
   `]
 })
 export class NavigationComponent {

@@ -182,12 +182,6 @@
         </div>
         }
 
-        <a [routerLink]="['/team', teamId(), 'schedule']"
-          class="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-all flex items-center justify-center gap-2 shadow-xl group">
-          <span class="material-icons text-lg group-hover:scale-110 transition-transform">calendar_today</span>
-          <span>View Team Schedule</span>
-        </a>
-
         @if (unavailable().length > 0) {
         <div class="bg-zinc-900 border border-red-900/50 rounded-2xl p-6 shadow-xl">
           <h2 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4">Unavailable</h2>
