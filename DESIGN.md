@@ -27,6 +27,7 @@ Display typography uses condensed, heavy sans-serif fonts to mimic classic athle
 * **Primary Display/Headings**: Archivo Narrow (Google Fonts), fallback to Arial Narrow, sans-serif. Letter-spacing is set to `-0.01em` on large titles.
 * **Primary UI/Body**: Rubik (Google Fonts), fallback to system-ui, -apple-system, sans-serif.
 * **Numbers**: Rubik with tabular spacing enabled (`font-variant-numeric: tabular-nums`) on all data tables, standings, ratings, and stats columns.
+* **Heading Tag Formatting**: Always write `<h1>` tags inline on a single line (e.g. `<h1>Title</h1>`) rather than splitting text across multiple lines. This prevents compiler and browser layout engines from rendering extra vertical spacing or whitespace height shifts from leading/trailing newlines.
 
 | Hierarchy | Font Size | Font Weight | Line Height | Letter Spacing | Example Use |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -60,6 +61,11 @@ All active UI elements must speak the same visual language.
 * **Spacing Scale**: Increments of `4px` (`4px`, `8px`, `12px`, `16px`, `24px`, `32px`, `48px`, `64px`).
 * **Section Padding**: Standard desktop page content padding is `48px`. Outer container padding matches inner element gaps for consistent vertical flow.
 * **Max Text Width**: Informational paragraphs and news body elements are constrained to a maximum width of `65ch` (characters) to ensure readable line lengths.
+* **Page Header & Navigation Decoupling**:
+  - All page headers must remain structurally uniform (using a standard bottom border and spacing).
+  - Do not embed local navigation buttons/breadcrumbs (e.g., "Back to Profile") inside the page title header container.
+  - Relocate any essential breadcrumbs/back links completely above the header container so the bottom border baseline aligns perfectly when navigating between screens.
+  - Rely on global sidebar navigation and the browser back button instead of adding redundant local navigation links inside page headers.
 
 ## 6. Depth and Elevation
 * Since the canvas is dark, depth is communicated through background luminance stepping instead of traditional shadows.
@@ -74,6 +80,7 @@ All active UI elements must speak the same visual language.
 * **DON'T** use purple or blue-to-pink decorative gradients.
 * **DON'T** use `transition: all`. Always specify properties (e.g. `transition-property: transform, opacity`).
 * **DON'T** mix rounded corners: button corners are `6px`, card corners are `8px`, form badges are square.
+* **DO** verify input type parameters for components (e.g., `app-team-badge` accepts only `'sm'` or `'md'` sizes; passing `'lg'` will break the build).
 
 ## 8. Responsive Behavior
 * **Breakpoints**: Mobile (<768px), Tablet (768px to 1024px), Desktop (>1024px).
