@@ -1,71 +1,75 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-6xl mx-auto space-y-8">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-6xl space-y-8">
 
-    <div class="flex items-center gap-4">
-      <div class="flex items-center gap-3">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Team Details</h1>
+          @if (team()) {
+            <span class="px-2.5 py-1 rounded text-xs font-bold bg-panel text-text-primary border border-border font-display">
+              OVR {{ teamOverall() }}
+            </span>
+          }
+        </div>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">
+          Roster, tactics, and club financials
+        </p>
+      </div>
+
+      <!-- Selection Control -->
+      <div class="flex items-center gap-3 bg-panel border border-border rounded-lg p-1.5 shrink-0">
+        <label for="team-switcher" class="text-[10px] font-bold font-display text-text-muted uppercase tracking-wider px-2">Select Team</label>
         <select id="team-switcher" [value]="teamId()" (change)="onTeamChange($any($event.target).value)"
-          class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg -ml-1 px-1">
+          class="bg-canvas border border-border text-text-primary text-xs font-bold rounded px-2.5 py-1.5 cursor-pointer hover:border-border-hover transition-colors">
           @for (t of allTeamsSorted(); track t.id) {
-          <option [value]="t.id" [selected]="t.id === teamId()" class="bg-zinc-900 text-white text-base font-normal">{{
+          <option [value]="t.id" [selected]="t.id === teamId()" class="bg-panel text-text-primary text-base font-normal">{{
             userTeamId() === t.id ? '★ ' : '' }}{{ t.name }}</option>
           }
         </select>
-        @if (team()) {
-        <span class="px-2 py-1 rounded text-sm font-bold bg-zinc-800 text-white border border-zinc-700">
-          OVR {{ teamOverall() }}
-        </span>
-        }
       </div>
     </div>
     
     @if (transferWindowPhase() !== 'closed') {
-      <div class="relative overflow-hidden rounded-2xl border p-6 shadow-2xl backdrop-blur-md bg-zinc-900/80 transition-all duration-300"
-           [class.border-emerald-500/30]="transferWindowPhase() === 'summer'"
-           [class.shadow-emerald-500/5]="transferWindowPhase() === 'summer'"
-           [class.border-cyan-500/30]="transferWindowPhase() === 'winter'"
-           [class.shadow-cyan-500/5]="transferWindowPhase() === 'winter'">
-        
-        <div class="absolute inset-0 opacity-10 pointer-events-none bg-gradient-to-r"
-             [class.from-emerald-500]="transferWindowPhase() === 'summer'"
-             [class.to-transparent]="transferWindowPhase() === 'summer'"
-             [class.from-cyan-500]="transferWindowPhase() === 'winter'"
-             [class.to-transparent]="transferWindowPhase() === 'winter'"></div>
+      <div class="relative overflow-hidden rounded-xl border p-6 bg-panel transition-all duration-300"
+           [class.border-accent/30]="transferWindowPhase() === 'summer'"
+           [class.border-warning/30]="transferWindowPhase() === 'winter'">
         
         <div class="relative flex flex-col md:flex-row md:items-center justify-between gap-4 z-10">
           <div class="flex items-start gap-4">
-            <div class="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 animate-pulse"
-                 [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
-                 [class.text-emerald-400]="transferWindowPhase() === 'summer'"
-                 [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
-                 [class.text-cyan-400]="transferWindowPhase() === 'winter'">
+            <div class="flex items-center justify-center w-12 h-12 rounded-lg shrink-0"
+                 [class.bg-accent/10]="transferWindowPhase() === 'summer'"
+                 [class.text-accent]="transferWindowPhase() === 'summer'"
+                 [class.bg-warning/10]="transferWindowPhase() === 'winter'"
+                 [class.text-warning]="transferWindowPhase() === 'winter'">
               <span class="material-icons text-2xl">payments</span>
             </div>
             
             <div>
-              <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <h2 class="text-xl font-bold font-display uppercase tracking-tight text-text-primary flex items-center gap-2">
                 <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Transfer Window Open</span>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider animate-pulse"
-                      [class.bg-emerald-500/20]="transferWindowPhase() === 'summer'"
-                      [class.text-emerald-300]="transferWindowPhase() === 'summer'"
-                      [class.bg-cyan-500/20]="transferWindowPhase() === 'winter'"
-                      [class.text-cyan-300]="transferWindowPhase() === 'winter'">
+                      [class.bg-accent/20]="transferWindowPhase() === 'summer'"
+                      [class.text-accent]="transferWindowPhase() === 'summer'"
+                      [class.bg-warning/20]="transferWindowPhase() === 'winter'"
+                      [class.text-warning]="transferWindowPhase() === 'winter'">
                   Active
                 </span>
               </h2>
               @if (transferWindowPhase() === 'summer') {
-                <p class="text-sm text-zinc-400 mt-1">
+                <p class="text-sm text-text-secondary mt-1">
                   @if (weeksRemainingInWindow() > 1) {
-                    You have <strong class="text-white font-semibold">{{ weeksRemainingInWindow() }} weeks remaining</strong> (including this week) to recruit new talent, strengthen your squad, or sell surplus players to balance your wage cap.
+                    You have <strong class="text-text-primary font-semibold">{{ weeksRemainingInWindow() }} weeks remaining</strong> (including this week) to recruit new talent, strengthen your squad, or sell surplus players to balance your wage cap.
                   } @else {
-                    This is the <strong class="text-amber-400 font-semibold">final week</strong> of the summer window! Make your final squad improvements or adjustments before it closes.
+                    This is the <strong class="text-warning font-semibold">final week</strong> of the summer window! Make your final squad improvements or adjustments before it closes.
                   }
                 </p>
               } @else {
-                <p class="text-sm text-zinc-400 mt-1">
+                <p class="text-sm text-text-secondary mt-1">
                   @if (weeksRemainingInWindow() > 1) {
-                    You have <strong class="text-white font-semibold">{{ weeksRemainingInWindow() }} weeks remaining</strong> (including this week) to make emergency signings, cover for key injuries, or adjust roster wages for the home stretch.
+                    You have <strong class="text-text-primary font-semibold">{{ weeksRemainingInWindow() }} weeks remaining</strong> (including this week) to make emergency signings, cover for key injuries, or adjust roster wages for the home stretch.
                   } @else {
-                    This is the <strong class="text-amber-400 font-semibold">final week</strong> of the winter window! Secure any mid-season coverages before it closes.
+                    This is the <strong class="text-warning font-semibold">final week</strong> of the winter window! Secure any mid-season coverages before it closes.
                   }
                 </p>
               }
@@ -74,13 +78,13 @@
           
           <div class="shrink-0 flex items-center gap-3">
              <a routerLink="/finances"
-                class="rounded-lg px-3 py-2 text-xs font-semibold transition-colors cursor-pointer select-none"
-                [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
-                [class.text-zinc-950]="transferWindowPhase() === 'summer'"
-                [class.hover:bg-emerald-600]="transferWindowPhase() === 'summer'"
-                [class.bg-cyan-500]="transferWindowPhase() === 'winter'"
-                [class.text-zinc-950]="transferWindowPhase() === 'winter'"
-                [class.hover:bg-cyan-600]="transferWindowPhase() === 'winter'">
+                class="rounded-lg px-3 py-2 text-xs font-bold transition-all cursor-pointer select-none active:scale-[0.96]"
+                [class.bg-accent]="transferWindowPhase() === 'summer'"
+                [class.text-canvas]="transferWindowPhase() === 'summer'"
+                [class.hover:opacity-90]="transferWindowPhase() === 'summer'"
+                [class.bg-warning]="transferWindowPhase() === 'winter'"
+                [class.text-canvas]="transferWindowPhase() === 'winter'"
+                [class.hover:opacity-90]="transferWindowPhase() === 'winter'">
                Explore Market
              </a>
           </div>
@@ -94,42 +98,42 @@
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
       <div class="lg:col-span-1 space-y-6">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Team Stats</h2>
+        <div class="bg-panel border border-border rounded-xl p-6">
+          <h2 class="text-sm font-bold font-display text-text-muted uppercase tracking-wider mb-4">Team Stats</h2>
           <div class="space-y-4">
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Matches Played</span>
-              <span class="font-medium">{{ team()?.stats?.played }}</span>
+              <span class="text-text-muted">Matches Played</span>
+              <span class="font-bold text-text-primary tabular-nums">{{ team()?.stats?.played }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Wins</span>
-              <span class="font-medium text-emerald-400">{{ team()?.stats?.won }}</span>
+              <span class="text-text-muted">Wins</span>
+              <span class="font-bold text-accent tabular-nums">{{ team()?.stats?.won }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Draws</span>
-              <span class="font-medium text-zinc-300">{{ team()?.stats?.drawn }}</span>
+              <span class="text-text-muted">Draws</span>
+              <span class="font-bold text-text-secondary tabular-nums">{{ team()?.stats?.drawn }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Losses</span>
-              <span class="font-medium text-red-400">{{ team()?.stats?.lost }}</span>
+              <span class="text-text-muted">Losses</span>
+              <span class="font-bold text-danger tabular-nums">{{ team()?.stats?.lost }}</span>
             </div>
-            <div class="h-px bg-zinc-800 my-2"></div>
+            <div class="h-px bg-border my-2"></div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Goals For</span>
-              <span class="font-medium">{{ team()?.stats?.goalsFor }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Goals Against</span>
-              <span class="font-medium">{{ team()?.stats?.goalsAgainst }}</span>
+              <span class="text-text-muted">Goals For</span>
+              <span class="font-bold text-text-primary tabular-nums">{{ team()?.stats?.goalsFor }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Goal Diff</span>
-              <span class="font-medium">{{ (team()?.stats?.goalsFor || 0) - (team()?.stats?.goalsAgainst || 0) }}</span>
+              <span class="text-text-muted">Goals Against</span>
+              <span class="font-bold text-text-primary tabular-nums">{{ team()?.stats?.goalsAgainst }}</span>
             </div>
-            <div class="h-px bg-zinc-800 my-2"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-text-muted">Goal Diff</span>
+              <span class="font-bold text-text-primary tabular-nums">{{ (team()?.stats?.goalsFor || 0) - (team()?.stats?.goalsAgainst || 0) }}</span>
+            </div>
+            <div class="h-px bg-border my-2"></div>
             <div class="flex justify-between items-center text-lg">
-              <span class="text-zinc-400 font-medium">Points</span>
-              <span class="font-bold text-white">{{ team()?.stats?.points }}</span>
+              <span class="text-text-secondary font-bold font-display uppercase">Points</span>
+              <span class="font-bold text-accent tabular-nums">{{ team()?.stats?.points }}</span>
             </div>
           </div>
         </div>
@@ -137,12 +141,12 @@
         <!-- Financials Card -->
         @if (team()?.finances) {
         @let fin = team()!.finances;
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Financials</h2>
+        <div class="bg-panel border border-border rounded-xl p-6">
+          <h2 class="text-sm font-bold font-display text-text-muted uppercase tracking-wider mb-4">Financials</h2>
           <div class="space-y-4">
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Club Tier</span>
-              <span class="px-2 py-0.5 rounded text-xs font-bold border"
+              <span class="text-text-muted">Club Tier</span>
+              <span class="px-2 py-0.5 rounded text-xs font-bold border font-display"
                 [class.bg-amber-500/10]="fin.tier === 1" [class.text-amber-400]="fin.tier === 1" [class.border-amber-500/30]="fin.tier === 1"
                 [class.bg-teal-500/10]="fin.tier === 2" [class.text-teal-400]="fin.tier === 2" [class.border-teal-500/30]="fin.tier === 2"
                 [class.bg-orange-500/10]="fin.tier === 3" [class.text-orange-400]="fin.tier === 3" [class.border-orange-500/30]="fin.tier === 3"
@@ -152,30 +156,30 @@
               </span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Transfer Budget</span>
-              <span class="font-medium text-emerald-400 font-mono">{{ fin.transferBudget | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span class="text-text-muted">Transfer Budget</span>
+              <span class="font-bold text-accent font-mono tabular-nums">{{ fin.transferBudget | currency:'USD':'symbol':'1.0-0' }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-zinc-500">Squad Value</span>
-              <span class="font-medium text-zinc-300 font-mono">{{ squadMarketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span class="text-text-muted">Squad Value</span>
+              <span class="font-bold text-text-secondary font-mono tabular-nums">{{ squadMarketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
             </div>
-            <div class="h-px bg-zinc-800 my-2"></div>
+            <div class="h-px bg-border my-2"></div>
             <div class="space-y-1.5">
               <div class="flex justify-between text-xs">
-                <span class="text-zinc-500">Wage Points Cap</span>
-                <span class="font-semibold text-zinc-300 font-mono">{{ fin.wagePointsUsed | number:'1.1-1' }} / {{ fin.wagePointsCap }} pts</span>
+                <span class="text-text-muted">Wage Points Cap</span>
+                <span class="font-semibold text-text-secondary font-mono tabular-nums">{{ fin.wagePointsUsed | number:'1.1-1' }} / {{ fin.wagePointsCap }} pts</span>
               </div>
-              <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="w-full h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full rounded-full transition-all duration-500"
                   [style.width.%]="wageUtilization()"
-                  [class.bg-emerald-500]="wageUtilization() < 80"
-                  [class.bg-yellow-500]="wageUtilization() >= 80 && wageUtilization() < 95"
-                  [class.bg-red-500]="wageUtilization() >= 95">
+                  [class.bg-accent]="wageUtilization() < 80"
+                  [class.bg-warning]="wageUtilization() >= 80 && wageUtilization() < 95"
+                  [class.bg-danger]="wageUtilization() >= 95">
                 </div>
               </div>
-              <div class="flex justify-between text-[11px] text-zinc-500">
+              <div class="flex justify-between text-[11px] text-text-muted">
                 <span>Roster Wages</span>
-                <span>{{ wageUtilization() | number:'1.0-0' }}% Used</span>
+                <span class="tabular-nums">{{ wageUtilization() | number:'1.0-0' }}% Used</span>
               </div>
             </div>
           </div>
@@ -183,8 +187,8 @@
         }
 
         @if (unavailable().length > 0) {
-        <div class="bg-zinc-900 border border-red-900/50 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4">Unavailable</h2>
+        <div class="bg-panel border border-danger/30 rounded-xl p-6">
+          <h2 class="text-sm font-bold font-display text-danger uppercase tracking-wider mb-4">Unavailable</h2>
           <div class="space-y-3">
             @for (player of unavailable(); track player.id) {
             @let injuryRow = getActiveInjuryFor(player);
@@ -192,20 +196,20 @@
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="font-mono text-[11px] font-bold shrink-0"
-                  [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                  [class.text-warning]="player.position === Position.GOALKEEPER"
                   [class.text-blue-400]="player.position === Position.DEFENDER"
-                  [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                  [class.text-red-400]="player.position === Position.FORWARD">{{ player.position }}</span>
+                  [class.text-accent]="player.position === Position.MIDFIELDER"
+                  [class.text-danger]="player.position === Position.FORWARD">{{ player.position }}</span>
                 <a [routerLink]="['/player', player.id]"
-                  class="text-sm text-white hover:text-emerald-400 transition-colors truncate">{{ player.name }}</a>
+                  class="text-sm text-text-primary hover:text-accent font-bold font-display uppercase tracking-tight transition-colors truncate">{{ player.name }}</a>
               </div>
               @if (injuryRow) {
               <span
-                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40 cursor-default"
+                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold font-display bg-danger/10 text-danger border border-danger/20 cursor-default"
                 [title]="getInjuryName(injuryRow.definitionId)">🩹 {{ formatWeeksOut(injuryRow.weeksRemaining) }}</span>
               } @else if (suspensionRow) {
               <span
-                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40 cursor-default"
+                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold font-display bg-warning/10 text-warning border border-warning/20 cursor-default"
                 [title]="getSuspensionName(suspensionRow.reason)">🟥 {{ formatSuspensionGames(suspensionRow.gamesRemaining) }}</span>
               }
             </div>
@@ -218,58 +222,58 @@
       <div class="lg:col-span-3 space-y-8">
 
         <!-- Persistent header: formation selector + view toggle -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-          <div class="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div class="bg-panel border border-border rounded-xl">
+          <div class="flex items-center justify-between p-4 border-b border-border">
             <div class="flex items-center gap-3">
-              <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+              <h2 class="text-sm font-bold font-display text-text-muted uppercase tracking-wider">
                 @if (viewMode() === ViewMode.SEASON_HISTORY) { Season History } @else { Player Roster }
               </h2>
               @if (isUserTeam() && viewMode() !== ViewMode.SEASON_HISTORY) {
               <select [value]="team()?.selectedFormationId" (change)="onFormationChange($any($event.target).value)"
-                class="bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1 text-xs font-medium cursor-pointer hover:border-zinc-500 transition-colors"
+                class="bg-canvas border border-border text-text-primary rounded px-3 py-1 text-xs font-bold cursor-pointer hover:border-border-hover transition-all"
                 aria-label="Select formation">
                 @for (f of availableFormations(); track f.id) {
-                <option [value]="f.id" [selected]="f.id === team()?.selectedFormationId">{{ f.shortCode }} — {{ f.name
+                <option [value]="f.id" [selected]="f.id === team()?.selectedFormationId">{{ f.shortCode }} : {{ f.name
                   }}</option>
                 }
               </select>
               }
             </div>
-            <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+            <div class="flex gap-1.5 bg-canvas border border-border rounded-lg p-1">
               <button (click)="setViewMode(ViewMode.BIO)"
-                [class]="viewMode() === ViewMode.BIO ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                [class]="viewMode() === ViewMode.BIO ? 'bg-accent text-canvas font-bold font-display uppercase' : 'text-text-secondary hover:text-text-primary font-bold font-display uppercase'"
+                class="px-3 py-1 rounded-md text-xs font-bold font-display uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
                 Bio
               </button>
               <button (click)="setViewMode(ViewMode.STATS)"
-                [class]="viewMode() === ViewMode.STATS ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                [class]="viewMode() === ViewMode.STATS ? 'bg-accent text-canvas font-bold font-display uppercase' : 'text-text-secondary hover:text-text-primary font-bold font-display uppercase'"
+                class="px-3 py-1 rounded-md text-xs font-bold font-display uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 20v-6M6 20V10M18 20V4" />
                 </svg>
                 Stats
               </button>
               <button (click)="setViewMode(ViewMode.FINANCES)"
-                [class]="viewMode() === ViewMode.FINANCES ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                [class]="viewMode() === ViewMode.FINANCES ? 'bg-accent text-canvas font-bold font-display uppercase' : 'text-text-secondary hover:text-text-primary font-bold font-display uppercase'"
+                class="px-3 py-1 rounded-md text-xs font-bold font-display uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="12" y1="1" x2="12" y2="23"></line>
                   <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
                 Finances
               </button>
               <button (click)="setViewMode(ViewMode.SEASON_HISTORY)"
-                [class]="viewMode() === ViewMode.SEASON_HISTORY ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
-                class="px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                [class]="viewMode() === ViewMode.SEASON_HISTORY ? 'bg-accent text-canvas font-bold font-display uppercase' : 'text-text-secondary hover:text-text-primary font-bold font-display uppercase'"
+                class="px-3 py-1 rounded-md text-xs font-bold font-display uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 20h16M4 12h16M4 4h16" />
                 </svg>
                 History
@@ -279,63 +283,64 @@
 
           @if (viewMode() === ViewMode.BIO || viewMode() === ViewMode.STATS || viewMode() === ViewMode.FINANCES) {
           @if (readinessIssues().length > 0) {
-          <div class="rounded-2xl border border-red-800 bg-red-950/30 px-4 py-3 shadow-xl">
+          <div class="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3">
             <div class="mb-2 flex items-start justify-between gap-3">
-              <p class="text-xs font-semibold text-red-300 uppercase tracking-wide">Lineup Issues</p>
+              <p class="text-xs font-bold text-danger uppercase tracking-wide">Lineup Issues</p>
               @if (showQuickFix()) {
               <button type="button" (click)="runQuickFix()" [disabled]="isSchemaMismatchBlocking()"
-                class="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400">
+                class="rounded-lg bg-accent px-3 py-1.5 text-xs font-bold text-canvas transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
                 Quick Fix
               </button>
               }
             </div>
-            <ul class="text-sm text-red-200 space-y-1">
+            <ul class="text-sm text-text-primary space-y-1">
               @for (issue of readinessIssues(); track issue.message) {
               <li>{{ issue.message }}</li>
               }
             </ul>
             @if (showQuickFix() && isSchemaMismatchBlocking()) {
-            <p class="mt-2 text-xs text-zinc-400">Quick Fix is unavailable while schema-mismatch protection blocks
+            <p class="mt-2 text-xs text-text-muted">Quick Fix is unavailable while schema-mismatch protection blocks
               writes.</p>
             }
           </div>
           }
 
-          <table class="w-full text-sm text-left">
-            <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+            <thead class="text-xs text-text-muted uppercase font-display border-b-2 border-border bg-panel">
               <tr>
-                <th scope="col" class="px-2 py-4 font-medium w-12"></th>
-                <th scope="col" class="px-4 py-4 font-medium w-20">Formation</th>
-                <th scope="col" class="px-6 py-4 font-medium w-16">Pref Pos</th>
-                <th scope="col" class="px-6 py-4 font-medium">Player</th>
+                <th scope="col" class="px-2 py-4 font-bold tracking-wider w-12"></th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider w-20">Formation</th>
+                <th scope="col" class="px-6 py-4 font-bold tracking-wider w-16">Pref Pos</th>
+                <th scope="col" class="px-6 py-4 font-bold tracking-wider">Player</th>
                 @if (viewMode() === ViewMode.BIO) {
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Fatigue</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-24">Rating</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">OVR</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Fatigue</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-24">Rating</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Age</th>
                 } @else if (viewMode() === ViewMode.STATS) {
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">GP</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-20">Min</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">G</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">A</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-20">Cards</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">GP</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-20">Min</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">G</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">A</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-20">Cards</th>
                 } @else if (viewMode() === ViewMode.FINANCES) {
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Age</th>
-                <th scope="col" class="px-4 py-4 font-medium text-right w-32">Market Value</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-24">Wage Cost</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-28">Contract</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">OVR</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Age</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-right w-32">Market Value</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-24">Wage Cost</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-28">Contract</th>
                 @if (isUserTeam() && transferWindowPhase() !== 'closed') {
-                <th scope="col" class="px-4 py-4 font-medium text-right w-32">Transfer List</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-right w-32">Transfer List</th>
                 }
                 }
               </tr>
             </thead>
-            <tbody class="divide-y divide-zinc-800">
+            <tbody class="divide-y divide-border">
               <!-- Starting XI -->
               @for (row of starterRows(); track row.slot.slotId; let i = $index) {
-              <tr class="hover:bg-zinc-800/50 transition-colors" [class.border-t-[2px]]="i === 0"
-                [class.border-t-emerald-500]="i === 0" [class.dragging]="row.player && isDragging(row.player.id)"
+              <tr class="hover:bg-canvas/50 transition-colors border-b border-border/30" [class.border-t-2]="i === 0"
+                [class.border-t-accent]="i === 0" [class.dragging]="row.player && isDragging(row.player.id)"
                 [class.drag-over]="isDragOver(starterRowTargetId(row.slot.slotId))" [class.cursor-grab]="isUserTeam()"
                 [class.cursor-grabbing]="row.player && isDragging(row.player.id)" [attr.draggable]="isUserTeam()"
                 (dragstart)="row.player && onDragStart($event, row.player.id)"
@@ -344,37 +349,37 @@
                 @if (i === 0) {
                 <td [attr.rowspan]="starterRows().length" class="px-2 py-4 align-middle relative row-label">
                   <div class="flex flex-col items-center justify-center h-full">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 mb-2"></span>
-                    <span class="text-xs font-bold text-white uppercase tracking-wider"
+                    <span class="w-2 h-2 rounded-full bg-accent mb-2"></span>
+                    <span class="text-xs font-bold font-display text-text-primary uppercase tracking-wider"
                       style="writing-mode: sideways-lr; text-orientation: mixed;">Starting XI</span>
                   </div>
                 </td>
                 }
                 <td class="px-4 py-4 whitespace-nowrap w-20">
                   <span
-                    class="inline-flex items-center justify-center min-w-12 px-2 py-1 rounded-md border text-xs font-semibold"
+                    class="inline-flex items-center justify-center min-w-12 px-2 py-1 rounded-md border text-xs font-bold"
                     [class]="slotBadgeClass(row.slot)">
                     {{ row.slot.label }}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                  [class.text-yellow-400]="row.player?.position === Position.GOALKEEPER"
+                  [class.text-warning]="row.player?.position === Position.GOALKEEPER"
                   [class.text-blue-400]="row.player?.position === Position.DEFENDER"
-                  [class.text-emerald-400]="row.player?.position === Position.MIDFIELDER"
-                  [class.text-red-400]="row.player?.position === Position.FORWARD">
+                  [class.text-accent]="row.player?.position === Position.MIDFIELDER"
+                  [class.text-danger]="row.player?.position === Position.FORWARD">
                   {{ row.player?.position || '---' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
+                <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
                   @if (row.player) {
-                  <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
+                  <a [routerLink]="['/player', row.player.id]" class="hover:text-accent transition-colors">
                     {{ row.player.name }}
                   </a>
                   @if (isInjured(row.player)) {
                   @let starterInjury = getActiveInjuryFor(row.player);
                   @if (starterInjury) {
                   <span
-                    class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/40"
-                    [title]="getInjuryName(starterInjury.definitionId) + ' — ' + formatWeeksOut(starterInjury.weeksRemaining)">
+                    class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold font-display bg-danger/10 text-danger border border-danger/20"
+                    [title]="getInjuryName(starterInjury.definitionId) + ' : ' + formatWeeksOut(starterInjury.weeksRemaining)">
                     🩹 {{ formatWeeksOut(starterInjury.weeksRemaining) }}
                   </span>
                   }
@@ -383,23 +388,23 @@
                   @let activeSuspension = getActiveSuspensionFor(row.player);
                   @if (activeSuspension) {
                   <span
-                    class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40"
-                    [title]="getSuspensionName(activeSuspension.reason) + ' — ' + formatSuspensionGames(activeSuspension.gamesRemaining)">
+                    class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold font-display bg-warning/10 text-warning border border-warning/20"
+                    [title]="getSuspensionName(activeSuspension.reason) + ' : ' + formatSuspensionGames(activeSuspension.gamesRemaining)">
                     🟥 {{ formatSuspensionGames(activeSuspension.gamesRemaining) }}
                   </span>
                   }
                   }
                   } @else {
-                  <span class="text-zinc-500 italic">Unassigned</span>
+                  <span class="text-text-muted italic">Unassigned</span>
                   }
                 </td>
                 @if (viewMode() === ViewMode.BIO) {
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary w-16">
                   @if (row.player) {
                   @let eff = getPlayerEffectiveOverall(row.player);
                   {{ getPlayerOverall(row.player) }}
                   @if (eff !== null) {
-                  <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                  <span class="text-warning font-normal text-xs ml-1">({{ eff }})</span>
                   }
                   } @else { -- }
                 </td>
@@ -407,7 +412,7 @@
                   @if (row.player) {
                   <div class="py-2 cursor-help flex justify-center"
                     [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                    <div class="inline-block w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="inline-block w-12 h-1.5 bg-border rounded-full overflow-hidden">
                       <div class="h-full" [style.width.%]="row.player.fatigue || 0"
                         [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
                     </div>
@@ -416,7 +421,7 @@
                 </td>
                 @let sStatsB = getRowStats(row.player);
                 <td class="px-4 py-4 whitespace-nowrap text-center w-24">
-                  <span class="text-amber-400 font-mono">{{ formatAvgRating(sStatsB) }}</span>
+                  <span class="text-warning font-mono tabular-nums">{{ formatAvgRating(sStatsB) }}</span>
                   @if (sStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ sStatsB.starNominations.first
                     }}</span>}
                   @if (sStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{
@@ -424,45 +429,45 @@
                   @if (sStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ sStatsB.starNominations.third
                     }}</span>}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ??
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-muted w-16">{{ getPlayerAge(row.player) ??
                   '--' }}</td>
                 } @else if (viewMode() === ViewMode.STATS) {
                 @let stats = getRowStats(row.player);
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary w-16">{{ formatGamesPlayed(stats) }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary w-20">{{ stats.minutesPlayed || 0 }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals ||
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-accent w-16">{{ stats.goals ||
                   0 }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                   <span class="inline-flex items-center gap-1">
-                    <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{
+                    <span class="px-1.5 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded text-xs font-bold font-display">{{
                       stats.yellowCards || 0 }}</span>
-                    <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
+                    <span class="px-1.5 py-0.5 bg-danger/10 text-danger border border-danger/20 rounded text-xs font-bold font-display">{{ stats.redCards
                       || 0 }}</span>
                   </span>
                 </td>
                 } @else if (viewMode() === ViewMode.FINANCES) {
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary w-16">
                   @if (row.player) {
                   {{ getPlayerOverall(row.player) }}
                   } @else { -- }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-muted w-16">
                   {{ getPlayerAge(row.player) ?? '--' }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono w-32">
+                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-accent font-mono tabular-nums w-32">
                   @if (row.player) {
                   {{ getPlayerMarketValue(row.player) | currency:'USD':'symbol':'1.0-0' }}
                   } @else { -- }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-warning font-mono tabular-nums w-24">
                   @if (row.player) {
                   {{ getPlayerWageCost(row.player) | number:'1.1-1' }} pts
                   } @else { -- }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300 font-mono w-28">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-text-secondary font-mono tabular-nums w-28">
                   @if (row.player) {
                   {{ getPlayerContractYearsRemaining(row.player) }} yr
                   } @else { -- }
@@ -472,12 +477,12 @@
                   @if (row.player) {
                     @if (isPlayerTransferListed(row.player.id)) {
                     <button (click)="removeFromTransferList(row.player.id)"
-                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                      class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-danger/10 text-danger border border-danger/20 hover:bg-danger hover:text-text-primary transition-all cursor-pointer select-none">
                       Delist
                     </button>
                     } @else {
                     <button (click)="addToTransferList(row.player.id)"
-                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer select-none">
+                      class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-panel text-text-secondary border border-border hover:bg-border-hover hover:text-text-primary transition-all cursor-pointer select-none">
                       List
                     </button>
                     }
@@ -489,8 +494,8 @@
               }
               <!-- Bench -->
               @for (row of benchRows(); track row.slotNumber; let i = $index) {
-              <tr class="hover:bg-zinc-800/50 transition-colors" [class.border-t-[2px]]="i === 0"
-                [class.border-t-yellow-500]="i === 0" [class.dragging]="row.player && isDragging(row.player.id)"
+              <tr class="hover:bg-canvas/50 transition-colors border-b border-border/30" [class.border-t-2]="i === 0"
+                [class.border-t-warning]="i === 0" [class.dragging]="row.player && isDragging(row.player.id)"
                 [class.drag-over]="isDragOver(row.player?.id || benchSlotTargetId(row.slotNumber))"
                 [class.cursor-grab]="isUserTeam()" [class.cursor-grabbing]="row.player && isDragging(row.player.id)"
                 [attr.draggable]="isUserTeam() && row.player ? 'true' : null"
@@ -502,37 +507,37 @@
                 @if (i === 0) {
                 <td [attr.rowspan]="benchRows().length" class="px-2 py-4 align-middle relative row-label">
                   <div class="flex flex-col items-center justify-center h-full">
-                    <span class="w-2 h-2 rounded-full bg-yellow-500 mb-2"></span>
-                    <span class="text-xs font-bold text-white uppercase tracking-wider"
+                    <span class="w-2 h-2 rounded-full bg-warning mb-2"></span>
+                    <span class="text-xs font-bold font-display text-text-primary uppercase tracking-wider"
                       style="writing-mode: sideways-lr; text-orientation: mixed;">Bench</span>
                   </div>
                 </td>
                 }
-                <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
+                <td class="px-4 py-4 whitespace-nowrap w-20 text-text-muted">--</td>
                 @if (row.player) {
                 <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                  [class.text-yellow-400]="row.player.position === Position.GOALKEEPER"
+                  [class.text-warning]="row.player.position === Position.GOALKEEPER"
                   [class.text-blue-400]="row.player.position === Position.DEFENDER"
-                  [class.text-emerald-400]="row.player.position === Position.MIDFIELDER"
-                  [class.text-red-400]="row.player.position === Position.FORWARD">
+                  [class.text-accent]="row.player.position === Position.MIDFIELDER"
+                  [class.text-danger]="row.player.position === Position.FORWARD">
                   {{ row.player.position }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                  <a [routerLink]="['/player', row.player.id]" class="hover:text-emerald-400 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
+                  <a [routerLink]="['/player', row.player.id]" class="hover:text-accent transition-colors">
                     {{ row.player.name }}
                   </a>
                 </td>
                 } @else {
-                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16 text-zinc-500">---</td>
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-zinc-500 italic">Empty bench slot</td>
+                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16 text-text-muted">---</td>
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-text-muted italic">Empty bench slot</td>
                 }
                 @if (viewMode() === ViewMode.BIO) {
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary w-16">
                   @if (row.player) {
                   @let eff = getPlayerEffectiveOverall(row.player);
                   {{ getPlayerOverall(row.player) }}
                   @if (eff !== null) {
-                  <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                  <span class="text-warning font-normal text-xs ml-1">({{ eff }})</span>
                   }
                   } @else { -- }
                 </td>
@@ -540,7 +545,7 @@
                   @if (row.player) {
                   <div class="py-2 cursor-help flex justify-center"
                     [title]="(row.player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                    <div class="inline-block w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="inline-block w-12 h-1.5 bg-border rounded-full overflow-hidden">
                       <div class="h-full" [style.width.%]="row.player.fatigue || 0"
                         [style.background-color]="getFatigueColor(row.player.fatigue || 0)"></div>
                     </div>
@@ -549,7 +554,7 @@
                 </td>
                 @let bStatsB = getRowStats(row.player);
                 <td class="px-4 py-4 whitespace-nowrap text-center w-24">
-                  <span class="text-amber-400 font-mono">{{ formatAvgRating(bStatsB) }}</span>
+                  <span class="text-warning font-mono tabular-nums">{{ formatAvgRating(bStatsB) }}</span>
                   @if (bStatsB.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ bStatsB.starNominations.first
                     }}</span>}
                   @if (bStatsB.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{
@@ -557,45 +562,45 @@
                   @if (bStatsB.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ bStatsB.starNominations.third
                     }}</span>}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(row.player) ??
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-muted w-16">{{ getPlayerAge(row.player) ??
                   '--' }}</td>
                 } @else if (viewMode() === ViewMode.STATS) {
                 @let stats = getRowStats(row.player);
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary w-16">{{ formatGamesPlayed(stats) }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary w-20">{{ stats.minutesPlayed || 0 }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals ||
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-accent w-16">{{ stats.goals ||
                   0 }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                   <span class="inline-flex items-center gap-1">
-                    <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{
+                    <span class="px-1.5 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded text-xs font-bold font-display">{{
                       stats.yellowCards || 0 }}</span>
-                    <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
+                    <span class="px-1.5 py-0.5 bg-danger/10 text-danger border border-danger/20 rounded text-xs font-bold font-display">{{ stats.redCards
                       || 0 }}</span>
                   </span>
                 </td>
                 } @else if (viewMode() === ViewMode.FINANCES) {
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary w-16">
                   @if (row.player) {
                   {{ getPlayerOverall(row.player) }}
                   } @else { -- }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-muted w-16">
                   {{ getPlayerAge(row.player) ?? '--' }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono w-32">
+                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-accent font-mono tabular-nums w-32">
                   @if (row.player) {
                   {{ getPlayerMarketValue(row.player) | currency:'USD':'symbol':'1.0-0' }}
                   } @else { -- }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-warning font-mono tabular-nums w-24">
                   @if (row.player) {
                   {{ getPlayerWageCost(row.player) | number:'1.1-1' }} pts
                   } @else { -- }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300 font-mono w-28">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-text-secondary font-mono tabular-nums w-28">
                   @if (row.player) {
                   {{ getPlayerContractYearsRemaining(row.player) }} yr
                   } @else { -- }
@@ -605,12 +610,12 @@
                   @if (row.player) {
                     @if (isPlayerTransferListed(row.player.id)) {
                     <button (click)="removeFromTransferList(row.player.id)"
-                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                      class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-danger/10 text-danger border border-danger/20 hover:bg-danger hover:text-text-primary transition-all cursor-pointer select-none">
                       Delist
                     </button>
                     } @else {
                     <button (click)="addToTransferList(row.player.id)"
-                      class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer select-none">
+                      class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-panel text-text-secondary border border-border hover:bg-border-hover hover:text-text-primary transition-all cursor-pointer select-none">
                       List
                     </button>
                     }
@@ -622,8 +627,8 @@
               }
               <!-- Reserves -->
               @for (player of reserves(); track player.id; let i = $index) {
-              <tr class="hover:bg-zinc-800/50 transition-colors opacity-75" [class.border-t-[2px]]="i === 0"
-                [class.border-t-zinc-600]="i === 0" [class.dragging]="isDragging(player.id)"
+              <tr class="hover:bg-canvas/50 transition-colors opacity-75 border-b border-border/30" [class.border-t-2]="i === 0"
+                [class.border-t-text-muted]="i === 0" [class.dragging]="isDragging(player.id)"
                 [class.drag-over]="isDragOver(player.id)" [class.cursor-grab]="isUserTeam()"
                 [class.cursor-grabbing]="isDragging(player.id)" [attr.draggable]="isUserTeam()"
                 (dragstart)="onDragStart($event, player.id)" (dragover)="onDragOver($event, player.id)"
@@ -631,37 +636,37 @@
                 @if (i === 0) {
                 <td [attr.rowspan]="reserves().length" class="px-2 py-4 align-middle relative row-label">
                   <div class="flex flex-col items-center justify-center h-full">
-                    <span class="w-2 h-2 rounded-full bg-zinc-600 mb-2"></span>
-                    <span class="text-xs font-bold text-white uppercase tracking-wider"
+                    <span class="w-2 h-2 rounded-full bg-text-muted mb-2"></span>
+                    <span class="text-xs font-bold font-display text-text-primary uppercase tracking-wider"
                       style="writing-mode: sideways-lr; text-orientation: mixed;">Reserves</span>
                   </div>
                 </td>
                 }
-                <td class="px-4 py-4 whitespace-nowrap w-20 text-zinc-600">--</td>
+                <td class="px-4 py-4 whitespace-nowrap w-20 text-text-muted">--</td>
                 <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                  [class.text-yellow-400]="player.position === Position.GOALKEEPER"
+                  [class.text-warning]="player.position === Position.GOALKEEPER"
                   [class.text-blue-400]="player.position === Position.DEFENDER"
-                  [class.text-emerald-400]="player.position === Position.MIDFIELDER"
-                  [class.text-red-400]="player.position === Position.FORWARD">
+                  [class.text-accent]="player.position === Position.MIDFIELDER"
+                  [class.text-danger]="player.position === Position.FORWARD">
                   {{ player.position }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                  <a [routerLink]="['/player', player.id]" class="hover:text-emerald-400 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
+                  <a [routerLink]="['/player', player.id]" class="hover:text-accent transition-colors">
                     {{ player.name }}
                   </a>
                 </td>
                 @if (viewMode() === ViewMode.BIO) {
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary w-16">
                   @let eff = getPlayerEffectiveOverall(player);
                   {{ getPlayerOverall(player) }}
                   @if (eff !== null) {
-                  <span class="text-yellow-400 font-normal text-xs ml-1">({{ eff }})</span>
+                  <span class="text-warning font-normal text-xs ml-1">({{ eff }})</span>
                   }
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-center w-16">
                   <div class="py-2 cursor-help flex justify-center"
                     [title]="(player.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                    <div class="inline-block w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="inline-block w-12 h-1.5 bg-border rounded-full overflow-hidden">
                       <div class="h-full" [style.width.%]="player.fatigue || 0"
                         [style.background-color]="getFatigueColor(player.fatigue || 0)"></div>
                     </div>
@@ -669,7 +674,7 @@
                 </td>
                 @let rStats = getCurrentSeasonStats(player);
                 <td class="px-4 py-4 whitespace-nowrap text-center w-24">
-                  <span class="text-amber-400 font-mono">{{ formatAvgRating(rStats) }}</span>
+                  <span class="text-warning font-mono tabular-nums">{{ formatAvgRating(rStats) }}</span>
                   @if (rStats.starNominations.first > 0) {<span class="ml-1 text-xs">🥇{{ rStats.starNominations.first
                     }}</span>}
                   @if (rStats.starNominations.second > 0) {<span class="ml-1 text-xs">🥈{{ rStats.starNominations.second
@@ -677,51 +682,51 @@
                   @if (rStats.starNominations.third > 0) {<span class="ml-1 text-xs">🥉{{ rStats.starNominations.third
                     }}</span>}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">{{ getPlayerAge(player) ?? '--'
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-muted w-16">{{ getPlayerAge(player) ?? '--'
                   }}</td>
                 } @else if (viewMode() === ViewMode.STATS) {
                 @let stats = getCurrentSeasonStats(player);
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-16">{{ formatGamesPlayed(stats) }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary w-16">{{ formatGamesPlayed(stats) }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300 w-20">{{ stats.minutesPlayed || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary w-20">{{ stats.minutesPlayed || 0 }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400 w-16">{{ stats.goals ||
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-accent w-16">{{ stats.goals ||
                   0 }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center text-blue-400 w-16">{{ stats.assists || 0 }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center w-20">
                   <span class="inline-flex items-center gap-1">
-                    <span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">{{
+                    <span class="px-1.5 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded text-xs font-bold font-display">{{
                       stats.yellowCards || 0 }}</span>
-                    <span class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">{{ stats.redCards
+                    <span class="px-1.5 py-0.5 bg-danger/10 text-danger border border-danger/20 rounded text-xs font-bold font-display">{{ stats.redCards
                       || 0 }}</span>
                   </span>
                 </td>
                 } @else if (viewMode() === ViewMode.FINANCES) {
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary w-16">
                   {{ getPlayerOverall(player) }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400 w-16">
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-muted w-16">
                   {{ getPlayerAge(player) ?? '--' }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono w-32">
+                <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-accent font-mono tabular-nums w-32">
                   {{ getPlayerMarketValue(player) | currency:'USD':'symbol':'1.0-0' }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-amber-400 font-mono w-24">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-warning font-mono tabular-nums w-24">
                   {{ getPlayerWageCost(player) | number:'1.1-1' }} pts
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300 font-mono w-28">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-text-secondary font-mono tabular-nums w-28">
                   {{ getPlayerContractYearsRemaining(player) }} yr
                 </td>
                 @if (isUserTeam() && transferWindowPhase() !== 'closed') {
                 <td class="px-4 py-4 whitespace-nowrap text-right w-32">
                   @if (isPlayerTransferListed(player.id)) {
                   <button (click)="removeFromTransferList(player.id)"
-                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                    class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-danger/10 text-danger border border-danger/20 hover:bg-danger hover:text-text-primary transition-all cursor-pointer select-none">
                     Delist
                   </button>
                   } @else {
                   <button (click)="addToTransferList(player.id)"
-                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer select-none">
+                    class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-panel text-text-secondary border border-border hover:bg-border-hover hover:text-text-primary transition-all cursor-pointer select-none">
                     List
                   </button>
                   }
@@ -732,65 +737,68 @@
               }
             </tbody>
           </table>
+          </div>
           }
 
           @if (viewMode() === ViewMode.SEASON_HISTORY) {
           @if (seasonHistoryWithStats().length === 0) {
-          <div class="p-6 text-center text-zinc-500">
+          <div class="p-6 text-center text-text-muted">
             <p class="text-sm">No season history available yet.</p>
           </div>
           } @else {
-          <table class="w-full text-sm text-left">
-            <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+            <thead class="text-xs text-text-muted uppercase bg-panel/50 border-b border-border/30">
               <tr>
-                <th scope="col" class="px-6 py-4 font-medium w-20">Season</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">OVR</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Pos</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Played</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Wins</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Draws</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Losses</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">For</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Against</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Diff</th>
-                <th scope="col" class="px-4 py-4 font-medium text-center w-16">Points</th>
+                <th scope="col" class="px-6 py-4 font-bold tracking-wider w-20">Season</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">OVR</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Pos</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Played</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Wins</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Draws</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Losses</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">For</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Against</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Diff</th>
+                <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center w-16">Points</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-zinc-800">
+            <tbody class="divide-y divide-border/30">
               @for (season of seasonHistoryWithStats(); track season.season) {
-              <tr class="hover:bg-zinc-800/50 transition-colors">
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-white">{{ season.season }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.ovr ?? '—' }}</td>
+              <tr class="hover:bg-canvas/50 border-b border-border/30 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary">{{ season.season }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary">{{ season.ovr ?? '-' }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-center">
                   @if (season.rank) {
-                  <span class="font-bold" [class.text-yellow-400]="season.rank === 1"
-                    [class.text-zinc-300]="season.rank !== 1">{{ season.rank }}<span
-                      class="text-zinc-600 font-normal">/{{ season.totalTeams }}</span></span>
+                  <span class="font-bold" [class.text-warning]="season.rank === 1"
+                    [class.text-text-secondary]="season.rank !== 1">{{ season.rank }}<span
+                      class="text-text-muted font-normal">/{{ season.totalTeams }}</span></span>
                   } @else {
-                  <span class="text-zinc-600">—</span>
+                  <span class="text-text-muted">-</span>
                   }
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.played || 0 }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-emerald-400">{{ season.stats.won ||
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary">{{ season.stats.played || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-accent">{{ season.stats.won ||
                   0 }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-300">{{ season.stats.drawn || 0
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-text-secondary">{{ season.stats.drawn || 0
                   }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-red-400">{{ season.stats.lost || 0
+                <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-danger">{{ season.stats.lost || 0
                   }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsFor || 0 }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-300">{{ season.stats.goalsAgainst || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary">{{ season.stats.goalsFor || 0 }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary">{{ season.stats.goalsAgainst || 0 }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center"
-                  [class.text-emerald-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) >= 0"
-                  [class.text-red-400]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) < 0">
+                <td class="px-4 py-4 whitespace-nowrap text-center font-mono tabular-nums"
+                  [class.text-accent]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) >= 0"
+                  [class.text-danger]="(season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) < 0">
                   {{ (season.stats.goalsFor || 0) - (season.stats.goalsAgainst || 0) }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">{{ season.stats.points || 0 }}
+                <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary">{{ season.stats.points || 0 }}
                 </td>
               </tr>
               }
             </tbody>
           </table>
+          </div>
           }
           }
 

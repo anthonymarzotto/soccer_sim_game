@@ -125,8 +125,8 @@ describe('MatchSummaryComponent', () => {
     fixture.detectChanges();
 
     const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
-    expect(text).toContain('home-p1 — Hamstring Pull, out 3 weeks');
-    expect(text).toContain('home-p1 — Knock, back next game');
+    expect(text).toContain('home-p1 , Hamstring Pull, out 3 weeks');
+    expect(text).toContain('home-p1 , Knock, back next game');
   });
 });
 

@@ -1,10 +1,13 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-7xl mx-auto space-y-8">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight text-white">Player Statistics</h1>
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-7xl space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Player Statistics</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Individual Performance Leaderboards</p>
+      </div>
     </div>
 
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 md:p-6 shadow-xl space-y-4">
+    <div class="bg-panel border border-border rounded-xl p-4 md:p-6 shadow-xl space-y-4">
       <div class="filter-grid">
         <div class="filter-group">
           <label for="season-filter" class="filter-label">Season</label>
@@ -46,14 +49,13 @@
       </div>
 
       <div class="control-row">
-        <p class="text-sm text-zinc-400">
+        <p class="text-sm text-text-secondary">
           Showing {{ paginatedPlayers().length }} of {{ totalPlayers() }} players
         </p>
 
         <div class="pagination-controls">
           <div class="page-size">
-            <label for="top-page-size" class="text-xs font-semibold uppercase tracking-wide text-zinc-400">Per
-              Page</label>
+            <label for="top-page-size" class="text-xs font-semibold uppercase tracking-wide text-text-muted">Per Page</label>
             <select id="top-page-size" class="filter-control compact" [ngModel]="pageSize()"
               (change)="onPageSizeChange($any($event.target).value)">
               <option [value]="10">10</option>
@@ -66,17 +68,16 @@
           <div class="page-buttons">
             <button class="page-button" [disabled]="pageIndex() === 0" (click)="previousPage()">← Previous</button>
             <span class="page-info">Page {{ pageIndex() + 1 }} of {{ totalPages() }}</span>
-            <button class="page-button" [disabled]="pageIndex() >= totalPages() - 1" (click)="nextPage()">Next
-              →</button>
+            <button class="page-button" [disabled]="pageIndex() >= totalPages() - 1" (click)="nextPage()">Next →</button>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+    <div class="bg-panel border border-border rounded-xl overflow-hidden shadow-xl">
       <div class="overflow-x-auto">
         <table class="stats-table w-full text-sm text-left">
-          <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/80 border-b border-zinc-800 sticky top-0 z-10">
+          <thead class="text-xs text-text-muted uppercase bg-panel border-b-2 border-border sticky top-0 z-10">
             <tr>
               @for (col of columns; track col.key) {
               <th class="px-4 py-4 font-medium whitespace-nowrap" [class.sortable]="col.sortable"
@@ -89,70 +90,50 @@
               }
             </tr>
           </thead>
-          <tbody class="divide-y divide-zinc-800">
+          <tbody class="divide-y divide-border">
             @for (row of paginatedPlayers(); track row.player.id + '-' + row.seasonYear) {
-            <tr class="hover:bg-zinc-800/50 transition-colors" [class.bg-emerald-950]="isUserTeamPlayer(row)">
-              <td class="px-4 py-3 whitespace-nowrap text-zinc-300 col-team">
+            <tr class="hover:bg-canvas/50 transition-colors" [class.row-user-highlight]="isUserTeamPlayer(row)">
+              <td class="px-4 py-3 whitespace-nowrap text-text-secondary col-team"
+                [class.cell-user-highlight]="isUserTeamPlayer(row)">
                 <app-team-badge [teamId]="row.player.teamId" size="sm" [link]="false" />
               </td>
-              <td class="px-4 py-3 whitespace-nowrap font-medium text-white col-player">
+              <td class="px-4 py-3 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base animate-none col-player">
                 <div class="player-cell">
                   <a [routerLink]="['/player', row.player.id]"
-                    class="hover:text-emerald-400 transition-colors player-name-link" [title]="row.player.name">
+                    class="hover:text-accent transition-colors player-name-link" [title]="row.player.name">
                     <span class="player-name-text">{{ row.player.name }}</span>
                   </a>
                 </div>
               </td>
-              <td class="px-4 py-3 whitespace-nowrap text-zinc-300 font-mono">{{ row.player.position }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'matchesPlayed') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'goals') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'assists') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'shots') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'shotsOnTarget') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'passes') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'tackles') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'interceptions') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'saves') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'cleanSheets') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'minutesPlayed') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-yellow-400">{{ getColumnValue(row,
-                'yellowCards') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-red-400">{{ getColumnValue(row,
-                'redCards') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'fouls') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'foulsSuffered') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-amber-400 stat-number">{{ getColumnValue(row,
-                'averageRating') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'starsFirst') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'starsSecond') }}</td>
-              <td class="px-4 py-3 whitespace-nowrap text-center text-zinc-300 stat-number">{{ getColumnValue(row,
-                'starsThird') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-text-secondary font-mono">{{ row.player.position }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'matchesPlayed') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'goals') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'assists') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'shots') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'shotsOnTarget') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'passes') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'tackles') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'interceptions') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'saves') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'cleanSheets') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'minutesPlayed') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-warning">{{ getColumnValue(row, 'yellowCards') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-danger">{{ getColumnValue(row, 'redCards') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'fouls') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'foulsSuffered') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-warning stat-number">{{ getColumnValue(row, 'averageRating') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'starsFirst') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'starsSecond') }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number">{{ getColumnValue(row, 'starsThird') }}</td>
             </tr>
             }
           </tbody>
         </table>
       </div>
 
-      <div
-        class="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between p-4 border-t border-zinc-800 bg-zinc-900/50">
+      <div class="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between p-4 border-t border-border bg-panel/50">
         <div class="page-size">
-          <label for="bottom-page-size" class="text-xs font-semibold uppercase tracking-wide text-zinc-400">Per
-            Page</label>
+          <label for="bottom-page-size" class="text-xs font-semibold uppercase tracking-wide text-text-muted">Per Page</label>
           <select id="bottom-page-size" class="filter-control compact" [ngModel]="pageSize()"
             (change)="onPageSizeChange($any($event.target).value)">
             <option [value]="10">10</option>

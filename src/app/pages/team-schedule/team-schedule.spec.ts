@@ -202,14 +202,14 @@ describe('TeamScheduleComponent', () => {
       const winOutcome = component.getMatchOutcome(winMatch);
       expect(winOutcome.result).toBe('W');
       expect(winOutcome.label).toBe('Win');
-      expect(winOutcome.textClass).toContain('text-emerald-400');
+      expect(winOutcome.textClass).toContain('text-accent');
 
       // Loss match: Rovers (t-1) 1 vs United (t-3) 2
       const lossMatch = mockMatches[1];
       const lossOutcome = component.getMatchOutcome(lossMatch);
       expect(lossOutcome.result).toBe('L');
       expect(lossOutcome.label).toBe('Loss');
-      expect(lossOutcome.textClass).toContain('text-red-400');
+      expect(lossOutcome.textClass).toContain('text-danger');
 
       // Draw match mock: t-1 home score 1, away score 1
       const drawMatch: Match = {
@@ -225,14 +225,14 @@ describe('TeamScheduleComponent', () => {
       const drawOutcome = component.getMatchOutcome(drawMatch);
       expect(drawOutcome.result).toBe('D');
       expect(drawOutcome.label).toBe('Draw');
-      expect(drawOutcome.textClass).toContain('text-amber-400');
+      expect(drawOutcome.textClass).toContain('text-warning');
 
       // Upcoming match on current week (week 3 is currentWeek)
       const upcomingCurrentWeek = mockMatches[2];
       const currentWeekOutcome = component.getMatchOutcome(upcomingCurrentWeek);
       expect(currentWeekOutcome.result).toBe('Upcoming');
       expect(currentWeekOutcome.label).toBe('Current Week');
-      expect(currentWeekOutcome.textClass).toContain('text-indigo-400');
+      expect(currentWeekOutcome.textClass).toContain('text-accent');
     });
   });
 });

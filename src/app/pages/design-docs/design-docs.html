@@ -1,11 +1,11 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+<div class="min-h-screen bg-canvas text-text-primary flex flex-col">
 
   <!-- Header -->
-  <div class="border-b border-zinc-800 p-6">
-    <div class="flex items-center gap-4">
+  <div class="border-b border-border p-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-white">Design Docs</h1>
-        <p class="text-zinc-400 mt-1">Architecture and flow diagrams</p>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Design Docs</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Architecture and flow diagrams</p>
       </div>
     </div>
   </div>
@@ -14,20 +14,20 @@
   <div class="flex flex-1 overflow-hidden">
 
     <!-- Doc list sidebar -->
-    <aside class="w-64 shrink-0 border-r border-zinc-800 bg-zinc-900 p-4 space-y-1 overflow-y-auto">
+    <aside class="w-64 shrink-0 border-r border-border bg-panel p-4 space-y-1 overflow-y-auto">
       @for (doc of docs; track doc.path) {
         <button
           type="button"
           (click)="selectDoc(doc)"
           class="w-full text-left rounded-lg px-4 py-3 transition-colors"
-          [class.bg-zinc-800]="selectedDoc().path === doc.path"
-          [class.text-white]="selectedDoc().path === doc.path"
-          [class.text-zinc-400]="selectedDoc().path !== doc.path"
-          [class.hover:bg-zinc-800]="selectedDoc().path !== doc.path"
-          [class.hover:text-white]="selectedDoc().path !== doc.path"
+          [class.bg-canvas]="selectedDoc().path === doc.path"
+          [class.text-text-primary]="selectedDoc().path === doc.path"
+          [class.text-text-muted]="selectedDoc().path !== doc.path"
+          [class.hover:bg-canvas]="selectedDoc().path !== doc.path"
+          [class.hover:text-text-primary]="selectedDoc().path !== doc.path"
         >
           <p class="font-medium text-sm">{{ doc.label }}</p>
-          <p class="text-xs text-zinc-500 mt-0.5">{{ doc.description }}</p>
+          <p class="text-xs text-text-muted mt-0.5">{{ doc.description }}</p>
         </button>
       }
     </aside>

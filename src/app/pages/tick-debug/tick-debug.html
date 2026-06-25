@@ -1,15 +1,15 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-4xl mx-auto space-y-8">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-4xl space-y-8">
     <div class="flex items-center justify-between gap-4">
       <div class="flex items-center gap-4">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight text-white">Tick Debug</h1>
-          <p class="text-zinc-400 mt-1">Examine match simulation state tick by tick</p>
+          <h1 class="text-3xl font-bold tracking-tight text-text-primary">Tick Debug</h1>
+          <p class="text-text-muted mt-1">Examine match simulation state tick by tick</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
+    <div class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
       @if (teams().length < 2) {
         <div class="rounded-xl border border-amber-800/80 bg-amber-950/30 p-4 text-sm text-amber-200">
           Generate a league first, then use this sandbox.
@@ -17,8 +17,8 @@
       } @else {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label for="homeTeam" class="block text-sm font-medium text-zinc-300 mb-2">Home Team</label>
-            <select id="homeTeam" [value]="homeTeamId()" (change)="setHomeTeam($any($event.target).value)" class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3">
+            <label for="homeTeam" class="block text-sm font-medium text-text-secondary mb-2">Home Team</label>
+            <select id="homeTeam" [value]="homeTeamId()" (change)="setHomeTeam($any($event.target).value)" class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3">
               @for (option of sortedTeamOptions(); track option.id) {
                 <option [value]="option.id">{{ option.label }}</option>
               }
@@ -26,8 +26,8 @@
           </div>
 
           <div>
-            <label for="awayTeam" class="block text-sm font-medium text-zinc-300 mb-2">Away Team</label>
-            <select id="awayTeam" [value]="awayTeamId()" (change)="setAwayTeam($any($event.target).value)" class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3">
+            <label for="awayTeam" class="block text-sm font-medium text-text-secondary mb-2">Away Team</label>
+            <select id="awayTeam" [value]="awayTeamId()" (change)="setAwayTeam($any($event.target).value)" class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3">
               @for (option of sortedTeamOptions(); track option.id) {
                 <option [value]="option.id">{{ option.label }}</option>
               }
@@ -37,8 +37,8 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label for="homeFormation" class="block text-sm font-medium text-zinc-300 mb-2">Home Formation</label>
-            <select id="homeFormation" [value]="homeFormationId()" (change)="setHomeFormation($any($event.target).value)" class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3">
+            <label for="homeFormation" class="block text-sm font-medium text-text-secondary mb-2">Home Formation</label>
+            <select id="homeFormation" [value]="homeFormationId()" (change)="setHomeFormation($any($event.target).value)" class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3">
               @for (option of formationOptions(); track option.id) {
                 <option [value]="option.id">{{ option.label }}</option>
               }
@@ -46,8 +46,8 @@
           </div>
 
           <div>
-            <label for="awayFormation" class="block text-sm font-medium text-zinc-300 mb-2">Away Formation</label>
-            <select id="awayFormation" [value]="awayFormationId()" (change)="setAwayFormation($any($event.target).value)" class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3">
+            <label for="awayFormation" class="block text-sm font-medium text-text-secondary mb-2">Away Formation</label>
+            <select id="awayFormation" [value]="awayFormationId()" (change)="setAwayFormation($any($event.target).value)" class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3">
               @for (option of formationOptions(); track option.id) {
                 <option [value]="option.id">{{ option.label }}</option>
               }
@@ -56,7 +56,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <button type="button" (click)="runSimulation()" [disabled]="isRunning() || !canRun()" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button type="button" (click)="runSimulation()" [disabled]="isRunning() || !canRun()" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-text-primary hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
             <span>{{ isRunning() ? 'Running...' : 'Generate Match' }}</span>
           </button>
         </div>
@@ -64,24 +64,24 @@
     </div>
 
     @if (tickTraces().length > 0) {
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
+      <div class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
 
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
-            <button (click)="prevTick()" [disabled]="currentTickIndex() === 0" class="px-3 py-1 bg-zinc-800 text-white rounded hover:bg-zinc-700 disabled:opacity-50">Prev</button>
-            <span class="text-zinc-300">Tick: {{ currentTickIndex() + 1 }} / {{ tickTraces().length }}</span>
-            <button (click)="nextTick()" [disabled]="currentTickIndex() === tickTraces().length - 1" class="px-3 py-1 bg-zinc-800 text-white rounded hover:bg-zinc-700 disabled:opacity-50">Next</button>
+            <button (click)="prevTick()" [disabled]="currentTickIndex() === 0" class="px-3 py-1 bg-canvas text-text-primary rounded hover:bg-zinc-700 disabled:opacity-50">Prev</button>
+            <span class="text-text-secondary">Tick: {{ currentTickIndex() + 1 }} / {{ tickTraces().length }}</span>
+            <button (click)="nextTick()" [disabled]="currentTickIndex() === tickTraces().length - 1" class="px-3 py-1 bg-canvas text-text-primary rounded hover:bg-zinc-700 disabled:opacity-50">Next</button>
           </div>
           <div class="flex items-center gap-2">
-            <input type="number" #jumpInput class="bg-zinc-950 border border-zinc-700 text-white rounded px-2 py-1 w-20" [value]="currentTickIndex()" min="0" [max]="tickTraces().length - 1">
-            <button (click)="jumpToTick(jumpInput.value)" class="px-3 py-1 bg-zinc-800 text-white rounded hover:bg-zinc-700">Jump</button>
+            <input type="number" #jumpInput class="bg-canvas border border-border text-text-primary rounded px-2 py-1 w-20" [value]="currentTickIndex()" min="0" [max]="tickTraces().length - 1">
+            <button (click)="jumpToTick(jumpInput.value)" class="px-3 py-1 bg-canvas text-text-primary rounded hover:bg-zinc-700">Jump</button>
           </div>
         </div>
 
         @if (currentTick(); as tick) {
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <div class="relative w-full max-w-[360px] mx-auto overflow-hidden rounded-xl border border-zinc-800 bg-emerald-900/20" style="aspect-ratio: 0.65; max-height: 70vh;">
+            <div class="relative w-full max-w-[360px] mx-auto overflow-hidden rounded-xl border border-border bg-emerald-900/20" style="aspect-ratio: 0.65; max-height: 70vh;">
 
               <!-- Pitch markings (simplified from watch-game) -->
               <div class="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 bg-white/20"></div>
@@ -105,7 +105,7 @@
                      [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.HOME).left"
                      [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.HOME).top"
                      [title]="dot.fullName">
-                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-white flex items-center justify-center"
+                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center"
                        [class.ring-2]="tick.ballPossession.playerWithBall === dot.playerId"
                        [class.ring-white]="tick.ballPossession.playerWithBall === dot.playerId"
                        [style.background-color]="homeTeamColor()"
@@ -121,7 +121,7 @@
                      [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.AWAY).left"
                      [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.AWAY).top"
                      [title]="dot.fullName">
-                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-white flex items-center justify-center"
+                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center"
                        [class.ring-2]="tick.ballPossession.playerWithBall === dot.playerId"
                        [class.ring-white]="tick.ballPossession.playerWithBall === dot.playerId"
                        [style.background-color]="awayTeamColor()"
@@ -133,15 +133,15 @@
             </div>
 
             <div class="space-y-4">
-              <div class="bg-zinc-950 border border-zinc-800 rounded p-4">
-                <h3 class="font-bold text-zinc-300 mb-2">Tick Info</h3>
+              <div class="bg-canvas border border-border rounded p-4">
+                <h3 class="font-bold text-text-secondary mb-2">Tick Info</h3>
                 <p class="text-sm">Minute: {{ tick.minute }}</p>
                 <p class="text-sm">Possession: {{ tick.ballPossession.teamId === homeTeamId() ? 'Home' : 'Away' }} (Phase: {{ tick.ballPossession.phase }})</p>
                 <p class="text-sm">Ball: {{ tick.ballPossession.location.x.toFixed(1) }}, {{ tick.ballPossession.location.y.toFixed(1) }}</p>
               </div>
 
-              <div class="bg-zinc-950 border border-zinc-800 rounded p-4">
-                <h3 class="font-bold text-zinc-300 mb-2">Action Weights</h3>
+              <div class="bg-canvas border border-border rounded p-4">
+                <h3 class="font-bold text-text-secondary mb-2">Action Weights</h3>
                 <ul class="text-sm space-y-1">
                   <li>Pass: {{ tick.actionWeights.pass | number:'1.3-3' }}</li>
                   <li>Carry: {{ tick.actionWeights.carry | number:'1.3-3' }}</li>
@@ -150,8 +150,8 @@
                 </ul>
               </div>
 
-              <div class="bg-zinc-950 border border-zinc-800 rounded p-4">
-                <h3 class="font-bold text-zinc-300 mb-2">Channels & Coverage</h3>
+              <div class="bg-canvas border border-border rounded p-4">
+                <h3 class="font-bold text-text-secondary mb-2">Channels & Coverage</h3>
                 <ul class="text-sm space-y-1">
                   <li>Wide Channel: {{ tick.channels.wideChannel ? 'Yes' : 'No' }}</li>
                   <li>Channel Slots Staffed: {{ tick.channels.channelSlots }}</li>
@@ -162,10 +162,10 @@
               @if (tick.eventCreated) {
                 <div class="bg-indigo-950/30 border border-indigo-800 rounded p-4">
                   <h3 class="font-bold text-indigo-300 mb-2">Event Result</h3>
-                  <p class="text-sm font-semibold text-white">{{ tick.eventCreated.type }}</p>
+                  <p class="text-sm font-semibold text-text-primary">{{ tick.eventCreated.type }}</p>
                   <p class="text-sm mt-1">{{ tick.eventCreated.description }}</p>
                   @if (tick.eventCreated.additionalData) {
-                    <pre class="text-[10px] text-zinc-400 mt-2 whitespace-pre-wrap">{{ tick.eventCreated.additionalData | json }}</pre>
+                    <pre class="text-[10px] text-text-muted mt-2 whitespace-pre-wrap">{{ tick.eventCreated.additionalData | json }}</pre>
                   }
                 </div>
               }

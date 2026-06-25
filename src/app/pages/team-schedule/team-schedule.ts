@@ -149,9 +149,9 @@ export class TeamScheduleComponent {
       return {
         result: 'Upcoming',
         label: isCurrentWeek ? 'Current Week' : 'Upcoming',
-        bgClass: isCurrentWeek ? 'bg-indigo-500/10' : 'bg-zinc-950',
-        textClass: isCurrentWeek ? 'text-indigo-400' : 'text-zinc-500',
-        borderClass: isCurrentWeek ? 'border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.15)]' : 'border-zinc-800/60'
+        bgClass: isCurrentWeek ? 'bg-accent/10' : 'bg-canvas',
+        textClass: isCurrentWeek ? 'text-accent' : 'text-text-muted',
+        borderClass: isCurrentWeek ? 'border-accent/30' : 'border-border/30'
       };
     }
 
@@ -160,9 +160,9 @@ export class TeamScheduleComponent {
       return {
         result: 'Upcoming',
         label: 'Played',
-        bgClass: 'bg-zinc-950',
-        textClass: 'text-zinc-500',
-        borderClass: 'border-zinc-800/60'
+        bgClass: 'bg-canvas',
+        textClass: 'text-text-muted',
+        borderClass: 'border-border/30'
       };
     }
 
@@ -174,25 +174,25 @@ export class TeamScheduleComponent {
       return {
         result: 'W',
         label: 'Win',
-        bgClass: 'bg-emerald-500/10',
-        textClass: 'text-emerald-400',
-        borderClass: 'border-emerald-500/35 shadow-[0_0_12px_rgba(16,185,129,0.1)]'
+        bgClass: 'bg-accent/10',
+        textClass: 'text-accent',
+        borderClass: 'border-accent/20'
       };
     } else if (teamScore < oppScore) {
       return {
         result: 'L',
         label: 'Loss',
-        bgClass: 'bg-red-500/10',
-        textClass: 'text-red-400',
-        borderClass: 'border-red-500/35 shadow-[0_0_12px_rgba(239,68,68,0.1)]'
+        bgClass: 'bg-danger/10',
+        textClass: 'text-danger',
+        borderClass: 'border-danger/20'
       };
     } else {
       return {
         result: 'D',
         label: 'Draw',
-        bgClass: 'bg-amber-500/10',
-        textClass: 'text-amber-400',
-        borderClass: 'border-amber-500/35 shadow-[0_0_12px_rgba(245,158,11,0.1)]'
+        bgClass: 'bg-warning/10',
+        textClass: 'text-warning',
+        borderClass: 'border-warning/20'
       };
     }
   }
