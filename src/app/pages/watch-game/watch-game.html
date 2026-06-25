@@ -1,13 +1,11 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-4xl mx-auto space-y-8">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-4xl space-y-8">
     
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4">
-      <div class="flex items-center gap-4">
-        <div>
-          <h1 class="text-3xl font-bold tracking-tight text-white">Watch Game</h1>
-          <p class="text-zinc-400 mt-1">Live Match Simulation</p>
-        </div>
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Watch Game</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Live Match Simulation & Commentary</p>
       </div>
     </div>
 
@@ -27,7 +25,7 @@
 
     <!-- Pitch View -->
     @if (homeFormationDots().length > 0 || awayFormationDots().length > 0) {
-      <div class="mt-4 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="mt-4 bg-panel border border-border rounded-2xl overflow-hidden shadow-xl">
         <div class="flex flex-col h-full">
           <div class="p-4 pb-3">
             <div class="flex flex-col gap-4">
@@ -36,7 +34,7 @@
                   <button
                     (click)="startSimulation()"
                     [disabled]="!match() || match()?.played"
-                    class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    class="px-4 py-2 bg-accent hover:bg-accent/90 text-zinc-950 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-accent/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M8 5v14l11-7z"/>
                     </svg>
@@ -45,7 +43,7 @@
                 } @else if (isHalfTime()) {
                   <button
                     (click)="continueAfterHalfTime()"
-                    class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                    class="px-4 py-2 bg-accent hover:bg-accent/90 text-zinc-950 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-accent/20">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M8 5v14l11-7z"/>
                     </svg>
@@ -54,7 +52,7 @@
                 } @else if (isSimulating()) {
                   <button
                     type="button"
-                    class="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-lg transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="px-3 py-2 bg-accent hover:bg-accent/90 text-zinc-950 rounded-lg transition-colors shadow-lg shadow-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     [disabled]="!canToggleCommentaryPlayback()"
                     [title]="commentaryPlaybackSpeed() === 0 ? 'Resume' : 'Pause'"
                     [attr.aria-label]="commentaryPlaybackSpeed() === 0 ? 'Resume' : 'Pause'"
@@ -71,7 +69,7 @@
 
                 @if (isSimulating()) {
                   <div class="ml-auto flex items-center gap-2">
-                    <span class="text-xs font-medium text-zinc-400">{{ commentaryPlaybackSpeed() | number: '1.1-1' }}x</span>
+                    <span class="text-xs font-medium text-text-muted">{{ commentaryPlaybackSpeed() | number: '1.1-1' }}x</span>
                     <input
                       #commentarySpeedInput
                       type="range"
@@ -80,27 +78,27 @@
                       step="0.1"
                       [value]="commentaryPlaybackSpeed()"
                       (input)="setCommentaryPlaybackSpeed(+commentarySpeedInput.value)"
-                      class="h-2 w-32 rounded-lg bg-zinc-700 accent-emerald-500 appearance-none cursor-pointer">
+                      class="h-2 w-32 rounded-lg bg-zinc-700 accent-accent appearance-none cursor-pointer">
                   </div>
                 }
               </div>
 
-              <div class="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+              <div class="rounded-md border border-border bg-canvas/60 p-2">
                 <div class="flex items-center justify-between gap-2">
                   <div class="min-w-0 flex items-center gap-2 overflow-hidden">
                     @if (currentCommentaryItem(); as item) {
                       @if (getEventIcon(item.type)) {
                         <span class="shrink-0 text-sm leading-none">{{ getEventIcon(item.type) }}</span>
                       }
-                      <p class="text-xs text-zinc-200 whitespace-nowrap overflow-hidden text-ellipsis">{{ item.text }}</p>
+                      <p class="text-xs text-text-secondary whitespace-nowrap overflow-hidden text-ellipsis">{{ item.text }}</p>
                     } @else {
-                      <p class="text-xs text-zinc-500">Commentary will appear here during simulation.</p>
+                      <p class="text-xs text-text-muted">Commentary will appear here during simulation.</p>
                     }
                   </div>
 
                   <button
                     type="button"
-                    class="shrink-0 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-300 transition-colors hover:bg-zinc-700"
+                    class="shrink-0 rounded-md border border-border bg-canvas px-2 py-1 text-text-secondary transition-colors hover:bg-zinc-700"
                     [title]="isCommentaryExpanded() ? 'Collapse commentary history' : 'Expand commentary history'"
                     [attr.aria-label]="isCommentaryExpanded() ? 'Collapse commentary history' : 'Expand commentary history'"
                     (click)="toggleCommentaryExpanded()">
@@ -117,10 +115,10 @@
                 @if (isCommentaryExpanded()) {
                   <div
                     #commentaryLog
-                    class="mt-2 h-16 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-900/70 p-2 space-y-1"
+                    class="mt-2 h-16 overflow-y-auto rounded-md border border-border bg-panel/70 p-2 space-y-1"
                     (scroll)="onCommentaryLogScroll(commentaryLog)">
                     @for (item of commentary(); track item.id) {
-                      <div class="flex items-start gap-2 text-xs text-zinc-300">
+                      <div class="flex items-start gap-2 text-xs text-text-secondary">
                         @if (getEventIcon(item.type)) {
                           <span class="shrink-0 leading-none">{{ getEventIcon(item.type) }}</span>
                         }
@@ -141,13 +139,13 @@
 
           <div class="px-4 pb-4">
             <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_220px] flex-1 overflow-visible">
-            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4 border-l-2" [style.border-top-color]="homeTeamColor()" [style.border-left-color]="homeTeamAccentColor()">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ homeTeam()?.name ?? 'Home' }}</h3>
+            <div class="rounded-lg border border-border bg-canvas/35 p-3 flex flex-col border-t-4 border-l-2" [style.border-top-color]="homeTeamColor()" [style.border-left-color]="homeTeamAccentColor()">
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-text-secondary mb-2">{{ homeTeam()?.name ?? 'Home' }}</h3>
               <div class="space-y-1.5 overflow-visible pr-1 flex-1">
                 @for (entry of getOnFieldLineup(TeamSide.HOME); track entry.playerId) {
-                  <div class="rounded bg-zinc-900/70 px-2 py-1.5">
+                  <div class="rounded bg-panel/70 px-2 py-1.5">
                     <div class="flex items-center justify-between gap-2 text-[11px]">
-                      <span class="truncate text-zinc-100"><span class="text-zinc-400">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
+                      <span class="truncate text-text-primary"><span class="text-text-muted">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
                       <div class="flex items-center gap-1 shrink-0">
                         @if (getLiveStarRank(entry.playerId); as rank) {
                           <span>{{ rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉' }}</span>
@@ -165,13 +163,13 @@
                 }
 
                 @if (getBenchLineup(TeamSide.HOME).length > 0) {
-                  <div class="my-2 border-t border-zinc-700/70"></div>
+                  <div class="my-2 border-t border-border/70"></div>
                 }
 
                 @for (entry of getBenchLineup(TeamSide.HOME); track entry.playerId) {
-                  <div class="rounded bg-zinc-900/50 px-2 py-1.5" [class.opacity-55]="entry.playerStatus === Role.BENCH">
+                  <div class="rounded bg-panel/50 px-2 py-1.5" [class.opacity-55]="entry.playerStatus === Role.BENCH">
                     <div class="flex items-center justify-between gap-2 text-[11px]">
-                      <span class="truncate text-zinc-300">
+                      <span class="truncate text-text-secondary">
                         @if (entry.playerStatus === Role.SUBSTITUTED_OUT) {
                           <span class="text-amber-500">⬇</span>
                         } @else if (entry.playerStatus === Role.DISMISSED) {
@@ -179,7 +177,7 @@
                         } @else if (entry.playerStatus === INJURED_STATUS) {
                           <span class="text-red-400" title="Injured">🩹</span>
                         } @else {
-                          <span class="text-zinc-500">{{ entry.role }}</span>
+                          <span class="text-text-muted">{{ entry.role }}</span>
                         }
                         {{ entry.name }}
                       </span>
@@ -224,7 +222,7 @@
                   [style.top.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.HOME).top"
                   [title]="dot.fullName">
                   <div
-                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-pointer"
+                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-text-primary flex items-center justify-center cursor-pointer"
                     [style.background-color]="homeTeamColor()"
                     [style.border-color]="homeTeamAccentColor()">
                     {{ dot.label }}
@@ -236,7 +234,7 @@
                       </span>
                     }
                     @if (getRedCardBadge(dot)) {
-                      <span class="absolute -left-2 top-3 min-w-4 h-4 px-1 rounded-full border border-red-300 bg-red-600 text-[10px] font-bold text-white leading-none flex items-center justify-center">
+                      <span class="absolute -left-2 top-3 min-w-4 h-4 px-1 rounded-full border border-red-300 bg-red-600 text-[10px] font-bold text-text-primary leading-none flex items-center justify-center">
                         {{ getRedCardBadge(dot) }}
                       </span>
                     }
@@ -263,7 +261,7 @@
                   [style.top.%]="getPitchPoint({ x: dot.x, y: dot.y }, TeamSide.AWAY).top"
                   [title]="dot.fullName">
                   <div
-                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-white flex items-center justify-center cursor-pointer"
+                    class="relative w-7 h-7 rounded-full border-2 shadow-md transition-all duration-300 text-[10px] font-bold text-text-primary flex items-center justify-center cursor-pointer"
                     [style.background-color]="awayTeamColor()"
                     [style.border-color]="awayTeamAccentColor()">
                     {{ dot.label }}
@@ -275,7 +273,7 @@
                       </span>
                     }
                     @if (getRedCardBadge(dot)) {
-                      <span class="absolute -left-2 top-3 min-w-4 h-4 px-1 rounded-full border border-red-300 bg-red-600 text-[10px] font-bold text-white leading-none flex items-center justify-center">
+                      <span class="absolute -left-2 top-3 min-w-4 h-4 px-1 rounded-full border border-red-300 bg-red-600 text-[10px] font-bold text-text-primary leading-none flex items-center justify-center">
                         {{ getRedCardBadge(dot) }}
                       </span>
                     }
@@ -297,13 +295,13 @@
 
             </div>
 
-            <div class="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 flex flex-col border-t-4 border-r-2" [style.border-top-color]="awayTeamColor()" [style.border-right-color]="awayTeamAccentColor()">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-zinc-300 mb-2">{{ awayTeam()?.name ?? 'Away' }}</h3>
+            <div class="rounded-lg border border-border bg-canvas/35 p-3 flex flex-col border-t-4 border-r-2" [style.border-top-color]="awayTeamColor()" [style.border-right-color]="awayTeamAccentColor()">
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-text-secondary mb-2">{{ awayTeam()?.name ?? 'Away' }}</h3>
               <div class="space-y-1.5 overflow-visible pr-1 flex-1">
                 @for (entry of getOnFieldLineup(TeamSide.AWAY); track entry.playerId) {
-                  <div class="rounded bg-zinc-900/70 px-2 py-1.5">
+                  <div class="rounded bg-panel/70 px-2 py-1.5">
                     <div class="flex items-center justify-between gap-2 text-[11px]">
-                      <span class="truncate text-zinc-100"><span class="text-zinc-400">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
+                      <span class="truncate text-text-primary"><span class="text-text-muted">{{ getSlotLabelInitials(entry.slotLabel) }}</span> {{ entry.name }}</span>
                       <div class="flex items-center gap-1 shrink-0">
                         @if (getLiveStarRank(entry.playerId); as rank) {
                           <span>{{ rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉' }}</span>
@@ -321,13 +319,13 @@
                 }
 
                 @if (getBenchLineup(TeamSide.AWAY).length > 0) {
-                  <div class="my-2 border-t border-zinc-700/70"></div>
+                  <div class="my-2 border-t border-border/70"></div>
                 }
 
                 @for (entry of getBenchLineup(TeamSide.AWAY); track entry.playerId) {
-                  <div class="rounded bg-zinc-900/50 px-2 py-1.5" [class.opacity-55]="entry.playerStatus === Role.BENCH">
+                  <div class="rounded bg-panel/50 px-2 py-1.5" [class.opacity-55]="entry.playerStatus === Role.BENCH">
                     <div class="flex items-center justify-between gap-2 text-[11px]">
-                      <span class="truncate text-zinc-300">
+                      <span class="truncate text-text-secondary">
                         @if (entry.playerStatus === Role.SUBSTITUTED_OUT) {
                           <span class="text-amber-500">⬇</span>
                         } @else if (entry.playerStatus === Role.DISMISSED) {
@@ -335,7 +333,7 @@
                         } @else if (entry.playerStatus === INJURED_STATUS) {
                           <span class="text-red-400" title="Injured">🩹</span>
                         } @else {
-                          <span class="text-zinc-500">{{ entry.role }}</span>
+                          <span class="text-text-muted">{{ entry.role }}</span>
                         }
                         {{ entry.name }}
                       </span>
@@ -367,25 +365,25 @@
 
   @if (showDevRatingTooltip && ratingTooltip(); as tooltip) {
     <div
-      class="pointer-events-none fixed z-200 w-64 rounded-lg border border-zinc-700 bg-zinc-900/95 p-2 text-[10px] text-zinc-200 shadow-xl shadow-black/40"
+      class="pointer-events-none fixed z-200 w-64 rounded-lg border border-border bg-panel/95 p-2 text-[10px] text-text-secondary shadow-xl shadow-black/40"
       [style.left.px]="tooltip.left"
       [style.top.px]="tooltip.top">
       @if (!tooltip.breakdown.isRated) {
-        <p class="text-zinc-300">{{ tooltip.breakdown.unavailableReason }}</p>
+        <p class="text-text-secondary">{{ tooltip.breakdown.unavailableReason }}</p>
       } @else {
-        <div class="mb-1 flex items-center justify-between border-b border-zinc-700 pb-1">
-          <span class="font-semibold text-zinc-100">Rating Breakdown</span>
+        <div class="mb-1 flex items-center justify-between border-b border-border pb-1">
+          <span class="font-semibold text-text-primary">Rating Breakdown</span>
           <span class="font-semibold text-amber-300">{{ tooltip.ratingLabel }}</span>
         </div>
-        <p class="mb-1 text-zinc-400">Base 5.0</p>
-        <div class="mb-1 rounded border border-emerald-800/70 bg-emerald-950/35 p-1">
+        <p class="mb-1 text-text-muted">Base 5.0</p>
+        <div class="mb-1 rounded border border-emerald-800/70 row-user-highlight/35 p-1">
           <div class="mb-0.5 flex items-center justify-between text-emerald-300">
             <span class="font-semibold">Positive</span>
             <span>+{{ formatRatingDelta(tooltip.breakdown.positiveTotal) }}</span>
           </div>
           <div class="space-y-0.5">
             @for (item of tooltip.breakdown.positiveItems; track item.label) {
-              <div class="flex items-center justify-between text-zinc-300">
+              <div class="flex items-center justify-between text-text-secondary">
                 <span>{{ item.label }} ({{ item.count }})</span>
                 <span>+{{ formatRatingDelta(item.points) }}</span>
               </div>
@@ -399,7 +397,7 @@
           </div>
           <div class="space-y-0.5">
             @for (item of tooltip.breakdown.negativeItems; track item.label) {
-              <div class="flex items-center justify-between text-zinc-300">
+              <div class="flex items-center justify-between text-text-secondary">
                 <span>{{ item.label }} ({{ item.count }})</span>
                 <span>-{{ formatRatingDelta(item.points) }}</span>
               </div>

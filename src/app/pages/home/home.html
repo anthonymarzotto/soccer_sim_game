@@ -1,57 +1,57 @@
-<div class="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-100 p-6">
+<div class="min-h-screen bg-canvas flex flex-col items-center justify-center text-text-primary p-6">
   <div class="max-w-xl w-full text-center space-y-8">
     
     <div class="space-y-2">
-      <h1 class="text-5xl font-bold tracking-tight text-emerald-400">FC Sim</h1>
-      <p class="text-zinc-400 text-lg">Text-Based Soccer Simulator</p>
+      <h1 class="text-5xl font-extrabold font-display tracking-tight text-accent">FC SIM</h1>
+      <p class="text-text-secondary text-lg">Text-Based Soccer Simulator</p>
     </div>
     
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl">
+    <div class="bg-panel border border-border rounded-xl p-8">
       @if (!hasLeague()) {
-        <p class="text-zinc-300 mb-8 leading-relaxed">
+        <p class="text-text-secondary mb-8 leading-relaxed">
           Take control of a generated league. View standings, manage team rosters, and simulate weekly matches.
         </p>
         
         <button 
           (click)="generateLeague()"
           [disabled]="isReadOnlyMode()"
-          class="w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20">
+          class="w-full bg-accent text-canvas font-bold py-4 px-6 rounded-lg hover:opacity-90 transition-all active:scale-[0.98] cursor-pointer">
           Generate New League
         </button>
       } @else {
-        <h2 class="text-xl font-semibold text-white mb-2">League Ready</h2>
-        <p class="text-zinc-400 mb-6">
+        <h2 class="text-xl font-bold font-display text-text-primary mb-2">LEAGUE READY</h2>
+        <p class="text-text-muted mb-6">
           Continue your saved season, or regenerate to start over.
         </p>
 
         @if (selectedTeam(); as team) {
           <button
             (click)="continueLeague()"
-            class="w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20"
+            class="w-full bg-accent text-canvas font-bold py-4 px-6 rounded-lg hover:opacity-90 transition-all active:scale-[0.98] cursor-pointer"
           >
             Continue League as {{ team.name }}
           </button>
         } @else {
-          <h3 class="text-left text-sm font-semibold uppercase tracking-wide text-zinc-400 mb-3">Select Your Team</h3>
+          <h3 class="text-left text-sm font-bold font-display uppercase tracking-wide text-text-muted mb-3">Select Your Team</h3>
           <div class="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar mb-6">
             @for (team of gameService.league()?.teams; track team.id) {
               <button
                 (click)="selectTeam(team.id)"
                 [disabled]="isReadOnlyMode()"
-                class="w-full text-left px-4 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors border border-zinc-700/50 hover:border-emerald-500/50"
+                class="w-full text-left px-4 py-3 rounded-lg bg-canvas hover:bg-panel text-text-secondary hover:text-text-primary transition-all border border-border hover:border-accent cursor-pointer"
               >
                 <div class="flex justify-between items-center">
                   <span class="font-medium">{{ team.name }}</span>
-                  <span class="text-xs text-zinc-500 font-mono">OVR {{ gameService.calculateTeamOverall(team) }}</span>
+                  <span class="text-xs text-text-muted font-semibold tabular-nums">OVR {{ gameService.calculateTeamOverall(team) }}</span>
                 </div>
               </button>
             }
           </div>
         }
 
-        <div class="mt-6 border-t border-zinc-800 pt-6 text-left">
-          <p class="text-xs uppercase tracking-wide text-amber-400 font-semibold mb-2">Destructive action</p>
-          <p class="text-sm text-zinc-400 mb-4">
+        <div class="mt-6 border-t border-border pt-6 text-left">
+          <p class="text-xs uppercase tracking-wide text-warning font-bold mb-2">Destructive action</p>
+          <p class="text-sm text-text-muted mb-4">
             Regenerating deletes your current league progress and resets schedule week selection.
           </p>
 
@@ -59,27 +59,27 @@
             <button
               (click)="openRegenerateConfirmation()"
               [disabled]="isReadOnlyMode()"
-              class="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold py-3 px-6 rounded-xl transition-colors border border-zinc-700"
+              class="w-full bg-canvas hover:bg-panel text-text-secondary font-semibold py-3 px-6 rounded-lg transition-all border border-border cursor-pointer"
             >
               Regenerate League
             </button>
           } @else {
-            <div class="rounded-xl border border-red-500/40 bg-red-950/40 p-4 space-y-4">
-              <p class="text-sm text-red-200">
+            <div class="rounded-lg border border-danger/30 bg-danger/10 p-4 space-y-4">
+              <p class="text-sm text-text-primary">
                 This cannot be undone. Your current league table, schedule progress, and selected team will be removed.
               </p>
               <div class="flex gap-3">
                 <button
                   (click)="confirmRegenerateLeague()"
                   [disabled]="isRegenerating() || isReadOnlyMode()"
-                  class="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-900/50 disabled:text-red-300/70 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                  class="flex-1 bg-danger text-white font-bold py-3 px-4 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {{ isRegenerating() ? 'Regenerating...' : 'Confirm Regenerate' }}
                 </button>
                 <button
                   (click)="cancelRegenerateConfirmation()"
                   [disabled]="isRegenerating()"
-                  class="flex-1 bg-zinc-800 hover:bg-zinc-700 disabled:text-zinc-500 text-zinc-200 font-semibold py-3 px-4 rounded-lg transition-colors border border-zinc-700"
+                  class="flex-1 bg-canvas hover:bg-panel text-text-secondary font-semibold py-3 px-4 rounded-lg transition-all border border-border cursor-pointer"
                 >
                   Cancel
                 </button>

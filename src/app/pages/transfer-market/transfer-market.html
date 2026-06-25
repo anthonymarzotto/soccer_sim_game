@@ -1,23 +1,23 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-6xl mx-auto space-y-8">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-6xl space-y-8">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-white">Transfer Market</h1>
-        <p class="text-zinc-400 mt-1">View currently listed players across the league.</p>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Transfer Market</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">View currently listed players across the league</p>
       </div>
 
       @if (transferWindowPhase() !== 'closed') {
       <div
-        class="flex items-center gap-2.5 px-4 py-2 rounded-xl text-sm font-semibold uppercase tracking-wider border bg-emerald-950/40 text-emerald-400 border-emerald-800/60 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-        <span class="material-icons text-lg">payments</span>
+        class="flex items-center gap-2.5 px-4 py-2 rounded border bg-accent/10 text-accent border-accent/20 text-xs font-bold uppercase tracking-wider">
+        <span class="material-icons text-base">payments</span>
         <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Window Open ({{ weeksRemainingInWindow() }}
           weeks left)</span>
       </div>
       } @else {
       <div
-        class="flex items-center gap-2.5 px-4 py-2 rounded-xl text-sm font-semibold uppercase tracking-wider border bg-zinc-900 border-zinc-800 text-zinc-400">
-        <span class="material-icons text-lg">lock</span>
+        class="flex items-center gap-2.5 px-4 py-2 rounded border bg-panel border-border text-text-muted text-xs font-bold uppercase tracking-wider">
+        <span class="material-icons text-base">lock</span>
         <span>Transfer Window Closed</span>
       </div>
       }
@@ -26,15 +26,15 @@
     <!-- Closed Window Banner -->
     @if (transferWindowPhase() === 'closed') {
     <div
-      class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-2xl space-y-4 my-12">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800 text-zinc-500 mb-2">
+      class="bg-panel border border-border rounded p-8 text-center max-w-xl mx-auto space-y-4 my-12">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded bg-canvas border border-border text-text-muted mb-2">
         <span class="material-icons text-3xl">shopping_cart_checkout</span>
       </div>
-      <h2 class="text-xl font-bold text-white">Market is Currently Closed</h2>
-      <p class="text-sm text-zinc-400 leading-relaxed">
+      <h2 class="text-2xl font-bold font-display text-text-primary uppercase">Market is Currently Closed</h2>
+      <p class="text-sm text-text-secondary leading-relaxed">
         The transfer window is currently closed. You can buy or sell players when the next window opens.
       </p>
-      <div class="text-xs text-emerald-400 font-medium">
+      <div class="text-xs text-accent font-bold font-display uppercase tracking-wider">
         Opens Week 1 (Summer Window) and Week 20 (Winter Window).
       </div>
     </div>
@@ -43,14 +43,14 @@
     <div class="space-y-6">
       <!-- Incoming Offers Section -->
       @if (incomingOffers().length > 0) {
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+      <div class="bg-panel border border-border rounded p-6 space-y-4">
         <div class="flex items-center gap-3">
-          <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400">
+          <div class="flex items-center justify-center w-10 h-10 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
             <span class="material-icons text-xl">handshake</span>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-white">Incoming Transfer Offers</h2>
-            <p class="text-xs text-zinc-400">Review bids received for your transfer-listed players.</p>
+            <h2 class="text-xl font-bold font-display text-text-primary uppercase">Incoming Transfer Offers</h2>
+            <p class="text-xs text-text-muted">Review bids received for your transfer-listed players.</p>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -58,24 +58,24 @@
           @let oPlayer = gameService.getPlayer(offer.playerId);
           @let oBuyer = gameService.getTeam(offer.buyerTeamId);
           @if (oPlayer && oBuyer) {
-          <div class="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="bg-canvas border border-border rounded p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="space-y-1">
-              <div class="text-sm font-semibold text-white">{{ oPlayer.name }}</div>
-              <div class="text-xs text-zinc-400">
-                Bid by <strong class="text-zinc-300">{{ oBuyer.name }}</strong>:
-                <span class="text-emerald-400 font-semibold font-mono">{{ offer.fee | currency:'USD':'symbol':'1.0-0' }}</span>
+              <div class="text-sm font-bold font-display uppercase tracking-tight text-text-primary">{{ oPlayer.name }}</div>
+              <div class="text-xs text-text-secondary">
+                Bid by <strong class="text-text-primary">{{ oBuyer.name }}</strong>:
+                <span class="text-accent font-bold font-mono">{{ offer.fee | currency:'USD':'symbol':'1.0-0' }}</span>
               </div>
-              <div class="text-[10px] text-zinc-500 font-mono">
+              <div class="text-[10px] text-text-muted font-mono">
                 Market Value: {{ calculateMarketValue(oPlayer, currentSeasonYear()) | currency:'USD':'symbol':'1.0-0' }} | Wage: {{ calculatePlayerWageCost(oPlayer, currentSeasonYear()) | number:'1.1-1' }} pts
               </div>
             </div>
             <div class="flex items-center gap-2 self-end sm:self-auto">
               <button (click)="rejectOffer(offer.id)"
-                class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 text-zinc-300 border border-zinc-800 hover:bg-zinc-850 hover:text-white transition-colors cursor-pointer select-none">
+                class="px-3 py-1.5 rounded text-xs font-bold font-display bg-panel text-text-secondary border border-border hover:bg-border-hover hover:text-text-primary transition-all cursor-pointer select-none">
                 Decline
               </button>
               <button (click)="acceptOffer(offer.id)"
-                class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition-colors cursor-pointer select-none">
+                class="px-3 py-1.5 rounded text-xs font-bold font-display bg-accent text-canvas hover:bg-accent/90 transition-all cursor-pointer select-none">
                 Accept
               </button>
             </div>
@@ -87,23 +87,23 @@
       }
       <!-- Filters Bar -->
       <div
-        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl shadow-lg">
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-panel/50 border border-border p-4 rounded">
         <!-- Search -->
         <div>
           <label for="search-input"
-            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Search Player</label>
+            class="text-xs font-bold font-display uppercase tracking-wider text-text-muted block mb-1.5">Search Player</label>
           <input id="search-input" type="text" [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event); pageIndex.set(0)" placeholder="Enter name..."
-            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium placeholder-zinc-600" />
+            class="w-full bg-canvas border border-border rounded px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-medium placeholder-text-muted/50" />
         </div>
 
         <!-- Position Filter -->
         <div>
           <label for="position-select"
-            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Position</label>
+            class="text-xs font-bold font-display uppercase tracking-wider text-text-muted block mb-1.5">Position</label>
           <select id="position-select" [ngModel]="selectedPosition()"
             (ngModelChange)="selectedPosition.set($event); pageIndex.set(0)"
-            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium">
+            class="w-full bg-canvas border border-border rounded px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-medium">
             <option value="">All Positions</option>
             @for (pos of availablePositions(); track pos) {
             <option [value]="pos">{{ pos }}</option>
@@ -114,10 +114,10 @@
         <!-- Team Filter -->
         <div>
           <label for="team-select"
-            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Team</label>
+            class="text-xs font-bold font-display uppercase tracking-wider text-text-muted block mb-1.5">Team</label>
           <select id="team-select" [ngModel]="selectedTeam()"
             (ngModelChange)="selectedTeam.set($event); pageIndex.set(0)"
-            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium">
+            class="w-full bg-canvas border border-border rounded px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-medium">
             <option value="">All Teams</option>
             @for (team of availableTeams(); track team.id) {
             <option [value]="team.id">{{ team.name }}</option>
@@ -128,10 +128,10 @@
         <!-- Market Value Filter -->
         <div>
           <label for="value-select"
-            class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">Max Market Value</label>
+            class="text-xs font-bold font-display uppercase tracking-wider text-text-muted block mb-1.5">Max Market Value</label>
           <select id="value-select" [ngModel]="maxMarketValue()"
             (ngModelChange)="maxMarketValue.set(+$event); pageIndex.set(0)"
-            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-medium">
+            class="w-full bg-canvas border border-border rounded px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-medium">
             <option value="0">Any Value</option>
             <option value="250000">Under $250k</option>
             <option value="500000">Under $500k</option>
@@ -144,108 +144,113 @@
       </div>
 
       <!-- Listings Table -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="bg-panel border border-border rounded overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
             <thead
-              class="text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800 bg-zinc-900/70 select-none">
+              class="text-xs uppercase tracking-wider text-text-muted border-b border-border bg-panel select-none">
               <tr>
-                <th scope="col" class="py-4 px-6 font-semibold cursor-pointer hover:text-white transition-colors"
+                <th scope="col" class="py-4 px-6 font-bold cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('team')">
                   Team {{ getSortIndicator('team') }}
                 </th>
-                <th scope="col" class="py-4 px-6 font-semibold cursor-pointer hover:text-white transition-colors"
+                <th scope="col" class="py-4 px-6 font-bold cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('name')">
                   Player {{ getSortIndicator('name') }}
                 </th>
-                <th scope="col" class="py-4 px-6 font-semibold cursor-pointer hover:text-white transition-colors"
+                <th scope="col" class="py-4 px-6 font-bold cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('position')">
                   Position {{ getSortIndicator('position') }}
                 </th>
                 <th scope="col"
-                  class="py-4 px-6 font-semibold text-center cursor-pointer hover:text-white transition-colors"
+                  class="py-4 px-6 font-bold text-center cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('overall')">
                   OVR {{ getSortIndicator('overall') }}
                 </th>
                 <th scope="col"
-                  class="py-4 px-6 font-semibold text-center cursor-pointer hover:text-white transition-colors"
+                  class="py-4 px-6 font-bold text-center cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('age')">
                   Age {{ getSortIndicator('age') }}
                 </th>
                 <th scope="col"
-                  class="py-4 px-6 font-semibold text-right cursor-pointer hover:text-white transition-colors"
+                  class="py-4 px-6 font-bold text-right cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('value')">
                   Market Value {{ getSortIndicator('value') }}
                 </th>
                 <th scope="col"
-                  class="py-4 px-6 font-semibold text-right cursor-pointer hover:text-white transition-colors"
+                  class="py-4 px-6 font-bold text-right cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('wage')">
                   Wage {{ getSortIndicator('wage') }}
                 </th>
                 <th scope="col"
-                  class="py-4 px-6 font-semibold text-center cursor-pointer hover:text-white transition-colors"
+                  class="py-4 px-6 font-bold text-center cursor-pointer hover:text-text-primary transition-colors"
                   (click)="toggleSort('contract')">
                   Contract {{ getSortIndicator('contract') }}
                 </th>
-                <th scope="col" class="py-4 px-6 font-semibold text-right">Actions</th>
+                <th scope="col" class="py-4 px-6 font-bold text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               @for (row of paginatedPlayers(); track row.player.id) {
-              <tr class="border-b border-zinc-800/60 hover:bg-zinc-800/30 transition-colors"
-                [class.bg-emerald-950]="isUserTeamPlayer(row.player)">
+              <tr class="border-b border-border/30 hover:bg-canvas/50 transition-colors"
+                [class.row-user-highlight]="isUserTeamPlayer(row.player)">
                 <!-- Team -->
-                <td class="py-3.5 px-6 font-medium text-zinc-200">
+                <td class="py-3.5 px-6 font-medium text-text-secondary"
+                  [class.cell-user-highlight]="isUserTeamPlayer(row.player)">
                   <div class="flex items-center gap-2.5">
                     <app-team-badge [teamId]="row.team.id" size="sm" [link]="true" />
                   </div>
                 </td>
 
                 <!-- Name -->
-                <td class="py-3.5 px-6 font-semibold text-white">
+                <td class="py-3.5 px-6 font-bold text-text-primary uppercase font-display tracking-tight text-base animate-none">
                   <a [routerLink]="['/player', row.player.id]"
-                    class="hover:text-emerald-400 hover:underline transition-colors">
+                    class="hover:text-accent hover:underline transition-colors">
                     {{ row.player.name }}
                   </a>
                 </td>
 
                 <!-- Position -->
                 <td class="py-3.5 px-6">
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono"
-                    [class.bg-yellow-500/20]="row.player.position === Position.GOALKEEPER"
-                    [class.text-yellow-400]="row.player.position === Position.GOALKEEPER"
-                    [class.bg-blue-500/20]="row.player.position === Position.DEFENDER"
+                  <span class="px-2 py-0.5 rounded border text-[9px] font-bold font-display"
+                    [class.bg-warning/10]="row.player.position === Position.GOALKEEPER"
+                    [class.text-warning]="row.player.position === Position.GOALKEEPER"
+                    [class.border-warning/20]="row.player.position === Position.GOALKEEPER"
+                    [class.bg-blue-400/10]="row.player.position === Position.DEFENDER"
                     [class.text-blue-400]="row.player.position === Position.DEFENDER"
-                    [class.bg-emerald-500/20]="row.player.position === Position.MIDFIELDER"
-                    [class.text-emerald-400]="row.player.position === Position.MIDFIELDER"
-                    [class.bg-red-500/20]="row.player.position === Position.FORWARD"
-                    [class.text-red-400]="row.player.position === Position.FORWARD">
+                    [class.border-blue-400/20]="row.player.position === Position.DEFENDER"
+                    [class.bg-accent/10]="row.player.position === Position.MIDFIELDER"
+                    [class.text-accent]="row.player.position === Position.MIDFIELDER"
+                    [class.border-accent/20]="row.player.position === Position.MIDFIELDER"
+                    [class.bg-danger/10]="row.player.position === Position.FORWARD"
+                    [class.text-danger]="row.player.position === Position.FORWARD"
+                    [class.border-danger/20]="row.player.position === Position.FORWARD">
                     {{ row.player.position }}
                   </span>
                 </td>
 
                 <!-- OVR -->
-                <td class="py-3.5 px-6 text-center font-bold text-white">
+                <td class="py-3.5 px-6 text-center font-bold text-text-primary">
                   {{ row.overall }}
                 </td>
 
                 <!-- Age -->
-                <td class="py-3.5 px-6 text-center text-zinc-300">
+                <td class="py-3.5 px-6 text-center text-text-muted">
                   {{ row.age }}
                 </td>
 
                 <!-- Value -->
-                <td class="py-3.5 px-6 text-right text-emerald-400 font-mono font-medium">
+                <td class="py-3.5 px-6 text-right text-accent font-mono font-bold tabular-nums">
                   {{ row.value | currency:'USD':'symbol':'1.0-0' }}
                 </td>
 
                 <!-- Wage -->
-                <td class="py-3.5 px-6 text-right text-amber-400 font-mono font-medium">
+                <td class="py-3.5 px-6 text-right text-warning font-mono font-bold tabular-nums">
                   {{ row.wage | number:'1.1-1' }} pts
                 </td>
 
                 <!-- Contract -->
-                <td class="py-3.5 px-6 text-center text-zinc-300 font-mono font-medium">
+                <td class="py-3.5 px-6 text-center text-text-secondary font-mono font-bold tabular-nums">
                   {{ row.contract }} yr
                 </td>
 
@@ -253,12 +258,12 @@
                 <td class="py-3.5 px-6 text-right">
                   @if (isUserTeamPlayer(row.player)) {
                   <button (click)="removePlayerFromTransferList(row.player.id)"
-                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/50 hover:bg-red-900 hover:text-white transition-colors cursor-pointer select-none">
+                    class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-danger/10 text-danger border border-danger/20 hover:bg-danger hover:text-text-primary transition-all cursor-pointer select-none">
                     Delist
                   </button>
                   } @else {
                   <button (click)="makeTransferOffer(row.player, row.value)"
-                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition-colors cursor-pointer select-none">
+                    class="rounded px-2.5 py-1.5 text-xs font-bold font-display bg-accent text-canvas hover:bg-accent/90 transition-all cursor-pointer select-none">
                     Offer
                   </button>
                   }
@@ -266,7 +271,7 @@
               </tr>
               } @empty {
               <tr>
-                <td colspan="9" class="text-center py-10 text-zinc-500">
+                <td colspan="9" class="text-center py-10 text-text-muted">
                   No listed players matching current filters.
                 </td>
               </tr>
@@ -278,29 +283,29 @@
         <!-- Pagination Bar -->
         @if (totalPages() > 1) {
         <div
-          class="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-900/40 text-xs text-zinc-400 select-none">
+          class="flex items-center justify-between px-6 py-4 border-t border-border bg-panel text-xs text-text-muted select-none">
           <div>
-            Showing <span class="font-semibold text-white">{{ pageIndex() * pageSize() + 1 }}</span> to
-            <span class="font-semibold text-white">{{ Math.min((pageIndex() + 1) * pageSize(), totalPlayers()) }}</span>
+            Showing <span class="font-bold text-text-primary">{{ pageIndex() * pageSize() + 1 }}</span> to
+            <span class="font-bold text-text-primary">{{ Math.min((pageIndex() + 1) * pageSize(), totalPlayers()) }}</span>
             of
-            <span class="font-semibold text-white">{{ totalPlayers() }}</span> players
+            <span class="font-bold text-text-primary">{{ totalPlayers() }}</span> players
           </div>
           <div class="flex items-center gap-1.5">
             <button (click)="previousPage()" [disabled]="pageIndex() === 0"
-              class="p-2 rounded-lg bg-zinc-850 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed border border-zinc-800/80 transition-colors text-white">
+              class="p-2 rounded bg-canvas hover:bg-panel disabled:opacity-30 disabled:cursor-not-allowed border border-border transition-colors text-text-primary">
               <span class="material-icons text-sm block">chevron_left</span>
             </button>
             @for (p of [].constructor(totalPages()); track $index) {
-            <button (click)="goToPage($index)" class="w-8 h-8 rounded-lg font-semibold transition-colors border"
-              [class.bg-emerald-500]="pageIndex() === $index" [class.text-zinc-950]="pageIndex() === $index"
-              [class.border-emerald-600]="pageIndex() === $index" [class.bg-zinc-850]="pageIndex() !== $index"
-              [class.text-white]="pageIndex() !== $index" [class.border-zinc-800/80]="pageIndex() !== $index"
-              [class.hover:bg-zinc-850]="pageIndex() !== $index">
+            <button (click)="goToPage($index)" class="w-8 h-8 rounded font-bold font-display transition-colors border"
+              [class.bg-accent]="pageIndex() === $index" [class.text-canvas]="pageIndex() === $index"
+              [class.border-accent]="pageIndex() === $index" [class.bg-canvas]="pageIndex() !== $index"
+              [class.text-text-secondary]="pageIndex() !== $index" [class.border-border]="pageIndex() !== $index"
+              [class.hover:bg-panel]="pageIndex() !== $index">
               {{ $index + 1 }}
             </button>
             }
             <button (click)="nextPage()" [disabled]="pageIndex() === totalPages() - 1"
-              class="p-2 rounded-lg bg-zinc-850 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed border border-zinc-800/80 transition-colors text-white">
+              class="p-2 rounded bg-canvas hover:bg-panel disabled:opacity-30 disabled:cursor-not-allowed border border-border transition-colors text-text-primary">
               <span class="material-icons text-sm block">chevron_right</span>
             </button>
           </div>
@@ -315,91 +320,91 @@
 @if (showOfferModal() && selectedPlayerForOffer()) {
 @let p = selectedPlayerForOffer();
 <div class="fixed inset-0 flex items-center justify-center z-50 p-4">
-  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="closeOfferModal()"
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-xs" (click)="closeOfferModal()"
     (keydown)="closeOfferModal()" tabindex="0" role="button" aria-label="Close modal"></div>
 
   <div
-    class="relative bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl z-10 transition-all duration-300 transform scale-100">
-    <div class="absolute top-0 left-0 w-full h-1" [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
-      [class.bg-cyan-500]="transferWindowPhase() === 'winter'"></div>
+    class="relative bg-panel border border-border rounded w-full max-w-md overflow-hidden shadow-2xl z-10 transition-all duration-300 transform scale-100">
+    <div class="absolute top-0 left-0 w-full h-1" [class.bg-accent]="transferWindowPhase() === 'summer'"
+      [class.bg-blue-400]="transferWindowPhase() === 'winter'"></div>
 
     <div class="p-6 space-y-4">
       @if (isSubmitting()) {
         <div class="flex flex-col items-center justify-center py-8 space-y-4 select-none">
           <div class="relative w-20 h-20 flex items-center justify-center">
-            <div class="absolute inset-0 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
-            <span class="material-icons text-4xl text-white animate-[spin_3s_linear_infinite]">sports_soccer</span>
-            <span class="absolute -top-1 -right-1 material-icons text-emerald-400 text-lg animate-bounce delay-100">payments</span>
-            <span class="absolute -bottom-1 -left-1 material-icons text-amber-500 text-lg animate-bounce delay-300">monetization_on</span>
+            <div class="absolute inset-0 border-4 border-accent/20 border-t-accent rounded-full animate-spin"></div>
+            <span class="material-icons text-4xl text-text-primary animate-[spin_3s_linear_infinite]">sports_soccer</span>
+            <span class="absolute -top-1 -right-1 material-icons text-accent text-lg animate-bounce delay-100">payments</span>
+            <span class="absolute -bottom-1 -left-1 material-icons text-warning text-lg animate-bounce delay-300">monetization_on</span>
           </div>
           <div class="text-center space-y-1">
-            <p class="text-sm font-bold text-white tracking-wide animate-pulse">Arranging transfer...</p>
-            <p class="text-xs text-zinc-400">Negotiating terms with agent and club 🤝</p>
+            <p class="text-sm font-bold text-text-primary tracking-wide animate-pulse">Arranging transfer...</p>
+            <p class="text-xs text-text-muted">Negotiating terms with agent and club 🤝</p>
           </div>
         </div>
       } @else if (offerSuccess()) {
         <div class="flex flex-col items-center justify-center py-8 space-y-4 select-none">
-          <div class="flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div class="flex items-center justify-center w-16 h-16 rounded bg-accent/10 text-accent border border-accent/20">
             <span class="material-icons text-3xl animate-bounce">check_circle</span>
           </div>
           <div class="text-center space-y-1">
-            <p class="text-sm font-bold text-white tracking-wide">Transfer Accepted!</p>
-            <p class="text-xs text-zinc-400">{{ offerSuccess() }}</p>
+            <p class="text-sm font-bold text-text-primary tracking-wide">Transfer Accepted!</p>
+            <p class="text-xs text-text-muted">{{ offerSuccess() }}</p>
           </div>
         </div>
       } @else {
         <div class="flex items-center gap-3">
-          <div class="flex items-center justify-center w-10 h-10 rounded-lg"
-            [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
-            [class.text-emerald-400]="transferWindowPhase() === 'summer'"
-            [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
-            [class.text-cyan-400]="transferWindowPhase() === 'winter'">
+          <div class="flex items-center justify-center w-10 h-10 rounded"
+            [class.bg-accent/10]="transferWindowPhase() === 'summer'"
+            [class.text-accent]="transferWindowPhase() === 'summer'"
+            [class.bg-blue-500/10]="transferWindowPhase() === 'winter'"
+            [class.text-blue-400]="transferWindowPhase() === 'winter'">
             <span class="material-icons text-xl">handshake</span>
           </div>
-          <h3 class="text-lg font-bold text-white">Make Transfer Offer</h3>
+          <h3 class="text-xl font-bold font-display text-text-primary uppercase">Make Transfer Offer</h3>
         </div>
 
-        <p class="text-sm text-zinc-300 leading-relaxed">
-          Submit an offer to buy <strong class="text-white">{{ p?.name }}</strong>.
-          The market value is estimated at <strong class="text-emerald-400 font-mono">{{ selectedPlayerValue() |
+        <p class="text-sm text-text-secondary leading-relaxed">
+          Submit an offer to buy <strong class="text-text-primary">{{ p?.name }}</strong>.
+          The market value is estimated at <strong class="text-accent font-mono font-bold">{{ selectedPlayerValue() |
             currency:'USD':'symbol':'1.0-0' }}</strong>.
         </p>
 
         <!-- Financial Status -->
-        <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-3.5 space-y-2 text-xs">
+        <div class="rounded bg-canvas border border-border p-3.5 space-y-2 text-xs">
           <div class="flex justify-between">
-            <span class="text-zinc-500">Your Transfer Budget:</span>
-            <span class="text-zinc-200 font-mono font-medium">{{ userBudget() | currency:'USD':'symbol':'1.0-0' }}</span>
+            <span class="text-text-muted">Your Transfer Budget:</span>
+            <span class="text-text-secondary font-mono font-bold tabular-nums">{{ userBudget() | currency:'USD':'symbol':'1.0-0' }}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-zinc-500">Your Wage Headroom:</span>
-            <span class="text-zinc-200 font-mono font-medium">{{ userWageHeadroom() | number:'1.1-1' }} pts</span>
+            <span class="text-text-muted">Your Wage Headroom:</span>
+            <span class="text-text-secondary font-mono font-bold tabular-nums">{{ userWageHeadroom() | number:'1.1-1' }} pts</span>
           </div>
-          <div class="border-t border-zinc-800/60 pt-2 flex justify-between">
-            <span class="text-zinc-500">Player Wage Cost:</span>
-            <span class="text-amber-400 font-mono font-medium">{{ targetPlayerWage() | number:'1.1-1' }} pts</span>
+          <div class="border-t border-border pt-2 flex justify-between">
+            <span class="text-text-muted">Player Wage Cost:</span>
+            <span class="text-warning font-mono font-bold tabular-nums">{{ targetPlayerWage() | number:'1.1-1' }} pts</span>
           </div>
         </div>
 
         <!-- Bid Input -->
         <div class="space-y-1.5">
-          <label for="bid-amount" class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">Offer Amount ($)</label>
+          <label for="bid-amount" class="text-xs font-bold font-display uppercase tracking-wider text-text-muted block">Offer Amount ($)</label>
           <input id="bid-amount" type="text" [value]="formatCurrency(offerBidAmount())"
             (input)="onBidInput($event)"
-            class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-mono font-semibold" />
-          <span class="text-xs text-zinc-500 block mt-1">
-            Includes an estimated agent fee of <span class="font-mono text-zinc-400 font-medium">{{ getAgentFee(offerBidAmount()) | currency:'USD':'symbol':'1.0-0' }}</span> (paid to agent).
+            class="w-full bg-canvas border border-border rounded px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-mono font-bold" />
+          <span class="text-xs text-text-muted block mt-1">
+            Includes an estimated agent fee of <span class="font-mono text-text-secondary font-bold">{{ getAgentFee(offerBidAmount()) | currency:'USD':'symbol':'1.0-0' }}</span> (paid to agent).
           </span>
         </div>
 
         <!-- Validation Errors -->
         @if (offerBidAmount() > userBudget()) {
-        <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+        <div class="flex items-center gap-2 text-xs text-danger bg-danger/10 border border-danger/20 rounded p-3">
           <span class="material-icons text-sm">warning</span>
           <span>Insufficient transfer budget (bid exceeds your available budget).</span>
         </div>
         } @else if (targetPlayerWage() > userWageHeadroom()) {
-        <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+        <div class="flex items-center gap-2 text-xs text-danger bg-danger/10 border border-danger/20 rounded p-3">
           <span class="material-icons text-sm">warning</span>
           <span>Insufficient wage cap headroom (player exceeds your available headroom).</span>
         </div>
@@ -407,13 +412,13 @@
 
         <!-- Status Alerts -->
         @if (offerError()) {
-        <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+        <div class="flex items-center gap-2 text-xs text-danger bg-danger/10 border border-danger/20 rounded p-3">
           <span class="material-icons text-sm">error</span>
           <span>{{ offerError() }}</span>
         </div>
         }
         @if (offerSuccess()) {
-        <div class="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-3">
+        <div class="flex items-center gap-2 text-xs text-accent bg-accent/10 border border-accent/20 rounded p-3">
           <span class="material-icons text-sm">check_circle</span>
           <span>{{ offerSuccess() }}</span>
         </div>
@@ -421,12 +426,12 @@
 
         <div class="flex gap-3 pt-2">
           <button (click)="closeOfferModal()"
-            class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer text-center">
+            class="flex-1 px-4 py-2.5 rounded text-xs font-bold font-display bg-panel text-text-secondary border border-border hover:bg-border-hover hover:text-text-primary transition-all cursor-pointer text-center">
             Cancel
           </button>
           <button (click)="submitOffer()"
             [disabled]="offerBidAmount() <= 0 || offerBidAmount() > userBudget() || targetPlayerWage() > userWageHeadroom()"
-            class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer text-center select-none">
+            class="flex-1 px-4 py-2.5 rounded text-xs font-bold font-display bg-accent text-canvas hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-center select-none">
             Submit Offer
           </button>
         </div>

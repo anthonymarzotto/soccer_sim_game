@@ -1,28 +1,28 @@
-<nav class="fixed top-0 left-0 h-full w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+<nav class="fixed top-0 left-0 h-full w-64 bg-panel border-r border-border flex flex-col">
   <!-- Logo/Title -->
-  <div class="p-6 border-b border-zinc-800">
+  <div class="p-6 border-b border-border">
     <a
       routerLink="/"
-      class="inline-flex items-center gap-3 text-white hover:text-emerald-300 transition-colors"
+      class="inline-flex items-center gap-3 text-text-primary hover:text-accent transition-colors"
     >
       <span class="material-icons text-2xl">sports_soccer</span>
-      <h1 class="text-xl font-bold">{{ appTitle }}</h1>
+      <h1 class="text-xl font-bold font-display uppercase tracking-tight">{{ appTitle }}</h1>
     </a>
   </div>
 
   <!-- Season Controls -->
   @if (hasLeague()) {
-    <div class="px-4 py-3 border-b border-zinc-800 space-y-3">
+    <div class="px-4 py-3 border-b border-border space-y-3">
       <app-season-controls></app-season-controls>
       
       @if (transferWindowPhase() !== 'closed') {
         <div class="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider select-none border"
-             [class.bg-emerald-950/40]="transferWindowPhase() === 'summer'"
-             [class.text-emerald-400]="transferWindowPhase() === 'summer'"
-             [class.border-emerald-800/60]="transferWindowPhase() === 'summer'"
-             [class.bg-cyan-950/40]="transferWindowPhase() === 'winter'"
-             [class.text-cyan-400]="transferWindowPhase() === 'winter'"
-             [class.border-cyan-800/60]="transferWindowPhase() === 'winter'">
+             [class.bg-accent/10]="transferWindowPhase() === 'summer'"
+             [class.text-accent]="transferWindowPhase() === 'summer'"
+             [class.border-accent/30]="transferWindowPhase() === 'summer'"
+             [class.bg-warning/10]="transferWindowPhase() === 'winter'"
+             [class.text-warning]="transferWindowPhase() === 'winter'"
+             [class.border-warning/30]="transferWindowPhase() === 'winter'">
           <span class="material-icons text-[14px]">payments</span>
           <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Window</span>
         </div>
@@ -36,34 +36,34 @@
       @if (hasLeague()) {
         <!-- League Section -->
         <div class="space-y-1">
-          <div class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase px-3 mb-1.5">League</div>
+          <div class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase px-3 mb-1.5">League</div>
           
           <a
             routerLink="/standings"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">leaderboard</span>
             <span>Standings</span>
           </a>
 
           <a
             routerLink="/schedule"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">calendar_today</span>
             <span>Schedule</span>
           </a>
 
           <a
             routerLink="/news"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">newspaper</span>
             <span>News</span>
           </a>
@@ -71,26 +71,26 @@
 
         <!-- Squad Section -->
         <div class="space-y-1">
-          <div class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase px-3 mb-1.5">Squad</div>
+          <div class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase px-3 mb-1.5">Squad</div>
 
           @if (userTeamId()) {
             <a
               [routerLink]="['/team', userTeamId()]"
-              routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
+              routerLinkActive="active-nav"
               [routerLinkActiveOptions]="{exact: true}"
-              class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+              class="nav-link"
             >
-              <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+              <span class="indicator"></span>
               <span class="material-icons text-xl">sports_soccer</span>
               <span>My Team</span>
             </a>
 
             <a
               [routerLink]="['/team', userTeamId(), 'schedule']"
-              routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-              class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+              routerLinkActive="active-nav"
+              class="nav-link"
             >
-              <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+              <span class="indicator"></span>
               <span class="material-icons text-xl">date_range</span>
               <span>Team Schedule</span>
             </a>
@@ -98,20 +98,20 @@
 
           <a
             routerLink="/player-stats"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">person_outline</span>
             <span>Player Stats</span>
           </a>
 
           <a
             routerLink="/player-attributes"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">tune</span>
             <span>Player Attributes</span>
           </a>
@@ -119,28 +119,28 @@
 
         <!-- Office Section -->
         <div class="space-y-1">
-          <div class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase px-3 mb-1.5">Office</div>
+          <div class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase px-3 mb-1.5">Office</div>
 
           <a
             routerLink="/finances"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">payments</span>
             <span>League Finances</span>
           </a>
 
           <a
             routerLink="/transfer-market"
-            routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-            class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            routerLinkActive="active-nav"
+            class="nav-link"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <span class="material-icons text-xl">swap_horiz</span>
             <span>Transfer Market</span>
             @if (hasPendingTransferOffers()) {
-              <span class="ml-auto w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_6px_rgba(59,130,246,0.8)]"></span>
+              <span class="ml-auto w-2.5 h-2.5 bg-warning rounded-full shadow-[0_0_6px_rgba(226,164,69,0.8)]"></span>
             }
           </a>
         </div>
@@ -148,13 +148,13 @@
     </div>
 
     <!-- Settings Section -->
-    <div class="border-t border-zinc-800 pt-4 mt-4 flex-shrink-0">
+    <div class="border-t border-border pt-4 mt-4 flex-shrink-0">
       <a
         routerLink="/settings"
-        routerLinkActive="bg-zinc-800/80 text-white font-medium active-nav"
-        class="group relative flex items-center gap-3 pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+        routerLinkActive="active-nav"
+        class="nav-link"
       >
-        <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+        <span class="indicator"></span>
         <span class="material-icons text-xl">settings</span>
         <span>Settings</span>
       </a>
@@ -163,9 +163,9 @@
         <div class="mt-2">
           <button
             (click)="toggleDebugMenu()"
-            class="group relative w-full flex items-center justify-between pl-5 pr-4 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white active:scale-[0.98] transition-all duration-150"
+            class="nav-link justify-between w-full"
           >
-            <span class="indicator absolute left-0 top-3 bottom-3 w-[3px] rounded-r bg-emerald-500/60 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200"></span>
+            <span class="indicator"></span>
             <div class="flex items-center gap-3">
               <span class="material-icons text-xl">bug_report</span>
               <span>Debug</span>
@@ -174,11 +174,11 @@
           </button>
 
           @if (isDebugMenuOpen()) {
-            <div class="mt-1 ml-4 space-y-1 border-l-2 border-zinc-800 pl-2">
+            <div class="mt-1 ml-4 space-y-1 border-l-2 border-border pl-2">
               <a
                 routerLink="/debug/simulation"
-                routerLinkActive="bg-zinc-800/80 text-white font-medium"
-                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors text-sm"
+                routerLinkActive="bg-canvas text-text-primary font-bold"
+                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-text-secondary hover:bg-canvas/50 hover:text-text-primary transition-colors text-sm"
               >
                 <span class="material-icons text-[18px]">science</span>
                 <span>Simulation Debug</span>
@@ -186,8 +186,8 @@
 
               <a
                 routerLink="/debug/tick"
-                routerLinkActive="bg-zinc-800/80 text-white font-medium"
-                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors text-sm"
+                routerLinkActive="bg-canvas text-text-primary font-bold"
+                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-text-secondary hover:bg-canvas/50 hover:text-text-primary transition-colors text-sm"
               >
                 <span class="material-icons text-[18px]">play_circle_filled</span>
                 <span>Tick Debug</span>
@@ -195,8 +195,8 @@
 
               <a
                 routerLink="/debug/player-progression"
-                routerLinkActive="bg-zinc-800/80 text-white font-medium"
-                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors text-sm"
+                routerLinkActive="bg-canvas text-text-primary font-bold"
+                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-text-secondary hover:bg-canvas/50 hover:text-text-primary transition-colors text-sm"
               >
                 <span class="material-icons text-[18px]">trending_up</span>
                 <span>Progression Debug</span>
@@ -204,8 +204,8 @@
 
               <a
                 routerLink="/design-docs"
-                routerLinkActive="bg-zinc-800/80 text-white font-medium"
-                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors text-sm"
+                routerLinkActive="bg-canvas text-text-primary font-bold"
+                class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-text-secondary hover:bg-canvas/50 hover:text-text-primary transition-colors text-sm"
               >
                 <span class="material-icons text-[18px]">account_tree</span>
                 <span>Design Docs</span>
@@ -215,10 +215,10 @@
         </div>
       }
 
-      <div class="mt-3 border-t border-zinc-800 px-4 pt-3 text-center">
+      <div class="mt-3 border-t border-border px-4 pt-3 text-center">
         <a
           routerLink="/changelog"
-          class="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          class="text-[11px] text-text-muted hover:text-text-secondary transition-colors"
         >
           v{{ displayedVersion() }}
         </a>

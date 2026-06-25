@@ -97,20 +97,20 @@ describe('StandingsComponent', () => {
     const fixture = TestBed.createComponent(StandingsComponent);
     fixture.detectChanges();
 
-    const badges = fixture.nativeElement.querySelectorAll('td:nth-child(12) span.w-5');
+    const badges = fixture.nativeElement.querySelectorAll('td:nth-child(12) span');
     expect(badges.length).toBe(3);
 
     expect(badges[0].textContent.trim()).toBe('W');
-    expect(badges[0].getAttribute('title')).toBe('vs Arsenal — 2 - 1');
-    expect(badges[0].classList.contains('bg-emerald-500')).toBe(true);
+    expect(badges[0].getAttribute('title')).toBe('vs Arsenal : 2 - 1');
+    expect(badges[0].classList.contains('border-accent')).toBe(true);
 
     expect(badges[1].textContent.trim()).toBe('D');
-    expect(badges[1].getAttribute('title')).toBe('@ Chelsea — 0 - 0');
-    expect(badges[1].classList.contains('bg-zinc-600')).toBe(true);
+    expect(badges[1].getAttribute('title')).toBe('@ Chelsea : 0 - 0');
+    expect(badges[1].classList.contains('text-text-muted')).toBe(true);
 
     expect(badges[2].textContent.trim()).toBe('L');
-    expect(badges[2].getAttribute('title')).toBe('@ Liverpool — 1 - 3');
-    expect(badges[2].classList.contains('bg-red-500')).toBe(true);
+    expect(badges[2].getAttribute('title')).toBe('@ Liverpool : 1 - 3');
+    expect(badges[2].classList.contains('border-danger')).toBe(true);
   });
 
   it('shows a dash when there are no recent results', () => {
@@ -127,7 +127,7 @@ describe('StandingsComponent', () => {
     const fixture = TestBed.createComponent(StandingsComponent);
     fixture.detectChanges();
 
-    const dash = fixture.nativeElement.querySelector('td:nth-child(12) span.text-zinc-600');
+    const dash = fixture.nativeElement.querySelector('td:nth-child(12) span.text-text-muted');
     expect(dash).not.toBeNull();
     expect(dash.textContent.trim()).toBe('-');
   });

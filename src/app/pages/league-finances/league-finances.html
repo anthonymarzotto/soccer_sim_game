@@ -1,124 +1,121 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-6xl mx-auto space-y-8">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-6xl space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
       <div>
-        <div class="flex items-center gap-3">
-          <div>
-            <h1 class="text-3xl font-bold tracking-tight text-white">League Finances</h1>
-            <p class="text-zinc-400 mt-1">Week {{ currentWeek() }} — Season {{ currentSeason() }}</p>
-          </div>
-        </div>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">League Finances</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Week {{ currentWeek() }}, Season {{ currentSeason() }}</p>
       </div>
     </div>
 
     <!-- Finances Dashboard Table -->
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+    <div class="bg-panel border border-border rounded overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
-          <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+          <thead class="text-xs uppercase tracking-wider text-text-muted border-b border-border bg-panel/70 select-none">
             <tr>
-              <th scope="col" class="px-6 py-4 font-medium text-center w-12">#</th>
-              <th scope="col" (click)="toggleSort('name')" class="px-6 py-4 font-medium cursor-pointer hover:bg-zinc-800 select-none transition-colors">
+              <th scope="col" class="px-6 py-4 font-bold text-center w-12">#</th>
+              <th scope="col" (click)="toggleSort('name')" class="px-6 py-4 font-bold cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors">
                 <div class="flex items-center gap-1">
                   Club
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('name') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('name') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('overall')" class="px-4 py-4 font-medium text-center cursor-pointer hover:bg-zinc-800 select-none transition-colors w-20">
+              <th scope="col" (click)="toggleSort('overall')" class="px-4 py-4 font-bold text-center cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-20">
                 <div class="flex items-center justify-center gap-1">
                   OVR
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('overall') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('overall') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('tier')" class="px-4 py-4 font-medium text-center cursor-pointer hover:bg-zinc-800 select-none transition-colors w-28">
+              <th scope="col" (click)="toggleSort('tier')" class="px-4 py-4 font-bold text-center cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-28">
                 <div class="flex items-center justify-center gap-1">
                   Tier
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('tier') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('tier') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('budget')" class="px-4 py-4 font-medium text-right cursor-pointer hover:bg-zinc-800 select-none transition-colors w-36">
+              <th scope="col" (click)="toggleSort('budget')" class="px-4 py-4 font-bold text-right cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-36">
                 <div class="flex items-center justify-end gap-1">
                   Budget
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('budget') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('budget') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('squadValue')" class="px-4 py-4 font-medium text-right cursor-pointer hover:bg-zinc-800 select-none transition-colors w-36">
+              <th scope="col" (click)="toggleSort('squadValue')" class="px-4 py-4 font-bold text-right cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-36">
                 <div class="flex items-center justify-end gap-1">
                   Squad Value
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('squadValue') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('squadValue') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('wageCap')" class="px-4 py-4 font-medium text-center cursor-pointer hover:bg-zinc-800 select-none transition-colors w-24">
+              <th scope="col" (click)="toggleSort('wageCap')" class="px-4 py-4 font-bold text-center cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-24">
                 <div class="flex items-center justify-center gap-1">
                   Wage Cap
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('wageCap') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('wageCap') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('wageUsed')" class="px-4 py-4 font-medium text-center cursor-pointer hover:bg-zinc-800 select-none transition-colors w-28">
+              <th scope="col" (click)="toggleSort('wageUsed')" class="px-4 py-4 font-bold text-center cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-28">
                 <div class="flex items-center justify-center gap-1">
                   Wage Used
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('wageUsed') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('wageUsed') }}</span>
                 </div>
               </th>
-              <th scope="col" (click)="toggleSort('utilization')" class="px-6 py-4 font-medium cursor-pointer hover:bg-zinc-800 select-none transition-colors w-48">
+              <th scope="col" (click)="toggleSort('utilization')" class="px-6 py-4 font-bold cursor-pointer hover:bg-canvas hover:text-text-primary select-none transition-colors w-48">
                 <div class="flex items-center justify-start gap-1">
                   Utilization
-                  <span class="material-icons text-[14px] text-zinc-500">{{ getSortIcon('utilization') }}</span>
+                  <span class="material-icons text-[14px] text-text-muted">{{ getSortIcon('utilization') }}</span>
                 </div>
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-zinc-800">
+          <tbody class="divide-y divide-border/30">
             @for (team of sortedTeams(); track team.id; let i = $index) {
-            <tr class="hover:bg-zinc-800/50 transition-colors group"
-              [class.bg-emerald-950]="team.id === userTeamId()">
-              <td class="px-6 py-4 whitespace-nowrap text-zinc-500 font-mono text-center">
+            <tr class="hover:bg-canvas/50 transition-colors group"
+              [class.row-user-highlight]="team.id === userTeamId()">
+              <td class="px-6 py-4 whitespace-nowrap text-text-muted font-mono text-center"
+                [class.cell-user-highlight]="team.id === userTeamId()">
                 {{ i + 1 }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                <a [routerLink]="['/team', team.id]" class="hover:text-emerald-400 transition-colors flex items-center gap-2">
+              <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
+                <a [routerLink]="['/team', team.id]" class="hover:text-accent transition-colors flex items-center gap-2">
                   {{ team.name }}
                 </a>
               </td>
-              <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-zinc-300">
+              <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-secondary">
                 {{ team.overall }}
               </td>
               <td class="px-4 py-4 whitespace-nowrap text-center">
-                <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold border"
-                  [class.bg-amber-500/10]="team.tier === 1" [class.text-amber-400]="team.tier === 1" [class.border-amber-500/30]="team.tier === 1"
-                  [class.bg-teal-500/10]="team.tier === 2" [class.text-teal-400]="team.tier === 2" [class.border-teal-500/30]="team.tier === 2"
-                  [class.bg-orange-500/10]="team.tier === 3" [class.text-orange-400]="team.tier === 3" [class.border-orange-500/30]="team.tier === 3"
-                  [class.bg-blue-500/10]="team.tier === 4" [class.text-blue-400]="team.tier === 4" [class.border-blue-500/30]="team.tier === 4"
-                  [class.bg-zinc-500/10]="team.tier === 5" [class.text-zinc-400]="team.tier === 5" [class.border-zinc-500/30]="team.tier === 5">
+                <span class="inline-flex px-2 py-0.5 rounded border text-[9px] font-bold font-display uppercase tracking-wider"
+                  [class.bg-warning/10]="team.tier === 1" [class.text-warning]="team.tier === 1" [class.border-warning/20]="team.tier === 1"
+                  [class.bg-teal-500/10]="team.tier === 2" [class.text-teal-400]="team.tier === 2" [class.border-teal-500/20]="team.tier === 2"
+                  [class.bg-orange-500/10]="team.tier === 3" [class.text-orange-400]="team.tier === 3" [class.border-orange-500/20]="team.tier === 3"
+                  [class.bg-blue-500/10]="team.tier === 4" [class.text-blue-400]="team.tier === 4" [class.border-blue-500/20]="team.tier === 4"
+                  [class.bg-text-muted/10]="team.tier === 5" [class.text-text-muted]="team.tier === 5" [class.border-border]="team.tier === 5">
                   Tier {{ team.tier }}
                 </span>
               </td>
-              <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-emerald-400 font-mono">
+              <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-accent font-mono tabular-nums">
                 {{ team.transferBudget | currency:'USD':'symbol':'1.0-0' }}
               </td>
-              <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-zinc-300 font-mono">
+              <td class="px-4 py-4 whitespace-nowrap text-right font-medium text-text-secondary font-mono tabular-nums">
                 {{ team.squadValue | currency:'USD':'symbol':'1.0-0' }}
               </td>
-              <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-zinc-400 font-mono">
+              <td class="px-4 py-4 whitespace-nowrap text-center font-medium text-text-muted font-mono tabular-nums">
                 {{ team.wagePointsCap }} pts
               </td>
-              <td class="px-4 py-4 whitespace-nowrap text-center font-semibold font-mono"
-                [class.text-emerald-400]="team.utilization < 80"
-                [class.text-yellow-400]="team.utilization >= 80 && team.utilization < 95"
-                [class.text-red-400]="team.utilization >= 95">
+              <td class="px-4 py-4 whitespace-nowrap text-center font-bold font-mono tabular-nums"
+                [class.text-accent]="team.utilization < 80"
+                [class.text-warning]="team.utilization >= 80 && team.utilization < 95"
+                [class.text-danger]="team.utilization >= 95">
                 {{ team.wagePointsUsed | number:'1.1-1' }} pts
               </td>
               <td class="px-6 py-4 whitespace-nowrap align-middle">
                 <div class="flex items-center gap-3">
-                  <div class="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden min-w-[80px]">
-                    <div class="h-full rounded-full transition-all duration-300"
+                  <div class="flex-1 h-1.5 bg-border rounded overflow-hidden min-w-[80px]">
+                    <div class="h-full rounded transition-all duration-300"
                       [style.width.%]="team.utilization"
-                      [class.bg-emerald-500]="team.utilization < 80"
-                      [class.bg-yellow-500]="team.utilization >= 80 && team.utilization < 95"
-                      [class.bg-red-500]="team.utilization >= 95">
+                      [class.bg-accent]="team.utilization < 80"
+                      [class.bg-warning]="team.utilization >= 80 && team.utilization < 95"
+                      [class.bg-danger]="team.utilization >= 95">
                     </div>
                   </div>
-                  <span class="text-xs font-bold font-mono text-zinc-400 w-10 text-right">
+                  <span class="text-xs font-bold font-mono text-text-muted w-10 text-right">
                     {{ team.utilization | number:'1.0-0' }}%
                   </span>
                 </div>

@@ -1,72 +1,73 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-6xl mx-auto space-y-8">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-6xl space-y-8">
     @let p = player();
     @let attrs = currentSeasonAttributes();
     
-    <div class="flex items-center gap-4">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Player Profile</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">
+          Attributes, career stats, and contract info
+        </p>
+      </div>
+    </div>
+
+    <!-- Player Hero Banner Card -->
+    <div class="bg-panel border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
       <div class="flex items-center gap-4">
         @if (badgeStyle() !== 'text') {
           <app-team-badge [teamId]="p?.teamId ?? ''" size="md" [link]="true" />
         }
         <div>
           <div class="flex items-center gap-3">
-            <select
-              id="player-select"
-              [value]="playerId()"
-              (change)="onPlayerChange($any($event.target).value)"
-              class="bg-transparent border-none text-white text-3xl font-bold tracking-tight cursor-pointer hover:text-zinc-300 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600 rounded-lg -ml-1 px-1">
-              <optgroup label="Starting XI" class="bg-zinc-900">
-                @for (pl of startersOnTeam(); track pl.id) {
-                  <option [value]="pl.id" [selected]="pl.id === playerId()" class="bg-zinc-900 text-white text-base font-normal">{{ pl.name }}</option>
-                }
-              </optgroup>
-              <optgroup label="Bench" class="bg-zinc-900">
-                @for (pl of benchOnTeam(); track pl.id) {
-                  <option [value]="pl.id" [selected]="pl.id === playerId()" class="bg-zinc-900 text-white text-base font-normal">{{ pl.name }}</option>
-                }
-              </optgroup>
-              <optgroup label="Reserves" class="bg-zinc-900">
-                @for (pl of reservesOnTeam(); track pl.id) {
-                  <option [value]="pl.id" [selected]="pl.id === playerId()" class="bg-zinc-900 text-white text-base font-normal">{{ pl.name }}</option>
-                }
-              </optgroup>
-            </select>
-            <span class="px-2 py-1 rounded text-xs font-bold font-mono"
+            <h2 class="text-2xl font-bold font-display text-text-primary uppercase tracking-tight">
+              {{ p?.name }}
+            </h2>
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold font-mono"
                   [class.bg-yellow-500/20]="p?.position === Position.GOALKEEPER"
                   [class.text-yellow-400]="p?.position === Position.GOALKEEPER"
                   [class.bg-blue-500/20]="p?.position === Position.DEFENDER"
                   [class.text-blue-400]="p?.position === Position.DEFENDER"
-                  [class.bg-emerald-500/20]="p?.position === Position.MIDFIELDER"
-                  [class.text-emerald-400]="p?.position === Position.MIDFIELDER"
+                  [class.bg-accent/20]="p?.position === Position.MIDFIELDER"
+                  [class.text-accent]="p?.position === Position.MIDFIELDER"
                   [class.bg-red-500/20]="p?.position === Position.FORWARD"
-                  [class.text-red-400]="p?.position === Position.FORWARD">
+                  [class.text-danger]="p?.position === Position.FORWARD">
               {{ p?.position }}
             </span>
           </div>
-          <p class="text-zinc-400 mt-1 flex items-center gap-2">
+          <p class="text-text-muted text-xs font-semibold uppercase tracking-wider mt-1 flex items-center gap-2">
             @if (badgeStyle() === 'text') {
               <app-team-badge [teamId]="p?.teamId ?? ''" size="sm" [link]="true" />• 
             }
             {{ p?.role }} •
-            <a routerLink="/player/{{ p?.id }}/game-log" class="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="M2 15h10"/><path d="m9 18 3-3-3-3"/></svg>
+            <a routerLink="/player/{{ p?.id }}/game-log" class="text-accent hover:text-accent font-semibold flex items-center gap-1 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="M2 15h10"/><path d="m9 18 3-3-3-3"/></svg>
               Game Log
             </a>
           </p>
         </div>
       </div>
-      <div class="ml-auto flex items-center gap-3">
+
+      <div class="flex items-center gap-6">
         @let chip = currentSeasonRatingChip();
-        <div class="flex flex-col items-end gap-0.5 text-xs">
-          <span class="font-semibold text-amber-400 text-base">{{ chip.avgRating }}</span>
-          <div class="flex gap-1.5 text-zinc-400">
+        <div class="flex flex-col items-end gap-1 text-xs font-display">
+          <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Avg Rating</span>
+          <span class="font-extrabold text-amber-400 text-lg tabular-nums">{{ chip.avgRating }}</span>
+          <div class="flex gap-1 text-text-muted mt-0.5">
             <span>🥇{{ chip.first }}</span>
             <span>🥈{{ chip.second }}</span>
             <span>🥉{{ chip.third }}</span>
           </div>
         </div>
-        <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
-          <span class="text-2xl font-bold text-white" [title]="getStatDescription('overall')">{{ attrs?.overall?.value ?? '--' }}</span>
+
+        <div class="h-12 w-px bg-border"></div>
+
+        <div class="flex flex-col items-center justify-center">
+          <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Overall</span>
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-canvas border border-border shadow-inner">
+            <span class="text-xl font-extrabold text-text-primary" [title]="getStatDescription('overall')">{{ attrs?.overall?.value ?? '--' }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -75,19 +76,19 @@
       @let injury = activeInjury();
       @if (injury) {
         <!-- Active Injury Banner -->
-        <div class="bg-red-950/40 border border-red-800/60 rounded-2xl p-4 shadow-xl flex items-center gap-4">
+        <div class="bg-danger/10 border border-danger/20 rounded-2xl p-4 shadow-xl flex items-center gap-4">
           <span class="text-3xl" aria-hidden="true">🩹</span>
           <div class="flex-1">
             <div class="flex items-baseline gap-2">
-              <span class="text-sm font-semibold uppercase tracking-wider text-red-300">Currently Injured</span>
-              <span class="text-xs text-red-400/70">{{ getInjurySeverity(injury.definitionId) }}</span>
+              <span class="text-sm font-semibold uppercase tracking-wider text-danger">Currently Injured</span>
+              <span class="text-xs text-danger/70">{{ getInjurySeverity(injury.definitionId) }}</span>
             </div>
-            <div class="text-white text-lg font-medium mt-0.5">{{ getInjuryName(injury.definitionId) }}</div>
-            <div class="text-xs text-zinc-400 mt-1">
+            <div class="text-text-primary text-lg font-medium mt-0.5">{{ getInjuryName(injury.definitionId) }}</div>
+            <div class="text-xs text-text-muted mt-1">
               {{ injury.weeksRemaining }} week{{ injury.weeksRemaining === 1 ? '' : 's' }} remaining
-              <span class="text-zinc-600">·</span>
+              <span class="text-text-muted">·</span>
               originally {{ injury.totalWeeks }} week{{ injury.totalWeeks === 1 ? '' : 's' }}
-              <span class="text-zinc-600">·</span>
+              <span class="text-text-muted">·</span>
               sustained {{ injury.sustainedInSeason }} W{{ injury.sustainedInWeek }}
             </div>
           </div>
@@ -97,18 +98,18 @@
       @let suspension = activeSuspension();
       @if (suspension) {
         <!-- Active Suspension Banner -->
-        <div class="bg-red-950/40 border border-red-800/60 rounded-2xl p-4 shadow-xl flex items-center gap-4">
+        <div class="bg-danger/10 border border-danger/20 rounded-2xl p-4 shadow-xl flex items-center gap-4">
           <span class="text-3xl" aria-hidden="true">🟥</span>
           <div class="flex-1">
             <div class="flex items-baseline gap-2">
-              <span class="text-sm font-semibold uppercase tracking-wider text-red-300">Currently Suspended</span>
+              <span class="text-sm font-semibold uppercase tracking-wider text-danger">Currently Suspended</span>
             </div>
-            <div class="text-white text-lg font-medium mt-0.5">{{ getSuspensionName(suspension.reason) }}</div>
-            <div class="text-xs text-zinc-400 mt-1">
+            <div class="text-text-primary text-lg font-medium mt-0.5">{{ getSuspensionName(suspension.reason) }}</div>
+            <div class="text-xs text-text-muted mt-1">
               {{ formatSuspensionGames(suspension.gamesRemaining) }} remaining
-              <span class="text-zinc-600">·</span>
+              <span class="text-text-muted">·</span>
               originally {{ formatSuspensionGames(suspension.totalGames) }}
-              <span class="text-zinc-600">·</span>
+              <span class="text-text-muted">·</span>
               sustained {{ suspension.sustainedInSeason }} W{{ suspension.sustainedInWeek }}
             </div>
           </div>
@@ -118,44 +119,44 @@
       <!-- Details Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Personal Details -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+        <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Personal Details
           </h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-              <span class="text-zinc-500">Age</span>
-              <span class="font-medium text-white">{{ playerAge() }}</span>
+            <div class="flex justify-between items-center border-b border-border/50 pb-3">
+              <span class="text-text-muted">Age</span>
+              <span class="font-medium text-text-primary">{{ playerAge() }}</span>
             </div>
-            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-              <span class="text-zinc-500">Nationality</span>
-              <span class="font-medium text-white">{{ p?.personal?.nationality }}</span>
+            <div class="flex justify-between items-center border-b border-border/50 pb-3">
+              <span class="text-text-muted">Nationality</span>
+              <span class="font-medium text-text-primary">{{ p?.personal?.nationality }}</span>
             </div>
-            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-              <span class="text-zinc-500">Height</span>
-              <span class="font-medium text-white">{{ p?.personal?.height }} cm</span>
+            <div class="flex justify-between items-center border-b border-border/50 pb-3">
+              <span class="text-text-muted">Height</span>
+              <span class="font-medium text-text-primary">{{ p?.personal?.height }} cm</span>
             </div>
-            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-              <span class="text-zinc-500">Weight</span>
-              <span class="font-medium text-white">{{ p?.personal?.weight }} kg</span>
+            <div class="flex justify-between items-center border-b border-border/50 pb-3">
+              <span class="text-text-muted">Weight</span>
+              <span class="font-medium text-text-primary">{{ p?.personal?.weight }} kg</span>
             </div>
           </div>
         </div>
 
         <!-- Contract & Finances -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+        <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
           <div class="space-y-6">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
               Contract & Finances
             </h2>
             
             <!-- First Line: Market Value & Transfer Button -->
-            <div class="flex justify-between items-center border-b border-zinc-800/50 pb-4">
+            <div class="flex justify-between items-center border-b border-border/50 pb-4">
               <div class="flex flex-col">
-                <span class="text-zinc-500 text-xs uppercase tracking-wider">Market Value</span>
-                <span class="font-semibold text-emerald-400 font-mono text-lg mt-0.5">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
+                <span class="text-text-muted text-xs uppercase tracking-wider">Market Value</span>
+                <span class="font-semibold text-accent font-mono text-lg mt-0.5">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</span>
               </div>
               <div>
                 @if (!isUserTeamPlayer()) {
@@ -164,20 +165,20 @@
                       (click)="makeTransferOffer()"
                       [disabled]="transferWindowPhase() === 'closed'"
                       class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
-                      [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+                      [class.bg-accent]="transferWindowPhase() === 'summer'"
                       [class.text-zinc-950]="transferWindowPhase() === 'summer'"
-                      [class.hover:bg-emerald-600]="transferWindowPhase() === 'summer'"
+                      [class.hover:bg-accent]="transferWindowPhase() === 'summer'"
                       [class.bg-cyan-500]="transferWindowPhase() === 'winter'"
                       [class.text-zinc-950]="transferWindowPhase() === 'winter'"
                       [class.hover:bg-cyan-600]="transferWindowPhase() === 'winter'"
-                      [class.bg-zinc-800]="transferWindowPhase() === 'closed'"
-                      [class.text-zinc-400]="transferWindowPhase() === 'closed'">
+                      [class.bg-canvas]="transferWindowPhase() === 'closed'"
+                      [class.text-text-muted]="transferWindowPhase() === 'closed'">
                       <span class="material-icons text-[14px]">payments</span>
                       <span>Make Transfer Offer</span>
                     </button>
                     
                     @if (transferWindowPhase() === 'closed') {
-                      <div class="absolute bottom-full right-0 mb-2 w-52 hidden group-hover:block bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg text-center shadow-xl pointer-events-none z-30 font-normal">
+                      <div class="absolute bottom-full right-0 mb-2 w-52 hidden group-hover:block bg-panel border border-border text-text-secondary text-[10px] px-2.5 py-1.5 rounded-lg text-center shadow-xl pointer-events-none z-30 font-normal">
                         Transfer window is closed. Opens Week 1 (Summer) or Week 20 (Winter).
                       </div>
                     }
@@ -189,7 +190,7 @@
                     @if (isPlayerTransferListed()) {
                       <button
                         (click)="removeFromTransferList()"
-                        class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-red-950/40 text-red-400 border border-red-800/60 hover:bg-red-900 hover:text-white cursor-pointer select-none"
+                        class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-danger/10 text-danger border border-danger/20 hover:bg-danger hover:text-text-primary cursor-pointer select-none"
                       >
                         <span class="material-icons text-[14px]">remove_circle</span>
                         <span>Remove from Transfer List</span>
@@ -198,7 +199,7 @@
                       <button
                         (click)="addToTransferList()"
                         [disabled]="transferWindowPhase() === 'closed'"
-                        class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
+                        class="rounded-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors bg-canvas text-text-secondary border border-border-hover hover:bg-panel disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
                       >
                         <span class="material-icons text-[14px]">add_circle</span>
                         <span>Add to Transfer List</span>
@@ -211,13 +212,13 @@
 
             <!-- Second Line: Wage & Contract Length -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-              <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-                <span class="text-zinc-500 text-xs">Wage</span>
+              <div class="flex justify-between items-center border-b border-border/50 pb-3">
+                <span class="text-text-muted text-xs">Wage</span>
                 <span class="font-medium text-amber-400 font-mono">{{ wageCost() | number:'1.1-1' }} pts</span>
               </div>
-              <div class="flex justify-between items-center border-b border-zinc-800/50 pb-3">
-                <span class="text-zinc-500 text-xs">Contract Length</span>
-                <span class="font-medium text-zinc-300 font-mono">{{ contractYearsRemaining() }} yr <span class="text-xs text-zinc-500">({{ p?.contract?.expiresAfterSeason }})</span></span>
+              <div class="flex justify-between items-center border-b border-border/50 pb-3">
+                <span class="text-text-muted text-xs">Contract Length</span>
+                <span class="font-medium text-text-secondary font-mono">{{ contractYearsRemaining() }} yr <span class="text-xs text-text-muted">({{ p?.contract?.expiresAfterSeason }})</span></span>
               </div>
             </div>
           </div>
@@ -227,20 +228,20 @@
       <!-- Mental, Physical, Technical, Goalkeeping stats -->
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <!-- Mental -->
-        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-blue-500 rounded-2xl p-6 shadow-xl">
+        <div class="bg-panel border border-border border-t-2 border-t-blue-500 rounded-2xl p-6 shadow-xl">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
               Mental
             </h2>
-            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+            <div class="flex gap-1 bg-canvas rounded-lg p-1">
               <button (click)="toggleMentalView()"
-                      [class]="mentalView() === 'list' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="mentalView() === 'list' ? 'bg-blue-600 text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </button>
               <button (click)="toggleMentalView()"
-                      [class]="mentalView() === 'chart' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="mentalView() === 'chart' ? 'bg-blue-600 text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               </button>
@@ -249,26 +250,26 @@
           @if (mentalView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('flair')">Flair</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('flair')">Flair</span>
                 <div class="flex items-center gap-2">
                   @let diffFlair = getStatDiff('flair');
-                  @if (diffFlair) { <span class="text-xs font-mono" [class.text-emerald-500]="diffFlair > 0" [class.text-red-500]="diffFlair < 0">{{ diffFlair > 0 ? '+' : '' }}{{ diffFlair }}</span> }
+                  @if (diffFlair) { <span class="text-xs font-mono" [class.text-accent]="diffFlair > 0" [class.text-danger]="diffFlair < 0">{{ diffFlair > 0 ? '+' : '' }}{{ diffFlair }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.flair?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('vision')">Vision</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('vision')">Vision</span>
                 <div class="flex items-center gap-2">
                   @let diffVision = getStatDiff('vision');
-                  @if (diffVision) { <span class="text-xs font-mono" [class.text-emerald-500]="diffVision > 0" [class.text-red-500]="diffVision < 0">{{ diffVision > 0 ? '+' : '' }}{{ diffVision }}</span> }
+                  @if (diffVision) { <span class="text-xs font-mono" [class.text-accent]="diffVision > 0" [class.text-danger]="diffVision < 0">{{ diffVision > 0 ? '+' : '' }}{{ diffVision }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.vision?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('determination')">Determination</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('determination')">Determination</span>
                 <div class="flex items-center gap-2">
                   @let diffDet = getStatDiff('determination');
-                  @if (diffDet) { <span class="text-xs font-mono" [class.text-emerald-500]="diffDet > 0" [class.text-red-500]="diffDet < 0">{{ diffDet > 0 ? '+' : '' }}{{ diffDet }}</span> }
+                  @if (diffDet) { <span class="text-xs font-mono" [class.text-accent]="diffDet > 0" [class.text-danger]="diffDet < 0">{{ diffDet > 0 ? '+' : '' }}{{ diffDet }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.determination?.value }}</span>
                 </div>
               </div>
@@ -323,7 +324,7 @@
               </div>
               
               <!-- Legend -->
-              <div class="flex gap-4 text-sm text-zinc-400">
+              <div class="flex gap-4 text-sm text-text-muted">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
                   <span>Mental Skills</span>
@@ -334,20 +335,20 @@
         </div>
 
         <!-- Physical -->
-        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-emerald-500 rounded-2xl p-6 shadow-xl">
+        <div class="bg-panel border border-border border-t-2 border-t-emerald-500 rounded-2xl p-6 shadow-xl">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
               Physical
             </h2>
-            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+            <div class="flex gap-1 bg-canvas rounded-lg p-1">
               <button (click)="togglePhysicalView()"
-                      [class]="physicalView() === 'list' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="physicalView() === 'list' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </button>
               <button (click)="togglePhysicalView()"
-                      [class]="physicalView() === 'chart' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="physicalView() === 'chart' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               </button>
@@ -356,41 +357,41 @@
           @if (physicalView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('speed')">Speed</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('speed')">Speed</span>
                 <div class="flex items-center gap-2">
                   @let diffSpeed = getStatDiff('speed');
-                  @if (diffSpeed) { <span class="text-xs font-mono" [class.text-emerald-500]="diffSpeed > 0" [class.text-red-500]="diffSpeed < 0">{{ diffSpeed > 0 ? '+' : '' }}{{ diffSpeed }}</span> }
+                  @if (diffSpeed) { <span class="text-xs font-mono" [class.text-accent]="diffSpeed > 0" [class.text-danger]="diffSpeed < 0">{{ diffSpeed > 0 ? '+' : '' }}{{ diffSpeed }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.speed?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('strength')">Strength</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('strength')">Strength</span>
                 <div class="flex items-center gap-2">
                   @let diffStrength = getStatDiff('strength');
-                  @if (diffStrength) { <span class="text-xs font-mono" [class.text-emerald-500]="diffStrength > 0" [class.text-red-500]="diffStrength < 0">{{ diffStrength > 0 ? '+' : '' }}{{ diffStrength }}</span> }
+                  @if (diffStrength) { <span class="text-xs font-mono" [class.text-accent]="diffStrength > 0" [class.text-danger]="diffStrength < 0">{{ diffStrength > 0 ? '+' : '' }}{{ diffStrength }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.strength?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('endurance')">Endurance</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('endurance')">Endurance</span>
                 <div class="flex items-center gap-2">
                   @let diffEndurance = getStatDiff('endurance');
-                  @if (diffEndurance) { <span class="text-xs font-mono" [class.text-emerald-500]="diffEndurance > 0" [class.text-red-500]="diffEndurance < 0">{{ diffEndurance > 0 ? '+' : '' }}{{ diffEndurance }}</span> }
+                  @if (diffEndurance) { <span class="text-xs font-mono" [class.text-accent]="diffEndurance > 0" [class.text-danger]="diffEndurance < 0">{{ diffEndurance > 0 ? '+' : '' }}{{ diffEndurance }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.endurance?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('fitness')">Fitness</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('fitness')">Fitness</span>
                 <div class="flex items-center gap-2">
                   @let diffFitness = getStatDiff('fitness');
-                  @if (diffFitness) { <span class="text-xs font-mono" [class.text-emerald-500]="diffFitness > 0" [class.text-red-500]="diffFitness < 0">{{ diffFitness > 0 ? '+' : '' }}{{ diffFitness }}</span> }
+                  @if (diffFitness) { <span class="text-xs font-mono" [class.text-accent]="diffFitness > 0" [class.text-danger]="diffFitness < 0">{{ diffFitness > 0 ? '+' : '' }}{{ diffFitness }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.fitness?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5 border-t border-zinc-800/50 mt-1">
-                <span class="text-zinc-500 text-xs uppercase tracking-wider">Current Fatigue</span>
+              <div class="flex justify-between items-center py-2.5 border-t border-border/50 mt-1">
+                <span class="text-text-muted text-xs uppercase tracking-wider">Current Fatigue</span>
                 <div class="py-2 cursor-help flex justify-end" [title]="(p?.fatigue || 0 | number:'1.0-0') + '% fatigue'">
-                  <div class="min-w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="min-w-16 h-1.5 bg-canvas rounded-full overflow-hidden">
                     <div class="h-full transition-all duration-500" 
                          [style.width.%]="p?.fatigue ?? 0" 
                          [style.background-color]="getFatigueColor(p?.fatigue ?? 0)"></div>
@@ -448,9 +449,9 @@
               </div>
               
               <!-- Legend -->
-              <div class="flex gap-4 text-sm text-zinc-400">
+              <div class="flex gap-4 text-sm text-text-muted">
                 <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <div class="w-3 h-3 bg-accent rounded-full"></div>
                   <span>Physical Attributes</span>
                 </div>
               </div>
@@ -459,20 +460,20 @@
         </div>
 
         <!-- Technical -->
-        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-purple-500 rounded-2xl p-6 shadow-xl">
+        <div class="bg-panel border border-border border-t-2 border-t-purple-500 rounded-2xl p-6 shadow-xl">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               Technical
             </h2>
-            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+            <div class="flex gap-1 bg-canvas rounded-lg p-1">
               <button (click)="toggleTechnicalView()"
-                      [class]="technicalView() === 'list' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="technicalView() === 'list' ? 'bg-purple-600 text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </button>
               <button (click)="toggleTechnicalView()"
-                      [class]="technicalView() === 'chart' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="technicalView() === 'chart' ? 'bg-purple-600 text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               </button>
@@ -481,42 +482,42 @@
           @if (technicalView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('tackling')">Tackling</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('tackling')">Tackling</span>
                 <div class="flex items-center gap-2">
                   @let diffTackling = getStatDiff('tackling');
-                  @if (diffTackling) { <span class="text-xs font-mono" [class.text-emerald-500]="diffTackling > 0" [class.text-red-500]="diffTackling < 0">{{ diffTackling > 0 ? '+' : '' }}{{ diffTackling }}</span> }
+                  @if (diffTackling) { <span class="text-xs font-mono" [class.text-accent]="diffTackling > 0" [class.text-danger]="diffTackling < 0">{{ diffTackling > 0 ? '+' : '' }}{{ diffTackling }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.tackling?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('shooting')">Shooting</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('shooting')">Shooting</span>
                 <div class="flex items-center gap-2">
                   @let diffShooting = getStatDiff('shooting');
-                  @if (diffShooting) { <span class="text-xs font-mono" [class.text-emerald-500]="diffShooting > 0" [class.text-red-500]="diffShooting < 0">{{ diffShooting > 0 ? '+' : '' }}{{ diffShooting }}</span> }
+                  @if (diffShooting) { <span class="text-xs font-mono" [class.text-accent]="diffShooting > 0" [class.text-danger]="diffShooting < 0">{{ diffShooting > 0 ? '+' : '' }}{{ diffShooting }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.shooting?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('heading')">Heading</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('heading')">Heading</span>
                 <div class="flex items-center gap-2">
                   @let diffHeading = getStatDiff('heading');
-                  @if (diffHeading) { <span class="text-xs font-mono" [class.text-emerald-500]="diffHeading > 0" [class.text-red-500]="diffHeading < 0">{{ diffHeading > 0 ? '+' : '' }}{{ diffHeading }}</span> }
+                  @if (diffHeading) { <span class="text-xs font-mono" [class.text-accent]="diffHeading > 0" [class.text-danger]="diffHeading < 0">{{ diffHeading > 0 ? '+' : '' }}{{ diffHeading }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.heading?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('longPassing')">Long Passing</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('longPassing')">Long Passing</span>
                 <div class="flex items-center gap-2">
                   @let diffLongP = getStatDiff('longPassing');
-                  @if (diffLongP) { <span class="text-xs font-mono" [class.text-emerald-500]="diffLongP > 0" [class.text-red-500]="diffLongP < 0">{{ diffLongP > 0 ? '+' : '' }}{{ diffLongP }}</span> }
+                  @if (diffLongP) { <span class="text-xs font-mono" [class.text-accent]="diffLongP > 0" [class.text-danger]="diffLongP < 0">{{ diffLongP > 0 ? '+' : '' }}{{ diffLongP }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.longPassing?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('shortPassing')">Short Passing</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('shortPassing')">Short Passing</span>
                 <div class="flex items-center gap-2">
                   @let diffShortP = getStatDiff('shortPassing');
-                  @if (diffShortP) { <span class="text-xs font-mono" [class.text-emerald-500]="diffShortP > 0" [class.text-red-500]="diffShortP < 0">{{ diffShortP > 0 ? '+' : '' }}{{ diffShortP }}</span> }
+                  @if (diffShortP) { <span class="text-xs font-mono" [class.text-accent]="diffShortP > 0" [class.text-danger]="diffShortP < 0">{{ diffShortP > 0 ? '+' : '' }}{{ diffShortP }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.shortPassing?.value }}</span>
                 </div>
               </div>
@@ -571,7 +572,7 @@
               </div>
               
               <!-- Legend -->
-              <div class="flex gap-4 text-sm text-zinc-400">
+              <div class="flex gap-4 text-sm text-text-muted">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
                   <span>Technical Skills</span>
@@ -582,20 +583,20 @@
         </div>
 
         <!-- Goalkeeping -->
-        <div class="bg-zinc-900 border border-zinc-800 border-t-2 border-t-yellow-500 rounded-2xl p-6 shadow-xl">
+        <div class="bg-panel border border-border border-t-2 border-t-yellow-500 rounded-2xl p-6 shadow-xl">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
               Goalkeeping
             </h2>
-            <div class="flex gap-1 bg-zinc-800 rounded-lg p-1">
+            <div class="flex gap-1 bg-canvas rounded-lg p-1">
               <button (click)="toggleGoalkeeperView()"
-                      [class]="goalkeeperView() === 'list' ? 'bg-yellow-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="goalkeeperView() === 'list' ? 'bg-yellow-600 text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="List">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </button>
               <button (click)="toggleGoalkeeperView()"
-                      [class]="goalkeeperView() === 'chart' ? 'bg-yellow-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="goalkeeperView() === 'chart' ? 'bg-yellow-600 text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="p-1.5 rounded transition-colors" title="Chart">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               </button>
@@ -604,26 +605,26 @@
           @if (goalkeeperView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('handling')">Handling</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('handling')">Handling</span>
                 <div class="flex items-center gap-2">
                   @let diffHandling = getStatDiff('handling');
-                  @if (diffHandling) { <span class="text-xs font-mono" [class.text-emerald-500]="diffHandling > 0" [class.text-red-500]="diffHandling < 0">{{ diffHandling > 0 ? '+' : '' }}{{ diffHandling }}</span> }
+                  @if (diffHandling) { <span class="text-xs font-mono" [class.text-accent]="diffHandling > 0" [class.text-danger]="diffHandling < 0">{{ diffHandling > 0 ? '+' : '' }}{{ diffHandling }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.handling?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('reflexes')">Reflexes</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('reflexes')">Reflexes</span>
                 <div class="flex items-center gap-2">
                   @let diffReflexes = getStatDiff('reflexes');
-                  @if (diffReflexes) { <span class="text-xs font-mono" [class.text-emerald-500]="diffReflexes > 0" [class.text-red-500]="diffReflexes < 0">{{ diffReflexes > 0 ? '+' : '' }}{{ diffReflexes }}</span> }
+                  @if (diffReflexes) { <span class="text-xs font-mono" [class.text-accent]="diffReflexes > 0" [class.text-danger]="diffReflexes < 0">{{ diffReflexes > 0 ? '+' : '' }}{{ diffReflexes }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.reflexes?.value }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center py-2.5">
-                <span class="text-zinc-400 text-sm" [title]="getStatDescription('commandOfArea')">Cmd. of Area</span>
+                <span class="text-text-muted text-sm" [title]="getStatDescription('commandOfArea')">Cmd. of Area</span>
                 <div class="flex items-center gap-2">
                   @let diffCmd = getStatDiff('commandOfArea');
-                  @if (diffCmd) { <span class="text-xs font-mono" [class.text-emerald-500]="diffCmd > 0" [class.text-red-500]="diffCmd < 0">{{ diffCmd > 0 ? '+' : '' }}{{ diffCmd }}</span> }
+                  @if (diffCmd) { <span class="text-xs font-mono" [class.text-accent]="diffCmd > 0" [class.text-danger]="diffCmd < 0">{{ diffCmd > 0 ? '+' : '' }}{{ diffCmd }}</span> }
                   <span class="font-mono text-sm font-semibold">{{ attrs?.commandOfArea?.value }}</span>
                 </div>
               </div>
@@ -678,7 +679,7 @@
               </div>
 
               <!-- Legend -->
-              <div class="flex gap-4 text-sm text-zinc-400">
+              <div class="flex gap-4 text-sm text-text-muted">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
                   <span>Goalkeeping</span>
@@ -691,65 +692,65 @@
 
       <!-- Hidden Stats - spanning the page (dev mode only) -->
       @if (isDev) {
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+        <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
             Hidden Stats
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('clutch')">Clutch</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('clutch')">Clutch</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.clutch?.value"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.clutch?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('composure')">Composure</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('composure')">Composure</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.composure?.value"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.composure?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('morale')">Morale</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('morale')">Morale</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.morale?.value"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.morale?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('consistency')">Consistency</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('consistency')">Consistency</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.consistency?.value"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.consistency?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('aggressiveness')">Aggression</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('aggressiveness')">Aggression</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.aggressiveness?.value"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.aggressiveness?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28">Mood</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28">Mood</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.mood"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.mood }}</span>
             </div>
 
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('luck')">Luck</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('luck')">Luck</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.luck?.value"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.luck?.value }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-28" [title]="getStatDescription('injuryRate')">Injury Rate</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-28" [title]="getStatDescription('injuryRate')">Injury Rate</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full rounded-full"
                      [class]="(attrs?.injuryRate?.value ?? 50) <= 30 ? 'bg-green-500' : (attrs?.injuryRate?.value ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
                      [style.width.%]="attrs?.injuryRate?.value ?? 50"></div>
@@ -759,43 +760,43 @@
           </div>
         </div>
 
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+        <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+          <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
             Progression
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-32">Potential</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-32">Potential</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-blue-500 rounded-full" [style.width.%]="p?.progression?.potential"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.potential }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-32">Professionalism</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="p?.progression?.professionalism"></div>
+              <span class="text-text-muted w-32">Professionalism</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
+                <div class="h-full bg-accent rounded-full" [style.width.%]="p?.progression?.professionalism"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.professionalism }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-32">Temperament</span>
-              <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <span class="text-text-muted w-32">Temperament</span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
                 <div class="h-full bg-purple-500 rounded-full" [style.width.%]="p?.progression?.temperament"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.temperament }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-32">Junior End Age</span>
+              <span class="text-text-muted w-32">Junior End Age</span>
               <span class="font-mono text-sm font-medium ml-auto">{{ p?.progression?.juniorEndAge }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-32">Peak End Age</span>
+              <span class="text-text-muted w-32">Peak End Age</span>
               <span class="font-mono text-sm font-medium ml-auto">{{ p?.progression?.peakEndAge }}</span>
             </div>
             <div class="flex items-center gap-4">
-              <span class="text-zinc-500 w-32">Senior End Age</span>
+              <span class="text-text-muted w-32">Senior End Age</span>
               <span class="font-mono text-sm font-medium ml-auto">{{ p?.progression?.seniorEndAge }}</span>
             </div>
           </div>
@@ -803,36 +804,36 @@
       }
 
       <!-- Career Stats Table -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+      <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
         @let statsView = seasonStatsView();
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+          <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
             Career Stats
           </h2>
-          <div class="flex gap-2 bg-zinc-800 rounded-lg p-1">
+          <div class="flex gap-2 bg-canvas rounded-lg p-1">
             <button (click)="setSeasonStatsView('offensive')" 
-                      [class]="statsView === 'offensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'offensive' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Offensive
               </button>
               <button (click)="setSeasonStatsView('defensive')" 
-                      [class]="statsView === 'defensive' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'defensive' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Defensive
               </button>
               <button (click)="setSeasonStatsView('discipline')" 
-                      [class]="statsView === 'discipline' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'discipline' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Discipline
               </button>
               <button (click)="setSeasonStatsView('ratings')" 
-                      [class]="statsView === 'ratings' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'ratings' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Ratings
               </button>
               <button (click)="setSeasonStatsView('finances')" 
-                      [class]="statsView === 'finances' ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white'"
+                      [class]="statsView === 'finances' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Finances
               </button>
@@ -840,12 +841,12 @@
           </div>
 
           @if (allSeasonStats().length === 0) {
-            <p class="text-sm text-zinc-500">No stats available yet.</p>
+            <p class="text-sm text-text-muted">No stats available yet.</p>
           } @else {
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead>
-                  <tr class="border-b border-zinc-700 text-zinc-400">
+                  <tr class="border-b border-border-hover text-text-muted">
                     <th class="w-20 whitespace-nowrap text-left py-3 px-4 font-semibold">Season</th>
                     <th class="w-16 whitespace-nowrap text-right py-3 px-4 font-semibold">Games</th>
                     <th class="w-24 whitespace-nowrap text-right py-3 px-4 font-semibold">Minutes</th>
@@ -879,35 +880,35 @@
                 <tbody>
                   @let currentYear = gameService.league()?.currentSeasonYear;
                   @for (s of allSeasonStats(); track s.seasonYear) {
-                    <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors"
-                        [class.bg-zinc-800/30]="s.seasonYear === currentYear">
-                      <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300 font-medium">{{ s.seasonYear }}</td>
-                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ formatGamesPlayed(s) }}</td>
-                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ s.minutesPlayed || 0 }}</td>
+                    <tr class="border-b border-border/50 hover:bg-panel/50 transition-colors"
+                        [class.bg-panel/30]="s.seasonYear === currentYear">
+                      <td class="w-20 whitespace-nowrap py-3 px-4 text-text-secondary font-medium">{{ s.seasonYear }}</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ formatGamesPlayed(s) }}</td>
+                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ s.minutesPlayed || 0 }}</td>
                       @if (statsView === 'offensive') {
-                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ s.goals || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ s.goals || 0 }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.shots || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.shotsOnTarget || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shots || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shotsOnTarget || 0 }}</td>
                       } @else if (statsView === 'defensive') {
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.tackles || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.interceptions || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.passes || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.saves || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.cleanSheets || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.tackles || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.interceptions || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.passes || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.saves || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.cleanSheets || 0 }}</td>
                       } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.fouls || 0 }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.foulsSuffered || 0 }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ s.yellowCards || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-red-400 font-mono">{{ s.redCards || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-danger font-mono">{{ s.redCards || 0 }}</td>
                       } @else if (statsView === 'ratings') {
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ formatAverageRating(s) }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.first }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.second }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ s.starNominations.third }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.first }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.second }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.third }}</td>
                       } @else if (statsView === 'finances') {
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ s.wage | number:'1.1-1' }}</td>
-                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ getMarketValueForSeason(s) | currency:'USD':'symbol':'1.0-0' }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ getMarketValueForSeason(s) | currency:'USD':'symbol':'1.0-0' }}</td>
                       }
                     </tr>
                   }
@@ -915,35 +916,35 @@
                   <!-- Total Row -->
                   @let totals = getTotalCareerStats();
                   @if (totals) {
-                    <tr class="border-t-2 border-zinc-600 bg-zinc-800/50 font-semibold">
-                      <td class="w-20 whitespace-nowrap py-3 px-4 text-zinc-300">TOTAL</td>
-                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ formatGamesPlayed(totals) }}</td>
-                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-white font-mono">{{ totals.minutesPlayed }}</td>
+                    <tr class="border-t-2 border-border-hover bg-panel/50 font-semibold">
+                      <td class="w-20 whitespace-nowrap py-3 px-4 text-text-secondary">TOTAL</td>
+                      <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ formatGamesPlayed(totals) }}</td>
+                      <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ totals.minutesPlayed }}</td>
                       @if (statsView === 'offensive') {
-                        <td class="py-3 px-4 text-right text-emerald-400 font-mono">{{ totals.goals }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.goals }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.shots }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.shotsOnTarget }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shots }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shotsOnTarget }}</td>
                       } @else if (statsView === 'defensive') {
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.tackles }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.interceptions }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.passes }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.saves }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ totals.cleanSheets }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.tackles }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.interceptions }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.passes }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.saves }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.cleanSheets }}</td>
                       } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.fouls }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.foulsSuffered }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ totals.yellowCards }}</td>
-                        <td class="py-3 px-4 text-right text-red-400 font-mono">{{ totals.redCards }}</td>
+                        <td class="py-3 px-4 text-right text-danger font-mono">{{ totals.redCards }}</td>
                       } @else if (statsView === 'ratings') {
                         @let stars = totalStarNominations();
-                        <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ stars.first }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ stars.second }}</td>
-                        <td class="py-3 px-4 text-right text-white font-mono">{{ stars.third }}</td>
+                        <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.first }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.second }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.third }}</td>
                       } @else if (statsView === 'finances') {
-                        <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
-                        <td class="py-3 px-4 text-right text-zinc-500 font-mono">--</td>
+                        <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
+                        <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                       }
                     </tr>
                   }
@@ -956,14 +957,14 @@
         @let tHistory = transferHistory();
         @if (tHistory.length > 0) {
           <!-- Transfer History -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
               <span class="material-icons text-[16px]">swap_horiz</span>
               Transfer History
             </h2>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800">
+                <thead class="text-left text-xs uppercase tracking-wider text-text-muted border-b border-border">
                   <tr>
                     <th class="py-2 pr-4 font-medium">Season</th>
                     <th class="py-2 pr-4 font-medium">Week</th>
@@ -974,24 +975,24 @@
                 </thead>
                 <tbody>
                   @for (record of tHistory; track $index) {
-                    <tr class="border-b border-zinc-800/50">
-                      <td class="py-2 pr-4 text-white font-mono">{{ record.seasonYear }}</td>
-                      <td class="py-2 pr-4 text-zinc-400 font-mono">W{{ record.week }}</td>
-                      <td class="py-2 pr-4 text-zinc-300">
+                    <tr class="border-b border-border/50">
+                      <td class="py-2 pr-4 text-text-primary font-mono">{{ record.seasonYear }}</td>
+                      <td class="py-2 pr-4 text-text-muted font-mono">W{{ record.week }}</td>
+                      <td class="py-2 pr-4 text-text-secondary">
                         @if (gameService.getTeam(record.sellerTeamId); as sellerTeam) {
                           {{ sellerTeam.name }}
                         } @else {
                           Unknown
                         }
                       </td>
-                      <td class="py-2 pr-4 text-zinc-300">
+                      <td class="py-2 pr-4 text-text-secondary">
                         @if (gameService.getTeam(record.buyerTeamId); as buyerTeam) {
                           {{ buyerTeam.name }}
                         } @else {
                           Unknown
                         }
                       </td>
-                      <td class="py-2 pr-4 text-right text-emerald-400 font-mono font-medium">{{ record.fee | currency:'USD':'symbol':'1.0-0' }}</td>
+                      <td class="py-2 pr-4 text-right text-accent font-mono font-medium">{{ record.fee | currency:'USD':'symbol':'1.0-0' }}</td>
                     </tr>
                   }
                 </tbody>
@@ -1003,14 +1004,14 @@
         @let history = injuryHistory();
         @if (history.length > 0) {
           <!-- Injury History -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
               <span aria-hidden="true">🩹</span>
               Injury History
             </h2>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800">
+                <thead class="text-left text-xs uppercase tracking-wider text-text-muted border-b border-border">
                   <tr>
                     <th class="py-2 pr-4 font-medium">Injury</th>
                     <th class="py-2 pr-4 font-medium">Severity</th>
@@ -1021,16 +1022,16 @@
                 </thead>
                 <tbody>
                   @for (record of history; track $index) {
-                    <tr class="border-b border-zinc-800/50">
-                      <td class="py-2 pr-4 text-white">{{ getInjuryName(record.definitionId) }}</td>
-                      <td class="py-2 pr-4 text-zinc-400">{{ getInjurySeverity(record.definitionId) }}</td>
-                      <td class="py-2 pr-4 text-zinc-400 font-mono">{{ record.sustainedInSeason }} W{{ record.sustainedInWeek }}</td>
-                      <td class="py-2 pr-4 text-right text-zinc-300 font-mono">{{ record.totalWeeks }} wk</td>
+                    <tr class="border-b border-border/50">
+                      <td class="py-2 pr-4 text-text-primary">{{ getInjuryName(record.definitionId) }}</td>
+                      <td class="py-2 pr-4 text-text-muted">{{ getInjurySeverity(record.definitionId) }}</td>
+                      <td class="py-2 pr-4 text-text-muted font-mono">{{ record.sustainedInSeason }} W{{ record.sustainedInWeek }}</td>
+                      <td class="py-2 pr-4 text-right text-text-secondary font-mono">{{ record.totalWeeks }} wk</td>
                       <td class="py-2 pr-4 text-right">
                         @if (record.weeksRemaining > 0) {
-                          <span class="text-red-400 font-medium">{{ record.weeksRemaining }} wk left</span>
+                          <span class="text-danger font-medium">{{ record.weeksRemaining }} wk left</span>
                         } @else {
-                          <span class="text-emerald-500/80">Healed</span>
+                          <span class="text-accent/80">Healed</span>
                         }
                       </td>
                     </tr>
@@ -1044,14 +1045,14 @@
         @let suspHistory = suspensionHistory();
         @if (suspHistory.length > 0) {
           <!-- Suspension History -->
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
               <span aria-hidden="true">🟥</span>
               Suspension History
             </h2>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800">
+                <thead class="text-left text-xs uppercase tracking-wider text-text-muted border-b border-border">
                   <tr>
                     <th class="py-2 pr-4 font-medium">Reason</th>
                     <th class="py-2 pr-4 font-medium">Sustained</th>
@@ -1061,15 +1062,15 @@
                 </thead>
                 <tbody>
                   @for (record of suspHistory; track $index) {
-                    <tr class="border-b border-zinc-800/50">
-                      <td class="py-2 pr-4 text-white">{{ getSuspensionName(record.reason) }}</td>
-                      <td class="py-2 pr-4 text-zinc-400 font-mono">{{ record.sustainedInSeason }} W{{ record.sustainedInWeek }}</td>
-                      <td class="py-2 pr-4 text-right text-zinc-300 font-mono">{{ formatSuspensionGames(record.totalGames) }}</td>
+                    <tr class="border-b border-border/50">
+                      <td class="py-2 pr-4 text-text-primary">{{ getSuspensionName(record.reason) }}</td>
+                      <td class="py-2 pr-4 text-text-muted font-mono">{{ record.sustainedInSeason }} W{{ record.sustainedInWeek }}</td>
+                      <td class="py-2 pr-4 text-right text-text-secondary font-mono">{{ formatSuspensionGames(record.totalGames) }}</td>
                       <td class="py-2 pr-4 text-right">
                         @if (record.gamesRemaining > 0) {
-                          <span class="text-red-400 font-medium">{{ formatSuspensionGames(record.gamesRemaining) }} left</span>
+                          <span class="text-danger font-medium">{{ formatSuspensionGames(record.gamesRemaining) }} left</span>
                         } @else {
-                          <span class="text-emerald-500/80">Served</span>
+                          <span class="text-accent/80">Served</span>
                         }
                       </td>
                     </tr>
@@ -1083,21 +1084,21 @@
         <!-- Attributes History Table -->
         @let attrHistory = getAttributesHistory();
         @if (attrHistory.length > 0) {
-          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-            <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
+            <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               Attributes History
             </h2>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-800">
+                <thead class="text-left text-xs uppercase tracking-wider text-text-muted border-b border-border">
                   <tr>
-                    <th class="py-2 pr-4 font-medium sticky left-0 bg-zinc-900">Season</th>
+                    <th class="py-2 pr-4 font-medium sticky left-0 bg-panel">Season</th>
                     <th class="py-2 px-2 font-medium text-center text-amber-500">OVR</th>
                     <!-- Physical -->
-                    <th class="py-2 px-2 font-medium text-center text-emerald-500" title="Speed">SPD</th>
-                    <th class="py-2 px-2 font-medium text-center text-emerald-500" title="Strength">STR</th>
-                    <th class="py-2 px-2 font-medium text-center text-emerald-500" title="Endurance">END</th>
+                    <th class="py-2 px-2 font-medium text-center text-accent" title="Speed">SPD</th>
+                    <th class="py-2 px-2 font-medium text-center text-accent" title="Strength">STR</th>
+                    <th class="py-2 px-2 font-medium text-center text-accent" title="Endurance">END</th>
                     <!-- Technical -->
                     <th class="py-2 px-2 font-medium text-center text-purple-500" title="Tackling">TAK</th>
                     <th class="py-2 px-2 font-medium text-center text-purple-500" title="Shooting">SHT</th>
@@ -1114,24 +1115,24 @@
                 </thead>
                 <tbody>
                   @for (record of attrHistory; track record.seasonYear) {
-                    <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                      <td class="py-2 pr-4 text-white sticky left-0 bg-zinc-900 group-hover:bg-zinc-800/30 transition-colors">{{ record.seasonYear }}</td>
+                    <tr class="border-b border-border/50 hover:bg-panel/30 transition-colors">
+                      <td class="py-2 pr-4 text-text-primary sticky left-0 bg-panel group-hover:bg-panel/30 transition-colors">{{ record.seasonYear }}</td>
                       <td class="py-2 px-2 text-center text-amber-400 font-mono font-bold">{{ record.overall.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.speed.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.strength.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.endurance.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.speed.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.strength.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.endurance.value }}</td>
                       
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.tackling.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.shooting.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.heading.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.shortPassing.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.tackling.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.shooting.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.heading.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.shortPassing.value }}</td>
                       
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.flair.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.vision.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-300 font-mono">{{ record.determination.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.flair.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.vision.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-secondary font-mono">{{ record.determination.value }}</td>
                       
-                      <td class="py-2 px-2 text-center text-zinc-400 font-mono">{{ record.handling.value }}</td>
-                      <td class="py-2 px-2 text-center text-zinc-400 font-mono">{{ record.reflexes.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-muted font-mono">{{ record.handling.value }}</td>
+                      <td class="py-2 px-2 text-center text-text-muted font-mono">{{ record.reflexes.value }}</td>
                     </tr>
                   }
                 </tbody>
@@ -1144,9 +1145,9 @@
             <div class="fixed inset-0 flex items-center justify-center z-50 p-4">
               <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="closeOfferModal()" (keydown)="closeOfferModal()" tabindex="0" role="button" aria-label="Close modal"></div>
               
-              <div class="relative bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl z-10 transition-all duration-300 transform scale-100">
+              <div class="relative bg-panel border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl z-10 transition-all duration-300 transform scale-100">
                 <div class="absolute top-0 left-0 w-full h-1"
-                     [class.bg-emerald-500]="transferWindowPhase() === 'summer'"
+                     [class.bg-accent]="transferWindowPhase() === 'summer'"
                      [class.bg-cyan-500]="transferWindowPhase() === 'winter'"></div>
                 
                 <div class="p-6 space-y-4">
@@ -1154,74 +1155,74 @@
                     <div class="flex flex-col items-center justify-center py-8 space-y-4 select-none">
                       <div class="relative w-20 h-20 flex items-center justify-center">
                         <div class="absolute inset-0 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
-                        <span class="material-icons text-4xl text-white animate-[spin_3s_linear_infinite]">sports_soccer</span>
-                        <span class="absolute -top-1 -right-1 material-icons text-emerald-400 text-lg animate-bounce delay-100">payments</span>
+                        <span class="material-icons text-4xl text-text-primary animate-[spin_3s_linear_infinite]">sports_soccer</span>
+                        <span class="absolute -top-1 -right-1 material-icons text-accent text-lg animate-bounce delay-100">payments</span>
                         <span class="absolute -bottom-1 -left-1 material-icons text-amber-500 text-lg animate-bounce delay-300">monetization_on</span>
                       </div>
                       <div class="text-center space-y-1">
-                        <p class="text-sm font-bold text-white tracking-wide animate-pulse">Arranging transfer...</p>
-                        <p class="text-xs text-zinc-400">Negotiating terms with agent and club 🤝</p>
+                        <p class="text-sm font-bold text-text-primary tracking-wide animate-pulse">Arranging transfer...</p>
+                        <p class="text-xs text-text-muted">Negotiating terms with agent and club 🤝</p>
                       </div>
                     </div>
                   } @else if (offerSuccess()) {
                     <div class="flex flex-col items-center justify-center py-8 space-y-4 select-none">
-                      <div class="flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <div class="flex items-center justify-center w-16 h-16 rounded-full bg-accent/10 text-accent border border-emerald-500/20">
                         <span class="material-icons text-3xl animate-bounce">check_circle</span>
                       </div>
                       <div class="text-center space-y-1">
-                        <p class="text-sm font-bold text-white tracking-wide">Transfer Accepted!</p>
-                        <p class="text-xs text-zinc-400">{{ offerSuccess() }}</p>
+                        <p class="text-sm font-bold text-text-primary tracking-wide">Transfer Accepted!</p>
+                        <p class="text-xs text-text-muted">{{ offerSuccess() }}</p>
                       </div>
                     </div>
                   } @else {
                     <div class="flex items-center gap-3">
                       <div class="flex items-center justify-center w-10 h-10 rounded-lg"
-                           [class.bg-emerald-500/10]="transferWindowPhase() === 'summer'"
-                           [class.text-emerald-400]="transferWindowPhase() === 'summer'"
+                           [class.bg-accent/10]="transferWindowPhase() === 'summer'"
+                           [class.text-accent]="transferWindowPhase() === 'summer'"
                            [class.bg-cyan-500/10]="transferWindowPhase() === 'winter'"
                            [class.text-cyan-400]="transferWindowPhase() === 'winter'">
                         <span class="material-icons text-xl">handshake</span>
                       </div>
-                      <h3 class="text-lg font-bold text-white">Make Transfer Offer</h3>
+                      <h3 class="text-lg font-bold text-text-primary">Make Transfer Offer</h3>
                     </div>
                     
-                    <p class="text-sm text-zinc-300 leading-relaxed">
-                      Submit an offer to buy <strong class="text-white">{{ player()?.name }}</strong>. 
-                      The market value is estimated at <strong class="text-emerald-400 font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</strong>.
+                    <p class="text-sm text-text-secondary leading-relaxed">
+                      Submit an offer to buy <strong class="text-text-primary">{{ player()?.name }}</strong>. 
+                      The market value is estimated at <strong class="text-accent font-mono">{{ marketValue() | currency:'USD':'symbol':'1.0-0' }}</strong>.
                     </p>
                     
                     <!-- Financial Status -->
-                    <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-3.5 space-y-2 text-xs">
+                    <div class="rounded-xl bg-canvas border border-border/80 p-3.5 space-y-2 text-xs">
                       <div class="flex justify-between">
-                        <span class="text-zinc-500">Your Transfer Budget:</span>
-                        <span class="text-zinc-200 font-mono font-medium">{{ userBudget() | currency:'USD':'symbol':'1.0-0' }}</span>
+                        <span class="text-text-muted">Your Transfer Budget:</span>
+                        <span class="text-text-secondary font-mono font-medium">{{ userBudget() | currency:'USD':'symbol':'1.0-0' }}</span>
                       </div>
                       <div class="flex justify-between">
-                        <span class="text-zinc-500">Your Wage Headroom:</span>
-                        <span class="text-zinc-200 font-mono font-medium">{{ userWageHeadroom() | number:'1.1-1' }} pts</span>
+                        <span class="text-text-muted">Your Wage Headroom:</span>
+                        <span class="text-text-secondary font-mono font-medium">{{ userWageHeadroom() | number:'1.1-1' }} pts</span>
                       </div>
-                      <div class="border-t border-zinc-800/60 pt-2 flex justify-between">
-                        <span class="text-zinc-500">Player Wage Cost:</span>
+                      <div class="border-t border-border/60 pt-2 flex justify-between">
+                        <span class="text-text-muted">Player Wage Cost:</span>
                         <span class="text-amber-400 font-mono font-medium">{{ targetPlayerWage() | number:'1.1-1' }} pts</span>
                       </div>
                     </div>
 
                     <!-- Bid Input -->
                     <div class="space-y-1.5">
-                      <label for="bid-amount-profile" class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">Offer Amount ($)</label>
+                      <label for="bid-amount-profile" class="text-xs font-semibold uppercase tracking-wider text-text-muted block">Offer Amount ($)</label>
                       <input id="bid-amount-profile" type="text" [value]="formatCurrency(offerBidAmount())"
                         (input)="onBidInput($event)"
-                        class="w-full bg-zinc-950 border border-zinc-800/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-mono font-semibold" />
+                        class="w-full bg-canvas border border-border/80 rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/80 transition-all font-mono font-semibold" />
                     </div>
 
                     <!-- Validation Errors -->
                     @if (offerBidAmount() > userBudget()) {
-                    <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+                    <div class="flex items-center gap-2 text-xs text-danger bg-danger/10 border border-danger/20 rounded-xl p-3">
                       <span class="material-icons text-sm">warning</span>
                       <span>Insufficient transfer budget (bid exceeds your available budget).</span>
                     </div>
                     } @else if (targetPlayerWage() > userWageHeadroom()) {
-                    <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+                    <div class="flex items-center gap-2 text-xs text-danger bg-danger/10 border border-danger/20 rounded-xl p-3">
                       <span class="material-icons text-sm">warning</span>
                       <span>Insufficient wage cap headroom (player exceeds your available headroom).</span>
                     </div>
@@ -1229,13 +1230,13 @@
 
                     <!-- Status Alerts -->
                     @if (offerError()) {
-                    <div class="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl p-3">
+                    <div class="flex items-center gap-2 text-xs text-danger bg-danger/10 border border-danger/20 rounded-xl p-3">
                       <span class="material-icons text-sm">error</span>
                       <span>{{ offerError() }}</span>
                     </div>
                     }
                     @if (offerSuccess()) {
-                    <div class="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-3">
+                    <div class="flex items-center gap-2 text-xs text-accent bg-accent/10 border border-accent/20 rounded-xl p-3">
                       <span class="material-icons text-sm">check_circle</span>
                       <span>{{ offerSuccess() }}</span>
                     </div>
@@ -1243,12 +1244,12 @@
 
                     <div class="flex gap-3 pt-2">
                       <button (click)="closeOfferModal()"
-                              class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer text-center">
+                              class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold border bg-canvas text-text-secondary border-border-hover hover:bg-panel hover:text-text-primary transition-colors cursor-pointer text-center">
                         Cancel
                       </button>
                       <button (click)="submitOffer()"
                               [disabled]="offerBidAmount() <= 0 || offerBidAmount() > userBudget() || targetPlayerWage() > userWageHeadroom()"
-                              class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer text-center select-none">
+                              class="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold bg-accent text-zinc-950 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer text-center select-none">
                         Submit Offer
                       </button>
                     </div>
@@ -1259,7 +1260,7 @@
           }
         }
     } @else {
-      <div class="text-center py-12 text-zinc-500">
+      <div class="text-center py-12 text-text-muted">
         Player not found.
       </div>
     }

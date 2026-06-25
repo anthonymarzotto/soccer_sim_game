@@ -1,116 +1,115 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-    <div class="max-w-5xl mx-auto space-y-8">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+    <div class="max-w-5xl space-y-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
             <div>
-                <h1 class="text-3xl font-bold tracking-tight text-white">
-                    League Standings
-                </h1>
-                <p class="text-zinc-400 mt-1">
+                <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">League Standings</h1>
+                <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">
                     Week {{ gameService.league()?.currentWeek }}
                 </p>
             </div>
         </div>
 
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="bg-panel border border-border rounded-xl overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+                    <thead class="text-xs text-text-muted uppercase font-display border-b-2 border-border bg-panel">
                         <tr>
-                            <th scope="col" class="px-6 py-4 font-medium">
+                            <th scope="col" class="px-6 py-4 font-bold tracking-wider">
                                 Pos
                             </th>
-                            <th scope="col" class="px-6 py-4 font-medium">
+                            <th scope="col" class="px-6 py-4 font-bold tracking-wider">
                                 Club
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 OVR
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 MP
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 W
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 D
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 L
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 GF
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 GA
                             </th>
-                            <th scope="col" class="px-4 py-4 font-medium text-center">
+                            <th scope="col" class="px-4 py-4 font-bold tracking-wider text-center">
                                 GD
                             </th>
-                            <th scope="col" class="px-6 py-4 font-bold text-center text-white">
+                            <th scope="col" class="px-6 py-4 font-bold tracking-wider text-center text-accent">
                                 Pts
                             </th>
-                            <th scope="col" class="px-6 py-4 font-medium text-center">
+                            <th scope="col" class="px-6 py-4 font-bold tracking-wider text-center">
                                 Form
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-800">
+                    <tbody class="divide-y divide-border">
                         @for (team of gameService.standings(); track team.id;
                         let i = $index) { @let stats = getTeamStats(team);
-                        <tr class="hover:bg-zinc-800/50 transition-colors group"
-                            [class.bg-emerald-950]="team.id === gameService.league()?.userTeamId">
-                            <td class="px-6 py-4 whitespace-nowrap text-zinc-400">
+                        <tr class="hover:bg-canvas/50 transition-colors group"
+                            [class.row-user-highlight]="team.id === gameService.league()?.userTeamId">
+                            <td class="px-6 py-4 whitespace-nowrap text-text-muted font-semibold tabular-nums"
+                                [class.cell-user-highlight]="team.id === gameService.league()?.userTeamId">
                                 {{ i + 1 }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap font-medium text-white">
-                                <a [routerLink]="['/team', team.id]" class="hover:text-emerald-400 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
+                                <a [routerLink]="['/team', team.id]" class="hover:text-accent transition-colors">
                                     {{ team.name }}
                                 </a>
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-white">
+                            <td class="px-4 py-4 whitespace-nowrap text-center font-bold text-text-primary tabular-nums">
                                 {{ gameService.calculateTeamOverall(team) }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.played }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.won }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.drawn }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.lost }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.goalsFor }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.goalsAgainst }}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-center text-zinc-400">
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-text-secondary tabular-nums">
                                 {{ stats.goalsFor - stats.goalsAgainst > 0 ? '+'
                                 : '' }}{{ stats.goalsFor - stats.goalsAgainst }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center font-bold text-white">
+                            <td class="px-6 py-4 whitespace-nowrap text-center font-bold text-accent text-base tabular-nums">
                                 {{ stats.points }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-1">
+                                <div class="flex items-center justify-center gap-1.5">
                                     @for (entry of stats.last5; track $index) {
                                     <span
-                                        class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold cursor-default"
-                                        [class.bg-emerald-500]="entry.result === MatchResult.WIN"
-                                        [class.text-emerald-950]="entry.result === MatchResult.WIN"
-                                        [class.bg-zinc-600]="entry.result === MatchResult.DRAW"
-                                        [class.text-zinc-200]="entry.result === MatchResult.DRAW"
-                                        [class.bg-red-500]="entry.result === MatchResult.LOSS"
-                                        [class.text-red-950]="entry.result === MatchResult.LOSS"
-                                        [title]="(entry.isHome ? 'vs ' : '@ ') + entry.opponentName + ' — ' + entry.goalsFor + ' - ' + entry.goalsAgainst">
+                                        class="w-5.5 h-5.5 flex items-center justify-center text-[10px] font-extrabold font-display border-2 cursor-default select-none"
+                                        [class.border-accent]="entry.result === MatchResult.WIN"
+                                        [class.text-accent]="entry.result === MatchResult.WIN"
+                                        [class.border-text-muted/40]="entry.result === MatchResult.DRAW"
+                                        [class.text-text-muted]="entry.result === MatchResult.DRAW"
+                                        [class.border-danger]="entry.result === MatchResult.LOSS"
+                                        [class.text-danger]="entry.result === MatchResult.LOSS"
+                                        [title]="(entry.isHome ? 'vs ' : '@ ') + entry.opponentName + ' : ' + entry.goalsFor + ' - ' + entry.goalsAgainst">
                                         {{ entry.result }}
                                     </span>
                                     } @if (stats.last5.length === 0) {
-                                    <span class="text-zinc-600 text-xs">-</span>
+                                    <span class="text-text-muted text-xs">-</span>
                                     }
                                 </div>
                             </td>

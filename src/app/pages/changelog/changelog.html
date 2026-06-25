@@ -1,268 +1,268 @@
-<div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-  <div class="max-w-4xl mx-auto space-y-8">
-    <div class="flex items-center gap-4">
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-4xl space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-white">ChangeLog</h1>
-        <p class="text-zinc-400 mt-1">Changes by version</p>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Changelog</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Changes by version</p>
       </div>
     </div>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.22.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-23</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.22.0</h2>
+        <span class="text-xs text-text-muted">2026-06-23</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Refactored the navigation sidebar to group links, support vertical scrolling, and utilize smooth absolute-positioned left border slide-in indicators with click feedback. Added a dedicated Team Schedule link to the sidebar's Squad section, and fixed the schedule page team switcher dropdown to correctly select the navigated team on page load.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.21.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-20</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.21.0</h2>
+        <span class="text-xs text-text-muted">2026-06-20</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Added a new player Game Log page with a detailed match-by-match statistics table. Enhanced the UI by scaling player ratings to the standard 1.0-10.0 range, adding descriptive tooltips to column headers, and removing redundant outcome letters from result chips.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.20.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-18</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.20.0</h2>
+        <span class="text-xs text-text-muted">2026-06-18</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Implemented a player suspension system for yellow and red card accumulation, featuring consecutive suspension serving, location-aware red card reasons (DOGSO, serious foul play, and rare spitting incidents), custom commentary integration, news feed updates, and robust validation warnings blocking suspended players from active match lineups. The data schema was bumped to version S.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.19.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-15</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.19.0</h2>
+        <span class="text-xs text-text-muted">2026-06-15</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Implemented transaction history logging for team finances, adding chronological News items for season-end prize money awards and weekly wage cap luxury tax penalties. Included estimated agent fee disclosures in the transfer bid modal and transfer news details; the data schema was bumped to version R.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.18.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-15</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.18.0</h2>
+        <span class="text-xs text-text-muted">2026-06-15</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Added a Finances tab to the player career stats card. Moved the Wage column to only show under this new tab, and added a Market Value column that saves and persists each player's market value at the time the stats record is initialized (on generation or season transition). Legacy stats without a saved market value will gracefully fall back to computed estimations; the data schema was bumped to version Q.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.17.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-13</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.17.0</h2>
+        <span class="text-xs text-text-muted">2026-06-13</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Implemented a player contract system to lock in wages over multi-season durations, track historical player wages, and log season transition alerts for final-year contracts. Added a weekly luxury tax penalty for squads exceeding their wage cap and automatic contract renewals at market rates. CPU teams now proactively list players to clear cap space when over the wage cap or when upcoming renewals are unaffordable; the data schema was bumped to version P.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.16.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-11</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.16.0</h2>
+        <span class="text-xs text-text-muted">2026-06-11</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Implemented season-end prize money rollover and a 20% carryover budget decay to balance league economics, and added a 10% agent commission transaction tax on transfer execution. Unlisted player bids now command dynamic role/OVR-scaled premiums, and CPU auto-listings filter out recently transferred players to resolve hot-potato transaction loops. The data schema was bumped to version O.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.15.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-09</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.15.0</h2>
+        <span class="text-xs text-text-muted">2026-06-09</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Added CPU-to-CPU transfer execution during active transfer windows, including buyer activity checks, per-window buy caps, budget and wage validation, seller roster safeguards, and post-transfer listing recalculation. Completed transfers now appear in the News timeline alongside retirement events, with team filtering and unit coverage for the new transfer news behavior; the data schema remains on version N.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.14.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-08</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.14.0</h2>
+        <span class="text-xs text-text-muted">2026-06-08</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Added transfer offer workflows so users can submit bids, receive incoming CPU offers, and accept or reject pending deals from the Transfer Market. Transfer metadata now persists offer state, evaluated CPU offer candidates, and player transfer history; the data schema remains on version N for these saved-league changes.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.13.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-04</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.13.0</h2>
+        <span class="text-xs text-text-muted">2026-06-04</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Introduced the Transfer Market page and CPU auto-listing heuristics, allowing teams to list surplus, declining, wage-inefficient, or valuable youth players during active transfer windows. Implemented positional safety checks to prevent squads from dropping below minimum roster sizes, and protected starting players from listing if they are covering for injured teammates. Added manual list and delist actions for the user's squad on player profiles.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.12.1</h2>
-        <span class="text-xs text-zinc-500">2026-06-03</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.12.1</h2>
+        <span class="text-xs text-text-muted">2026-06-03</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Calibrated Variant B match simulation to resolve home/away score asymmetry and high shot volume by implementing relative coordinate scaling and defensive player attribute pressure calculations. Adjusted pass, carry, and shot success penalties under pressure, and updated simulation unit test guardrails to align with the new calibrated metrics.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.12.0</h2>
-        <span class="text-xs text-zinc-500">2026-06-01</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.12.0</h2>
+        <span class="text-xs text-text-muted">2026-06-01</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Introduced scheduled transfer window phases, gating all player transaction actions behind active seasonal periods. The summer transfer window is active during weeks 1–3 and the winter window during weeks 20–22, with all other weeks remaining closed to transfer activity.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.11.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-31</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.11.0</h2>
+        <span class="text-xs text-text-muted">2026-05-31</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Introduced a new TeamFinances schema block to enforce financial constraints based on team tiers (1 to 5). Teams are sorted by overall strength during league generation and initialized with cash-based transfer budgets and point-based wage caps, with player wage costs dynamically summed at startup.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.10.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-29</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.10.0</h2>
+        <span class="text-xs text-text-muted">2026-05-29</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Introduced player finances featuring deterministic, position-aware calculations for cash Market Value and weekly Wage Point Cost. Young high-potential wonderkids are valued dynamically using a career-segment blended overall curve that projects future headroom realization. A brand new sortable and filterable Player Attributes page is also accessible from the sidebar navigation.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.9.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-22</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.9.0</h2>
+        <span class="text-xs text-text-muted">2026-05-22</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Separated games played tracking into starts and substitution appearances (subbed in). You can now view a detailed starts/subs breakdown formatted as started(subbed) across roster views, player profiles, and career statistics, with a new schema version bump to K requiring league regeneration to activate.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.8.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-21</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.8.0</h2>
+        <span class="text-xs text-text-muted">2026-05-21</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release introduces a new team-specific schedule page accessible from the team details view. Players can now review their team's full history, including past season records, completed match outcomes, and pending fixtures all in one dedicated chronologically sorted view.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.7.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-13</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.7.0</h2>
+        <span class="text-xs text-text-muted">2026-05-13</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Introduced persistent player fatigue across matches, including weekly recovery scaling with player fitness. Fully rested players now correctly start with 0 fatigue, affecting CPU lineup logic and UI rendering. The data schema version was bumped to J; existing leagues must be regenerated.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.6.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-10</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.6.0</h2>
+        <span class="text-xs text-text-muted">2026-05-10</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release introduces a comprehensive player retirement and roster replenishment system with historical career stats tracking and a dedicated News page for season transition logs. Team Details has been enhanced with team-specific retirement history and improved player progression visualization. The data schema version was bumped to I; existing leagues must be regenerated.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.5.0</h2>
-        <span class="text-xs text-zinc-500">2026-05-04</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.5.0</h2>
+        <span class="text-xs text-text-muted">2026-05-04</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release implements the Player Progression system, enabling dynamic growth or decline of player attributes during season rollover based on age phase and potential. The Player Profile view has been enhanced to display prior year attribute comparisons (+/- deltas) and an Attributes History table. The data schema version was bumped to H to persist this new progression metadata; existing leagues must be regenerated.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.4.0</h2>
-        <span class="text-xs text-zinc-500">2026-04-29</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.4.0</h2>
+        <span class="text-xs text-text-muted">2026-04-29</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release introduces a comprehensive player injury system integrated directly into the match simulation. Players can now sustain injuries during matches that sideline them for multiple games, requiring deeper squad rotation and forcing CPU teams to actively utilize their bench reserves. The team details and roster views have also been updated to clearly display unavailable players in a dedicated section.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.3.3</h2>
-        <span class="text-xs text-zinc-500">2026-04-24</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.3.3</h2>
+        <span class="text-xs text-text-muted">2026-04-24</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Fixed player match rating formula with a fixed base of 50, persisted per-season average ratings and star nominations to career stats, and added Stars of the Game display on match summary. Live ratings now appear in watch mode alongside player names, and tackle/interception attribution was improved to correctly credit the defensive winner based on proximity and attribute weighting.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.3.2</h2>
-        <span class="text-xs text-zinc-500">2026-04-23</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.3.2</h2>
+        <span class="text-xs text-text-muted">2026-04-23</span>
       </div>
-      <p class="mt-3 text-zinc-400">
-        This release expands the player attribute model with nine new stats — three visible goalkeeping attributes (Handling, Reflexes, Command of Area) and six hidden mental/physical stats — replacing the single Goalkeeping stat with a dedicated Goalkeeping section on the player profile. Player objects now track mood and fatigue as persistent fields initialized to 100 each season. The data schema version was bumped to E; existing leagues must be regenerated.
+      <p class="mt-3 text-text-muted">
+        This release expands the player attribute model with nine new stats, including three visible goalkeeping attributes (Handling, Reflexes, Command of Area) and six hidden mental/physical stats, replacing the single Goalkeeping stat with a dedicated Goalkeeping section on the player profile. Player objects now track mood and fatigue as persistent fields initialized to 100 each season. The data schema version was bumped to E; existing leagues must be regenerated.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.3.1</h2>
-        <span class="text-xs text-zinc-500">2026-04-21</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.3.1</h2>
+        <span class="text-xs text-text-muted">2026-04-21</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release introduces dual team-color support across match visuals and team badges to improve contrast and readability when clubs have similar primary colors. Watch mode now uses distinct main and accent colors for formation dots and roster-card edge highlights, and badge rendering was refined so gradient badges fade from main to accent while shield and jersey icons preserve clean transparent styling. The team color service now provides stable primary/secondary palette values for consistent styling across components.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.3.0</h2>
-        <span class="text-xs text-zinc-500">2026-04-17</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.3.0</h2>
+        <span class="text-xs text-text-muted">2026-04-17</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release adds a dedicated player stats page with season-by-season and career views, plus richer player profile and team detail links into those records. It also extends league metadata and persistence with the current season year so generated career stats, saved data, and season rollups stay aligned across reloads.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.2.0</h2>
-        <span class="text-xs text-zinc-500">2026-04-13</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.2.0</h2>
+        <span class="text-xs text-text-muted">2026-04-13</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         Watch mode now uses simulation-authored formation snapshots and fatigue timelines so substitutions, shape shifts, and player stamina stay aligned with generated match outcomes. Commentary replay gained a live scrollable log with auto-follow, expand/collapse, adjustable playback speed, and pause/resume controls to let players experience matches at their own pace. Testing coverage was extended with targeted unit tests for commentary state transitions, scroll threshold behaviour, and auto-follow toggling, and DOM access was refactored to Angular @ViewChild conventions.
       </p>
     </section>
 
-    <section class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6">
+    <section class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-300">v0.1.0</h2>
-        <span class="text-xs text-zinc-500">2026-04-08</span>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-text-secondary">v0.1.0</h2>
+        <span class="text-xs text-text-muted">2026-04-08</span>
       </div>
-      <p class="mt-3 text-zinc-400">
+      <p class="mt-3 text-text-muted">
         This release moves match simulation to the new Variant B engine with adaptive tick flow, stronger possession logic, and shape-aware manpower behavior after dismissals. It also expands realism with foul/card, carry, and pass resolution updates, including direct shape-aware pass success and failure handling. Guardrail coverage was widened with dedicated calibration, manpower, substitutions, and A/B scenario tests, and the simulation flow documentation was updated to match.
       </p>
     </section>

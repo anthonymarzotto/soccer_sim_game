@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, signal } from '@angular/core';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
-import { Position, Role } from '../../models/enums';
+import { Position } from '../../models/enums';
 import { PlayerCareerStats, PlayerSeasonAttributes, StatKey, SuspensionRecord } from '../../models/types';
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
@@ -25,7 +25,6 @@ import { FormsModule } from '@angular/forms';
 })
 export class PlayerProfileComponent {
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
   gameService = inject(GameService);
   private settingsService = inject(SettingsService);
 
@@ -309,51 +308,6 @@ export class PlayerProfileComponent {
       return diff !== 0 ? diff : null;
     }
     return null;
-  }
-
-  team = computed(() => {
-    const p = this.player();
-    if (!p) return undefined;
-    return this.gameService.getTeam(p.teamId);
-  });
-
-  private positionWeight(pos: string): number {
-    switch (pos) {
-      case Position.GOALKEEPER: return 1;
-      case Position.DEFENDER: return 2;
-      case Position.MIDFIELDER: return 3;
-      case Position.FORWARD: return 4;
-      default: return 5;
-    }
-  }
-
-  private sortedByPosition<T extends { position: string; name: string }>(players: T[]): T[] {
-    return players.slice().sort((a, b) => {
-      const posDiff = this.positionWeight(a.position) - this.positionWeight(b.position);
-      return posDiff !== 0 ? posDiff : a.name.localeCompare(b.name);
-    });
-  }
-
-  startersOnTeam = computed(() => {
-    const t = this.team();
-    if (!t) return [];
-    return this.sortedByPosition(this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.STARTER));
-  });
-
-  benchOnTeam = computed(() => {
-    const t = this.team();
-    if (!t) return [];
-    return this.sortedByPosition(this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.BENCH));
-  });
-
-  reservesOnTeam = computed(() => {
-    const t = this.team();
-    if (!t) return [];
-    return this.sortedByPosition(this.gameService.getPlayersForTeam(t.id).filter(p => p.role === Role.RESERVE));
-  });
-
-  onPlayerChange(playerId: string) {
-    this.router.navigate(['/player', playerId]);
   }
 
   // Toggle states for each skill section

@@ -51,24 +51,24 @@ interface FormationOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   template: `
-    <div class="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-      <div class="max-w-4xl mx-auto space-y-8">
-        <div class="flex items-center justify-between gap-4">
+    <div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+      <div class="max-w-4xl space-y-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
           <div class="flex items-center gap-4">
-            <a routerLink="/settings" class="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors">
+            <a routerLink="/settings" class="p-2 bg-panel hover:bg-canvas rounded-lg text-text-muted hover:text-text-primary transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </a>
             <div>
-              <h1 class="text-3xl font-bold tracking-tight text-white">Simulation Playground</h1>
-              <p class="text-zinc-400 mt-1">Run isolated Variant B batches without touching saved league state</p>
+              <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Simulation Playground</h1>
+              <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Run isolated Variant B batches without touching saved league state</p>
             </div>
           </div>
         </div>
 
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
+        <div class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-6 space-y-6">
           <div>
-            <h2 class="text-xl font-semibold text-white">Variant B Sandbox</h2>
-            <p class="text-zinc-400 mt-2">Each run executes the current Variant B engine with an isolated matchup and deterministic seed.</p>
+            <h2 class="text-xl font-semibold text-text-primary">Variant B Sandbox</h2>
+            <p class="text-text-muted mt-2">Each run executes the current Variant B engine with an isolated matchup and deterministic seed.</p>
           </div>
 
           @if (teams().length < 2) {
@@ -78,12 +78,12 @@ interface FormationOption {
           } @else {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label for="homeTeam" class="block text-sm font-medium text-zinc-300 mb-2">Home Team</label>
+                <label for="homeTeam" class="block text-sm font-medium text-text-secondary mb-2">Home Team</label>
                 <select
                   id="homeTeam"
                   [value]="homeTeamId()"
                   (change)="setHomeTeam($any($event.target).value)"
-                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                  class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3"
                 >
                   @for (option of sortedTeamOptions(); track option.id) {
                     <option [value]="option.id">{{ option.label }}</option>
@@ -92,12 +92,12 @@ interface FormationOption {
               </div>
 
               <div>
-                <label for="awayTeam" class="block text-sm font-medium text-zinc-300 mb-2">Away Team</label>
+                <label for="awayTeam" class="block text-sm font-medium text-text-secondary mb-2">Away Team</label>
                 <select
                   id="awayTeam"
                   [value]="awayTeamId()"
                   (change)="setAwayTeam($any($event.target).value)"
-                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                  class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3"
                 >
                   @for (option of sortedTeamOptions(); track option.id) {
                     <option [value]="option.id">{{ option.label }}</option>
@@ -108,12 +108,12 @@ interface FormationOption {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label for="homeFormation" class="block text-sm font-medium text-zinc-300 mb-2">Home Formation</label>
+                <label for="homeFormation" class="block text-sm font-medium text-text-secondary mb-2">Home Formation</label>
                 <select
                   id="homeFormation"
                   [value]="homeFormationId()"
                   (change)="setHomeFormation($any($event.target).value)"
-                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                  class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3"
                 >
                   @for (option of formationOptions(); track option.id) {
                     <option [value]="option.id">{{ option.label }}</option>
@@ -122,12 +122,12 @@ interface FormationOption {
               </div>
 
               <div>
-                <label for="awayFormation" class="block text-sm font-medium text-zinc-300 mb-2">Away Formation</label>
+                <label for="awayFormation" class="block text-sm font-medium text-text-secondary mb-2">Away Formation</label>
                 <select
                   id="awayFormation"
                   [value]="awayFormationId()"
                   (change)="setAwayFormation($any($event.target).value)"
-                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                  class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3"
                 >
                   @for (option of formationOptions(); track option.id) {
                     <option [value]="option.id">{{ option.label }}</option>
@@ -136,9 +136,9 @@ interface FormationOption {
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-zinc-800 pt-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border pt-6">
               <div>
-                <label for="runCount" class="block text-sm font-medium text-zinc-300 mb-2">Run Count</label>
+                <label for="runCount" class="block text-sm font-medium text-text-secondary mb-2">Run Count</label>
                 <input
                   id="runCount"
                   type="number"
@@ -146,19 +146,19 @@ interface FormationOption {
                   max="1000"
                   [value]="runCount()"
                   (input)="setRunCount($any($event.target).value)"
-                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                  class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3"
                 />
               </div>
 
               <div class="md:col-span-2">
-                <label for="simSeed" class="block text-sm font-medium text-zinc-300 mb-2">Seed Prefix (Optional)</label>
+                <label for="simSeed" class="block text-sm font-medium text-text-secondary mb-2">Seed Prefix (Optional)</label>
                 <input
                   id="simSeed"
                   type="text"
                   [value]="seedPrefix()"
                   (input)="setSeedPrefix($any($event.target).value)"
                   placeholder="e.g. tuning-run"
-                  class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-4 py-3"
+                  class="w-full bg-canvas border border-border text-text-primary rounded-lg px-4 py-3"
                 />
               </div>
             </div>
@@ -167,7 +167,7 @@ interface FormationOption {
               <button
                 type="button"
                 (click)="showTuning.set(!showTuning())"
-                class="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 font-semibold text-white hover:bg-zinc-700"
+                class="inline-flex items-center gap-2 rounded-lg bg-canvas px-4 py-2 font-semibold text-text-primary hover:bg-zinc-700"
               >
                 <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                 <span>{{ showTuning() ? 'Hide' : 'Show' }} Advanced Tuning</span>
@@ -175,12 +175,12 @@ interface FormationOption {
             </div>
 
             @if (showTuning()) {
-              <div class="rounded-xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
-                <h3 class="text-sm font-semibold text-white">Variant B Tuning Parameters</h3>
+              <div class="rounded-xl border border-border bg-panel p-6 space-y-4">
+                <h3 class="text-sm font-semibold text-text-primary">Variant B Tuning Parameters</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label for="goalChanceBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="goalChanceBase" class="block text-xs font-medium text-text-secondary mb-2">
                       Goal Chance Base: {{ goalChanceBase().toFixed(2) }}
                     </label>
                     <input
@@ -193,11 +193,11 @@ interface FormationOption {
                       (input)="setGoalChanceBase($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Base conversion rate for shots on target</p>
+                    <p class="text-xs text-text-muted mt-1">Base conversion rate for shots on target</p>
                   </div>
 
                   <div>
-                    <label for="goalChanceMin" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="goalChanceMin" class="block text-xs font-medium text-text-secondary mb-2">
                       Goal Chance Min: {{ goalChanceMin().toFixed(2) }}
                     </label>
                     <input
@@ -210,11 +210,11 @@ interface FormationOption {
                       (input)="setGoalChanceMin($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Minimum goal probability floor</p>
+                    <p class="text-xs text-text-muted mt-1">Minimum goal probability floor</p>
                   </div>
 
                   <div>
-                    <label for="goalChanceMax" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="goalChanceMax" class="block text-xs font-medium text-text-secondary mb-2">
                       Goal Chance Max: {{ goalChanceMax().toFixed(2) }}
                     </label>
                     <input
@@ -227,11 +227,11 @@ interface FormationOption {
                       (input)="setGoalChanceMax($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Maximum goal probability ceiling</p>
+                    <p class="text-xs text-text-muted mt-1">Maximum goal probability ceiling</p>
                   </div>
 
                   <div>
-                    <label for="onTargetBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="onTargetBase" class="block text-xs font-medium text-text-secondary mb-2">
                       On Target Base: {{ onTargetBase().toFixed(2) }}
                     </label>
                     <input
@@ -244,11 +244,11 @@ interface FormationOption {
                       (input)="setOnTargetBase($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Base rate of shots hitting the target</p>
+                    <p class="text-xs text-text-muted mt-1">Base rate of shots hitting the target</p>
                   </div>
 
                   <div>
-                    <label for="passWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="passWeightBase" class="block text-xs font-medium text-text-secondary mb-2">
                       Pass Weight: {{ passWeightBase().toFixed(2) }}
                     </label>
                     <input
@@ -261,11 +261,11 @@ interface FormationOption {
                       (input)="setPassWeightBase($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Weighting toward passing vs shooting/carrying</p>
+                    <p class="text-xs text-text-muted mt-1">Weighting toward passing vs shooting/carrying</p>
                   </div>
 
                   <div>
-                    <label for="carryWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="carryWeightBase" class="block text-xs font-medium text-text-secondary mb-2">
                       Carry Weight: {{ carryWeightBase().toFixed(2) }}
                     </label>
                     <input
@@ -278,11 +278,11 @@ interface FormationOption {
                       (input)="setCarryWeightBase($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Weighting toward carrying vs passing/shooting</p>
+                    <p class="text-xs text-text-muted mt-1">Weighting toward carrying vs passing/shooting</p>
                   </div>
 
                   <div>
-                    <label for="shotWeightBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="shotWeightBase" class="block text-xs font-medium text-text-secondary mb-2">
                       Shot Weight: {{ shotWeightBase().toFixed(2) }}
                     </label>
                     <input
@@ -295,11 +295,11 @@ interface FormationOption {
                       (input)="setShotWeightBase($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Weighting toward shooting vs passing/carrying</p>
+                    <p class="text-xs text-text-muted mt-1">Weighting toward shooting vs passing/carrying</p>
                   </div>
 
                   <div>
-                    <label for="homeAdvantageGoalBonus" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="homeAdvantageGoalBonus" class="block text-xs font-medium text-text-secondary mb-2">
                       Home Advantage Bonus: {{ homeAdvantageGoalBonus().toFixed(3) }}
                     </label>
                     <input
@@ -312,11 +312,11 @@ interface FormationOption {
                       (input)="setHomeAdvantageGoalBonus($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Goal conversion bonus added for home team shots</p>
+                    <p class="text-xs text-text-muted mt-1">Goal conversion bonus added for home team shots</p>
                   </div>
 
                   <div>
-                    <label for="cardChanceBase" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="cardChanceBase" class="block text-xs font-medium text-text-secondary mb-2">
                       Card Chance Base: {{ cardChanceBase().toFixed(2) }}
                     </label>
                     <input
@@ -329,11 +329,11 @@ interface FormationOption {
                       (input)="setCardChanceBase($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Chance of a card (yellow or red) per foul</p>
+                    <p class="text-xs text-text-muted mt-1">Chance of a card (yellow or red) per foul</p>
                   </div>
 
                   <div>
-                    <label for="directRedChance" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="directRedChance" class="block text-xs font-medium text-text-secondary mb-2">
                       Direct Red Chance: {{ directRedChance().toFixed(3) }}
                     </label>
                     <input
@@ -346,11 +346,11 @@ interface FormationOption {
                       (input)="setDirectRedChance($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Chance of a direct red card when a card is shown</p>
+                    <p class="text-xs text-text-muted mt-1">Chance of a direct red card when a card is shown</p>
                   </div>
 
                   <div>
-                    <label for="secondYellowChanceMultiplier" class="block text-xs font-medium text-zinc-300 mb-2">
+                    <label for="secondYellowChanceMultiplier" class="block text-xs font-medium text-text-secondary mb-2">
                       Second Yellow Multiplier: {{ secondYellowChanceMultiplier().toFixed(2) }}
                     </label>
                     <input
@@ -363,7 +363,7 @@ interface FormationOption {
                       (input)="setSecondYellowChanceMultiplier($any($event.target).value)"
                       class="w-full"
                     />
-                    <p class="text-xs text-zinc-500 mt-1">Card chance multiplier for players already on a yellow card</p>
+                    <p class="text-xs text-text-muted mt-1">Card chance multiplier for players already on a yellow card</p>
                   </div>
                 </div>
               </div>
@@ -374,7 +374,7 @@ interface FormationOption {
                 type="button"
                 (click)="runSandbox()"
                 [disabled]="isRunning() || !canRun()"
-                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-text-primary hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 @if (isRunning()) {
                   <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -384,30 +384,30 @@ interface FormationOption {
                 }
                 <span>{{ isRunning() ? 'Running...' : 'Run Simulation Batch' }}</span>
               </button>
-              <span class="text-sm text-zinc-400">Runs are isolated and do not alter saved league results.</span>
+              <span class="text-sm text-text-muted">Runs are isolated and do not alter saved league results.</span>
             </div>
 
             @if (summaryB()) {
-              <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <h3 class="text-sm font-semibold text-zinc-300">Batch Summary</h3>
+              <div class="rounded-xl border border-border bg-canvas p-4">
+                <h3 class="text-sm font-semibold text-text-secondary">Batch Summary</h3>
 
-                <div class="mt-3 rounded-lg border border-zinc-800 p-4">
+                <div class="mt-3 rounded-lg border border-border p-4">
                   <h4 class="text-cyan-300 font-semibold">Variant B</h4>
-                  <p class="mt-2 text-sm text-zinc-300">Runs: {{ summaryB()!.runs }}</p>
-                  <p class="text-sm text-zinc-300">Avg Goals: {{ summaryB()!.avgGoals.toFixed(2) }}</p>
-                  <p class="text-sm text-zinc-300">Avg Shots: {{ summaryB()!.avgShots.toFixed(2) }}</p>
-                  <p class="text-sm text-zinc-300">Avg SOT: {{ summaryB()!.avgShotsOnTarget.toFixed(2) }}</p>
-                  <p class="text-sm text-zinc-500">W-D-L: {{ summaryB()!.homeWins }}-{{ summaryB()!.draws }}-{{ summaryB()!.awayWins }}</p>
+                  <p class="mt-2 text-sm text-text-secondary">Runs: {{ summaryB()!.runs }}</p>
+                  <p class="text-sm text-text-secondary">Avg Goals: {{ summaryB()!.avgGoals.toFixed(2) }}</p>
+                  <p class="text-sm text-text-secondary">Avg Shots: {{ summaryB()!.avgShots.toFixed(2) }}</p>
+                  <p class="text-sm text-text-secondary">Avg SOT: {{ summaryB()!.avgShotsOnTarget.toFixed(2) }}</p>
+                  <p class="text-sm text-text-muted">W-D-L: {{ summaryB()!.homeWins }}-{{ summaryB()!.draws }}-{{ summaryB()!.awayWins }}</p>
                 </div>
               </div>
             }
 
             @if (rows().length > 0) {
-              <div class="rounded-xl border border-zinc-800 overflow-hidden">
+              <div class="rounded-xl border border-border overflow-hidden">
                 <div class="max-h-80 overflow-auto">
                   <table class="min-w-full text-sm">
-                    <thead class="bg-zinc-900 sticky top-0">
-                      <tr class="text-zinc-400 text-left">
+                    <thead class="bg-panel sticky top-0">
+                      <tr class="text-text-muted text-left">
                         <th class="px-3 py-2">Run</th>
                         <th class="px-3 py-2">Seed</th>
                         <th class="px-3 py-2">B Score</th>
@@ -419,7 +419,7 @@ interface FormationOption {
                     </thead>
                     <tbody>
                       @for (row of rows(); track row.run) {
-                        <tr class="border-t border-zinc-800 text-zinc-200">
+                        <tr class="border-t border-border text-text-secondary">
                           <td class="px-3 py-2">{{ row.run }}</td>
                           <td class="px-3 py-2">{{ row.seed || '-' }}</td>
                           <td class="px-3 py-2">{{ row.variantB.homeScore }}-{{ row.variantB.awayScore }}</td>
