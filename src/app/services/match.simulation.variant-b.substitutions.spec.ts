@@ -210,7 +210,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     const internals = simulationB as unknown as VariantBSubstitutionInternals;
     const config = createSimulationConfig();
     const state = createMatchState(homeTeam.id, 'home-mid1');
-    state.ballPossession.location = { x: 50, y: 20 };
+    state.ballPossession.location = { x: 50, y: 85 };
     state.ballPossession.phase = MatchPhase.BUILD_UP;
     state.ballPossession.passes = 4;
 
@@ -246,13 +246,14 @@ describe('Match Simulation Variant B Substitutions', () => {
     expect(state.ballPossession.teamId).toBe(awayTeam.id);
     expect(state.ballPossession.playerWithBall).toBe('away-gk1');
     expect(state.ballPossession.passes).toBe(0);
-    expect(state.ballPossession.phase).toBe(MatchPhase.ATTACKING);
+    expect(state.ballPossession.phase).toBe(MatchPhase.BUILD_UP);
   });
 
   it('should attribute pass interceptions to the ball-winning defender', () => {
     const internals = simulationB as unknown as VariantBSubstitutionInternals;
     const config = createSimulationConfig();
     const state = createMatchState(homeTeam.id, 'home-mid1');
+    state.ballPossession.location = { x: 50, y: 85 };
 
     vi.spyOn(internals.rng, 'random').mockReturnValue(0);
 
@@ -280,7 +281,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     const closeDefender = createTestPlayer({
       id: 'away-def-close',
       teamId: awayTeam.id,
-      position: PositionEnum.DEFENDER,
+      position: PositionEnum.CB,
       role: Role.STARTER,
       seasonYear: 2026,
       defaultStat: 70,
@@ -289,7 +290,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     const strongTackler = createTestPlayer({
       id: 'away-def-strong',
       teamId: awayTeam.id,
-      position: PositionEnum.DEFENDER,
+      position: PositionEnum.CB,
       role: Role.STARTER,
       seasonYear: 2026,
       defaultStat: 70,
@@ -327,7 +328,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     const closeDefender = createTestPlayer({
       id: 'away-def-close',
       teamId: awayTeam.id,
-      position: PositionEnum.DEFENDER,
+      position: PositionEnum.CB,
       role: Role.STARTER,
       seasonYear: 2026,
       defaultStat: 70,
@@ -336,7 +337,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     const smartDefender = createTestPlayer({
       id: 'away-def-smart',
       teamId: awayTeam.id,
-      position: PositionEnum.DEFENDER,
+      position: PositionEnum.CB,
       role: Role.STARTER,
       seasonYear: 2026,
       defaultStat: 70,
@@ -444,7 +445,7 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     const incoming = internals.selectSubstitutionIncomingPlayer(
       homePlayers.filter(p => p.role === Role.BENCH),
-      PositionEnum.MIDFIELDER
+      PositionEnum.CM
     );
 
     expect(incoming?.id).toBe('home-defb1');
@@ -465,8 +466,8 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid2', homePlayers, tactics, state);
     internals.pendingInjuryReplacements = {
       [TeamSide.HOME]: [
-        { playerId: 'home-mid1', position: PositionEnum.MIDFIELDER },
-        { playerId: 'home-mid2', position: PositionEnum.MIDFIELDER }
+        { playerId: 'home-mid1', position: PositionEnum.CM },
+        { playerId: 'home-mid2', position: PositionEnum.CM }
       ],
       [TeamSide.AWAY]: []
     };
@@ -507,7 +508,7 @@ describe('Match Simulation Variant B Substitutions', () => {
     internals.activeMatchShape = internals.initializeMatchShape(homeTeam, awayTeam);
     internals.handleInjuryWithdrawal(TeamSide.HOME, 'home-mid1', homePlayers, tactics, state);
     internals.pendingInjuryReplacements = {
-      [TeamSide.HOME]: [{ playerId: 'home-mid1', position: PositionEnum.MIDFIELDER }],
+      [TeamSide.HOME]: [{ playerId: 'home-mid1', position: PositionEnum.CM }],
       [TeamSide.AWAY]: []
     };
 
@@ -647,7 +648,7 @@ describe('Match Simulation Variant B Substitutions', () => {
       away: fieldService.calculateTeamTactics(awayTeam, 2026, awayPlayers)
     };
 
-    const benchGoalkeeper = createPlayer('away-gk-bench', 'away', PositionEnum.GOALKEEPER, Role.BENCH, 70);
+    const benchGoalkeeper = createPlayer('away-gk-bench', 'away', PositionEnum.GK, Role.BENCH, 70);
     awayPlayers.unshift(benchGoalkeeper);
 
     vi.spyOn(internals.rng, 'random')
@@ -743,20 +744,20 @@ function setFatigue(entries: PlayerFatigue[], playerId: string, fatigueLevel: nu
 
 function create442PlayersWithBench(prefix: string): Player[] {
   return [
-    createPlayer(`${prefix}-gk1`, prefix, PositionEnum.GOALKEEPER, Role.STARTER, 85),
-    createPlayer(`${prefix}-def1`, prefix, PositionEnum.DEFENDER, Role.STARTER, 74),
-    createPlayer(`${prefix}-def2`, prefix, PositionEnum.DEFENDER, Role.STARTER, 75),
-    createPlayer(`${prefix}-def3`, prefix, PositionEnum.DEFENDER, Role.STARTER, 76),
-    createPlayer(`${prefix}-def4`, prefix, PositionEnum.DEFENDER, Role.STARTER, 74),
-    createPlayer(`${prefix}-mid1`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 77),
-    createPlayer(`${prefix}-mid2`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 79),
-    createPlayer(`${prefix}-mid3`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 78),
-    createPlayer(`${prefix}-mid4`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 77),
-    createPlayer(`${prefix}-fwd1`, prefix, PositionEnum.FORWARD, Role.STARTER, 80),
-    createPlayer(`${prefix}-fwd2`, prefix, PositionEnum.FORWARD, Role.STARTER, 81),
-    createPlayer(`${prefix}-midb1`, prefix, PositionEnum.MIDFIELDER, Role.BENCH, 76),
-    createPlayer(`${prefix}-defb1`, prefix, PositionEnum.DEFENDER, Role.BENCH, 73),
-    createPlayer(`${prefix}-midr1`, prefix, PositionEnum.MIDFIELDER, Role.RESERVE, 75)
+    createPlayer(`${prefix}-gk1`, prefix, PositionEnum.GK, Role.STARTER, 85),
+    createPlayer(`${prefix}-def1`, prefix, PositionEnum.FB, Role.STARTER, 74),
+    createPlayer(`${prefix}-def2`, prefix, PositionEnum.CB, Role.STARTER, 75),
+    createPlayer(`${prefix}-def3`, prefix, PositionEnum.CB, Role.STARTER, 76),
+    createPlayer(`${prefix}-def4`, prefix, PositionEnum.FB, Role.STARTER, 74),
+    createPlayer(`${prefix}-mid1`, prefix, PositionEnum.CM, Role.STARTER, 77),
+    createPlayer(`${prefix}-mid2`, prefix, PositionEnum.CM, Role.STARTER, 79),
+    createPlayer(`${prefix}-mid3`, prefix, PositionEnum.CM, Role.STARTER, 78),
+    createPlayer(`${prefix}-mid4`, prefix, PositionEnum.CM, Role.STARTER, 77),
+    createPlayer(`${prefix}-fwd1`, prefix, PositionEnum.ST, Role.STARTER, 80),
+    createPlayer(`${prefix}-fwd2`, prefix, PositionEnum.ST, Role.STARTER, 81),
+    createPlayer(`${prefix}-midb1`, prefix, PositionEnum.CM, Role.BENCH, 76),
+    createPlayer(`${prefix}-defb1`, prefix, PositionEnum.CB, Role.BENCH, 73),
+    createPlayer(`${prefix}-midr1`, prefix, PositionEnum.CM, Role.RESERVE, 75)
   ];
 }
 
@@ -812,7 +813,7 @@ function createShapeSlot(slotId: string, playerId: string, x: number, y: number)
     coordinates: { x, y },
     zone: FieldZone.MIDFIELD,
     role: 'defending-line',
-    preferredPosition: PositionEnum.DEFENDER
+    preferredPosition: PositionEnum.CB
   };
 }
 

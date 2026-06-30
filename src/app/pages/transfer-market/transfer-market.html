@@ -213,18 +213,18 @@
                 <!-- Position -->
                 <td class="py-3.5 px-6">
                   <span class="px-2 py-0.5 rounded border text-[9px] font-bold font-display"
-                    [class.bg-warning/10]="row.player.position === Position.GOALKEEPER"
-                    [class.text-warning]="row.player.position === Position.GOALKEEPER"
-                    [class.border-warning/20]="row.player.position === Position.GOALKEEPER"
-                    [class.bg-blue-400/10]="row.player.position === Position.DEFENDER"
-                    [class.text-blue-400]="row.player.position === Position.DEFENDER"
-                    [class.border-blue-400/20]="row.player.position === Position.DEFENDER"
-                    [class.bg-accent/10]="row.player.position === Position.MIDFIELDER"
-                    [class.text-accent]="row.player.position === Position.MIDFIELDER"
-                    [class.border-accent/20]="row.player.position === Position.MIDFIELDER"
-                    [class.bg-danger/10]="row.player.position === Position.FORWARD"
-                    [class.text-danger]="row.player.position === Position.FORWARD"
-                    [class.border-danger/20]="row.player.position === Position.FORWARD">
+                    [class.bg-warning/10]="getPositionGroup(row.player.position) === 'GK'"
+                    [class.text-warning]="getPositionGroup(row.player.position) === 'GK'"
+                    [class.border-warning/20]="getPositionGroup(row.player.position) === 'GK'"
+                    [class.bg-blue-400/10]="getPositionGroup(row.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(row.player.position) === 'DEF'"
+                    [class.border-blue-400/20]="getPositionGroup(row.player.position) === 'DEF'"
+                    [class.bg-accent/10]="getPositionGroup(row.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(row.player.position) === 'MID'"
+                    [class.border-accent/20]="getPositionGroup(row.player.position) === 'MID'"
+                    [class.bg-danger/10]="getPositionGroup(row.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(row.player.position) === 'FWD'"
+                    [class.border-danger/20]="getPositionGroup(row.player.position) === 'FWD'">
                     {{ row.player.position }}
                   </span>
                 </td>

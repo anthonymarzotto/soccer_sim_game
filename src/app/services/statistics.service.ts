@@ -124,14 +124,26 @@ export class StatisticsService {
         misses: primaryPlayerEvents.filter(e => e.type === EventType.MISS).length,
         goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
         assists: assistsByPlayer.get(player.id) ?? 0,
-        tackles: player.position === Position.GOALKEEPER ? 0 : tackleEvents.length,
-        tacklesSuccessful: player.position === Position.GOALKEEPER ? 0 : tackleEvents.filter(e => e.success).length,
+        tackles: player.position === Position.GK ? 0 : tackleEvents.length,
+        tacklesSuccessful: player.position === Position.GK ? 0 : tackleEvents.filter(e => e.success).length,
         interceptions: interceptionEvents.length,
         fouls: primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length,
         foulsSuffered: playerEvents.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length,
         yellowCards: primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length,
         redCards: primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length,
         saves: playerEvents.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length,
+        cornersTaken: matchState.events.filter(e => e.type === EventType.CORNER && e.playerIds[0] === player.id).length,
+        cornersWon: matchState.events.filter(e => e.additionalData?.isCorner && e.additionalData?.aerialWinner === player.id).length,
+        freeKicksTaken: matchState.events.filter(e => e.type === EventType.FREE_KICK && e.playerIds[0] === player.id).length,
+        freeKickGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isFreeKick && e.playerIds[0] === player.id).length,
+        penaltiesTaken: matchState.events.filter(e => e.type === EventType.PENALTY && e.playerIds[0] === player.id).length,
+        penaltiesScored: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isPenalty && e.playerIds[0] === player.id).length,
+        penaltiesFaced: matchState.events.filter(e => e.type === EventType.PENALTY && e.playerIds[1] === player.id).length,
+        penaltiesSaved: matchState.events.filter(e => e.type === EventType.SAVE && e.additionalData?.isPenalty && e.playerIds[1] === player.id).length,
+        aerialDuelsWon: matchState.events.filter(e => e.additionalData?.aerialWinner === player.id).length,
+        aerialDuelsLost: matchState.events.filter(e => e.additionalData?.aerialLoser === player.id).length,
+        cornerGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isCorner && e.playerIds[0] === player.id).length,
+        indirectFreeKickGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isFreeKick && !e.additionalData?.freeKickDirect && e.playerIds[0] === player.id).length,
         rating: !hasEnteredMatch
           ? 0
           : this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, assistsByPlayer.get(player.id) ?? 0)
@@ -267,24 +279,50 @@ export class StatisticsService {
         return;
       }
 
+      const isCornerGoal = event.additionalData?.isCorner === true;
+      const isIndirectFreeKickGoal = event.additionalData?.isFreeKick === true && event.additionalData?.freeKickDirect === false;
+
+      if (isCornerGoal || isIndirectFreeKickGoal) {
+        const targetType = isCornerGoal ? EventType.CORNER : EventType.FREE_KICK;
+        for (let i = index - 1; i >= 0; i--) {
+          const priorEvent = allEvents[i];
+          if (priorEvent.type === targetType && priorEvent.time === event.time) {
+            const takerId = priorEvent.playerIds[0];
+            if (takerId && takerId !== scorerId && teamPlayerIds.has(takerId)) {
+              assistsByPlayer.set(takerId, (assistsByPlayer.get(takerId) ?? 0) + 1);
+            }
+            break;
+          }
+        }
+        return;
+      }
+
       for (let i = index - 1; i >= 0; i--) {
         const priorEvent = allEvents[i];
-        if (priorEvent.type !== EventType.PASS || !priorEvent.success) {
-          continue;
+        if (event.time - priorEvent.time > 3) {
+          break;
         }
 
-        const passerId = priorEvent.playerIds[0];
-        const receiverId = priorEvent.playerIds[1];
-        if (!passerId || !receiverId) {
-          continue;
-        }
+        const isGameplayEvent = [
+          EventType.PASS,
+          EventType.TACKLE,
+          EventType.INTERCEPTION,
+          EventType.SAVE,
+          EventType.MISS,
+          EventType.GOAL,
+          EventType.FOUL
+        ].includes(priorEvent.type);
 
-        if (receiverId === scorerId && passerId !== scorerId && teamPlayerIds.has(passerId)) {
-          assistsByPlayer.set(passerId, (assistsByPlayer.get(passerId) ?? 0) + 1);
+        if (isGameplayEvent) {
+          if (priorEvent.type === EventType.PASS && priorEvent.success) {
+            const passerId = priorEvent.playerIds[0];
+            const receiverId = priorEvent.playerIds[1];
+            if (passerId && receiverId && receiverId === scorerId && passerId !== scorerId && teamPlayerIds.has(passerId)) {
+              assistsByPlayer.set(passerId, (assistsByPlayer.get(passerId) ?? 0) + 1);
+            }
+          }
+          break;
         }
-
-        // The last successful pass to the scorer is the only eligible assist event.
-        break;
       }
     });
 
@@ -297,8 +335,8 @@ export class StatisticsService {
     // Positive contributions
     const goals = events.filter(e => e.type === EventType.GOAL).length;
     const successfulPasses = events.filter(e => e.type === EventType.PASS && e.success && e.playerIds[0] === player.id).length;
-    const tackles = player.position === Position.GOALKEEPER ? 0 : primaryPlayerEvents.filter(e => e.type === EventType.TACKLE && e.success).length;
-    const saves = player.position === Position.GOALKEEPER
+    const tackles = player.position === Position.GK ? 0 : primaryPlayerEvents.filter(e => e.type === EventType.TACKLE && e.success).length;
+    const saves = player.position === Position.GK
       ? events.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length
       : 0;
     const interceptions = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION).length;

@@ -132,6 +132,19 @@ export interface PlayerCareerStats {
   starNominations: { first: number; second: number; third: number };
   wage: number;
   marketValue?: number;
+  cornersTaken?: number;
+  cornersWon?: number;
+  freeKicksTaken?: number;
+  freeKickGoals?: number;
+  penaltiesTaken?: number;
+  penaltiesScored?: number;
+  penaltiesFaced?: number;
+  penaltiesSaved?: number;
+  aerialDuelsWon?: number;
+  aerialDuelsLost?: number;
+  setPieceGoals?: number;
+  cornerGoals?: number;
+  indirectFreeKickGoals?: number;
 }
 
 /**
@@ -308,6 +321,19 @@ export interface PlayerStatistics {
   foulsSuffered: number;
   yellowCards: number;
   redCards: number;
+  cornersTaken?: number;
+  cornersWon?: number;
+  freeKicksTaken?: number;
+  freeKickGoals?: number;
+  penaltiesTaken?: number;
+  penaltiesScored?: number;
+  penaltiesFaced?: number;
+  penaltiesSaved?: number;
+  aerialDuelsWon?: number;
+  aerialDuelsLost?: number;
+  setPieceGoals?: number;
+  cornerGoals?: number;
+  indirectFreeKickGoals?: number;
 }
 
 export interface League {

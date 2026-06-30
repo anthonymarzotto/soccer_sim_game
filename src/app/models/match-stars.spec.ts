@@ -6,7 +6,7 @@ function makeStat(playerId: string, rating: number, overrides: Partial<PlayerSta
   return {
     playerId,
     playerName: playerId,
-    position: Position.MIDFIELDER,
+    position: Position.CM,
     rating,
     minutesPlayed: 90,
     passes: 0,
@@ -24,6 +24,15 @@ function makeStat(playerId: string, rating: number, overrides: Partial<PlayerSta
     foulsSuffered: 0,
     yellowCards: 0,
     redCards: 0,
+    cornersTaken: 0,
+    freeKicksTaken: 0,
+    freeKickGoals: 0,
+    penaltiesTaken: 0,
+    penaltiesScored: 0,
+    penaltiesFaced: 0,
+    penaltiesSaved: 0,
+    aerialDuelsWon: 0,
+    aerialDuelsLost: 0,
     ...overrides
   };
 }

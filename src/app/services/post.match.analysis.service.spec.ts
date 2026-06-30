@@ -143,12 +143,12 @@ describe('PostMatchAnalysisService', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
 
     const homeTeam = createMockTeam('team_a', [
-      createMockPlayer('home-striker', 'Home Striker', 'team_a', Position.FORWARD),
-      createMockPlayer('home-keeper', 'Home Keeper', 'team_a', Position.GOALKEEPER)
+      createMockPlayer('home-striker', 'Home Striker', 'team_a', Position.ST),
+      createMockPlayer('home-keeper', 'Home Keeper', 'team_a', Position.GK)
     ]);
     const awayTeam = createMockTeam('team_b', [
-      createMockPlayer('away-striker', 'Away Striker', 'team_b', Position.FORWARD),
-      createMockPlayer('away-keeper', 'Away Keeper', 'team_b', Position.GOALKEEPER)
+      createMockPlayer('away-striker', 'Away Striker', 'team_b', Position.ST),
+      createMockPlayer('away-keeper', 'Away Keeper', 'team_b', Position.GK)
     ]);
 
     const report = service.generateMatchReport(
@@ -179,11 +179,11 @@ describe('PostMatchAnalysisService', () => {
 
   it('should include substitutions in expanded key moments with player names', () => {
     const homeTeam = createMockTeam('team_a', [
-      createMockPlayer('home-mid1', 'Home Mid 1', 'team_a', Position.MIDFIELDER),
-      createMockPlayer('home-mid2', 'Home Mid 2', 'team_a', Position.MIDFIELDER)
+      createMockPlayer('home-mid1', 'Home Mid 1', 'team_a', Position.CM),
+      createMockPlayer('home-mid2', 'Home Mid 2', 'team_a', Position.CM)
     ]);
     const awayTeam = createMockTeam('team_b', [
-      createMockPlayer('away-mid1', 'Away Mid 1', 'team_b', Position.MIDFIELDER)
+      createMockPlayer('away-mid1', 'Away Mid 1', 'team_b', Position.CM)
     ]);
 
     const report = service.generateMatchReport(

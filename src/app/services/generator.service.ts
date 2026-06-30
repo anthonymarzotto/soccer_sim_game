@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Player, Team, Match, Position, Role, PlayerSeasonAttributes, StatKey } from '../models/types';
-import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
+import { Role as RoleEnum, Position as PositionEnum, getPositionGroup } from '../models/enums';
 import { FormationLibraryService } from './formation-library.service';
 import { RngService } from './rng.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
@@ -91,30 +91,46 @@ export class GeneratorService {
     // Team quality multiplier: ranges from 0.6 to 1.4 to create stronger and weaker teams
     const teamQuality = Math.random() * 0.8 + 0.6; // 0.6 to 1.4
 
-    // 11 Starters: 1 GK, 4 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.STARTER, teamQuality, currentSeasonYear));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    // 11 Starters: 1 GK, 2 CB, 2 FB, 2 CM, 2 WNG, 2 ST (matching classic 4-4-2 slots)
+    players.push(this.generatePlayer(id, PositionEnum.GK, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.FB, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CB, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CB, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.FB, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.WNG, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CM, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CM, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.WNG, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.ST, RoleEnum.STARTER, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.ST, RoleEnum.STARTER, teamQuality, currentSeasonYear));
 
-    // 9 Bench: 1 GK, 2 DEF, 4 MID, 2 FWD
-    players.push(this.generatePlayer(id, PositionEnum.GOALKEEPER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.DEFENDER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
-    for (let i = 0; i < 4; i++) players.push(this.generatePlayer(id, PositionEnum.MIDFIELDER, RoleEnum.BENCH, teamQuality, currentSeasonYear));
-    for (let i = 0; i < 2; i++) players.push(this.generatePlayer(id, PositionEnum.FORWARD, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    // 9 Bench: 1 GK, 1 CB, 1 FB, 1 CDM, 1 CM, 1 CAM, 1 WNG, 2 ST
+    players.push(this.generatePlayer(id, PositionEnum.GK, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CB, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.FB, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CDM, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CM, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.CAM, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.WNG, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.ST, RoleEnum.BENCH, teamQuality, currentSeasonYear));
+    players.push(this.generatePlayer(id, PositionEnum.ST, RoleEnum.BENCH, teamQuality, currentSeasonYear));
 
-    // 5 Not Dressed: Guarantee at least 1 of each outfield position, max 1 GK
+    // 5 Not Dressed: Guarantee at least 1 of CB, CM, ST, max 1 GK
     const reservePositions: Position[] = [
-      PositionEnum.DEFENDER,
-      PositionEnum.MIDFIELDER,
-      PositionEnum.FORWARD
+      PositionEnum.CB,
+      PositionEnum.CM,
+      PositionEnum.ST
     ];
 
     // Fill remaining 2 slots: allowing at most 1 GK total in reserves
     for (let i = 0; i < 2; i++) {
-      const allowed: Position[] = [PositionEnum.DEFENDER, PositionEnum.MIDFIELDER, PositionEnum.FORWARD];
-      if (!reservePositions.includes(PositionEnum.GOALKEEPER)) {
-        allowed.push(PositionEnum.GOALKEEPER);
+      const allowed: Position[] = [
+        PositionEnum.CB, PositionEnum.FB,
+        PositionEnum.CDM, PositionEnum.CM, PositionEnum.CAM, PositionEnum.WNG,
+        PositionEnum.ST
+      ];
+      if (!reservePositions.includes(PositionEnum.GK)) {
+        allowed.push(PositionEnum.GK);
       }
       const pos = allowed[Math.floor(Math.random() * allowed.length)];
       reservePositions.push(pos);
@@ -125,24 +141,28 @@ export class GeneratorService {
     }
 
     const startersByPosition = {
-      [PositionEnum.GOALKEEPER]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.GOALKEEPER),
-      [PositionEnum.DEFENDER]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.DEFENDER),
-      [PositionEnum.MIDFIELDER]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.MIDFIELDER),
-      [PositionEnum.FORWARD]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.FORWARD)
+      [PositionEnum.GK]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.GK),
+      [PositionEnum.CB]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.CB),
+      [PositionEnum.FB]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.FB),
+      [PositionEnum.CDM]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.CDM),
+      [PositionEnum.CM]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.CM),
+      [PositionEnum.CAM]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.CAM),
+      [PositionEnum.WNG]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.WNG),
+      [PositionEnum.ST]: players.filter(p => p.role === RoleEnum.STARTER && p.position === PositionEnum.ST)
     };
 
     const formationAssignments: Record<string, string> = {
-      gk_1: startersByPosition[PositionEnum.GOALKEEPER][0]?.id ?? '',
-      def_l: startersByPosition[PositionEnum.DEFENDER][0]?.id ?? '',
-      def_lc: startersByPosition[PositionEnum.DEFENDER][1]?.id ?? '',
-      def_rc: startersByPosition[PositionEnum.DEFENDER][2]?.id ?? '',
-      def_r: startersByPosition[PositionEnum.DEFENDER][3]?.id ?? '',
-      mid_l: startersByPosition[PositionEnum.MIDFIELDER][0]?.id ?? '',
-      mid_lc: startersByPosition[PositionEnum.MIDFIELDER][1]?.id ?? '',
-      mid_rc: startersByPosition[PositionEnum.MIDFIELDER][2]?.id ?? '',
-      mid_r: startersByPosition[PositionEnum.MIDFIELDER][3]?.id ?? '',
-      att_l: startersByPosition[PositionEnum.FORWARD][0]?.id ?? '',
-      att_r: startersByPosition[PositionEnum.FORWARD][1]?.id ?? ''
+      gk_1: startersByPosition[PositionEnum.GK][0]?.id ?? '',
+      def_l: startersByPosition[PositionEnum.FB][0]?.id ?? '',
+      def_lc: startersByPosition[PositionEnum.CB][0]?.id ?? '',
+      def_rc: startersByPosition[PositionEnum.CB][1]?.id ?? '',
+      def_r: startersByPosition[PositionEnum.FB][1]?.id ?? '',
+      mid_l: startersByPosition[PositionEnum.WNG][0]?.id ?? '',
+      mid_lc: startersByPosition[PositionEnum.CM][0]?.id ?? '',
+      mid_rc: startersByPosition[PositionEnum.CM][1]?.id ?? '',
+      mid_r: startersByPosition[PositionEnum.WNG][1]?.id ?? '',
+      att_l: startersByPosition[PositionEnum.ST][0]?.id ?? '',
+      att_r: startersByPosition[PositionEnum.ST][1]?.id ?? ''
     };
 
     return {
@@ -251,9 +271,9 @@ export class GeneratorService {
       heading: this.randomStat(20, 90, effectiveQuality),
       longPassing: this.randomStat(20, 90, effectiveQuality),
       shortPassing: this.randomStat(20, 90, effectiveQuality),
-      handling: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
-      reflexes: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
-      commandOfArea: position === PositionEnum.GOALKEEPER ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
+      handling: position === PositionEnum.GK ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
+      reflexes: position === PositionEnum.GK ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
+      commandOfArea: position === PositionEnum.GK ? this.randomStat(60, 99, effectiveQuality) : this.randomStat(1, 40, effectiveQuality),
       clutch: this.randomStat(40, 80, effectiveQuality),
       composure: this.randomStat(40, 80, effectiveQuality),
       morale: this.randomStat(40, 80, effectiveQuality),
@@ -266,14 +286,15 @@ export class GeneratorService {
     };
 
     // Boost stats based on position
-    if (position === PositionEnum.DEFENDER) {
+    const group = getPositionGroup(position);
+    if (group === 'DEF') {
       values.tackling = this.randomStat(60, 99, effectiveQuality);
       values.heading = this.randomStat(50, 90, effectiveQuality);
-    } else if (position === PositionEnum.MIDFIELDER) {
+    } else if (group === 'MID') {
       values.shortPassing = this.randomStat(60, 99, effectiveQuality);
       values.longPassing = this.randomStat(60, 99, effectiveQuality);
       values.vision = this.randomStat(60, 99, effectiveQuality);
-    } else if (position === PositionEnum.FORWARD) {
+    } else if (group === 'FWD') {
       values.shooting = this.randomStat(60, 99, effectiveQuality);
       values.speed = this.randomStat(60, 99, effectiveQuality);
       values.flair = this.randomStat(60, 99, effectiveQuality);
@@ -289,9 +310,10 @@ export class GeneratorService {
     const temperament = Math.floor(Math.random() * 100) + 1;
 
     let baseJuniorEnd = 22, basePeakEnd = 28, baseSeniorEnd = 32;
-    if (position === PositionEnum.GOALKEEPER) { baseJuniorEnd = 23; basePeakEnd = 32; baseSeniorEnd = 36; }
-    else if (position === PositionEnum.DEFENDER) { baseJuniorEnd = 22; basePeakEnd = 29; baseSeniorEnd = 33; }
-    else if (position === PositionEnum.FORWARD) { baseJuniorEnd = 21; basePeakEnd = 27; baseSeniorEnd = 32; }
+    const group = getPositionGroup(position);
+    if (group === 'GK') { baseJuniorEnd = 23; basePeakEnd = 32; baseSeniorEnd = 36; }
+    else if (group === 'DEF') { baseJuniorEnd = 22; basePeakEnd = 29; baseSeniorEnd = 33; }
+    else if (group === 'FWD') { baseJuniorEnd = 21; basePeakEnd = 27; baseSeniorEnd = 32; }
 
     const juniorEndAge = baseJuniorEnd + clamp(Math.floor((potential - 50) / 10), -3, 3);
     const peakEndAge = basePeakEnd + clamp(Math.floor((professionalism - 50) / 10), -3, 3);

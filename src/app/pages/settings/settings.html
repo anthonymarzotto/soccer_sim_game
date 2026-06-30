@@ -65,15 +65,55 @@
 
     <div class="mt-8 bg-panel border border-border rounded-2xl overflow-hidden shadow-xl p-10 md:p-14">
       <h2 class="text-xl font-semibold text-text-primary mb-3">Data Management</h2>
-      <p class="text-text-muted mb-6">Clear the current league and schedule progress stored in your browser.</p>
+      <p class="text-text-muted mb-6">Backup, export, or reset your simulation data stored in the browser.</p>
 
-      <button
-        type="button"
-        (click)="openResetConfirmation()"
-        class="bg-red-600 hover:bg-red-700 text-text-primary font-semibold px-5 py-3 rounded-xl transition-colors"
-      >
-        Reset League Save Data
-      </button>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-border pt-8 mt-6">
+        <!-- Export Section -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold text-text-primary">Export Data</h3>
+          <p class="text-sm text-text-muted mb-4">Download your current league data as a JSON file to transfer or analyze.</p>
+          <div class="flex flex-col gap-3">
+            <button
+              type="button"
+              (click)="exportFullData()"
+              class="w-full bg-emerald-600 hover:bg-emerald-700 text-text-primary font-semibold px-5 py-3 rounded-xl transition-colors text-left flex justify-between items-center"
+            >
+              <span>Full League Export</span>
+              <span class="text-xs font-normal opacity-80 uppercase tracking-wide">JSON</span>
+            </button>
+            
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                (click)="exportPlayersData()"
+                class="flex items-center justify-center border border-border bg-panel hover:bg-canvas text-text-primary font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm"
+              >
+                Players Only
+              </button>
+              <button
+                type="button"
+                (click)="exportTeamsData()"
+                class="flex items-center justify-center border border-border bg-panel hover:bg-canvas text-text-primary font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm"
+              >
+                Teams Only
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danger Zone Section -->
+        <div class="space-y-4 border-t md:border-t-0 md:border-l border-border pt-8 md:pt-0 md:pl-8">
+          <h3 class="text-lg font-semibold text-red-500">Danger Zone</h3>
+          <p class="text-sm text-text-muted mb-4">Permanently clear all data, including league, teams, players, schedule and settings.</p>
+          <button
+            type="button"
+            (click)="openResetConfirmation()"
+            class="w-full bg-red-600 hover:bg-red-700 text-text-primary font-semibold px-5 py-3 rounded-xl transition-colors"
+          >
+            Reset League Save Data
+          </button>
+        </div>
+      </div>
     </div>
 
     @if (showResetConfirmation()) {

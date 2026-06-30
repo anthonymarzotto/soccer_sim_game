@@ -9,7 +9,7 @@ import { calculateAverageMatchRating, formatAverageMatchRating, formatGamesPlaye
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
 type NumericPlayerCareerStatColumn = Exclude<{
-  [K in keyof PlayerCareerStats]: PlayerCareerStats[K] extends number ? K : never;
+  [K in keyof PlayerCareerStats]: Exclude<PlayerCareerStats[K], undefined> extends number ? K : never;
 }[keyof PlayerCareerStats], 'seasonYear' | 'totalMatchRating' | undefined>;
 
 type SortColumn = 'name' | 'team' | 'position' | NumericPlayerCareerStatColumn | 'averageRating' | 'starsFirst' | 'starsSecond' | 'starsThird';
@@ -152,8 +152,8 @@ export class PlayerStatsComponent {
           aVal = a.stats.starNominations.third;
           bVal = b.stats.starNominations.third;
         } else {
-          aVal = a.stats[column];
-          bVal = b.stats[column];
+          aVal = a.stats[column] ?? 0;
+          bVal = b.stats[column] ?? 0;
         }
 
         if (typeof aVal === 'string') {
@@ -212,7 +212,11 @@ export class PlayerStatsComponent {
     { key: 'averageRating', label: 'Avg Rating', sortable: true },
     { key: 'starsFirst', label: '🥇', sortable: true },
     { key: 'starsSecond', label: '🥈', sortable: true },
-    { key: 'starsThird', label: '🥉', sortable: true }
+    { key: 'starsThird', label: '🥉', sortable: true },
+    { key: 'cornerGoals', label: 'CK Goals', sortable: true },
+    { key: 'freeKickGoals', label: 'FK Goals', sortable: true },
+    { key: 'penaltiesScored', label: 'PKs', sortable: true },
+    { key: 'aerialDuelsWon', label: 'Aerials', sortable: true }
   ];
 
   getTeamName(teamId: string): string {
@@ -275,7 +279,7 @@ export class PlayerStatsComponent {
     if (column === 'starsFirst') return row.stats.starNominations.first;
     if (column === 'starsSecond') return row.stats.starNominations.second;
     if (column === 'starsThird') return row.stats.starNominations.third;
-    return row.stats[column];
+    return row.stats[column] ?? 0;
   }
 
   isUserTeamPlayer(row: PlayerStatsRow): boolean {

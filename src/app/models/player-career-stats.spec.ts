@@ -26,7 +26,20 @@ describe('player-career-stats defaults', () => {
       foulsSuffered: 0,
       totalMatchRating: 0,
       starNominations: { first: 0, second: 0, third: 0 },
-      wage: 0
+      wage: 0,
+      cornersTaken: 0,
+      cornersWon: 0,
+      freeKicksTaken: 0,
+      freeKickGoals: 0,
+      penaltiesTaken: 0,
+      penaltiesScored: 0,
+      penaltiesFaced: 0,
+      penaltiesSaved: 0,
+      aerialDuelsWon: 0,
+      aerialDuelsLost: 0,
+      setPieceGoals: 0,
+      cornerGoals: 0,
+      indirectFreeKickGoals: 0
     });
   });
 

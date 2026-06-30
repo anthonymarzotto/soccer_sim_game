@@ -32,10 +32,26 @@ export enum InjuryRollKind {
 
 // Position Types
 export enum Position {
-  GOALKEEPER = 'GK',
-  DEFENDER = 'DEF',
-  MIDFIELDER = 'MID',
-  FORWARD = 'FWD'
+  GK  = 'GK',   // Goalkeeper
+  CB  = 'CB',   // Center-Back
+  FB  = 'FB',   // Full-Back / Wing-Back
+  CDM = 'CDM',  // Defensive Midfielder
+  CM  = 'CM',   // Central Midfielder
+  CAM = 'CAM',  // Attacking Midfielder
+  WNG = 'WNG',  // Winger
+  ST  = 'ST',   // Striker / Center Forward
+}
+
+export type PositionGroup = 'GK' | 'DEF' | 'MID' | 'FWD';
+
+export function getPositionGroup(position: Position | undefined): PositionGroup | '' {
+  if (!position) return '';
+  switch (position) {
+    case Position.GK:                                       return 'GK';
+    case Position.CB: case Position.FB:                     return 'DEF';
+    case Position.CDM: case Position.CM: case Position.CAM: return 'MID';
+    case Position.WNG: case Position.ST:                    return 'FWD';
+  }
 }
 
 // Role Types

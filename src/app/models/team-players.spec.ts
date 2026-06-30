@@ -9,7 +9,7 @@ describe('team-players', () => {
     const player = createTestPlayer({
       id,
       teamId,
-      position: Position.MIDFIELDER,
+      position: Position.CM,
       role: Role.STARTER,
       age: 24,
       seasonYear: 2026,

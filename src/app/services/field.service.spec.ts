@@ -22,18 +22,18 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
 
     // Create mock players
     mockPlayers = [
-      createMockPlayer('p1', 'Keeper', PositionEnum.GOALKEEPER, Role.STARTER),
-      createMockPlayer('p2', 'LeftBack', PositionEnum.DEFENDER, Role.STARTER),
-      createMockPlayer('p3', 'LCB', PositionEnum.DEFENDER, Role.STARTER),
-      createMockPlayer('p4', 'RCB', PositionEnum.DEFENDER, Role.STARTER),
-      createMockPlayer('p5', 'RightBack', PositionEnum.DEFENDER, Role.STARTER),
-      createMockPlayer('p6', 'LeftMid', PositionEnum.MIDFIELDER, Role.STARTER),
-      createMockPlayer('p7', 'LCM', PositionEnum.MIDFIELDER, Role.STARTER),
-      createMockPlayer('p8', 'RCM', PositionEnum.MIDFIELDER, Role.STARTER),
-      createMockPlayer('p9', 'RightMid', PositionEnum.MIDFIELDER, Role.STARTER),
-      createMockPlayer('p10', 'LeftStriker', PositionEnum.FORWARD, Role.STARTER),
-      createMockPlayer('p11', 'RightStriker', PositionEnum.FORWARD, Role.STARTER),
-      createMockPlayer('p12', 'BenchPlayer', PositionEnum.MIDFIELDER, Role.BENCH)
+      createMockPlayer('p1', 'Keeper', PositionEnum.GK, Role.STARTER),
+      createMockPlayer('p2', 'LeftBack', PositionEnum.CB, Role.STARTER),
+      createMockPlayer('p3', 'LCB', PositionEnum.CB, Role.STARTER),
+      createMockPlayer('p4', 'RCB', PositionEnum.CB, Role.STARTER),
+      createMockPlayer('p5', 'RightBack', PositionEnum.CB, Role.STARTER),
+      createMockPlayer('p6', 'LeftMid', PositionEnum.CM, Role.STARTER),
+      createMockPlayer('p7', 'LCM', PositionEnum.CM, Role.STARTER),
+      createMockPlayer('p8', 'RCM', PositionEnum.CM, Role.STARTER),
+      createMockPlayer('p9', 'RightMid', PositionEnum.CM, Role.STARTER),
+      createMockPlayer('p10', 'LeftStriker', PositionEnum.ST, Role.STARTER),
+      createMockPlayer('p11', 'RightStriker', PositionEnum.ST, Role.STARTER),
+      createMockPlayer('p12', 'BenchPlayer', PositionEnum.CM, Role.BENCH)
     ];
 
     // Create mock team with 4-4-2 formation
@@ -49,7 +49,7 @@ describe('FieldService - Schema-Driven Formation Logic', () => {
     it('should return slots with correct properties', () => {
       const slots = fieldService.getFormationSlots(mockTeam);
       expect(slots[0].slotId).toBe('gk_1');
-      expect(slots[0].position).toBe(PositionEnum.GOALKEEPER);
+      expect(slots[0].position).toBe(PositionEnum.GK);
       expect(slots[0].label).toBe('Goalkeeper');
     });
 

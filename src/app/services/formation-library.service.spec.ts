@@ -72,7 +72,7 @@ describe('FormationLibraryService', () => {
         id: 'test_no_gk',
         slots: base442.slots.map(s => ({
           ...s,
-          preferredPosition: s.preferredPosition === Position.GOALKEEPER ? Position.DEFENDER : s.preferredPosition
+          preferredPosition: s.preferredPosition === Position.GK ? Position.CB : s.preferredPosition
         }))
       };
 
@@ -219,14 +219,14 @@ describe('FormationLibraryService', () => {
       
       // Verify slot structure
       expect(slots?.[0].slotId).toBe('gk_1');
-      expect(slots?.[0].preferredPosition).toBe(Position.GOALKEEPER);
+      expect(slots?.[0].preferredPosition).toBe(Position.GK);
     });
 
     it('should get specific slot definition', () => {
       const slot = service.getSlotDefinition('formation_4_4_2', 'gk_1');
       expect(slot).toBeDefined();
       expect(slot?.label).toBe('Goalkeeper');
-      expect(slot?.preferredPosition).toBe(Position.GOALKEEPER);
+      expect(slot?.preferredPosition).toBe(Position.GK);
     });
 
     it('should return undefined for non-existent formation', () => {
@@ -359,22 +359,26 @@ describe('FormationLibraryService', () => {
   describe('Formation Slot Integrity', () => {
     it('should have exactly one goalkeeper slot in 4-4-2', () => {
       const slots = service.getFormationSlots('formation_4_4_2')!;
-      const gkSlots = slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
+      const gkSlots = slots.filter(s => s.preferredPosition === Position.GK);
       expect(gkSlots.length).toBe(1);
       expect(gkSlots[0].slotId).toBe('gk_1');
     });
 
     it('should have correct position distribution for 4-4-2', () => {
       const slots = service.getFormationSlots('formation_4_4_2')!;
-      const defenders = slots.filter(s => s.preferredPosition === Position.DEFENDER);
-      const midfielders = slots.filter(s => s.preferredPosition === Position.MIDFIELDER);
-      const forwards = slots.filter(s => s.preferredPosition === Position.FORWARD);
-      const goalkeepers = slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
+      const gk = slots.filter(s => s.preferredPosition === Position.GK);
+      const fb = slots.filter(s => s.preferredPosition === Position.FB);
+      const cb = slots.filter(s => s.preferredPosition === Position.CB);
+      const cm = slots.filter(s => s.preferredPosition === Position.CM);
+      const wng = slots.filter(s => s.preferredPosition === Position.WNG);
+      const st = slots.filter(s => s.preferredPosition === Position.ST);
 
-      expect(goalkeepers.length).toBe(1);
-      expect(defenders.length).toBe(4);
-      expect(midfielders.length).toBe(4);
-      expect(forwards.length).toBe(2);
+      expect(gk.length).toBe(1);
+      expect(fb.length).toBe(2);
+      expect(cb.length).toBe(2);
+      expect(cm.length).toBe(2);
+      expect(wng.length).toBe(2);
+      expect(st.length).toBe(2);
     });
 
     it('should have all slots with valid coordinates', () => {

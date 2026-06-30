@@ -196,10 +196,10 @@
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="font-mono text-[11px] font-bold shrink-0"
-                  [class.text-warning]="player.position === Position.GOALKEEPER"
-                  [class.text-blue-400]="player.position === Position.DEFENDER"
-                  [class.text-accent]="player.position === Position.MIDFIELDER"
-                  [class.text-danger]="player.position === Position.FORWARD">{{ player.position }}</span>
+                  [class.text-warning]="getPositionGroup(player.position) === 'GK'"
+                  [class.text-blue-400]="getPositionGroup(player.position) === 'DEF'"
+                  [class.text-accent]="getPositionGroup(player.position) === 'MID'"
+                  [class.text-danger]="getPositionGroup(player.position) === 'FWD'">{{ player.position }}</span>
                 <a [routerLink]="['/player', player.id]"
                   class="text-sm text-text-primary hover:text-accent font-bold font-display uppercase tracking-tight transition-colors truncate">{{ player.name }}</a>
               </div>
@@ -363,10 +363,10 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                  [class.text-warning]="row.player?.position === Position.GOALKEEPER"
-                  [class.text-blue-400]="row.player?.position === Position.DEFENDER"
-                  [class.text-accent]="row.player?.position === Position.MIDFIELDER"
-                  [class.text-danger]="row.player?.position === Position.FORWARD">
+                  [class.text-warning]="row.player && getPositionGroup(row.player.position) === 'GK'"
+                  [class.text-blue-400]="row.player && getPositionGroup(row.player.position) === 'DEF'"
+                  [class.text-accent]="row.player && getPositionGroup(row.player.position) === 'MID'"
+                  [class.text-danger]="row.player && getPositionGroup(row.player.position) === 'FWD'">
                   {{ row.player?.position || '---' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
@@ -516,10 +516,10 @@
                 <td class="px-4 py-4 whitespace-nowrap w-20 text-text-muted">--</td>
                 @if (row.player) {
                 <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                  [class.text-warning]="row.player.position === Position.GOALKEEPER"
-                  [class.text-blue-400]="row.player.position === Position.DEFENDER"
-                  [class.text-accent]="row.player.position === Position.MIDFIELDER"
-                  [class.text-danger]="row.player.position === Position.FORWARD">
+                  [class.text-warning]="getPositionGroup(row.player.position) === 'GK'"
+                  [class.text-blue-400]="getPositionGroup(row.player.position) === 'DEF'"
+                  [class.text-accent]="getPositionGroup(row.player.position) === 'MID'"
+                  [class.text-danger]="getPositionGroup(row.player.position) === 'FWD'">
                   {{ row.player.position }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">
@@ -644,10 +644,10 @@
                 }
                 <td class="px-4 py-4 whitespace-nowrap w-20 text-text-muted">--</td>
                 <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold w-16"
-                  [class.text-warning]="player.position === Position.GOALKEEPER"
-                  [class.text-blue-400]="player.position === Position.DEFENDER"
-                  [class.text-accent]="player.position === Position.MIDFIELDER"
-                  [class.text-danger]="player.position === Position.FORWARD">
+                  [class.text-warning]="getPositionGroup(player.position) === 'GK'"
+                  [class.text-blue-400]="getPositionGroup(player.position) === 'DEF'"
+                  [class.text-accent]="getPositionGroup(player.position) === 'MID'"
+                  [class.text-danger]="getPositionGroup(player.position) === 'FWD'">
                   {{ player.position }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base">

@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SettingsService } from '../../services/settings.service';
-import { Position } from '../../models/enums';
+import { Position, getPositionGroup } from '../../models/enums';
 import { PlayerCareerStats, PlayerSeasonAttributes, StatKey, SuspensionRecord } from '../../models/types';
 import { STAT_DEFINITIONS } from '../../models/stat-definitions';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
@@ -36,6 +36,7 @@ export class PlayerProfileComponent {
 
   // Expose enums for template
   Position = Position;
+  getPositionGroup = getPositionGroup;
   badgeStyle = this.settingsService.badgeStyle;
   isDev = isDevMode();
 
@@ -317,14 +318,14 @@ export class PlayerProfileComponent {
   goalkeeperView = signal<'list' | 'chart'>('list');
 
   // Season stats category toggle
-  seasonStatsView = signal<'offensive' | 'defensive' | 'discipline' | 'ratings' | 'finances'>('offensive');
+  seasonStatsView = signal<'general' | 'discipline' | 'setpieces' | 'goalkeeping' | 'ratings-finances'>('general');
 
   // Toggle methods
   toggleMentalView() {
     this.mentalView.update(v => v === 'list' ? 'chart' : 'list');
   }
 
-  setSeasonStatsView(view: 'offensive' | 'defensive' | 'discipline' | 'ratings' | 'finances') {
+  setSeasonStatsView(view: 'general' | 'discipline' | 'setpieces' | 'goalkeeping' | 'ratings-finances') {
     this.seasonStatsView.set(view);
   }
 
@@ -517,7 +518,19 @@ export class PlayerProfileComponent {
       foulsSuffered: allStats.reduce((sum, s) => sum + (s?.foulsSuffered || 0), 0),
       yellowCards: allStats.reduce((sum, s) => sum + (s?.yellowCards || 0), 0),
       redCards: allStats.reduce((sum, s) => sum + (s?.redCards || 0), 0),
-      cleanSheets: allStats.reduce((sum, s) => sum + (s?.cleanSheets || 0), 0)
+      cleanSheets: allStats.reduce((sum, s) => sum + (s?.cleanSheets || 0), 0),
+      cornersTaken: allStats.reduce((sum, s) => sum + (s?.cornersTaken || 0), 0),
+      cornersWon: allStats.reduce((sum, s) => sum + (s?.cornersWon || 0), 0),
+      freeKicksTaken: allStats.reduce((sum, s) => sum + (s?.freeKicksTaken || 0), 0),
+      freeKickGoals: allStats.reduce((sum, s) => sum + (s?.freeKickGoals || 0), 0),
+      penaltiesTaken: allStats.reduce((sum, s) => sum + (s?.penaltiesTaken || 0), 0),
+      penaltiesScored: allStats.reduce((sum, s) => sum + (s?.penaltiesScored || 0), 0),
+      penaltiesFaced: allStats.reduce((sum, s) => sum + (s?.penaltiesFaced || 0), 0),
+      penaltiesSaved: allStats.reduce((sum, s) => sum + (s?.penaltiesSaved || 0), 0),
+      aerialDuelsWon: allStats.reduce((sum, s) => sum + (s?.aerialDuelsWon || 0), 0),
+      aerialDuelsLost: allStats.reduce((sum, s) => sum + (s?.aerialDuelsLost || 0), 0),
+      cornerGoals: allStats.reduce((sum, s) => sum + (s?.cornerGoals || 0), 0),
+      indirectFreeKickGoals: allStats.reduce((sum, s) => sum + (s?.indirectFreeKickGoals || 0), 0)
     };
   });
 

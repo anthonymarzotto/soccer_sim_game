@@ -4,7 +4,7 @@ import { CommonModule, DecimalPipe, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GameService } from '../../services/game.service';
 import { Player, Team } from '../../models/types';
-import { Position } from '../../models/enums';
+import { Position, getPositionGroup } from '../../models/enums';
 import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
 import { getCurrentPlayerSeasonAttributes } from '../../models/season-history';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
@@ -35,6 +35,7 @@ export class TransferMarketComponent {
 
   protected readonly Math = Math;
   Position = Position;
+  getPositionGroup = getPositionGroup;
   protected readonly calculateMarketValue = calculateMarketValue;
   protected readonly calculatePlayerWageCost = calculatePlayerWageCost;
   transferWindowPhase = this.gameService.transferWindowPhase;
@@ -92,7 +93,7 @@ export class TransferMarketComponent {
   });
 
   availablePositions = computed(() => {
-    return [Position.GOALKEEPER, Position.DEFENDER, Position.MIDFIELDER, Position.FORWARD];
+    return ['GK', 'DEF', 'MID', 'FWD'];
   });
 
   allListedPlayers = computed<TransferRow[]>(() => {
@@ -141,7 +142,7 @@ export class TransferMarketComponent {
     const maxVal = this.maxMarketValue();
     const filtered = rows.filter(row => {
       if (teamFilter && row.player.teamId !== teamFilter) return false;
-      if (positionFilter && row.player.position !== positionFilter) return false;
+      if (positionFilter && getPositionGroup(row.player.position) !== positionFilter) return false;
       if (query && !row.player.name.toLowerCase().includes(query)) return false;
       if (maxVal > 0 && row.value > maxVal) return false;
       return true;

@@ -56,7 +56,7 @@ export function createTestPlayer(opts: {
     id: opts.id,
     name: opts.name ?? opts.id,
     teamId: opts.teamId ?? 'team-1',
-    position: opts.position ?? Position.MIDFIELDER,
+    position: opts.position ?? Position.CM,
     role: opts.role ?? Role.STARTER,
     personal: createTestPersonal({
       age: opts.age,
@@ -135,7 +135,7 @@ export function createTestPersistedPlayer(opts: {
     id: opts.id,
     name: opts.name ?? opts.id,
     teamId: opts.teamId ?? 'team-1',
-    position: opts.position ?? Position.MIDFIELDER,
+    position: opts.position ?? Position.CM,
     role: opts.role ?? Role.STARTER,
     personal: {
       height: personal.height,

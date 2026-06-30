@@ -382,10 +382,10 @@ export class TickDebugComponent {
       return exactPositionMatch;
     }
 
-    if (preferredPosition === Position.GOALKEEPER) {
+    if (preferredPosition === Position.GK) {
       return availableStarters[0];
     }
 
-    return availableStarters.find(player => player.position !== Position.GOALKEEPER) ?? availableStarters[0];
+    return availableStarters.find(player => player.position !== Position.GK) ?? availableStarters[0];
   }
 }

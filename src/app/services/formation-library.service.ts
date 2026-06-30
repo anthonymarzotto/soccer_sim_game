@@ -147,7 +147,7 @@ export class FormationLibraryService {
     }
 
     // Check for exactly one goalkeeper
-    const gkSlots = slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
+    const gkSlots = slots.filter(s => s.preferredPosition === Position.GK);
     if (gkSlots.length !== 1) {
       errors.push(`Formation must have exactly 1 goalkeeper slot, got ${gkSlots.length}`);
     }
