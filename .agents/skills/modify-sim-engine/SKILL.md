@@ -26,3 +26,7 @@ Use this skill whenever you are requested to modify, debug, or add features to t
   - `avgTotalGoals` stays between `1.8` and `3.0` (target ~2.4–2.5).
   - `avgShots` stays between `15` and `30` (target ~26–27).
 * If a test fails, calibrate the default tuning variables rather than changing the test assertions.
+
+## 4. Documentation Synchronization
+* **The Goal**: Keep architectural documentation matching the actual simulation state machine.
+* **The Rule**: If you structurally modify the match simulation (e.g., adding set pieces, changing transition loops, or editing action gates), you MUST immediately update the corresponding Mermaid diagram in [simulation-flow.html](file:///C:/Repos/soccer_sim_game/public/design-docs/simulation-flow.html). Ensure the diagram flows match the new execution branches.
