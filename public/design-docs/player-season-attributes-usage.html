@@ -287,9 +287,9 @@
 
       <div class="chip-row">
         <div class="chip-card"><strong>23</strong><span>Total stats on <code>PlayerSeasonAttributes</code></span></div>
-        <div class="chip-card"><strong>16</strong><span>Read by match setup or Variant B</span></div>
+        <div class="chip-card"><strong>17</strong><span>Read by match setup or Variant B</span></div>
         <div class="chip-card"><strong>1</strong><span>Indirect via generated <code>overall</code></span></div>
-        <div class="chip-card"><strong>6</strong><span>Unused in the current pipeline</span></div>
+        <div class="chip-card"><strong>5</strong><span>Unused in the current pipeline</span></div>
       </div>
     </section>
 
@@ -329,7 +329,7 @@
     <section class="panel">
       <div class="panel-header">
         <h2>Active Stats</h2>
-        <p>These 16 attributes have at least one read path beyond contributing to generated <code>overall</code>. <strong>Note:</strong> During Variant B match play, all <code>live</code> attributes (except <code>overall</code>, <code>endurance</code>, and <code>injuryRate</code>) are dynamically compressed around 70 via the formula <code>effective = 70 + (raw - 70) * skillCompressionFactor</code> before being used in any gameplay check.</p>
+        <p>These 17 attributes have at least one read path beyond contributing to generated <code>overall</code>. <strong>Note:</strong> During Variant B match play, all <code>live</code> attributes (except <code>overall</code>, <code>endurance</code>, and <code>injuryRate</code>) are dynamically compressed around 70 via the formula <code>effective = 70 + (raw - 70) * skillCompressionFactor</code> before being used in any gameplay check.</p>
       </div>
 
       <div class="table-wrap">
@@ -441,6 +441,15 @@
               <td><div class="status-stack"><span class="pill live">live</span></div></td>
               <td>Secondary input in both tackle and interception winner attribution inside <code>selectTurnoverWinner</code>.</td>
               <td>Combined with proximity and the primary event-specific skill (<code>tackling</code> or <code>vision</code>).</td>
+            </tr>
+            <tr>
+              <td class="col-stat">composure<small>mental</small></td>
+              <td><div class="status-stack"><span class="pill live">live</span></div></td>
+              <td>Used to select the penalty taker and resolve the success rate of penalty shots.
+                <span class="formula">Taker score = composure + shooting</span>
+                <span class="formula">Penalty conversion base score = (shooting + composure) / 2</span>
+              </td>
+              <td>Goalkeeper reflexes (<code>keeperSkill</code>) and random luck.</td>
             </tr>
             <tr>
               <td class="col-stat">tackling<small>skill</small></td>
@@ -710,7 +719,6 @@
 
       <div class="stat-grid">
         <div class="stat-card"><div><span class="stat-name">clutch</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
-        <div class="stat-card"><div><span class="stat-name">composure</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
         <div class="stat-card"><div><span class="stat-name">morale</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental — distinct from <code>Player.mood</code></div></div>
         <div class="stat-card"><div><span class="stat-name">consistency</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
         <div class="stat-card"><div><span class="stat-name">aggressiveness</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
