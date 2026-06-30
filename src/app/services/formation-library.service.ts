@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, isDevMode } from '@angular/core';
 import { FieldZone, Position } from '../models/enums';
 import { FormationSchema, FormationSlotDefinition, FormationValidation } from '../models/formation.types';
 import { ALL_PREDEFINED_FORMATIONS } from '../data/formations';
@@ -49,14 +49,17 @@ export class FormationLibraryService {
    */
   getFormationById(formationId: string): FormationSchema | undefined {
     const formation = this.getStoredFormationById(formationId);
-    return formation ? this.cloneFormation(formation) : undefined;
+    if (!formation) return undefined;
+    if (formation.isDevOnly && !isDevMode()) return undefined;
+    return this.cloneFormation(formation);
   }
 
   /**
    * Get all predefined formation schemas (immutable by service contract).
    */
   listPredefinedFormations(): FormationSchema[] {
-    return Array.from(this.predefinedFormations.values(), formation => this.cloneFormation(formation));
+    return Array.from(this.predefinedFormations.values(), formation => this.cloneFormation(formation))
+      .filter(f => !f.isDevOnly);
   }
 
   /**
@@ -70,7 +73,13 @@ export class FormationLibraryService {
    * Get all formations (predefined and user-defined).
    */
   getAllFormations(): FormationSchema[] {
-    return [...this.listPredefinedFormations(), ...this.listUserDefinedFormations()];
+    const predefined = Array.from(this.predefinedFormations.values(), formation => this.cloneFormation(formation));
+    const userDefined = this.listUserDefinedFormations();
+    if (isDevMode()) {
+      return [...predefined, ...userDefined];
+    } else {
+      return [...predefined.filter(f => !f.isDevOnly), ...userDefined];
+    }
   }
 
   /**

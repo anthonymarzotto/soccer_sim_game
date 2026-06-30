@@ -22,7 +22,8 @@ describe('FormationLibraryService', () => {
 
     it('should register exactly the formations from ALL_PREDEFINED_FORMATIONS', () => {
       const predefined = service.listPredefinedFormations();
-      expect(predefined.length).toBe(ALL_PREDEFINED_FORMATIONS.length);
+      const expectedCount = ALL_PREDEFINED_FORMATIONS.filter(f => !f.isDevOnly).length;
+      expect(predefined.length).toBe(expectedCount);
       ALL_PREDEFINED_FORMATIONS.forEach(expected => {
         const registered = service.getFormationById(expected.id);
         expect(registered).toBeDefined();
@@ -187,7 +188,8 @@ describe('FormationLibraryService', () => {
       const predefined = service.listPredefinedFormations();
       const userDefined = service.listUserDefinedFormations();
 
-      expect(predefined.length).toBe(ALL_PREDEFINED_FORMATIONS.length);
+      const expectedCount = ALL_PREDEFINED_FORMATIONS.filter(f => !f.isDevOnly).length;
+      expect(predefined.length).toBe(expectedCount);
       expect(userDefined.length).toBe(1); // Our custom one
       expect(predefined.map(f => f.id)).toContain('formation_4_4_2');
       expect(userDefined[0].id).toBe('user_custom_test');
