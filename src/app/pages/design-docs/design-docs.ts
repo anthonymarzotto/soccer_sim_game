@@ -19,6 +19,11 @@ const DESIGN_DOCS: DesignDoc[] = [
     description: 'Where each seasonal stat enters Variant B and match setup'
   },
   {
+    label: 'Variant B Tuning Variables',
+    path: '/design-docs/tuning-variables.html',
+    description: 'Configuration metrics for Variant B simulation engine'
+  },
+  {
     label: 'Player Finances Specification',
     path: '/design-docs/finances.html',
     description: 'Deterministic market value and wage point formulas'

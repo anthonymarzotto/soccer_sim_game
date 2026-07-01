@@ -734,6 +734,55 @@ describe('GameService persistence integration', () => {
     );
   });
 
+  it('should allow replacing an injured starter with a healthy bench player, demoting the injured player to reserves', async () => {
+    const injuredStarter = createTestPlayer({ id: 'p1', name: 'Player One', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 });
+    injuredStarter.injuries = [{
+      definitionId: 'hamstring_pull',
+      totalWeeks: 4,
+      weeksRemaining: 3,
+      sustainedInSeason: 2026,
+      sustainedInWeek: 1
+    }];
+
+    const benchPlayer = createTestPlayer({ id: 'p2', name: 'Player Two', teamId: 'team-1', role: Role.BENCH, seasonYear: 2026 });
+
+    const storedLeague = {
+      teams: [
+        {
+          id: 'team-1',
+          name: 'Team One',
+          players: [injuredStarter, benchPlayer],
+          playerIds: ['p1', 'p2'],
+          stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] },
+          selectedFormationId: 'formation_4_4_2',
+          finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 },
+          formationAssignments: { gk_1: 'p1' },
+          seasonSnapshots: [{
+            seasonYear: 2026,
+            playerIds: ['p1', 'p2'],
+            stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }
+          }]
+        }
+      ],
+      schedule: [],
+      currentWeek: 1, currentSeasonYear: 2026,
+      transferListings: []
+    };
+
+    const { service } = setup(storedLeague as unknown as League);
+    await service.ensureHydrated();
+
+    service.swapPlayerRoles('p2', 'p1');
+
+    const updatedTeam = service.getTeam('team-1') as Team;
+    const p1 = service.getPlayersForTeam('team-1').find(p => p.id === 'p1');
+    const p2 = service.getPlayersForTeam('team-1').find(p => p.id === 'p2');
+
+    expect(updatedTeam.formationAssignments['gk_1']).toBe('p2');
+    expect(p2?.role).toBe(Role.STARTER);
+    expect(p1?.role).toBe(Role.RESERVE);
+  });
+
   it('should report injured bench players as match-readiness issues', async () => {
     const healthyStarter = createTestPlayer({ id: 'player-1', name: 'Alex Vale', teamId: 'team-1', role: Role.STARTER, seasonYear: 2026 });
     const injuredBench = createTestPlayer({ id: 'player-2', name: 'Ben Hart', teamId: 'team-1', role: Role.BENCH, seasonYear: 2026 });

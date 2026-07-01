@@ -273,6 +273,62 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.determination?.value }}</span>
                 </div>
               </div>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-text-muted text-sm" [title]="getStatDescription('composure')">Composure</span>
+                <div class="flex items-center gap-2">
+                  @let diffComp = getStatDiff('composure');
+                  @if (diffComp) { <span class="text-xs font-mono" [class.text-accent]="diffComp > 0" [class.text-danger]="diffComp < 0">{{ diffComp > 0 ? '+' : '' }}{{ diffComp }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.composure?.value }}</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center py-2.5">
+                <span class="text-text-muted text-sm" [title]="getStatDescription('aggressiveness')">Aggression</span>
+                <div class="flex items-center gap-2">
+                  @let diffAgg = getStatDiff('aggressiveness');
+                  @if (diffAgg) { <span class="text-xs font-mono" [class.text-accent]="diffAgg > 0" [class.text-danger]="diffAgg < 0">{{ diffAgg > 0 ? '+' : '' }}{{ diffAgg }}</span> }
+                  <span class="font-mono text-sm font-semibold">{{ attrs?.aggressiveness?.value }}</span>
+                </div>
+              </div>
+
+              <!-- Dev-only Hidden Stats -->
+              @if (isDev) {
+                <!-- Clutch -->
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95 border-t border-dashed border-zinc-800/60 mt-1">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('clutch')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Clutch <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffClutch = getStatDiff('clutch');
+                    @if (diffClutch) { <span class="text-xs font-mono" [class.text-accent]="diffClutch > 0" [class.text-danger]="diffClutch < 0">{{ diffClutch > 0 ? '+' : '' }}{{ diffClutch }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.clutch?.value }}</span>
+                  </div>
+                </div>
+                <!-- Morale -->
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('morale')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Morale <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffMorale = getStatDiff('morale');
+                    @if (diffMorale) { <span class="text-xs font-mono" [class.text-accent]="diffMorale > 0" [class.text-danger]="diffMorale < 0">{{ diffMorale > 0 ? '+' : '' }}{{ diffMorale }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.morale?.value }}</span>
+                  </div>
+                </div>
+                <!-- Consistency -->
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('consistency')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Consistency <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffConsistency = getStatDiff('consistency');
+                    @if (diffConsistency) { <span class="text-xs font-mono" [class.text-accent]="diffConsistency > 0" [class.text-danger]="diffConsistency < 0">{{ diffConsistency > 0 ? '+' : '' }}{{ diffConsistency }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.consistency?.value }}</span>
+                  </div>
+                </div>
+              }
             </div>
           } @else {
             @let mentalData = mentalChartData();
@@ -281,8 +337,8 @@
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
                   <!-- Background grid lines -->
                   <g class="text-zinc-700">
-                    <!-- 3-axis grid for Mental (Flair, Vision, Determination) -->
-                    @for (i of [0, 1, 2]; track i) {
+                    <!-- Dynamic grid for Mental -->
+                    @for (item of mentalData; track item.label; let i = $index) {
                       <line [attr.x1]="120" [attr.y1]="120" 
                             [attr.x2]="getAxisLabelPosition(i, mentalData, 240).x" 
                             [attr.y2]="getAxisLabelPosition(i, mentalData, 240).y"
@@ -314,7 +370,7 @@
                            style="filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))" />
                   
                   <!-- Axis lines from center -->
-                  @for (i of [0, 1, 2]; track i) {
+                  @for (item of mentalData; track item.label; let i = $index) {
                     <line [attr.x1]="120" [attr.y1]="120" 
                           [attr.x2]="getAxisLabelPosition(i, mentalData, 240).x" 
                           [attr.y2]="getAxisLabelPosition(i, mentalData, 240).y"
@@ -388,6 +444,35 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.fitness?.value }}</span>
                 </div>
               </div>
+
+              <!-- Dev-only Hidden Stats -->
+              @if (isDev) {
+                <!-- Injury Rate -->
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95 border-t border-dashed border-zinc-800/60 mt-1">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('injuryRate')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Injury Rate <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffInjuryRate = getStatDiff('injuryRate');
+                    @if (diffInjuryRate) { <span class="text-xs font-mono" [class.text-accent]="diffInjuryRate > 0" [class.text-danger]="diffInjuryRate < 0">{{ diffInjuryRate > 0 ? '+' : '' }}{{ diffInjuryRate }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.injuryRate?.value }}</span>
+                  </div>
+                </div>
+                <!-- Luck -->
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('luck')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Luck <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffLuck = getStatDiff('luck');
+                    @if (diffLuck) { <span class="text-xs font-mono" [class.text-accent]="diffLuck > 0" [class.text-danger]="diffLuck < 0">{{ diffLuck > 0 ? '+' : '' }}{{ diffLuck }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.luck?.value }}</span>
+                  </div>
+                </div>
+              }
+
               <div class="flex justify-between items-center py-2.5 border-t border-border/50 mt-1">
                 <span class="text-text-muted text-xs uppercase tracking-wider">Current Fatigue</span>
                 <div class="py-2 cursor-help flex justify-end" [title]="(p?.fatigue || 0 | number:'1.0-0') + '% fatigue'">
@@ -406,8 +491,8 @@
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
                   <!-- Background grid lines -->
                   <g class="text-zinc-700">
-                    <!-- 3-axis grid for Physical (Speed, Strength, Endurance) -->
-                    @for (i of [0, 1, 2]; track i) {
+                    <!-- Dynamic grid for Physical -->
+                    @for (item of physicalData; track item.label; let i = $index) {
                       <line [attr.x1]="120" [attr.y1]="120" 
                             [attr.x2]="getAxisLabelPosition(i, physicalData, 240).x" 
                             [attr.y2]="getAxisLabelPosition(i, physicalData, 240).y"
@@ -439,7 +524,7 @@
                            style="filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.3))" />
                   
                   <!-- Axis lines from center -->
-                  @for (i of [0, 1, 2]; track i) {
+                  @for (item of physicalData; track item.label; let i = $index) {
                     <line [attr.x1]="120" [attr.y1]="120" 
                           [attr.x2]="getAxisLabelPosition(i, physicalData, 240).x" 
                           [attr.y2]="getAxisLabelPosition(i, physicalData, 240).y"
@@ -529,8 +614,8 @@
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
                   <!-- Background grid lines -->
                   <g class="text-zinc-700">
-                    <!-- 5-axis grid for Technical (Tackling, Shooting, Heading, Long Passing, Short Passing) -->
-                    @for (i of [0, 1, 2, 3, 4]; track i) {
+                    <!-- Dynamic grid for Technical -->
+                    @for (item of technicalData; track item.label; let i = $index) {
                       <line [attr.x1]="120" [attr.y1]="120" 
                             [attr.x2]="getAxisLabelPosition(i, technicalData, 240).x" 
                             [attr.y2]="getAxisLabelPosition(i, technicalData, 240).y"
@@ -562,7 +647,7 @@
                            style="filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.3))" />
                   
                   <!-- Axis lines from center -->
-                  @for (i of [0, 1, 2, 3, 4]; track i) {
+                  @for (item of technicalData; track item.label; let i = $index) {
                     <line [attr.x1]="120" [attr.y1]="120" 
                           [attr.x2]="getAxisLabelPosition(i, technicalData, 240).x" 
                           [attr.y2]="getAxisLabelPosition(i, technicalData, 240).y"
@@ -636,8 +721,8 @@
                 <svg width="240" height="240" viewBox="0 0 240 240" class="drop-shadow-lg">
                   <!-- Background grid lines -->
                   <g class="text-zinc-700">
-                    <!-- 3-axis grid for Goalkeeping (Handling, Reflexes, Cmd. of Area) -->
-                    @for (i of [0, 1, 2]; track i) {
+                    <!-- Dynamic grid for Goalkeeping -->
+                    @for (item of gkData; track item.label; let i = $index) {
                       <line [attr.x1]="120" [attr.y1]="120"
                             [attr.x2]="getAxisLabelPosition(i, gkData, 240).x"
                             [attr.y2]="getAxisLabelPosition(i, gkData, 240).y"
@@ -648,7 +733,7 @@
                       <circle cx="120" cy="120" [attr.r]="r" stroke="rgba(161, 161, 170, 0.2)" stroke-width="1" fill="none" />
                     }
                   </g>
-
+                  
                   <!-- Axis labels -->
                   @for (item of gkData; track item.label; let i = $index) {
                     <text [attr.x]="getAxisLabelPosition(i, gkData, 240).x"
@@ -659,7 +744,7 @@
                       {{ item.label }}
                     </text>
                   }
-
+                  
                   <!-- Data polygon -->
                   <polygon [attr.points]="createChartPoints(gkData, 240)"
                            fill="rgba(234, 179, 8, 0.3)"
@@ -667,9 +752,9 @@
                            stroke-width="3"
                            class="transition-all duration-500 ease-in-out"
                            style="filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.3))" />
-
+                  
                   <!-- Axis lines from center -->
-                  @for (i of [0, 1, 2]; track i) {
+                  @for (item of gkData; track item.label; let i = $index) {
                     <line [attr.x1]="120" [attr.y1]="120"
                           [attr.x2]="getAxisLabelPosition(i, gkData, 240).x"
                           [attr.y2]="getAxisLabelPosition(i, gkData, 240).y"
@@ -690,80 +775,12 @@
         </div>
       </div>
 
-      <!-- Hidden Stats - spanning the page (dev mode only) -->
+      <!-- Progression & Dev Info - spanning the page (dev mode only) -->
       @if (isDev) {
         <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
           <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
-            Hidden Stats
-          </h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('clutch')">Clutch</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.clutch?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.clutch?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('composure')">Composure</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.composure?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.composure?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('morale')">Morale</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.morale?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.morale?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('consistency')">Consistency</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.consistency?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.consistency?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('aggressiveness')">Aggression</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.aggressiveness?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.aggressiveness?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28">Mood</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.mood"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.mood }}</span>
-            </div>
-
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('luck')">Luck</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full bg-orange-500 rounded-full" [style.width.%]="attrs?.luck?.value"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.luck?.value }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-text-muted w-28" [title]="getStatDescription('injuryRate')">Injury Rate</span>
-              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
-                <div class="h-full rounded-full"
-                     [class]="(attrs?.injuryRate?.value ?? 50) <= 30 ? 'bg-green-500' : (attrs?.injuryRate?.value ?? 50) <= 60 ? 'bg-yellow-500' : 'bg-red-500'"
-                     [style.width.%]="attrs?.injuryRate?.value ?? 50"></div>
-              </div>
-              <span class="font-mono text-sm font-medium w-8 text-right">{{ attrs?.injuryRate?.value ?? 'N/A' }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-panel border border-border rounded-2xl p-6 shadow-xl">
-          <h2 class="text-sm font-semibold text-text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-            Progression
+            Progression & Dev Info
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
             <div class="flex items-center gap-4">
@@ -786,6 +803,16 @@
                 <div class="h-full bg-purple-500 rounded-full" [style.width.%]="p?.progression?.temperament"></div>
               </div>
               <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.progression?.temperament }}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-text-muted w-32 flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Mood <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+              </span>
+              <div class="flex-1 h-2 bg-canvas rounded-full overflow-hidden">
+                <div class="h-full bg-teal-500 rounded-full" [style.width.%]="p?.mood"></div>
+              </div>
+              <span class="font-mono text-sm font-medium w-8 text-right">{{ p?.mood }}</span>
             </div>
             <div class="flex items-center gap-4">
               <span class="text-text-muted w-32">Junior End Age</span>

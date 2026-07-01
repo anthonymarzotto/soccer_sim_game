@@ -349,7 +349,9 @@ export class PlayerProfileComponent {
     return [
       { label: 'Flair', value: attrs.flair.value },
       { label: 'Vision', value: attrs.vision.value },
-      { label: 'Determination', value: attrs.determination.value }
+      { label: 'Determination', value: attrs.determination.value },
+      { label: 'Composure', value: attrs.composure.value },
+      { label: 'Aggression', value: attrs.aggressiveness.value }
     ];
   });
 

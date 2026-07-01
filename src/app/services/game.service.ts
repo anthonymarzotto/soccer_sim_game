@@ -2310,20 +2310,40 @@ export class GameService {
 
         if (player1Index !== -1 && player2Index !== -1) {
           const updatedPlayers = [...teamPlayers];
-          const player1Role = updatedPlayers[player1Index].role;
-          const player2Role = updatedPlayers[player2Index].role;
-          if (
-            !this.canAssignPlayerToRole(updatedPlayers[player1Index], player2Role)
-            || !this.canAssignPlayerToRole(updatedPlayers[player2Index], player1Role)
-          ) {
-            return;
-          }
           const updatedAssignments = { ...team.formationAssignments };
           const player1SlotId = this.findAssignedSlotId(updatedAssignments, playerId1);
           const player2SlotId = this.findAssignedSlotId(updatedAssignments, playerId2);
 
-          updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: player2Role };
-          updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: player1Role };
+          let targetRole1: Role;
+          let targetRole2: Role;
+
+          if (player2SlotId) {
+            targetRole1 = Role.STARTER;
+          } else {
+            targetRole1 = updatedPlayers[player2Index].role;
+            if (targetRole1 === Role.BENCH && !isPlayerEligible(updatedPlayers[player1Index])) {
+              targetRole1 = Role.RESERVE;
+            }
+          }
+
+          if (player1SlotId) {
+            targetRole2 = Role.STARTER;
+          } else {
+            targetRole2 = updatedPlayers[player1Index].role;
+            if (targetRole2 === Role.BENCH && !isPlayerEligible(updatedPlayers[player2Index])) {
+              targetRole2 = Role.RESERVE;
+            }
+          }
+
+          if (
+            !this.canAssignPlayerToRole(updatedPlayers[player1Index], targetRole1)
+            || !this.canAssignPlayerToRole(updatedPlayers[player2Index], targetRole2)
+          ) {
+            return;
+          }
+
+          updatedPlayers[player1Index] = { ...updatedPlayers[player1Index], role: targetRole1 };
+          updatedPlayers[player2Index] = { ...updatedPlayers[player2Index], role: targetRole2 };
 
           if (player1SlotId && player2SlotId) {
             updatedAssignments[player1SlotId] = playerId2;

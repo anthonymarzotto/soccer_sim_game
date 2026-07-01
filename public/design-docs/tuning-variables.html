@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VariantB Simulation Tuning Variables</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #09090b;
+      color: #f4f4f5;
+      font-family: sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      padding: 2rem;
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.2; }
+
+    h1 { font-size: 1.25rem; color: #a1a1aa; font-weight: 600; margin-bottom: 0.25rem; }
+    h2 { font-size: 1rem; font-weight: 600; color: #e4e4e7; }
+    h3 { font-size: 0.875rem; font-weight: 600; color: #e4e4e7; margin-bottom: 6px; }
+
+    p { margin: 0; color: #a1a1aa; }
+
+    .panel {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel-header { display: grid; gap: 6px; }
+
+    code {
+      font-family: ui-monospace, 'Cascadia Code', monospace;
+      font-size: 0.8em;
+      background: #27272a;
+      color: #d4d4d8;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #71717a;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      font-weight: 600;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      vertical-align: top;
+      border-bottom: 1px solid #1f1f22;
+      font-size: 0.875rem;
+      color: #a1a1aa;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #1f1f22; }
+
+    td.col-stat {
+      font-weight: 600;
+      color: #e4e4e7;
+      white-space: nowrap;
+    }
+
+    td.col-stat small {
+      display: block;
+      color: #52525b;
+      font-size: 0.72rem;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>VariantB Simulation Tuning Variables</h1>
+      <p>
+        This document tracks all 42 fields of <code>VariantBTuningConfig</code> (<code>src/app/models/simulation.types.ts</code>).
+        Defaults live in <code>DEFAULT_VARIANT_B_TUNING</code> at the top of <code>match.simulation.variant-b.service.ts</code>.
+        Pass a <code>Partial&lt;VariantBTuningConfig&gt;</code> via <code>SimulationConfig.variantBTuning</code> to override at match start;
+        the debug panel exposes all fields at runtime.
+      </p>
+    </section>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Default</th>
+              <th>Effect</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Tick Pace — events generated per zone per minute</td></tr>
+            <tr>
+              <td class="col-stat">baseTickMin / baseTickMax<small>default zone</small></td>
+              <td><code>1 / 3</code></td>
+              <td>Random tick range for the defensive zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">midfieldTickMin / midfieldTickMax<small>midfield zone</small></td>
+              <td><code>2 / 5</code></td>
+              <td>Random tick range while possession is in the midfield zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">attackTickMin / attackTickMax<small>attack zone</small></td>
+              <td><code>2 / 4</code></td>
+              <td>Random tick range while possession is in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">lateCloseBoostTicks<small>late-game urgency</small></td>
+              <td><code>1</code></td>
+              <td>Added to both min and max tick bounds from minute 75 onward when the score difference is ≤ 1. Simulates end-of-game intensity by increasing the event rate.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Ball Movement</td></tr>
+            <tr>
+              <td class="col-stat">movementStepBase<small>spatial</small></td>
+              <td><code>2.4</code></td>
+              <td>Fixed forward advance (y-axis units) per tick.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">movementStepRandom<small>spatial</small></td>
+              <td><code>3.0</code></td>
+              <td>Random ceiling added to the base each tick (<code>rng × movementStepRandom</code>). Raising this makes advance distance more variable.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">lateUrgencyMultiplier<small>late-game</small></td>
+              <td><code>1.2</code></td>
+              <td>Multiplied onto the full y-step after minute 75. Makes possession advance faster toward goal in the closing stages.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Action Weights — relative probability at each tick</td></tr>
+            <tr>
+              <td class="col-stat">passWeightBase<small>action selection</small></td>
+              <td><code>0.57</code></td>
+              <td>Base weight for choosing a pass. Zone, tactics, and scoreline context modify this before the action is sampled.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">carryWeightBase<small>action selection</small></td>
+              <td><code>0.12</code></td>
+              <td>Base weight for a dribble/carry. Uprated in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">shotWeightBase<small>action selection</small></td>
+              <td><code>0.24</code></td>
+              <td>Base weight for a shot attempt. Only reachable in the attacking zone.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">foulWeightBase<small>action selection</small></td>
+              <td><code>0.03</code></td>
+              <td>Base weight for conceding a foul. Keep small relative to the other weights.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">outOfWindowShotMultiplier<small>action selection</small></td>
+              <td><code>0.27</code></td>
+              <td>Multiplied onto <code>shotWeightBase</code> when the ball is outside the optimal shooting window. Strongly suppresses low-percentage long shots.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Shot: On-Target Gate — first resolution gate; uses <code>shooting</code></td></tr>
+            <tr>
+              <td class="col-stat">onTargetBase<small>shot gate 1</small></td>
+              <td><code>0.31</code></td>
+              <td>Starting probability before skill and position adjustments. At average shooting (70), this is the on-target rate.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetSkillScale<small>shot gate 1</small></td>
+              <td><code>0.0045</code></td>
+              <td>Scales the <code>shooting − 70</code> delta. A shooter with 90 shooting adds 0.09 to the base; a 50-rated shooter loses 0.09.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetWidePenalty<small>shot gate 1</small></td>
+              <td><code>0.06</code></td>
+              <td>Deducted proportionally to lateral distance from centre (<code>lateralDistance / 50 × penalty</code>). At full lateral distance, costs up to 6 pp accuracy.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetFatiguePenalty<small>shot gate 1</small></td>
+              <td><code>0.04</code></td>
+              <td>Flat deduction when the shooter's <code>fatigueLevel</code> exceeds 75. Connects in-match <code>PlayerFatigue</code> state to shot accuracy.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">onTargetMin / onTargetMax<small>shot gate 1</small></td>
+              <td><code>0.15 / 0.82</code></td>
+              <td>Hard clamp after all modifiers. No shot can be less than 15 % or more than 82 % on-target regardless of skill or fatigue.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Shot: Goal Gate — second gate (only reached for on-target shots); uses <code>shooting</code> vs <code>keeperSkill</code></td></tr>
+            <tr>
+              <td class="col-stat">goalChanceBase<small>shot gate 2</small></td>
+              <td><code>0.25</code></td>
+              <td>Starting probability before skill, position, and home-advantage adjustments. At parity between shooter and keeper, this is the conversion rate.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceSkillVsKeeperScale<small>shot gate 2</small></td>
+              <td><code>0.0033</code></td>
+              <td>Scales the <code>shooting − keeperSkill</code> delta. A 20-point shooting advantage adds about 6.6 pp; a 20-point deficit costs the same.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceWidePenalty<small>shot gate 2</small></td>
+              <td><code>0.035</code></td>
+              <td>Same lateral-distance penalty structure as gate 1 but smaller — wide shots already fail the on-target gate more often, so the double penalty is intentionally lighter.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">goalChanceMin / goalChanceMax<small>shot gate 2</small></td>
+              <td><code>0.10 / 0.55</code></td>
+              <td>Hard clamp. An on-target shot always converts at least 10 % of the time; no conversion exceeds 55 % regardless of keeper quality or home advantage.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Set Pieces & Cards</td></tr>
+            <tr>
+              <td class="col-stat">saveToCornerChance<small>corners</small></td>
+              <td><code>0.20</code></td>
+              <td>Chance that a saved shot on target results in a corner kick deflection.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">missToCornerChance<small>corners</small></td>
+              <td><code>0.10</code></td>
+              <td>Chance that a missed shot results in a corner deflection off a defender.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">cornerGoalChanceBase / cornerGoalChanceMax<small>corners</small></td>
+              <td><code>0.035 / 0.10</code></td>
+              <td>Base and maximum conversion rate bounds for header shots originating from corner kicks.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">indirectFkGoalChanceBase / indirectFkGoalChanceMax<small>free kicks</small></td>
+              <td><code>0.035 / 0.10</code></td>
+              <td>Base and maximum conversion rate bounds for header shots originating from indirect free kicks.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">penaltyFoulRateMultiplier<small>penalties</small></td>
+              <td><code>0.10</code></td>
+              <td>Multiplier applied to the foul rate inside the penalty area to prevent excessive penalty counts.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">cardChanceBase<small>cards</small></td>
+              <td><code>0.10</code></td>
+              <td>Base chance that a standard foul results in a booking roll (yellow/red card).</td>
+            </tr>
+            <tr>
+              <td class="col-stat">directRedChance<small>cards</small></td>
+              <td><code>0.01</code></td>
+              <td>Flat chance that a carded foul triggers a direct red card send-off.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">secondYellowChanceMultiplier<small>cards</small></td>
+              <td><code>0.25</code></td>
+              <td>Multiplier applied to cardChanceBase when rolling if a player already on a yellow card receives a second yellow.</td>
+            </tr>
+
+            <tr style="background:#09090b"><td colspan="3" style="color:#52525b;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;padding:8px 14px;font-weight:600">Misc</td></tr>
+            <tr>
+              <td class="col-stat">homeAdvantageGoalBonus<small>goal gate</small></td>
+              <td><code>0.04</code></td>
+              <td>Flat bonus added to the goal chance when the shooting team is the home side. Applied before the goal-chance clamp.</td>
+            </tr>
+            <tr>
+              <td class="col-stat">skillCompressionFactor<small>skill scaling</small></td>
+              <td><code>0.60</code></td>
+              <td>Compresses the distance of player stats from 70: <code>70 + (raw - 70) * factor</code>. Reduces gameplay variance and balances teams.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

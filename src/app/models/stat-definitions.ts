@@ -85,7 +85,7 @@ export const STAT_DEFINITIONS: Record<StatKey, StatDefinition> = {
   composure: {
     type: 'mental',
     description: 'Ability to stay calm and make good decisions under pressure.',
-    hidden: true
+    hidden: false
   },
   morale: {
     type: 'mental',
@@ -100,7 +100,7 @@ export const STAT_DEFINITIONS: Record<StatKey, StatDefinition> = {
   aggressiveness: {
     type: 'mental',
     description: 'How hard the player tackles and contests duels.',
-    hidden: true
+    hidden: false
   },
   fitness: {
     type: 'physical',
