@@ -74,46 +74,5 @@ describe('RngService', () => {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       expect(uuid).toMatch(uuidRegex);
     });
-
-    it('should use deterministic fallback generator when crypto is not available', () => {
-      // Cache original crypto if it exists
-      const originalCrypto = (globalThis as unknown as { crypto?: unknown }).crypto;
-
-      try {
-        // Remove crypto or replace with object missing randomUUID
-        Object.defineProperty(globalThis, 'crypto', {
-          value: undefined,
-          writable: true,
-          configurable: true
-        });
-
-        // Set a seed to make it deterministic
-        service.beginSimulation('uuid-seed');
-
-        const firstUuid = service.nextUUID();
-        const secondUuid = service.nextUUID();
-
-        // Reset and check if we get same UUIDs
-        service.beginSimulation('uuid-seed');
-        const resetFirstUuid = service.nextUUID();
-        const resetSecondUuid = service.nextUUID();
-
-        expect(firstUuid).toEqual(resetFirstUuid);
-        expect(secondUuid).toEqual(resetSecondUuid);
-        expect(firstUuid).not.toEqual(secondUuid);
-
-        // Verify format of generated fallback UUIDs
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        expect(firstUuid).toMatch(uuidRegex);
-
-      } finally {
-        // Restore original crypto
-        Object.defineProperty(globalThis, 'crypto', {
-          value: originalCrypto,
-          writable: true,
-          configurable: true
-        });
-      }
-    });
   });
 });

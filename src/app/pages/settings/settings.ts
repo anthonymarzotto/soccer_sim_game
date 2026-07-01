@@ -1,7 +1,7 @@
 import { AfterRenderRef, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, afterNextRender, computed, inject, signal, PLATFORM_ID } from '@angular/core';
 import { TitleCasePipe, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
-import { SettingsService, BadgeStyle } from '../../services/settings.service';
+import { SettingsService, BadgeStyle, BADGE_STYLES } from '../../services/settings.service';
 import { GameService } from '../../services/game.service';
 import { ScheduleStateService } from '../../services/schedule-state.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
@@ -26,7 +26,7 @@ export class SettingsComponent {
   private appDb = inject(AppDbService);
   private platformId = inject(PLATFORM_ID);
 
-  badgeStyles = this.settingsService.getBadgeStyles();
+  badgeStyles = BADGE_STYLES;
   selectedStyle = this.settingsService.badgeStyle;
   currentDataSchemaVersion = computed(() => resolveSchemaVersion(this.settingsService.currentDataSchemaVersion));
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;

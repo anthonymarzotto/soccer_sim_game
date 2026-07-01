@@ -7,7 +7,7 @@ import { APP_DATA_SCHEMA_VERSION, SIMULATION_SEED_MAX_LENGTH } from '../constant
 import { DataSchemaVersionService } from './data-schema-version.service';
 
 describe('SettingsService', () => {
-  function setup(loadSettingsValue: { badgeStyle?: string; simulationVariant?: string; simulationSeed?: string; version?: string } | null) {
+  function setup(loadSettingsValue: { badgeStyle?: string; simulationSeed?: string; version?: string } | null) {
     TestBed.resetTestingModule();
 
     const persistenceSpy: Pick<PersistenceService, 'loadSettings' | 'saveSettings' | 'clearSettings'> = {
@@ -78,7 +78,6 @@ describe('SettingsService', () => {
 
     expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
       badgeStyle: 'jersey',
-      simulationVariant: 'B',
       simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -157,7 +156,6 @@ describe('SettingsService', () => {
     expect(service.badgeStyle()).toBe('jersey');
     expect(persistenceSpy.saveSettings).toHaveBeenCalledWith({
       badgeStyle: 'jersey',
-      simulationVariant: 'B',
       simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -168,7 +166,6 @@ describe('SettingsService', () => {
     const expectedSeed = 'x'.repeat(SIMULATION_SEED_MAX_LENGTH);
     const { service } = setup({
       badgeStyle: 'shield',
-      simulationVariant: 'B',
       simulationSeed: persistedSeed,
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -182,7 +179,6 @@ describe('SettingsService', () => {
   it('should normalize simulation seed on update before persisting', async () => {
     const { service, persistenceSpy } = setup({
       badgeStyle: 'shield',
-      simulationVariant: 'B',
       simulationSeed: '',
       version: APP_DATA_SCHEMA_VERSION
     });
@@ -197,7 +193,6 @@ describe('SettingsService', () => {
     expect(service.simulationSeed()).toBe(expectedSeed);
     expect(persistenceSpy.saveSettings).toHaveBeenLastCalledWith({
       badgeStyle: 'shield',
-      simulationVariant: 'B',
       simulationSeed: expectedSeed,
       version: APP_DATA_SCHEMA_VERSION
     });
