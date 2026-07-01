@@ -142,7 +142,6 @@ export interface PlayerCareerStats {
   penaltiesSaved?: number;
   aerialDuelsWon?: number;
   aerialDuelsLost?: number;
-  setPieceGoals?: number;
   cornerGoals?: number;
   indirectFreeKickGoals?: number;
 }
@@ -331,7 +330,6 @@ export interface PlayerStatistics {
   penaltiesSaved?: number;
   aerialDuelsWon?: number;
   aerialDuelsLost?: number;
-  setPieceGoals?: number;
   cornerGoals?: number;
   indirectFreeKickGoals?: number;
 }

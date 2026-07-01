@@ -36,7 +36,6 @@ export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string,
     penaltiesSaved: 0,
     aerialDuelsWon: 0,
     aerialDuelsLost: 0,
-    setPieceGoals: 0,
     cornerGoals: 0,
     indirectFreeKickGoals: 0,
     ...(marketValue !== undefined ? { marketValue } : {})

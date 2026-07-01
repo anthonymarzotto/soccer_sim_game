@@ -37,7 +37,6 @@ describe('player-career-stats defaults', () => {
       penaltiesSaved: 0,
       aerialDuelsWon: 0,
       aerialDuelsLost: 0,
-      setPieceGoals: 0,
       cornerGoals: 0,
       indirectFreeKickGoals: 0
     });
