@@ -35,6 +35,8 @@
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Fouls Committed">FL</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Yellow Cards">YC</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Red Cards">RC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Penalties Scored">PKG</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Aerial Duels Won">AWD</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Match Rating">RTG</th>
             </tr>
           </thead>
@@ -82,6 +84,8 @@
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.fouls === 0">{{ log.playerStats.fouls }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-yellow-400]="log.playerStats.yellowCards > 0" [class.text-text-muted]="log.playerStats.yellowCards === 0">{{ log.playerStats.yellowCards }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-red-500]="log.playerStats.redCards > 0" [class.text-text-muted]="log.playerStats.redCards === 0">{{ log.playerStats.redCards }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="(log.playerStats.penaltiesScored ?? 0) > 0" [class.font-bold]="(log.playerStats.penaltiesScored ?? 0) > 0" [class.text-text-muted]="(log.playerStats.penaltiesScored ?? 0) === 0">{{ log.playerStats.penaltiesScored ?? 0 }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="(log.playerStats.aerialDuelsWon ?? 0) === 0">{{ log.playerStats.aerialDuelsWon ?? 0 }}</td>
                   <td class="px-4 py-3 text-center font-mono font-bold"
                       [class.text-accent]="scaleMatchRating(log.playerStats.rating) >= 8"
                       [class.text-text-secondary]="scaleMatchRating(log.playerStats.rating) >= 6 && scaleMatchRating(log.playerStats.rating) < 8"
@@ -89,13 +93,13 @@
                     {{ scaleMatchRating(log.playerStats.rating) | number:'1.1-1' }}
                   </td>
                 } @else {
-                  <td colspan="14" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
+                  <td colspan="16" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
                 }
               </tr>
             }
             @if (gameLog().length === 0) {
               <tr>
-                <td colspan="17" class="px-4 py-8 text-center text-text-muted">
+                <td colspan="19" class="px-4 py-8 text-center text-text-muted">
                   No games played in the current season yet.
                 </td>
               </tr>

@@ -21,7 +21,7 @@ describe('LeagueAssemblyService', () => {
             id: 'player-1',
             name: 'Goal Keeper',
             teamId: 'team-1',
-            position: Position.GOALKEEPER,
+            position: Position.GK,
             role: Role.STARTER,
             personal: mockPersonal({ height: 190, weight: 85, age: 27, nationality: 'ENG', seasonYear: 2026 }),
             seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 82, endurance: 77, flair: 55, vision: 68, determination: 80, tackling: 22, shooting: 20, heading: 30, longPassing: 55, shortPassing: 62, luck: 60, injuryRate: 10, overall: 79 })],

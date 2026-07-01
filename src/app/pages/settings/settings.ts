@@ -1,11 +1,12 @@
-import { AfterRenderRef, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
-import { TitleCasePipe } from '@angular/common';
+import { AfterRenderRef, ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, afterNextRender, computed, inject, signal, PLATFORM_ID } from '@angular/core';
+import { TitleCasePipe, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { SettingsService, BadgeStyle } from '../../services/settings.service';
 import { GameService } from '../../services/game.service';
 import { ScheduleStateService } from '../../services/schedule-state.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { FormationEditorComponent } from '../../components/formation-editor/formation-editor';
+import { AppDbService } from '../../services/app-db.service';
 
 function resolveSchemaVersion(value: string | (() => string)): string {
   return typeof value === 'function' ? value() : value;
@@ -22,6 +23,8 @@ export class SettingsComponent {
   gameService = inject(GameService);
   private scheduleStateService = inject(ScheduleStateService);
   private router = inject(Router);
+  private appDb = inject(AppDbService);
+  private platformId = inject(PLATFORM_ID);
 
   badgeStyles = this.settingsService.getBadgeStyles();
   selectedStyle = this.settingsService.badgeStyle;
@@ -95,6 +98,70 @@ export class SettingsComponent {
       await this.router.navigate(['/']);
     } finally {
       this.isResetting.set(false);
+    }
+  }
+
+  private downloadJson(data: unknown, fileName: string): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const dataStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async exportFullData(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    try {
+      const [teams, players, matches, leagueMetadata, appState] = await Promise.all([
+        this.appDb.getAllFromTable('teams'),
+        this.appDb.getAllFromTable('players'),
+        this.appDb.getAllFromTable('matches'),
+        this.appDb.getAllFromTable('leagueMetadata'),
+        this.appDb.getAllFromTable('appState'),
+      ]);
+
+      const exportData = {
+        teams,
+        players,
+        matches,
+        leagueMetadata,
+        appState
+      };
+
+      this.downloadJson(exportData, `soccer-sim-full-export-${Date.now()}.json`);
+    } catch (error) {
+      console.error('Failed to export full data:', error);
+    }
+  }
+
+  async exportPlayersData(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    try {
+      const players = await this.appDb.getAllFromTable('players');
+      const exportData = { players };
+      this.downloadJson(exportData, `soccer-sim-players-export-${Date.now()}.json`);
+    } catch (error) {
+      console.error('Failed to export players data:', error);
+    }
+  }
+
+  async exportTeamsData(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    try {
+      const teams = await this.appDb.getAllFromTable('teams');
+      const exportData = { teams };
+      this.downloadJson(exportData, `soccer-sim-teams-export-${Date.now()}.json`);
+    } catch (error) {
+      console.error('Failed to export teams data:', error);
     }
   }
 }

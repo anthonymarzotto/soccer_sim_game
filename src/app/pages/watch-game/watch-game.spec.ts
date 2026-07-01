@@ -44,7 +44,7 @@ describe('WatchGameComponent', () => {
     awayRedCards: 0
   });
 
-  const createPlayer = (id: string, teamId: string, role: Role, position = Position.MIDFIELDER): Player => ({
+  const createPlayer = (id: string, teamId: string, role: Role, position = Position.CM): Player => ({
     id,
     name: id,
     teamId,
@@ -97,7 +97,16 @@ describe('WatchGameComponent', () => {
     fouls: 0,
     foulsSuffered: 0,
     yellowCards: 0,
-    redCards: 0
+    redCards: 0,
+    cornersTaken: 0,
+    freeKicksTaken: 0,
+    freeKickGoals: 0,
+    penaltiesTaken: 0,
+    penaltiesScored: 0,
+    penaltiesFaced: 0,
+    penaltiesSaved: 0,
+    aerialDuelsWon: 0,
+    aerialDuelsLost: 0
   });
 
   beforeEach(() => {

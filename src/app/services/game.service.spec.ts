@@ -412,7 +412,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -541,7 +541,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -611,7 +611,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -621,7 +621,7 @@ describe('GameService persistence integration', () => {
               id: 'p2',
               name: 'Player Two',
               teamId: 'team-1',
-              position: Position.MIDFIELDER,
+              position: Position.CM,
               role: Role.BENCH,
               personal: mockPersonal({ height: 180, weight: 78, age: 24, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 61, strength: 70, endurance: 78, flair: 55, vision: 66, determination: 71, tackling: 52, shooting: 61, heading: 48, longPassing: 67, shortPassing: 72, luck: 52, injuryRate: 10, overall: 73 })],
@@ -784,7 +784,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -794,7 +794,7 @@ describe('GameService persistence integration', () => {
               id: 'p2',
               name: 'Player Two',
               teamId: 'team-1',
-              position: Position.DEFENDER,
+              position: Position.CB,
               role: Role.STARTER,
               personal: mockPersonal({ height: 184, weight: 79, age: 25, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 62, strength: 74, endurance: 77, flair: 44, vision: 60, determination: 73, tackling: 79, shooting: 22, heading: 70, longPassing: 63, shortPassing: 67, luck: 46, injuryRate: 9, overall: 74 })],
@@ -832,7 +832,7 @@ describe('GameService persistence integration', () => {
           {
             slotId: 'gk_1',
             label: 'GK',
-            preferredPosition: Position.GOALKEEPER,
+            preferredPosition: Position.GK,
             coordinates: { x: 50, y: 90 },
             zone: FieldZone.DEFENSE
           }
@@ -866,7 +866,7 @@ describe('GameService persistence integration', () => {
               id: 'p2',
               name: 'Player Two',
               teamId: 'team-1',
-              position: Position.DEFENDER,
+              position: Position.CB,
               role: Role.STARTER,
               personal: mockPersonal({ height: 180, weight: 78, age: 24, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 60, strength: 70, endurance: 72, flair: 50, vision: 58, determination: 66, tackling: 78, shooting: 30, heading: 65, longPassing: 60, shortPassing: 66, luck: 45, injuryRate: 10, overall: 72 })],
@@ -876,7 +876,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 192, weight: 85, age: 28, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 78, endurance: 70, flair: 35, vision: 72, determination: 80, tackling: 18, shooting: 12, heading: 40, longPassing: 56, shortPassing: 60, luck: 52, injuryRate: 8, overall: 77 })],
@@ -930,7 +930,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -960,7 +960,7 @@ describe('GameService persistence integration', () => {
               id: 'p2',
               name: 'Player Two',
               teamId: 'team-2',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 191, weight: 83, age: 30, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 81, endurance: 74, flair: 39, vision: 69, determination: 82, tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, luck: 52, injuryRate: 7, overall: 77 })],
@@ -1033,8 +1033,8 @@ describe('GameService persistence integration', () => {
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GK, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GK, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
       matchSummary: 'Summary',
       homePlayerStats: [],
@@ -1090,7 +1090,7 @@ describe('GameService persistence integration', () => {
       id: 'home-def',
       name: 'Home Defender',
       teamId: 'team-1',
-      position: Position.DEFENDER,
+      position: Position.CB,
       role: Role.STARTER,
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
     } as unknown as Player;
@@ -1098,7 +1098,7 @@ describe('GameService persistence integration', () => {
       id: 'away-att',
       name: 'Away Attacker',
       teamId: 'team-2',
-      position: Position.FORWARD,
+      position: Position.ST,
       role: Role.STARTER,
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
     } as unknown as Player;
@@ -1192,7 +1192,7 @@ describe('GameService persistence integration', () => {
       id: 'home-pass',
       name: 'Home Passer',
       teamId: 'team-1',
-      position: Position.MIDFIELDER,
+      position: Position.CM,
       role: Role.STARTER,
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
     } as unknown as Player;
@@ -1200,7 +1200,7 @@ describe('GameService persistence integration', () => {
       id: 'home-score',
       name: 'Home Scorer',
       teamId: 'team-1',
-      position: Position.FORWARD,
+      position: Position.ST,
       role: Role.STARTER,
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-1')]
     } as unknown as Player;
@@ -1208,7 +1208,7 @@ describe('GameService persistence integration', () => {
       id: 'away-1',
       name: 'Away Player',
       teamId: 'team-2',
-      position: Position.DEFENDER,
+      position: Position.CB,
       role: Role.STARTER,
       careerStats: [createEmptyPlayerCareerStats(2026, 'team-2')]
     } as unknown as Player;
@@ -1259,11 +1259,11 @@ describe('GameService persistence integration', () => {
     });
 
     const homePlayerStats = [
-      makePlayerStats('home-pass', 'Home Passer', Position.MIDFIELDER, 1, 60),
-      makePlayerStats('home-score', 'Home Scorer', Position.FORWARD, 0, 70)
+      makePlayerStats('home-pass', 'Home Passer', Position.CM, 1, 60),
+      makePlayerStats('home-score', 'Home Scorer', Position.ST, 0, 70)
     ];
     const awayPlayerStats = [
-      makePlayerStats('away-1', 'Away Player', Position.DEFENDER, 0, 55)
+      makePlayerStats('away-1', 'Away Player', Position.CB, 0, 55)
     ];
 
     (service as unknown as {
@@ -1322,7 +1322,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -1352,7 +1352,7 @@ describe('GameService persistence integration', () => {
               id: 'p2',
               name: 'Player Two',
               teamId: 'team-2',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 191, weight: 83, age: 30, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 81, endurance: 74, flair: 39, vision: 69, determination: 82, tackling: 18, shooting: 12, heading: 34, longPassing: 53, shortPassing: 61, luck: 52, injuryRate: 7, overall: 77 })],
@@ -1437,8 +1437,8 @@ describe('GameService persistence integration', () => {
         tacticalBattle: 'Away control'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GK, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GK, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
       },
       matchSummary: 'Player One was dismissed in the first half.',
       homePlayerStats: [],
@@ -1477,7 +1477,7 @@ describe('GameService persistence integration', () => {
               id: 'p1',
               name: 'Player One',
               teamId: 'team-1',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 190, weight: 84, age: 29, nationality: 'ENG', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 50, strength: 80, endurance: 75, flair: 40, vision: 70, determination: 80, tackling: 20, shooting: 15, heading: 35, longPassing: 55, shortPassing: 62, luck: 50, injuryRate: 8, overall: 78 })],
@@ -1498,7 +1498,7 @@ describe('GameService persistence integration', () => {
               id: 'p2',
               name: 'Player Two',
               teamId: 'team-2',
-              position: Position.GOALKEEPER,
+              position: Position.GK,
               role: Role.STARTER,
               personal: mockPersonal({ height: 188, weight: 82, age: 28, nationality: 'ESP', seasonYear: 2026 }),
               seasonAttributes: [mockSeasonAttrs(2026, { speed: 48, strength: 79, endurance: 74, flair: 38, vision: 68, determination: 79, tackling: 18, shooting: 14, heading: 33, longPassing: 54, shortPassing: 61, luck: 49, injuryRate: 7, overall: 77 })],
@@ -1562,8 +1562,8 @@ describe('GameService persistence integration', () => {
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
-        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+        homeTeam: { mvp: { playerId: 'p1', playerName: 'Player One', position: Position.GK, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p2', playerName: 'Player Two', position: Position.GK, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
       matchSummary: 'Forfeit'
     };
@@ -1605,8 +1605,8 @@ describe('GameService persistence integration', () => {
           id: 'team-1',
           name: 'Team One',
           players: [
-            makePlayer('p-starter', 'team-1', Position.MIDFIELDER, Role.STARTER),
-            makePlayer('p-sub', 'team-1', Position.MIDFIELDER, Role.BENCH)
+            makePlayer('p-starter', 'team-1', Position.CM, Role.STARTER),
+            makePlayer('p-sub', 'team-1', Position.CM, Role.BENCH)
           ],
           playerIds: ['p-starter', 'p-sub'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
@@ -1617,7 +1617,7 @@ describe('GameService persistence integration', () => {
         {
           id: 'team-2',
           name: 'Team Two',
-          players: [makePlayer('p-opp', 'team-2', Position.GOALKEEPER, Role.STARTER)],
+          players: [makePlayer('p-opp', 'team-2', Position.GK, Role.STARTER)],
           playerIds: ['p-opp'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
@@ -1668,8 +1668,8 @@ describe('GameService persistence integration', () => {
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p-sub', playerName: 'p-sub', position: Position.MIDFIELDER, rating: 5, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
-        awayTeam: { mvp: { playerId: 'p-opp', playerName: 'p-opp', position: Position.GOALKEEPER, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 }
+        homeTeam: { mvp: { playerId: 'p-sub', playerName: 'p-sub', position: Position.CM, rating: 5, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 1, yellowCards: 0, redCards: 1 }, topPerformers: [], strugglers: [], averageRating: 6 },
+        awayTeam: { mvp: { playerId: 'p-opp', playerName: 'p-opp', position: Position.GK, rating: 7, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 }
       },
       matchSummary: 'p-sub sent off after coming on.',
       homePlayerStats: [],
@@ -1711,8 +1711,8 @@ describe('GameService persistence integration', () => {
           id: 'team-1',
           name: 'Team One',
           players: [
-            makePlayer('p-home', 'team-1', Position.FORWARD, Role.STARTER),
-            makePlayer('p-home-gk', 'team-1', Position.GOALKEEPER, Role.STARTER)
+            makePlayer('p-home', 'team-1', Position.ST, Role.STARTER),
+            makePlayer('p-home-gk', 'team-1', Position.GK, Role.STARTER)
           ],
           playerIds: ['p-home', 'p-home-gk'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
@@ -1723,7 +1723,7 @@ describe('GameService persistence integration', () => {
         {
           id: 'team-2',
           name: 'Team Two',
-          players: [makePlayer('p-away-gk', 'team-2', Position.GOALKEEPER, Role.STARTER)],
+          players: [makePlayer('p-away-gk', 'team-2', Position.GK, Role.STARTER)],
           playerIds: ['p-away-gk'],
           stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [MatchResult.DRAW] },
           selectedFormationId: 'formation_4_4_2',
@@ -1775,8 +1775,8 @@ describe('GameService persistence integration', () => {
         tacticalBattle: 'Even'
       },
       playerPerformances: {
-        homeTeam: { mvp: { playerId: 'p-home', playerName: 'p-home', position: Position.FORWARD, rating: 8, goals: 1, assists: 0, shots: 1, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
-        awayTeam: { mvp: { playerId: 'p-away-gk', playerName: 'p-away-gk', position: Position.GOALKEEPER, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
+        homeTeam: { mvp: { playerId: 'p-home', playerName: 'p-home', position: Position.ST, rating: 8, goals: 1, assists: 0, shots: 1, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 7 },
+        awayTeam: { mvp: { playerId: 'p-away-gk', playerName: 'p-away-gk', position: Position.GK, rating: 6, goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0, fouls: 0, yellowCards: 0, redCards: 0 }, topPerformers: [], strugglers: [], averageRating: 6 }
       },
       matchSummary: 'Single finished shot event path.',
       homePlayerStats: [],
@@ -2264,17 +2264,17 @@ describe('GameService dressBestPlayers', () => {
 
   it('uses 4-4-2 hardcoded fallback keys when no formations are available', () => {
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 80),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
-      makePlayer('mid1', Position.MIDFIELDER, 80),
-      makePlayer('mid2', Position.MIDFIELDER, 80),
-      makePlayer('mid3', Position.MIDFIELDER, 80),
-      makePlayer('mid4', Position.MIDFIELDER, 80),
-      makePlayer('fwd1', Position.FORWARD, 80),
-      makePlayer('fwd2', Position.FORWARD, 80),
+      makePlayer('gk1', Position.GK, 80),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
+      makePlayer('mid1', Position.CM, 80),
+      makePlayer('mid2', Position.CM, 80),
+      makePlayer('mid3', Position.CM, 80),
+      makePlayer('mid4', Position.CM, 80),
+      makePlayer('fwd1', Position.ST, 80),
+      makePlayer('fwd2', Position.ST, 80),
     ];
     const service = buildService([]);
     const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
@@ -2297,31 +2297,31 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.CM, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.ST, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
       ]
     };
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 80),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
-      makePlayer('mid1', Position.MIDFIELDER, 80),
-      makePlayer('mid2', Position.MIDFIELDER, 80),
-      makePlayer('mid3', Position.MIDFIELDER, 80),
-      makePlayer('fwd1', Position.FORWARD, 80),
-      makePlayer('fwd2', Position.FORWARD, 80),
-      makePlayer('mid4', Position.MIDFIELDER, 80), // only 2 FWD, not 3
+      makePlayer('gk1', Position.GK, 80),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
+      makePlayer('mid1', Position.CM, 80),
+      makePlayer('mid2', Position.CM, 80),
+      makePlayer('mid3', Position.CM, 80),
+      makePlayer('fwd1', Position.ST, 80),
+      makePlayer('fwd2', Position.ST, 80),
+      makePlayer('mid4', Position.CM, 80), // only 2 FWD, not 3
     ];
     const service = buildService([formation433]);
     const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
@@ -2340,31 +2340,31 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.CM, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.ST, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
       ]
     };
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 85),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
-      makePlayer('mid1', Position.MIDFIELDER, 80),
-      makePlayer('mid2', Position.MIDFIELDER, 80),
-      makePlayer('mid3', Position.MIDFIELDER, 80),
-      makePlayer('fwd1', Position.FORWARD, 80),
-      makePlayer('fwd2', Position.FORWARD, 80),
-      makePlayer('fwd3', Position.FORWARD, 80),
+      makePlayer('gk1', Position.GK, 85),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
+      makePlayer('mid1', Position.CM, 80),
+      makePlayer('mid2', Position.CM, 80),
+      makePlayer('mid3', Position.CM, 80),
+      makePlayer('fwd1', Position.ST, 80),
+      makePlayer('fwd2', Position.ST, 80),
+      makePlayer('fwd3', Position.ST, 80),
     ];
     const service = buildService([formation433]);
     const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
@@ -2392,17 +2392,17 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_l', preferredPosition: Position.MIDFIELDER, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_r', preferredPosition: Position.MIDFIELDER, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_l', preferredPosition: Position.CM, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_r', preferredPosition: Position.CM, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
       ]
     };
     const formation433 = {
@@ -2412,32 +2412,32 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.CM, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.ST, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
       ]
     };
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 80),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
-      makePlayer('mid1', Position.MIDFIELDER, 90),
-      makePlayer('mid2', Position.MIDFIELDER, 90),
-      makePlayer('mid3', Position.MIDFIELDER, 90),
-      makePlayer('mid4', Position.MIDFIELDER, 90),
-      makePlayer('fwd1', Position.FORWARD, 70),
-      makePlayer('fwd2', Position.FORWARD, 70),
-      makePlayer('fwd3', Position.FORWARD, 70),
+      makePlayer('gk1', Position.GK, 80),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
+      makePlayer('mid1', Position.CM, 90),
+      makePlayer('mid2', Position.CM, 90),
+      makePlayer('mid3', Position.CM, 90),
+      makePlayer('mid4', Position.CM, 90),
+      makePlayer('fwd1', Position.ST, 70),
+      makePlayer('fwd2', Position.ST, 70),
+      makePlayer('fwd3', Position.ST, 70),
     ];
     const service = buildService([formation433, formation442]);
     const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
@@ -2453,17 +2453,17 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_l', preferredPosition: Position.MIDFIELDER, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_r', preferredPosition: Position.MIDFIELDER, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_l', preferredPosition: Position.CM, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_r', preferredPosition: Position.CM, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
       ]
     };
     const userDefined433 = {
@@ -2473,32 +2473,32 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: true,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_c', preferredPosition: Position.MIDFIELDER, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_c', preferredPosition: Position.FORWARD, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 36, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_c', preferredPosition: Position.CM, label: 'CM', coordinates: { x: 50, y: 47 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 64, y: 52 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LW', coordinates: { x: 22, y: 78 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_c', preferredPosition: Position.ST, label: 'CF', coordinates: { x: 50, y: 84 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RW', coordinates: { x: 78, y: 78 }, zone: FieldZone.ATTACK },
       ]
     };
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 80),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
-      makePlayer('mid1', Position.MIDFIELDER, 70),
-      makePlayer('mid2', Position.MIDFIELDER, 70),
-      makePlayer('mid3', Position.MIDFIELDER, 70),
-      makePlayer('mid4', Position.MIDFIELDER, 70),
-      makePlayer('fwd1', Position.FORWARD, 90),
-      makePlayer('fwd2', Position.FORWARD, 90),
-      makePlayer('fwd3', Position.FORWARD, 90),
+      makePlayer('gk1', Position.GK, 80),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
+      makePlayer('mid1', Position.CM, 70),
+      makePlayer('mid2', Position.CM, 70),
+      makePlayer('mid3', Position.CM, 70),
+      makePlayer('mid4', Position.CM, 70),
+      makePlayer('fwd1', Position.ST, 90),
+      makePlayer('fwd2', Position.ST, 90),
+      makePlayer('fwd3', Position.ST, 90),
     ];
     const service = buildService([predefined442], [userDefined433, predefined442]);
     const [result] = callDressBestPlayers(service, [makeTeam('t1', players)]);
@@ -2519,43 +2519,43 @@ describe('GameService dressBestPlayers', () => {
       isUserDefined: false,
       createdAt: 0,
       slots: [
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_l', preferredPosition: Position.DEFENDER, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_lc', preferredPosition: Position.DEFENDER, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_rc', preferredPosition: Position.DEFENDER, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
-        { slotId: 'def_r', preferredPosition: Position.DEFENDER, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
-        { slotId: 'mid_l', preferredPosition: Position.MIDFIELDER, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_lc', preferredPosition: Position.MIDFIELDER, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_rc', preferredPosition: Position.MIDFIELDER, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'mid_r', preferredPosition: Position.MIDFIELDER, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
-        { slotId: 'att_l', preferredPosition: Position.FORWARD, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
-        { slotId: 'att_r', preferredPosition: Position.FORWARD, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'gk_1', preferredPosition: Position.GK, label: 'GK', coordinates: { x: 50, y: 5 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_l', preferredPosition: Position.CB, label: 'LB', coordinates: { x: 20, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_lc', preferredPosition: Position.CB, label: 'LCB', coordinates: { x: 35, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_rc', preferredPosition: Position.CB, label: 'RCB', coordinates: { x: 65, y: 15 }, zone: FieldZone.DEFENSE },
+        { slotId: 'def_r', preferredPosition: Position.CB, label: 'RB', coordinates: { x: 80, y: 25 }, zone: FieldZone.DEFENSE },
+        { slotId: 'mid_l', preferredPosition: Position.CM, label: 'LM', coordinates: { x: 15, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_lc', preferredPosition: Position.CM, label: 'LCM', coordinates: { x: 40, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_rc', preferredPosition: Position.CM, label: 'RCM', coordinates: { x: 60, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'mid_r', preferredPosition: Position.CM, label: 'RM', coordinates: { x: 85, y: 50 }, zone: FieldZone.MIDFIELD },
+        { slotId: 'att_l', preferredPosition: Position.ST, label: 'LS', coordinates: { x: 35, y: 80 }, zone: FieldZone.ATTACK },
+        { slotId: 'att_r', preferredPosition: Position.ST, label: 'RS', coordinates: { x: 65, y: 80 }, zone: FieldZone.ATTACK },
       ]
     };
 
     const injuredMid = (id: string): Player => ({
-      ...makePlayer(id, Position.MIDFIELDER, 75),
+      ...makePlayer(id, Position.CM, 75),
       injuries: [{ definitionId: 'hamstring_pull', totalWeeks: 3, weeksRemaining: 3, sustainedInSeason: 2026, sustainedInWeek: 1 }]
     });
 
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 80),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
+      makePlayer('gk1', Position.GK, 80),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
       // 2 extra healthy defenders that should backfill the bench
-      makePlayer('def5', Position.DEFENDER, 75),
-      makePlayer('def6', Position.DEFENDER, 74),
-      makePlayer('mid1', Position.MIDFIELDER, 80),
-      makePlayer('mid2', Position.MIDFIELDER, 80),
-      makePlayer('mid3', Position.MIDFIELDER, 80),
-      makePlayer('mid4', Position.MIDFIELDER, 80),
+      makePlayer('def5', Position.CB, 75),
+      makePlayer('def6', Position.CB, 74),
+      makePlayer('mid1', Position.CM, 80),
+      makePlayer('mid2', Position.CM, 80),
+      makePlayer('mid3', Position.CM, 80),
+      makePlayer('mid4', Position.CM, 80),
       // 2 bench-eligible midfielders who are injured → leave 2 open bench slots
       injuredMid('mid5'),
       injuredMid('mid6'),
-      makePlayer('fwd1', Position.FORWARD, 80),
-      makePlayer('fwd2', Position.FORWARD, 80),
+      makePlayer('fwd1', Position.ST, 80),
+      makePlayer('fwd2', Position.ST, 80),
     ];
 
     const service = buildService([formation442]);
@@ -2579,17 +2579,17 @@ describe('GameService dressBestPlayers', () => {
 
   it('should skip dressing the user team when not simulating a whole season, but dress it when simulating a whole season', () => {
     const players = [
-      makePlayer('gk1', Position.GOALKEEPER, 80),
-      makePlayer('def1', Position.DEFENDER, 80),
-      makePlayer('def2', Position.DEFENDER, 80),
-      makePlayer('def3', Position.DEFENDER, 80),
-      makePlayer('def4', Position.DEFENDER, 80),
-      makePlayer('mid1', Position.MIDFIELDER, 80),
-      makePlayer('mid2', Position.MIDFIELDER, 80),
-      makePlayer('mid3', Position.MIDFIELDER, 80),
-      makePlayer('mid4', Position.MIDFIELDER, 80),
-      makePlayer('fwd1', Position.FORWARD, 80),
-      makePlayer('fwd2', Position.FORWARD, 80),
+      makePlayer('gk1', Position.GK, 80),
+      makePlayer('def1', Position.CB, 80),
+      makePlayer('def2', Position.CB, 80),
+      makePlayer('def3', Position.CB, 80),
+      makePlayer('def4', Position.CB, 80),
+      makePlayer('mid1', Position.CM, 80),
+      makePlayer('mid2', Position.CM, 80),
+      makePlayer('mid3', Position.CM, 80),
+      makePlayer('mid4', Position.CM, 80),
+      makePlayer('fwd1', Position.ST, 80),
+      makePlayer('fwd2', Position.ST, 80),
     ];
     const service = buildService([]);
     // Set user team ID on the service's leagueState signal
@@ -2691,15 +2691,15 @@ describe('GameService transfer listings and CPU heuristics', () => {
 
     const formationLibrarySpy = {
       getFormationSlots: vi.fn().mockReturnValue([
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER },
-        { slotId: 'def_1', preferredPosition: Position.DEFENDER },
-        { slotId: 'def_2', preferredPosition: Position.DEFENDER },
-        { slotId: 'def_3', preferredPosition: Position.DEFENDER },
-        { slotId: 'mid_1', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'mid_2', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'mid_3', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'att_1', preferredPosition: Position.FORWARD },
-        { slotId: 'att_2', preferredPosition: Position.FORWARD }
+        { slotId: 'gk_1', preferredPosition: Position.GK },
+        { slotId: 'def_1', preferredPosition: Position.CB },
+        { slotId: 'def_2', preferredPosition: Position.CB },
+        { slotId: 'def_3', preferredPosition: Position.CB },
+        { slotId: 'mid_1', preferredPosition: Position.CM },
+        { slotId: 'mid_2', preferredPosition: Position.CM },
+        { slotId: 'mid_3', preferredPosition: Position.CM },
+        { slotId: 'att_1', preferredPosition: Position.ST },
+        { slotId: 'att_2', preferredPosition: Position.ST }
       ]),
       listPredefinedFormations: () => [],
       getAllFormations: () => [],
@@ -2733,23 +2733,23 @@ describe('GameService transfer listings and CPU heuristics', () => {
 
   it('should run CPU auto listing heuristics and respect positional minimums', async () => {
     // Minima: 1 GK, 3 DEF, 3 MID, 2 FWD
-    const gk1 = makePlayer('gk1', 'team-cpu', Position.GOALKEEPER, Role.STARTER, 25, 80);
-    const gk2 = makePlayer('gk2', 'team-cpu', Position.GOALKEEPER, Role.RESERVE, 35, 60); // declining, surplus -> list
+    const gk1 = makePlayer('gk1', 'team-cpu', Position.GK, Role.STARTER, 25, 80);
+    const gk2 = makePlayer('gk2', 'team-cpu', Position.GK, Role.RESERVE, 35, 60); // declining, surplus -> list
 
-    const def1 = makePlayer('def1', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80);
-    const def2 = makePlayer('def2', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80);
-    const def3 = makePlayer('def3', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80);
-    const def4 = makePlayer('def4', 'team-cpu', Position.DEFENDER, Role.RESERVE, 35, 60); // declining, surplus -> list
-    const def5 = makePlayer('def5', 'team-cpu', Position.DEFENDER, Role.RESERVE, 25, 70); // healthy, surplus -> do not list
+    const def1 = makePlayer('def1', 'team-cpu', Position.CB, Role.STARTER, 25, 80);
+    const def2 = makePlayer('def2', 'team-cpu', Position.CB, Role.STARTER, 25, 80);
+    const def3 = makePlayer('def3', 'team-cpu', Position.CB, Role.STARTER, 25, 80);
+    const def4 = makePlayer('def4', 'team-cpu', Position.CB, Role.RESERVE, 35, 60); // declining, surplus -> list
+    const def5 = makePlayer('def5', 'team-cpu', Position.CB, Role.RESERVE, 25, 70); // healthy, surplus -> do not list
 
-    const mid1 = makePlayer('mid1', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
-    const mid2 = makePlayer('mid2', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
-    const mid3 = makePlayer('mid3', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80); // only 3 MIDs -> no surplus, do not list even if declining
+    const mid1 = makePlayer('mid1', 'team-cpu', Position.CM, Role.STARTER, 25, 80);
+    const mid2 = makePlayer('mid2', 'team-cpu', Position.CM, Role.STARTER, 25, 80);
+    const mid3 = makePlayer('mid3', 'team-cpu', Position.CM, Role.STARTER, 25, 80); // only 3 MIDs -> no surplus, do not list even if declining
     const mid3Declining = { ...mid3, personal: { ...mid3.personal, birthday: new Date(1990, 0, 1) } }; // age 36
 
-    const fwd1 = makePlayer('fwd1', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 85);
-    const fwd2 = makePlayer('fwd2', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 85);
-    const fwd3 = makePlayer('fwd3', 'team-cpu', Position.FORWARD, Role.RESERVE, 20, 80); // valuable youth, surplus -> list
+    const fwd1 = makePlayer('fwd1', 'team-cpu', Position.ST, Role.STARTER, 25, 85);
+    const fwd2 = makePlayer('fwd2', 'team-cpu', Position.ST, Role.STARTER, 25, 85);
+    const fwd3 = makePlayer('fwd3', 'team-cpu', Position.ST, Role.RESERVE, 20, 80); // valuable youth, surplus -> list
 
     const team = makeTeam('team-cpu', [gk1, gk2, def1, def2, def3, def4, def5, mid1, mid2, mid3Declining, fwd1, fwd2, fwd3]);
 
@@ -2774,22 +2774,22 @@ describe('GameService transfer listings and CPU heuristics', () => {
     // 4 MIDs. Top 3 are mid1 (85), mid2 (80), mid3 (75). mid4 (70) is declining (age 35).
     // mid2 is injured. mid4 has Role.STARTER.
     // Since mid2 (top player) is injured, mid4 (declining starter) should be protected and not listed.
-    const mid1 = makePlayer('mid1', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 85);
-    const mid2 = makePlayer('mid2', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const mid1 = makePlayer('mid1', 'team-cpu', Position.CM, Role.STARTER, 25, 85);
+    const mid2 = makePlayer('mid2', 'team-cpu', Position.CM, Role.STARTER, 25, 80);
     // mid2 is injured (not eligible)
     mid2.injuries = [{ definitionId: 'sprained_ankle', totalWeeks: 4, weeksRemaining: 2, sustainedInSeason: 2026, sustainedInWeek: 1 }];
 
-    const mid3 = makePlayer('mid3', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 75);
-    const mid4 = makePlayer('mid4', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 35, 70); // declining, starting due to mid2 injury
+    const mid3 = makePlayer('mid3', 'team-cpu', Position.CM, Role.STARTER, 25, 75);
+    const mid4 = makePlayer('mid4', 'team-cpu', Position.CM, Role.STARTER, 35, 70); // declining, starting due to mid2 injury
 
     const team = makeTeam('team-cpu', [
-      makePlayer('gk1', 'team-cpu', Position.GOALKEEPER, Role.STARTER, 25, 80),
-      makePlayer('def1', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
-      makePlayer('def2', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
-      makePlayer('def3', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
+      makePlayer('gk1', 'team-cpu', Position.GK, Role.STARTER, 25, 80),
+      makePlayer('def1', 'team-cpu', Position.CB, Role.STARTER, 25, 80),
+      makePlayer('def2', 'team-cpu', Position.CB, Role.STARTER, 25, 80),
+      makePlayer('def3', 'team-cpu', Position.CB, Role.STARTER, 25, 80),
       mid1, mid2, mid3, mid4,
-      makePlayer('fwd1', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80),
-      makePlayer('fwd2', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80)
+      makePlayer('fwd1', 'team-cpu', Position.ST, Role.STARTER, 25, 80),
+      makePlayer('fwd2', 'team-cpu', Position.ST, Role.STARTER, 25, 80)
     ]);
 
     const { service } = setupTransferTest(1, [], 'team-user', [team]);
@@ -2806,8 +2806,8 @@ describe('GameService transfer listings and CPU heuristics', () => {
   });
 
   it('should allow user to manually list/delist their own players', async () => {
-    const userPlayer = makePlayer('player-user', 'team-user', Position.MIDFIELDER, Role.STARTER, 25, 80);
-    const cpuPlayer = makePlayer('player-cpu', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const userPlayer = makePlayer('player-user', 'team-user', Position.CM, Role.STARTER, 25, 80);
+    const cpuPlayer = makePlayer('player-cpu', 'team-cpu', Position.CM, Role.STARTER, 25, 80);
     const teamUser = makeTeam('team-user', [userPlayer]);
     const teamCpu = makeTeam('team-cpu', [cpuPlayer]);
 
@@ -2828,18 +2828,18 @@ describe('GameService transfer listings and CPU heuristics', () => {
   });
 
   it('should clear listings when transfer window closes, and re-evaluate weekly when open', async () => {
-    const cpuPlayer = makePlayer('player-cpu', 'team-cpu', Position.MIDFIELDER, Role.RESERVE, 35, 60); // declining surplus
+    const cpuPlayer = makePlayer('player-cpu', 'team-cpu', Position.CM, Role.RESERVE, 35, 60); // declining surplus
     const teamCpu = makeTeam('team-cpu', [
-      makePlayer('gk1', 'team-cpu', Position.GOALKEEPER, Role.STARTER, 25, 80),
-      makePlayer('def1', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
-      makePlayer('def2', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
-      makePlayer('def3', 'team-cpu', Position.DEFENDER, Role.STARTER, 25, 80),
-      makePlayer('mid1', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80),
-      makePlayer('mid2', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80),
-      makePlayer('mid3', 'team-cpu', Position.MIDFIELDER, Role.STARTER, 25, 80),
+      makePlayer('gk1', 'team-cpu', Position.GK, Role.STARTER, 25, 80),
+      makePlayer('def1', 'team-cpu', Position.CB, Role.STARTER, 25, 80),
+      makePlayer('def2', 'team-cpu', Position.CB, Role.STARTER, 25, 80),
+      makePlayer('def3', 'team-cpu', Position.CB, Role.STARTER, 25, 80),
+      makePlayer('mid1', 'team-cpu', Position.CM, Role.STARTER, 25, 80),
+      makePlayer('mid2', 'team-cpu', Position.CM, Role.STARTER, 25, 80),
+      makePlayer('mid3', 'team-cpu', Position.CM, Role.STARTER, 25, 80),
       cpuPlayer,
-      makePlayer('fwd1', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80),
-      makePlayer('fwd2', 'team-cpu', Position.FORWARD, Role.STARTER, 25, 80)
+      makePlayer('fwd1', 'team-cpu', Position.ST, Role.STARTER, 25, 80),
+      makePlayer('fwd2', 'team-cpu', Position.ST, Role.STARTER, 25, 80)
     ]);
 
     // Summer window is weeks 1-3. Let's start at week 3.
@@ -2863,8 +2863,8 @@ describe('GameService transfer listings and CPU heuristics', () => {
   });
 
   it('should remove user team players from listings when user changes via setUserTeam', async () => {
-    const player1 = makePlayer('player-1', 'team-1', Position.MIDFIELDER, Role.STARTER, 25, 80);
-    const player2 = makePlayer('player-2', 'team-2', Position.MIDFIELDER, Role.STARTER, 25, 80);
+    const player1 = makePlayer('player-1', 'team-1', Position.CM, Role.STARTER, 25, 80);
+    const player2 = makePlayer('player-2', 'team-2', Position.CM, Role.STARTER, 25, 80);
     const team1 = makeTeam('team-1', [player1]);
     const team2 = makeTeam('team-2', [player2]);
 
@@ -2980,15 +2980,15 @@ describe('GameService player suspensions', () => {
 
     const formationLibrarySpy = {
       getFormationSlots: vi.fn().mockReturnValue([
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER },
-        { slotId: 'def_1', preferredPosition: Position.DEFENDER },
-        { slotId: 'def_2', preferredPosition: Position.DEFENDER },
-        { slotId: 'def_3', preferredPosition: Position.DEFENDER },
-        { slotId: 'mid_1', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'mid_2', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'mid_3', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'att_1', preferredPosition: Position.FORWARD },
-        { slotId: 'att_2', preferredPosition: Position.FORWARD }
+        { slotId: 'gk_1', preferredPosition: Position.GK },
+        { slotId: 'def_1', preferredPosition: Position.CB },
+        { slotId: 'def_2', preferredPosition: Position.CB },
+        { slotId: 'def_3', preferredPosition: Position.CB },
+        { slotId: 'mid_1', preferredPosition: Position.CM },
+        { slotId: 'mid_2', preferredPosition: Position.CM },
+        { slotId: 'mid_3', preferredPosition: Position.CM },
+        { slotId: 'att_1', preferredPosition: Position.ST },
+        { slotId: 'att_2', preferredPosition: Position.ST }
       ]),
       listPredefinedFormations: () => [],
       getAllFormations: () => [],
@@ -3016,7 +3016,7 @@ describe('GameService player suspensions', () => {
 
   it('should apply red card suspensions for different card reasons', () => {
     const { service } = setupTransferTest(1, [], 'team-user', []);
-    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const player1 = makePlayer('p1', 'team-1', Position.CB, Role.STARTER);
     const team1 = makeTeam('team-1', [player1]);
 
     const matchState: MatchState = {
@@ -3070,7 +3070,7 @@ describe('GameService player suspensions', () => {
 
   it('should apply yellow card accumulation suspensions correctly', () => {
     const { service } = setupTransferTest(1, [], 'team-user', []);
-    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const player1 = makePlayer('p1', 'team-1', Position.CB, Role.STARTER);
     // Give 5 yellow cards (milestone check at week 1)
     player1.careerStats[0].yellowCards = 5;
     const team1 = makeTeam('team-1', [player1]);
@@ -3114,7 +3114,7 @@ describe('GameService player suspensions', () => {
 
   it('should stack multiple suspensions and serve them consecutively (only one decays per week)', () => {
     const { service } = setupTransferTest(1, [], 'team-user', []);
-    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const player1 = makePlayer('p1', 'team-1', Position.CB, Role.STARTER);
     player1.suspensions = [
       { reason: 'DOGSO', totalGames: 1, gamesRemaining: 1, sustainedInSeason: SEASON_YEAR, sustainedInWeek: 1 },
       { reason: 'SERIOUS_FOUL', totalGames: 3, gamesRemaining: 3, sustainedInSeason: SEASON_YEAR, sustainedInWeek: 1 }
@@ -3128,7 +3128,7 @@ describe('GameService player suspensions', () => {
 
   it('should skip yellow card increment under FA rules if player is sent off in match', () => {
     const { service } = setupTransferTest(1, [], 'team-user', []);
-    const player = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const player = makePlayer('p1', 'team-1', Position.CB, Role.STARTER);
     const stats = player.careerStats[0];
 
     const yellowEvent = { type: EventType.YELLOW_CARD, playerIds: ['p1'] };
@@ -3143,7 +3143,7 @@ describe('GameService player suspensions', () => {
   });
 
   it('should raise lineup validation issues when suspended players are selected in starters/bench', async () => {
-    const player1 = makePlayer('p1', 'team-1', Position.DEFENDER, Role.STARTER);
+    const player1 = makePlayer('p1', 'team-1', Position.CB, Role.STARTER);
     player1.suspensions = [{ reason: 'DOGSO', totalGames: 1, gamesRemaining: 1, sustainedInSeason: SEASON_YEAR, sustainedInWeek: 1 }];
     const team1 = makeTeam('team-1', [player1]);
     team1.formationAssignments = { def_1: 'p1' };

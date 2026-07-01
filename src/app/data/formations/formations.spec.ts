@@ -19,17 +19,19 @@ describe('FORMATION_4_4_2', () => {
   });
 
   it('should have exactly one goalkeeper slot', () => {
-    const gkSlots = FORMATION_4_4_2.slots.filter(s => s.preferredPosition === Position.GOALKEEPER);
+    const gkSlots = FORMATION_4_4_2.slots.filter(s => s.preferredPosition === Position.GK);
     expect(gkSlots.length).toBe(1);
     expect(gkSlots[0].slotId).toBe('gk_1');
   });
 
   it('should have the correct 4-4-2 position distribution', () => {
     const slots = FORMATION_4_4_2.slots;
-    expect(slots.filter(s => s.preferredPosition === Position.GOALKEEPER).length).toBe(1);
-    expect(slots.filter(s => s.preferredPosition === Position.DEFENDER).length).toBe(4);
-    expect(slots.filter(s => s.preferredPosition === Position.MIDFIELDER).length).toBe(4);
-    expect(slots.filter(s => s.preferredPosition === Position.FORWARD).length).toBe(2);
+    expect(slots.filter(s => s.preferredPosition === Position.GK).length).toBe(1);
+    expect(slots.filter(s => s.preferredPosition === Position.FB).length).toBe(2);
+    expect(slots.filter(s => s.preferredPosition === Position.CB).length).toBe(2);
+    expect(slots.filter(s => s.preferredPosition === Position.WNG).length).toBe(2);
+    expect(slots.filter(s => s.preferredPosition === Position.CM).length).toBe(2);
+    expect(slots.filter(s => s.preferredPosition === Position.ST).length).toBe(2);
   });
 
   it('should have all slots with unique IDs', () => {
@@ -81,7 +83,7 @@ describe('FORMATION_4_4_2', () => {
   });
 
   it('should place forwards at the attacking end (high y)', () => {
-    const forwards = FORMATION_4_4_2.slots.filter(s => s.preferredPosition === Position.FORWARD);
+    const forwards = FORMATION_4_4_2.slots.filter(s => s.preferredPosition === Position.ST);
     forwards.forEach(f => {
       expect(f.coordinates.y).toBeGreaterThan(60);
     });
@@ -140,7 +142,7 @@ describe('ALL_PREDEFINED_FORMATIONS', () => {
 
   it('should have all entries with exactly one goalkeeper slot', () => {
     ALL_PREDEFINED_FORMATIONS.forEach(formation => {
-      const gkCount = formation.slots.filter(s => s.preferredPosition === Position.GOALKEEPER).length;
+      const gkCount = formation.slots.filter(s => s.preferredPosition === Position.GK).length;
       expect(gkCount).toBe(1);
     });
   });

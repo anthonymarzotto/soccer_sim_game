@@ -30,29 +30,29 @@ describe('Player Progression', () => {
 
     it('calculates overall correctly for an outfield player using raw numbers', () => {
       // Sum is 10 * 10 = 100. Overall is Math.floor(100 / 10) = 10.
-      expect(calculateOverall(rawOutfieldAttrs, Position.MIDFIELDER)).toBe(10);
+      expect(calculateOverall(rawOutfieldAttrs, Position.CM)).toBe(10);
     });
 
     it('calculates overall correctly for an outfield player using Stat objects', () => {
       // Sum is 10 * 20 = 200. Overall is Math.floor(200 / 10) = 20.
-      expect(calculateOverall(statObjectAttrs, Position.FORWARD)).toBe(20);
+      expect(calculateOverall(statObjectAttrs, Position.ST)).toBe(20);
     });
 
     it('calculates overall correctly for a goalkeeper using raw numbers', () => {
       // Outfield sum: 10 * 10 = 100. Goalkeeper sum: 5*2 + 5*2 + 5 = 25.
       // Total sum: 125. Overall: Math.floor(125 / 15) = 8.
-      expect(calculateOverall(rawOutfieldAttrs, Position.GOALKEEPER)).toBe(8);
+      expect(calculateOverall(rawOutfieldAttrs, Position.GK)).toBe(8);
     });
 
     it('calculates overall correctly for a goalkeeper using Stat objects', () => {
       // Outfield sum: 10 * 20 = 200. Goalkeeper sum: 10*2 + 10*2 + 10 = 50.
       // Total sum: 250. Overall: Math.floor(250 / 15) = 16.
-      expect(calculateOverall(statObjectAttrs, Position.GOALKEEPER)).toBe(16);
+      expect(calculateOverall(statObjectAttrs, Position.GK)).toBe(16);
     });
 
     it('treats missing attributes as 0', () => {
-      expect(calculateOverall({}, Position.DEFENDER)).toBe(0);
-      expect(calculateOverall({}, Position.GOALKEEPER)).toBe(0);
+      expect(calculateOverall({}, Position.CB)).toBe(0);
+      expect(calculateOverall({}, Position.GK)).toBe(0);
     });
   });
 
@@ -205,7 +205,7 @@ describe('Player Progression', () => {
   describe('calculateMarketValue', () => {
     it('calculates the target market value for a 70 OVR peak player', () => {
       const player = {
-        position: Position.MIDFIELDER,
+        position: Position.CM,
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 70 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -219,7 +219,7 @@ describe('Player Progression', () => {
 
     it('applies position and age progression modifiers correctly', () => {
       const player = {
-        position: Position.FORWARD, // 1.1x multiplier
+        position: Position.ST, // 1.1x multiplier
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 85 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -233,7 +233,7 @@ describe('Player Progression', () => {
 
     it('enforces a minimum floor of 10k', () => {
       const player = {
-        position: Position.GOALKEEPER, // 0.85x
+        position: Position.GK, // 0.85x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2045, overall: { value: 45 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -245,7 +245,7 @@ describe('Player Progression', () => {
 
     it('calculates distinct non-flatlined values for lower overalls', () => {
       const player = {
-        position: Position.MIDFIELDER, // 1.0x
+        position: Position.CM, // 1.0x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 50 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -257,7 +257,7 @@ describe('Player Progression', () => {
 
     it('prices a young high-potential wonderkid significantly higher than their current OVR suggests', () => {
       const player = {
-        position: Position.MIDFIELDER,
+        position: Position.CM,
         personal: { birthday: new Date('2012-01-01') }, // 16 years old in 2028
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 40 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32, potential: 99 }
@@ -274,7 +274,7 @@ describe('Player Progression', () => {
 
     it('prices a young low-potential filler at the minimum floor of 10,000', () => {
       const player = {
-        position: Position.MIDFIELDER,
+        position: Position.CM,
         personal: { birthday: new Date('2012-01-01') }, // 16 years old in 2028
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 40 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32, potential: 45 }
@@ -292,7 +292,7 @@ describe('Player Progression', () => {
   describe('calculatePlayerWageCost', () => {
     it('calculates the target wage for a 70 OVR peak player', () => {
       const player = {
-        position: Position.MIDFIELDER, // 1.0x
+        position: Position.CM, // 1.0x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 70 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -305,7 +305,7 @@ describe('Player Progression', () => {
 
     it('calculates the target wage for an expensive 95 OVR forward peak player', () => {
       const player = {
-        position: Position.FORWARD, // 1.1x
+        position: Position.ST, // 1.1x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 95 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -319,7 +319,7 @@ describe('Player Progression', () => {
 
     it('applies phase discounts and enforces minimum floor of 0.5', () => {
       const player = {
-        position: Position.GOALKEEPER, // 0.85x
+        position: Position.GK, // 0.85x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2045, overall: { value: 45 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
@@ -333,13 +333,13 @@ describe('Player Progression', () => {
   describe('squad sum helpers', () => {
     const players = [
       {
-        position: Position.MIDFIELDER, // 1.0x
+        position: Position.CM, // 1.0x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 70 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }
       },
       {
-        position: Position.FORWARD, // 1.1x
+        position: Position.ST, // 1.1x
         personal: { birthday: new Date('2000-01-01') },
         seasonAttributes: [{ seasonYear: 2028, overall: { value: 95 } }],
         progression: { juniorEndAge: 21, peakEndAge: 28, seniorEndAge: 32 }

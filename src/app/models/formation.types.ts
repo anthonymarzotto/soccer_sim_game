@@ -25,6 +25,7 @@ export interface FormationSchema {
   slots: FormationSlotDefinition[];  // Exactly 11 slots for 11 players
   isUserDefined: boolean;  // Distinguish predefined vs runtime-created schemas
   createdAt: number;       // Timestamp for sorting/versioning
+  isDevOnly?: boolean;     // Whether this formation is restricted to development/playground modes
 }
 
 /**

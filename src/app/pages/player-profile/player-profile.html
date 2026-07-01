@@ -25,14 +25,14 @@
               {{ p?.name }}
             </h2>
             <span class="px-2.5 py-0.5 rounded text-xs font-bold font-mono"
-                  [class.bg-yellow-500/20]="p?.position === Position.GOALKEEPER"
-                  [class.text-yellow-400]="p?.position === Position.GOALKEEPER"
-                  [class.bg-blue-500/20]="p?.position === Position.DEFENDER"
-                  [class.text-blue-400]="p?.position === Position.DEFENDER"
-                  [class.bg-accent/20]="p?.position === Position.MIDFIELDER"
-                  [class.text-accent]="p?.position === Position.MIDFIELDER"
-                  [class.bg-red-500/20]="p?.position === Position.FORWARD"
-                  [class.text-danger]="p?.position === Position.FORWARD">
+                  [class.bg-yellow-500/20]="getPositionGroup(p?.position) === 'GK'"
+                  [class.text-yellow-400]="getPositionGroup(p?.position) === 'GK'"
+                  [class.bg-blue-500/20]="getPositionGroup(p?.position) === 'DEF'"
+                  [class.text-blue-400]="getPositionGroup(p?.position) === 'DEF'"
+                  [class.bg-accent/20]="getPositionGroup(p?.position) === 'MID'"
+                  [class.text-accent]="getPositionGroup(p?.position) === 'MID'"
+                  [class.bg-red-500/20]="getPositionGroup(p?.position) === 'FWD'"
+                  [class.text-danger]="getPositionGroup(p?.position) === 'FWD'">
               {{ p?.position }}
             </span>
           </div>
@@ -812,30 +812,30 @@
             Career Stats
           </h2>
           <div class="flex gap-2 bg-canvas rounded-lg p-1">
-            <button (click)="setSeasonStatsView('offensive')" 
-                      [class]="statsView === 'offensive' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
+            <button (click)="setSeasonStatsView('general')" 
+                      [class]="statsView === 'general' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
-                Offensive
-              </button>
-              <button (click)="setSeasonStatsView('defensive')" 
-                      [class]="statsView === 'defensive' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
-                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
-                Defensive
+                General
               </button>
               <button (click)="setSeasonStatsView('discipline')" 
                       [class]="statsView === 'discipline' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
                 Discipline
               </button>
-              <button (click)="setSeasonStatsView('ratings')" 
-                      [class]="statsView === 'ratings' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
+              <button (click)="setSeasonStatsView('setpieces')" 
+                      [class]="statsView === 'setpieces' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
-                Ratings
+                Set Pieces
               </button>
-              <button (click)="setSeasonStatsView('finances')" 
-                      [class]="statsView === 'finances' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
+              <button (click)="setSeasonStatsView('goalkeeping')" 
+                      [class]="statsView === 'goalkeeping' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
                       class="px-3 py-1 rounded text-sm font-medium transition-colors">
-                Finances
+                Goalkeeping
+              </button>
+              <button (click)="setSeasonStatsView('ratings-finances')" 
+                      [class]="statsView === 'ratings-finances' ? 'bg-accent text-text-primary' : 'text-text-muted hover:text-text-primary'"
+                      class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                Ratings & Finances
               </button>
             </div>
           </div>
@@ -850,28 +850,39 @@
                     <th class="w-20 whitespace-nowrap text-left py-3 px-4 font-semibold">Season</th>
                     <th class="w-16 whitespace-nowrap text-right py-3 px-4 font-semibold">Games</th>
                     <th class="w-24 whitespace-nowrap text-right py-3 px-4 font-semibold">Minutes</th>
-                    @if (statsView === 'offensive') {
+                    @if (statsView === 'general') {
                       <th class="text-right py-3 px-4 font-semibold">Goals</th>
                       <th class="text-right py-3 px-4 font-semibold">Assists</th>
                       <th class="text-right py-3 px-4 font-semibold">Shots</th>
                       <th class="text-right py-3 px-4 font-semibold">SoT</th>
-                    } @else if (statsView === 'defensive') {
                       <th class="text-right py-3 px-4 font-semibold">Tackles</th>
                       <th class="text-right py-3 px-4 font-semibold">Interceptions</th>
                       <th class="text-right py-3 px-4 font-semibold">Passes</th>
-                      <th class="text-right py-3 px-4 font-semibold">Saves</th>
-                      <th class="text-right py-3 px-4 font-semibold">Clean Sheets</th>
                     } @else if (statsView === 'discipline') {
                       <th class="text-right py-3 px-4 font-semibold">Fouls</th>
                       <th class="text-right py-3 px-4 font-semibold">Suffered</th>
                       <th class="text-right py-3 px-4 font-semibold">Yellow</th>
                       <th class="text-right py-3 px-4 font-semibold">Red</th>
-                    } @else if (statsView === 'ratings') {
+                    } @else if (statsView === 'setpieces') {
+                      <th class="text-right py-3 px-4 font-semibold">Corners</th>
+                      <th class="text-right py-3 px-4 font-semibold">CK Goals</th>
+                      <th class="text-right py-3 px-4 font-semibold">FK Taken</th>
+                      <th class="text-right py-3 px-4 font-semibold">FK Goals</th>
+                      <th class="text-right py-3 px-4 font-semibold">IFK Goals</th>
+                      <th class="text-right py-3 px-4 font-semibold">PK Taken</th>
+                      <th class="text-right py-3 px-4 font-semibold">PK Scored</th>
+                      <th class="text-right py-3 px-4 font-semibold">Aerial W</th>
+                      <th class="text-right py-3 px-4 font-semibold">Aerial L</th>
+                    } @else if (statsView === 'goalkeeping') {
+                      <th class="text-right py-3 px-4 font-semibold">Saves</th>
+                      <th class="text-right py-3 px-4 font-semibold">Clean Sheets</th>
+                      <th class="text-right py-3 px-4 font-semibold">PK Faced</th>
+                      <th class="text-right py-3 px-4 font-semibold">PK Saved</th>
+                    } @else if (statsView === 'ratings-finances') {
                       <th class="text-right py-3 px-4 font-semibold">Avg Rating</th>
                       <th class="text-right py-3 px-4 font-semibold">🥇</th>
                       <th class="text-right py-3 px-4 font-semibold">🥈</th>
                       <th class="text-right py-3 px-4 font-semibold">🥉</th>
-                    } @else if (statsView === 'finances') {
                       <th class="text-right py-3 px-4 font-semibold">Wage</th>
                       <th class="text-right py-3 px-4 font-semibold">Market Value</th>
                     }
@@ -885,28 +896,39 @@
                       <td class="w-20 whitespace-nowrap py-3 px-4 text-text-secondary font-medium">{{ s.seasonYear }}</td>
                       <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ formatGamesPlayed(s) }}</td>
                       <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ s.minutesPlayed || 0 }}</td>
-                      @if (statsView === 'offensive') {
+                      @if (statsView === 'general') {
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ s.goals || 0 }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shots || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shotsOnTarget || 0 }}</td>
-                      } @else if (statsView === 'defensive') {
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.tackles || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.interceptions || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.passes || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.saves || 0 }}</td>
-                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.cleanSheets || 0 }}</td>
                       } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.fouls || 0 }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.foulsSuffered || 0 }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ s.yellowCards || 0 }}</td>
                         <td class="py-3 px-4 text-right text-danger font-mono">{{ s.redCards || 0 }}</td>
-                      } @else if (statsView === 'ratings') {
+                      } @else if (statsView === 'setpieces') {
+                        <td class="py-3 px-4 text-right text-purple-400 font-mono">{{ s.cornersTaken ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-purple-400 font-mono">{{ s.cornerGoals ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.freeKicksTaken ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.freeKickGoals ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.indirectFreeKickGoals ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ s.penaltiesTaken ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ s.penaltiesScored ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.aerialDuelsWon ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.aerialDuelsLost ?? 0 }}</td>
+                      } @else if (statsView === 'goalkeeping') {
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.saves || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.cleanSheets || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.penaltiesFaced ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ s.penaltiesSaved ?? 0 }}</td>
+                      } @else if (statsView === 'ratings-finances') {
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ formatAverageRating(s) }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.first }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.second }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.third }}</td>
-                      } @else if (statsView === 'finances') {
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ s.wage | number:'1.1-1' }}</td>
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ getMarketValueForSeason(s) | currency:'USD':'symbol':'1.0-0' }}</td>
                       }
@@ -920,29 +942,40 @@
                       <td class="w-20 whitespace-nowrap py-3 px-4 text-text-secondary">TOTAL</td>
                       <td class="w-16 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ formatGamesPlayed(totals) }}</td>
                       <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ totals.minutesPlayed }}</td>
-                      @if (statsView === 'offensive') {
+                      @if (statsView === 'general') {
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.goals }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shots }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shotsOnTarget }}</td>
-                      } @else if (statsView === 'defensive') {
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.tackles }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.interceptions }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.passes }}</td>
-                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.saves }}</td>
-                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.cleanSheets }}</td>
                       } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.fouls }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.foulsSuffered }}</td>
                         <td class="py-3 px-4 text-right text-yellow-400 font-mono">{{ totals.yellowCards }}</td>
                         <td class="py-3 px-4 text-right text-danger font-mono">{{ totals.redCards }}</td>
-                      } @else if (statsView === 'ratings') {
+                      } @else if (statsView === 'setpieces') {
+                        <td class="py-3 px-4 text-right text-purple-400 font-mono">{{ totals.cornersTaken }}</td>
+                        <td class="py-3 px-4 text-right text-purple-400 font-mono">{{ totals.cornerGoals }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.freeKicksTaken }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.freeKickGoals }}</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.indirectFreeKickGoals }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.penaltiesTaken }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.penaltiesScored }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.aerialDuelsWon }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.aerialDuelsLost }}</td>
+                      } @else if (statsView === 'goalkeeping') {
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.saves }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.cleanSheets }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.penaltiesFaced }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.penaltiesSaved }}</td>
+                      } @else if (statsView === 'ratings-finances') {
                         @let stars = totalStarNominations();
                         <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.first }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.second }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.third }}</td>
-                      } @else if (statsView === 'finances') {
                         <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                         <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                       }

@@ -53,7 +53,7 @@ export class FormationEditorComponent {
   hasValidationErrors = computed(() => this.validationErrors().length > 0);
 
   goalkeeperCount = computed(() => {
-    return this.slots().filter(s => s.preferredPosition === PositionEnum.GOALKEEPER).length;
+    return this.slots().filter(s => s.preferredPosition === PositionEnum.GK).length;
   });
 
   private getDefaultSlots(): SlotForm[] {
@@ -61,14 +61,14 @@ export class FormationEditorComponent {
       {
         slotId: 'gk_1',
         label: 'Goalkeeper',
-        preferredPosition: PositionEnum.GOALKEEPER,
+        preferredPosition: PositionEnum.GK,
         coordinates: { x: 50, y: 5 },
         zone: FieldZone.DEFENSE
       },
       ...Array.from({ length: 10 }, (_, i) => ({
         slotId: `player_${i + 1}`,
         label: `Player ${i + 1}`,
-        preferredPosition: PositionEnum.DEFENDER,
+        preferredPosition: PositionEnum.CB,
         coordinates: { x: 50, y: 50 },
         zone: FieldZone.MIDFIELD
       }))
@@ -85,7 +85,7 @@ export class FormationEditorComponent {
     const newSlot: SlotForm = {
       slotId: `player_${Date.now()}`,
       label: `Player ${currentSlots.length + 1}`,
-      preferredPosition: PositionEnum.MIDFIELDER,
+      preferredPosition: PositionEnum.CM,
       coordinates: { x: 50, y: 50 },
       zone: FieldZone.MIDFIELD
     };

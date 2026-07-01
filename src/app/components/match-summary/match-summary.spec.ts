@@ -205,7 +205,7 @@ function createPlayerStats(playerId: string) {
   return {
     playerId,
     playerName: playerId,
-    position: Position.MIDFIELDER,
+    position: Position.CM,
     rating: 7,
     minutesPlayed: 90,
     passes: 50,

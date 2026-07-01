@@ -96,15 +96,15 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
     const formationLibrarySpy = {
       getFormationSlots: vi.fn().mockReturnValue([
-        { slotId: 'gk_1', preferredPosition: Position.GOALKEEPER },
-        { slotId: 'def_1', preferredPosition: Position.DEFENDER },
-        { slotId: 'def_2', preferredPosition: Position.DEFENDER },
-        { slotId: 'def_3', preferredPosition: Position.DEFENDER },
-        { slotId: 'mid_1', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'mid_2', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'mid_3', preferredPosition: Position.MIDFIELDER },
-        { slotId: 'fwd_1', preferredPosition: Position.FORWARD },
-        { slotId: 'fwd_2', preferredPosition: Position.FORWARD }
+        { slotId: 'gk_1', preferredPosition: Position.GK },
+        { slotId: 'def_1', preferredPosition: Position.CB },
+        { slotId: 'def_2', preferredPosition: Position.CB },
+        { slotId: 'def_3', preferredPosition: Position.CB },
+        { slotId: 'mid_1', preferredPosition: Position.CM },
+        { slotId: 'mid_2', preferredPosition: Position.CM },
+        { slotId: 'mid_3', preferredPosition: Position.CM },
+        { slotId: 'fwd_1', preferredPosition: Position.ST },
+        { slotId: 'fwd_2', preferredPosition: Position.ST }
       ]),
       listPredefinedFormations: vi.fn().mockReturnValue([]),
       getAllFormations: vi.fn().mockReturnValue([]),
@@ -145,10 +145,10 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
   describe('submitTransferOffer', () => {
     it('should validate budget and reject offer if buyer lacks transferBudget', async () => {
-      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER });
-      const sellerPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER });
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.CM });
+      const sellerPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.CM });
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 500000); // Only 500k budget
-      const sellerTeam = makeTeam('seller_team', [sellerPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER })]);
+      const sellerTeam = makeTeam('seller_team', [sellerPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.CM })]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
 
       const { service } = setup({ league });
@@ -161,16 +161,16 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should validate wage points headroom and reject if buyer has insufficient headroom', async () => {
-      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.CM, defaultStat: 80 });
       // Calculate buyer wage points
       const buyerWage = calculatePlayerWageCost(buyerPlayer, 2026);
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 90 });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.CM, defaultStat: 90 });
       
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 65, buyerWage); // Cap: 65, Used: buyerWage
       // Set cap to same as wage used, so 0 headroom
       buyerTeam.finances.wagePointsCap = buyerWage;
       
-      const sellerTeam = makeTeam('seller_team', [targetPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER })]);
+      const sellerTeam = makeTeam('seller_team', [targetPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.CM })]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
 
       const { service } = setup({ league });
@@ -183,14 +183,14 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should reject offer and save record as rejected if bid fee is below asking price (115% value)', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.CM, defaultStat: 80 });
       const marketValue = calculateMarketValue(targetPlayer, 2026);
       const askingPrice = Math.round(marketValue * 1.15);
       const lowBid = askingPrice - 10000;
 
-      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER });
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.CM });
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 100, 10);
-      const sellerTeam = makeTeam('seller_team', [targetPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER })]);
+      const sellerTeam = makeTeam('seller_team', [targetPlayer, createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.CM })]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
       league.transferListings = [targetPlayer.id]; // player is listed
 
@@ -209,12 +209,12 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should reject unlisted player offer and apply role-based starter premium (e.g., 1.40x to 1.60x)', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
-      const seller_p2 = createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 70 });
-      const seller_p3 = createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 60 });
-      const seller_p4 = createTestPlayer({ id: 'seller_p4', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 60 });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.CM, defaultStat: 80 });
+      const seller_p2 = createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.CM, defaultStat: 70 });
+      const seller_p3 = createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.CM, defaultStat: 60 });
+      const seller_p4 = createTestPlayer({ id: 'seller_p4', teamId: 'seller_team', position: Position.CM, defaultStat: 60 });
       
-      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER });
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.CM });
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 100, 10);
       const sellerTeam = makeTeam('seller_team', [targetPlayer, seller_p2, seller_p3, seller_p4]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team'); // player is unlisted
@@ -242,18 +242,18 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should reject offer and save record as rejected if seller lacks squad depth at the position', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.CM, defaultStat: 80 });
       const marketValue = calculateMarketValue(targetPlayer, 2026);
       const askingPrice = Math.round(marketValue * 1.15);
 
-      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER });
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.CM });
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 100, 10);
       
       // Seller team only has 3 midfielders. Midfielder limit is 3. If targetPlayer is sold, they have 2, which is < 3.
       const sellerTeam = makeTeam('seller_team', [
         targetPlayer,
-        createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.MIDFIELDER })
+        createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.CM }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.CM })
       ]);
       const league = makeLeague([buyerTeam, sellerTeam], 'buyer_team');
       league.transferListings = [targetPlayer.id];
@@ -271,19 +271,19 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should atomically transfer player if offer meets criteria and CPU accepts', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'seller_team', position: Position.CM, defaultStat: 80 });
       const marketValue = calculateMarketValue(targetPlayer, 2026);
       const askingPrice = Math.round(marketValue * 1.15);
 
-      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.MIDFIELDER });
+      const buyerPlayer = createTestPlayer({ id: 'buyer_p1', teamId: 'buyer_team', position: Position.CM });
       const buyerTeam = makeTeam('buyer_team', [buyerPlayer], 10000000, 100, 10);
       
       // Seller team has 4 midfielders (limit 3, so they can sell 1)
       const sellerTeam = makeTeam('seller_team', [
         targetPlayer,
-        createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.MIDFIELDER }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.MIDFIELDER }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'seller_team', position: Position.MIDFIELDER })
+        createTestPlayer({ id: 'seller_p2', teamId: 'seller_team', position: Position.CM }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'seller_team', position: Position.CM }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'seller_team', position: Position.CM })
       ]);
       sellerTeam.formationAssignments = { mid_1: 'target_player', mid_2: 'seller_p2' };
 
@@ -338,12 +338,12 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
   describe('acceptOffer and rejectOffer', () => {
     it('should allow user to accept a pending CPU offer on their player', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'user_team', position: Position.MIDFIELDER, defaultStat: 80 });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'user_team', position: Position.CM, defaultStat: 80 });
       
-      const userTeam = makeTeam('user_team', [targetPlayer, createTestPlayer({ id: 'user_p2', teamId: 'user_team', position: Position.MIDFIELDER })]);
+      const userTeam = makeTeam('user_team', [targetPlayer, createTestPlayer({ id: 'user_p2', teamId: 'user_team', position: Position.CM })]);
       userTeam.formationAssignments = { mid_1: 'target_player' };
       
-      const cpuTeam = makeTeam('cpu_team', [createTestPlayer({ id: 'cpu_p1', teamId: 'cpu_team', position: Position.MIDFIELDER })], 5000000, 100, 10);
+      const cpuTeam = makeTeam('cpu_team', [createTestPlayer({ id: 'cpu_p1', teamId: 'cpu_team', position: Position.CM })], 5000000, 100, 10);
       
       const offer: TransferOffer = {
         id: 'offer_1',
@@ -379,7 +379,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should reject a pending CPU offer on user player', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'user_team', position: Position.MIDFIELDER });
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'user_team', position: Position.CM });
       const userTeam = makeTeam('user_team', [targetPlayer]);
       const cpuTeam = makeTeam('cpu_team', []);
       const offer: TransferOffer = {
@@ -404,8 +404,8 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should auto-expire other offers for the player when one is accepted', async () => {
-      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'user_team', position: Position.MIDFIELDER });
-      const userTeam = makeTeam('user_team', [targetPlayer, createTestPlayer({ id: 'user_p2', teamId: 'user_team', position: Position.MIDFIELDER })]);
+      const targetPlayer = createTestPlayer({ id: 'target_player', teamId: 'user_team', position: Position.CM });
+      const userTeam = makeTeam('user_team', [targetPlayer, createTestPlayer({ id: 'user_p2', teamId: 'user_team', position: Position.CM })]);
       const cpuTeam1 = makeTeam('cpu_team1', [], 5000000, 100, 10);
       const cpuTeam2 = makeTeam('cpu_team2', [], 5000000, 100, 10);
       
@@ -434,10 +434,10 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should expire other buyer pending offers if buyer no longer has budget/headroom', async () => {
-      const playerA = createTestPlayer({ id: 'player_a', teamId: 'user_team', position: Position.MIDFIELDER });
-      const playerB = createTestPlayer({ id: 'player_b', teamId: 'user_team', position: Position.MIDFIELDER });
+      const playerA = createTestPlayer({ id: 'player_a', teamId: 'user_team', position: Position.CM });
+      const playerB = createTestPlayer({ id: 'player_b', teamId: 'user_team', position: Position.CM });
       
-      const userTeam = makeTeam('user_team', [playerA, playerB, createTestPlayer({ id: 'user_p3', teamId: 'user_team', position: Position.MIDFIELDER })]);
+      const userTeam = makeTeam('user_team', [playerA, playerB, createTestPlayer({ id: 'user_p3', teamId: 'user_team', position: Position.CM })]);
       
       // CPU team has 3,000,000 budget
       const cpuTeam = makeTeam('cpu_team', [], 3000000, 100, 10);
@@ -493,11 +493,11 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
     it('should generate CPU-to-User offers on user listed players based on non-cheating heuristics', async () => {
       // User listed player is OVR 85 Midfielder
-      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.MIDFIELDER, defaultStat: 85 });
+      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.CM, defaultStat: 85 });
       const userTeam = makeTeam('user_team', [userPlayer]);
       
       // CPU team has a lower midfielder (OVR 70) and sufficient finances. This player improves them.
-      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.CM, defaultStat: 70 });
       const cpuTeam = makeTeam('cpu_team', [cpuMid], 12000000, 100, 10);
       
       const league = makeLeague([userTeam, cpuTeam], 'user_team');
@@ -527,11 +527,11 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
     it('should generate CPU-to-User offers on young prospects based on market value average improvement', async () => {
       // User listed player is a young prospect (age 19, OVR 75, High Market Value)
-      const userPlayer = createTestPlayer({ id: 'prospect', teamId: 'user_team', position: Position.MIDFIELDER, age: 19, defaultStat: 75 });
+      const userPlayer = createTestPlayer({ id: 'prospect', teamId: 'user_team', position: Position.CM, age: 19, defaultStat: 75 });
       const userTeam = makeTeam('user_team', [userPlayer]);
       
       // CPU midfielders have low market value (OVR 65)
-      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.MIDFIELDER, age: 28, defaultStat: 65 });
+      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.CM, age: 28, defaultStat: 65 });
       const cpuTeam = makeTeam('cpu_team', [cpuMid], 15000000, 100, 10);
       
       const league = makeLeague([userTeam, cpuTeam], 'user_team');
@@ -552,9 +552,9 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
   describe('immediate CPU offer generation on listing', () => {
     it('should immediately evaluate and generate an offer when user lists a player', async () => {
-      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.MIDFIELDER, defaultStat: 85 });
+      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.CM, defaultStat: 85 });
       const userTeam = makeTeam('user_team', [userPlayer]);
-      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.CM, defaultStat: 70 });
       const cpuTeam = makeTeam('cpu_team', [cpuMid], 12000000, 100, 10);
       
       const league = makeLeague([userTeam, cpuTeam], 'user_team');
@@ -579,9 +579,9 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should not generate a second offer if player is delisted and relisted in the same week', async () => {
-      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.MIDFIELDER, defaultStat: 85 });
+      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.CM, defaultStat: 85 });
       const userTeam = makeTeam('user_team', [userPlayer]);
-      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.CM, defaultStat: 70 });
       const cpuTeam = makeTeam('cpu_team', [cpuMid], 12000000, 100, 10);
       
       const league = makeLeague([userTeam, cpuTeam], 'user_team');
@@ -604,9 +604,9 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should evaluate listed players on advanceWeek and prevent delist/relist in the new week', async () => {
-      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.MIDFIELDER, defaultStat: 85 });
+      const userPlayer = createTestPlayer({ id: 'user_listed', teamId: 'user_team', position: Position.CM, defaultStat: 85 });
       const userTeam = makeTeam('user_team', [userPlayer]);
-      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const cpuMid = createTestPlayer({ id: 'cpu_mid', teamId: 'cpu_team', position: Position.CM, defaultStat: 70 });
       const cpuTeam = makeTeam('cpu_team', [cpuMid], 12000000, 100, 10);
       
       const league = makeLeague([userTeam, cpuTeam], 'user_team');
@@ -634,13 +634,13 @@ describe('GameService — Transfer Offer Sub-System', () => {
     it('should not run CPU-to-CPU transfers outside the transfer window', async () => {
       const userTeam = makeTeam('user_team', []);
       const buyerTeam = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER })
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM })
       ]);
       const sellerTeam = makeTeam('cpu_seller', [
-        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER }),
-        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER })
+        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.CM }),
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.CM }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM })
       ]);
       const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
       league.currentWeek = 4; // Transfer window closed
@@ -661,21 +661,21 @@ describe('GameService — Transfer Offer Sub-System', () => {
       
       // Buyer has a midfielder depth deficit (only 1 player, default formation needs 3)
       const buyerTeam = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 })
       ], 20000000);
       
       // Seller has surplus midfielders (4 players)
-      const sellerMid1 = createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 });
+      const sellerMid1 = createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 });
       const sellerTeam = makeTeam('cpu_seller', [
         sellerMid1,
-        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
 
       // Ensure seller team has > 15 players overall for the safety roster limit
       for (let i = 5; i <= 17; i++) {
-        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
@@ -709,20 +709,20 @@ describe('GameService — Transfer Offer Sub-System', () => {
       
       // Buyer has a midfielder depth deficit and huge budget
       const buyerTeam = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 })
       ], 50000000);
       
       // Seller has surplus midfielders and plenty of players
       const sellerTeam = makeTeam('cpu_seller', [
-        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
-        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
-        createTestPlayer({ id: 'seller_p5', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
-        createTestPlayer({ id: 'seller_p6', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 })
+        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p5', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p6', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 })
       ]);
       for (let i = 7; i <= 20; i++) {
-        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
@@ -746,18 +746,18 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const userTeam = makeTeam('user_team', []);
       
       const buyerTeam = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 })
       ], 15000000);
       
       // Seller team only has 14 players overall (below the 15-player safety floor)
       const sellerTeam = makeTeam('cpu_seller', [
-        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 }),
-        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+        createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 }),
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
       for (let i = 5; i <= 14; i++) {
-        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
@@ -781,19 +781,19 @@ describe('GameService — Transfer Offer Sub-System', () => {
       
       // Buyer has midfielders with OVR 85, so OVR floor is 85.
       const buyerTeam = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 85 })
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 85 })
       ], 20000000);
       
       // Candidate is age 19, OVR 70, but has high potential/value (market value is high)
-      const youngProspect = createTestPlayer({ id: 'prospect', teamId: 'cpu_seller', position: Position.MIDFIELDER, age: 19, defaultStat: 70 });
+      const youngProspect = createTestPlayer({ id: 'prospect', teamId: 'cpu_seller', position: Position.CM, age: 19, defaultStat: 70 });
       const sellerTeam = makeTeam('cpu_seller', [
         youngProspect,
-        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
       for (let i = 5; i <= 18; i++) {
-        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
@@ -817,17 +817,17 @@ describe('GameService — Transfer Offer Sub-System', () => {
     it('should persist recalculated transfer listings after CPU-to-CPU transfer', async () => {
       const userTeam = makeTeam('user_team', []);
       const buyerTeam = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 })
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 })
       ], 20000000);
-      const sellerMid1 = createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 85 });
+      const sellerMid1 = createTestPlayer({ id: 'seller_p1', teamId: 'cpu_seller', position: Position.CM, defaultStat: 85 });
       const sellerTeam = makeTeam('cpu_seller', [
         sellerMid1,
-        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.MIDFIELDER, defaultStat: 75 })
+        createTestPlayer({ id: 'seller_p2', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
       for (let i = 5; i <= 17; i++) {
-        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.DEFENDER }));
+        sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
@@ -850,37 +850,37 @@ describe('GameService — Transfer Offer Sub-System', () => {
     it('should use fresh team state when a CPU club sells then buys in the same pass', async () => {
       const userTeam = makeTeam('user_team', []);
       const cpuBuyer = makeTeam('cpu_buyer', [
-        createTestPlayer({ id: 'buyer_mid', teamId: 'cpu_buyer', position: Position.MIDFIELDER, defaultStat: 80 }),
-        createTestPlayer({ id: 'buyer_def1', teamId: 'cpu_buyer', position: Position.DEFENDER, defaultStat: 70 }),
-        createTestPlayer({ id: 'buyer_def2', teamId: 'cpu_buyer', position: Position.DEFENDER, defaultStat: 70 }),
-        createTestPlayer({ id: 'buyer_def3', teamId: 'cpu_buyer', position: Position.DEFENDER, defaultStat: 70 }),
+        createTestPlayer({ id: 'buyer_mid', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 }),
+        createTestPlayer({ id: 'buyer_def1', teamId: 'cpu_buyer', position: Position.CB, defaultStat: 70 }),
+        createTestPlayer({ id: 'buyer_def2', teamId: 'cpu_buyer', position: Position.CB, defaultStat: 70 }),
+        createTestPlayer({ id: 'buyer_def3', teamId: 'cpu_buyer', position: Position.CB, defaultStat: 70 }),
       ], 20000000);
 
-      const hubMid = createTestPlayer({ id: 'hub_mid', teamId: 'cpu_hub', position: Position.MIDFIELDER, defaultStat: 75 });
+      const hubMid = createTestPlayer({ id: 'hub_mid', teamId: 'cpu_hub', position: Position.CM, defaultStat: 75 });
       const hubTeam = makeTeam('cpu_hub', [
         hubMid,
-        createTestPlayer({ id: 'hub_mid2', teamId: 'cpu_hub', position: Position.MIDFIELDER, defaultStat: 74 }),
-        createTestPlayer({ id: 'hub_mid3', teamId: 'cpu_hub', position: Position.MIDFIELDER, defaultStat: 73 }),
-        createTestPlayer({ id: 'hub_mid4', teamId: 'cpu_hub', position: Position.MIDFIELDER, defaultStat: 72 }),
-        createTestPlayer({ id: 'hub_def1', teamId: 'cpu_hub', position: Position.DEFENDER, defaultStat: 70 }),
-        createTestPlayer({ id: 'hub_def2', teamId: 'cpu_hub', position: Position.DEFENDER, defaultStat: 69 }),
-        createTestPlayer({ id: 'hub_def3', teamId: 'cpu_hub', position: Position.DEFENDER, defaultStat: 68 }),
+        createTestPlayer({ id: 'hub_mid2', teamId: 'cpu_hub', position: Position.CM, defaultStat: 74 }),
+        createTestPlayer({ id: 'hub_mid3', teamId: 'cpu_hub', position: Position.CM, defaultStat: 73 }),
+        createTestPlayer({ id: 'hub_mid4', teamId: 'cpu_hub', position: Position.CM, defaultStat: 72 }),
+        createTestPlayer({ id: 'hub_def1', teamId: 'cpu_hub', position: Position.CB, defaultStat: 70 }),
+        createTestPlayer({ id: 'hub_def2', teamId: 'cpu_hub', position: Position.CB, defaultStat: 69 }),
+        createTestPlayer({ id: 'hub_def3', teamId: 'cpu_hub', position: Position.CB, defaultStat: 68 }),
       ], 100000);
       for (let i = 8; i <= 17; i++) {
-        hubTeam.players.push(createTestPlayer({ id: `hub_fill${i}`, teamId: 'cpu_hub', position: Position.FORWARD, defaultStat: 60 }));
+        hubTeam.players.push(createTestPlayer({ id: `hub_fill${i}`, teamId: 'cpu_hub', position: Position.ST, defaultStat: 60 }));
       }
       hubTeam.playerIds = hubTeam.players.map(p => p.id);
       hubTeam.seasonSnapshots![0].playerIds = hubTeam.playerIds;
 
-      const defForSale = createTestPlayer({ id: 'def_for_sale', teamId: 'cpu_def_seller', position: Position.DEFENDER, defaultStat: 72 });
+      const defForSale = createTestPlayer({ id: 'def_for_sale', teamId: 'cpu_def_seller', position: Position.CB, defaultStat: 72 });
       const defSeller = makeTeam('cpu_def_seller', [
         defForSale,
-        createTestPlayer({ id: 'def2', teamId: 'cpu_def_seller', position: Position.DEFENDER, defaultStat: 70 }),
-        createTestPlayer({ id: 'def3', teamId: 'cpu_def_seller', position: Position.DEFENDER, defaultStat: 70 }),
-        createTestPlayer({ id: 'def4', teamId: 'cpu_def_seller', position: Position.DEFENDER, defaultStat: 70 }),
+        createTestPlayer({ id: 'def2', teamId: 'cpu_def_seller', position: Position.CB, defaultStat: 70 }),
+        createTestPlayer({ id: 'def3', teamId: 'cpu_def_seller', position: Position.CB, defaultStat: 70 }),
+        createTestPlayer({ id: 'def4', teamId: 'cpu_def_seller', position: Position.CB, defaultStat: 70 }),
       ]);
       for (let i = 5; i <= 17; i++) {
-        defSeller.players.push(createTestPlayer({ id: `def_fill${i}`, teamId: 'cpu_def_seller', position: Position.MIDFIELDER, defaultStat: 65 }));
+        defSeller.players.push(createTestPlayer({ id: `def_fill${i}`, teamId: 'cpu_def_seller', position: Position.CM, defaultStat: 65 }));
       }
       defSeller.playerIds = defSeller.players.map(p => p.id);
       defSeller.seasonSnapshots![0].playerIds = defSeller.playerIds;
@@ -918,7 +918,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const transferredPlayer = createTestPlayer({
         id: 'hot_potato',
         teamId: 'cpu_team_1',
-        position: Position.MIDFIELDER,
+        position: Position.CM,
         defaultStat: 80
       });
       transferredPlayer.transferHistory = [{
@@ -931,9 +931,9 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
       const team = makeTeam('cpu_team_1', [
         transferredPlayer,
-        createTestPlayer({ id: 'p2', teamId: 'cpu_team_1', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'p3', teamId: 'cpu_team_1', position: Position.MIDFIELDER, defaultStat: 75 }),
-        createTestPlayer({ id: 'p4', teamId: 'cpu_team_1', position: Position.MIDFIELDER, defaultStat: 75 })
+        createTestPlayer({ id: 'p2', teamId: 'cpu_team_1', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'p3', teamId: 'cpu_team_1', position: Position.CM, defaultStat: 75 }),
+        createTestPlayer({ id: 'p4', teamId: 'cpu_team_1', position: Position.CM, defaultStat: 75 })
       ]);
       team.playerIds = team.players.map(p => p.id);
       team.seasonSnapshots![0].playerIds = team.playerIds;
@@ -953,9 +953,9 @@ describe('GameService — Transfer Offer Sub-System', () => {
       // Create a starter with overall 95, and peers with overalls 70 and 80.
       // The starter overall (95) is above maxOvr (80), rawT would be (95 - 70) / (80 - 70) = 2.5.
       // Clamping should force t to 1.0, yielding the max starter multiplier of 1.60x.
-      const targetPlayer = createTestPlayer({ id: 'super_starter', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 95 });
-      const peer1 = createTestPlayer({ id: 'peer1', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 80 });
-      const peer2 = createTestPlayer({ id: 'peer2', teamId: 'seller_team', position: Position.MIDFIELDER, defaultStat: 70 });
+      const targetPlayer = createTestPlayer({ id: 'super_starter', teamId: 'seller_team', position: Position.CM, defaultStat: 95 });
+      const peer1 = createTestPlayer({ id: 'peer1', teamId: 'seller_team', position: Position.CM, defaultStat: 80 });
+      const peer2 = createTestPlayer({ id: 'peer2', teamId: 'seller_team', position: Position.CM, defaultStat: 70 });
 
       const buyerTeam = makeTeam('buyer_team', []);
       const sellerTeam = makeTeam('seller_team', [targetPlayer, peer1, peer2]);
@@ -971,7 +971,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should charge a weekly luxury tax when a team is over its wage cap', async () => {
-      const p1 = createTestPlayer({ id: 'p1', teamId: 'user_team', position: Position.MIDFIELDER });
+      const p1 = createTestPlayer({ id: 'p1', teamId: 'user_team', position: Position.CM });
       const userTeam = makeTeam('user_team', [p1], 10000000, 60, 70);
       const league = makeLeague([userTeam], 'user_team');
 
@@ -1001,16 +1001,16 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const expensivePlayer = createTestPlayer({
         id: 'expensive_player',
         teamId: 'cpu_team',
-        position: Position.MIDFIELDER,
+        position: Position.CM,
         defaultStat: 85,
         contract: {
           agreedWageCost: 2,
           expiresAfterSeason: 2026
         }
       });
-      const p2 = createTestPlayer({ id: 'p2', teamId: 'cpu_team', position: Position.MIDFIELDER });
-      const p3 = createTestPlayer({ id: 'p3', teamId: 'cpu_team', position: Position.MIDFIELDER });
-      const p4 = createTestPlayer({ id: 'p4', teamId: 'cpu_team', position: Position.MIDFIELDER });
+      const p2 = createTestPlayer({ id: 'p2', teamId: 'cpu_team', position: Position.CM });
+      const p3 = createTestPlayer({ id: 'p3', teamId: 'cpu_team', position: Position.CM });
+      const p4 = createTestPlayer({ id: 'p4', teamId: 'cpu_team', position: Position.CM });
 
       const cpuTeam = makeTeam('cpu_team', [expensivePlayer, p2, p3, p4], 5000000, 65, 64);
       cpuTeam.playerIds = cpuTeam.players.map(p => p.id);
@@ -1027,10 +1027,10 @@ describe('GameService — Transfer Offer Sub-System', () => {
     });
 
     it('should treat all players as potential listing candidates when CPU team exceeds wage cap', async () => {
-      const p1 = createTestPlayer({ id: 'p1', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 80 });
-      const p2 = createTestPlayer({ id: 'p2', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 75 });
-      const p3 = createTestPlayer({ id: 'p3', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 70 });
-      const p4 = createTestPlayer({ id: 'p4', teamId: 'cpu_team', position: Position.MIDFIELDER, defaultStat: 65 });
+      const p1 = createTestPlayer({ id: 'p1', teamId: 'cpu_team', position: Position.CM, defaultStat: 80 });
+      const p2 = createTestPlayer({ id: 'p2', teamId: 'cpu_team', position: Position.CM, defaultStat: 75 });
+      const p3 = createTestPlayer({ id: 'p3', teamId: 'cpu_team', position: Position.CM, defaultStat: 70 });
+      const p4 = createTestPlayer({ id: 'p4', teamId: 'cpu_team', position: Position.CM, defaultStat: 65 });
 
       const cpuTeam = makeTeam('cpu_team', [p1, p2, p3, p4], 5000000, 65, 70);
       cpuTeam.playerIds = cpuTeam.players.map(p => p.id);

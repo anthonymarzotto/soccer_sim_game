@@ -1,5 +1,5 @@
 import { Player, Position, StatKey } from './types';
-import { Phase } from './enums';
+import { Phase, getPositionGroup } from './enums';
 import { computeAge, seasonAnchorDate } from './player-age';
 import { getCurrentPlayerSeasonAttributes } from './season-history';
 
@@ -89,7 +89,7 @@ export function calculateOverall(
   const outfieldSum = val('speed') + val('strength') + val('flair') + val('vision') + val('determination') +
     val('tackling') + val('shooting') + val('heading') + val('longPassing') + val('shortPassing');
 
-  if (position === Position.GOALKEEPER) {
+  if (position === Position.GK) {
     const gkSum = val('handling') * 2 + val('reflexes') * 2 + val('commandOfArea');
     return Math.floor((outfieldSum + gkSum) / 15);
   }
@@ -162,17 +162,18 @@ export function calculateMarketValue(player: Player, seasonYear: number): number
   const arcMultiplier = getCareerArcMultiplier(player, age);
 
   let positionMultiplier = 1.0;
-  switch (player.position) {
-    case Position.FORWARD:
+  const group = getPositionGroup(player.position);
+  switch (group) {
+    case 'FWD':
       positionMultiplier = 1.1;
       break;
-    case Position.DEFENDER:
+    case 'DEF':
       positionMultiplier = 0.9;
       break;
-    case Position.GOALKEEPER:
+    case 'GK':
       positionMultiplier = 0.85;
       break;
-    case Position.MIDFIELDER:
+    case 'MID':
     default:
       positionMultiplier = 1.0;
       break;
@@ -222,17 +223,18 @@ export function calculatePlayerMarketWageCost(player: Player, seasonYear: number
   }
 
   let positionMultiplier = 1.0;
-  switch (player.position) {
-    case Position.FORWARD:
+  const group = getPositionGroup(player.position);
+  switch (group) {
+    case 'FWD':
       positionMultiplier = 1.1;
       break;
-    case Position.DEFENDER:
+    case 'DEF':
       positionMultiplier = 0.9;
       break;
-    case Position.GOALKEEPER:
+    case 'GK':
       positionMultiplier = 0.85;
       break;
-    case Position.MIDFIELDER:
+    case 'MID':
     default:
       positionMultiplier = 1.0;
       break;

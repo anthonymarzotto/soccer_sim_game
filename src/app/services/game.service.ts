@@ -31,7 +31,7 @@ import {
   getActiveSuspension
 } from '../models/season-history';
 import { SimulationConfig, MatchState, PlayByPlayEvent, calculateFatigueModifier, scaleOverallWithFatigue } from '../models/simulation.types';
-import { MatchResult, CommentaryStyle, Position, EventImportance, EventType } from '../models/enums';
+import { MatchResult, CommentaryStyle, Position, EventImportance, EventType, PositionGroup, getPositionGroup } from '../models/enums';
 import { getInjuryDefinition, InjuryRecord } from '../data/injuries';
 
 interface SimulateMatchWithDetailsResult {
@@ -77,11 +77,11 @@ export class GameService {
   private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
   private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
   private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 15;
-  private static readonly POSITION_SELL_FLOOR: Readonly<Record<Position, number>> = {
-    [Position.GOALKEEPER]: 1,
-    [Position.DEFENDER]: 3,
-    [Position.MIDFIELDER]: 3,
-    [Position.FORWARD]: 2,
+  private static readonly POSITION_SELL_FLOOR: Readonly<Record<PositionGroup, number>> = {
+    GK: 1,
+    DEF: 3,
+    MID: 3,
+    FWD: 2,
   };
 
   private leagueState = signal<League | null>(null);
@@ -649,10 +649,11 @@ export class GameService {
     const fwdList: Player[] = [];
 
     for (const p of players) {
-      if (p.position === Position.GOALKEEPER) gkList.push(p);
-      else if (p.position === Position.DEFENDER) defList.push(p);
-      else if (p.position === Position.MIDFIELDER) midList.push(p);
-      else if (p.position === Position.FORWARD) fwdList.push(p);
+      const group = getPositionGroup(p.position);
+      if (group === 'GK') gkList.push(p);
+      else if (group === 'DEF') defList.push(p);
+      else if (group === 'MID') midList.push(p);
+      else if (group === 'FWD') fwdList.push(p);
     }
 
     const schema = this.formationLibrary.getFormationSlots(team.selectedFormationId);
@@ -663,10 +664,11 @@ export class GameService {
 
     if (schema) {
       for (const slot of schema) {
-        if (slot.preferredPosition === Position.GOALKEEPER) gkStartersCount++;
-        else if (slot.preferredPosition === Position.DEFENDER) defStartersCount++;
-        else if (slot.preferredPosition === Position.MIDFIELDER) midStartersCount++;
-        else if (slot.preferredPosition === Position.FORWARD) fwdStartersCount++;
+        const group = getPositionGroup(slot.preferredPosition);
+        if (group === 'GK') gkStartersCount++;
+        else if (group === 'DEF') defStartersCount++;
+        else if (group === 'MID') midStartersCount++;
+        else if (group === 'FWD') fwdStartersCount++;
       }
     } else {
       gkStartersCount = 1;
@@ -749,10 +751,10 @@ export class GameService {
       }
     };
 
-    processPosition(gkList, GameService.POSITION_SELL_FLOOR[Position.GOALKEEPER], gkStartersCount);
-    processPosition(defList, GameService.POSITION_SELL_FLOOR[Position.DEFENDER], defStartersCount);
-    processPosition(midList, GameService.POSITION_SELL_FLOOR[Position.MIDFIELDER], midStartersCount);
-    processPosition(fwdList, GameService.POSITION_SELL_FLOOR[Position.FORWARD], fwdStartersCount);
+    processPosition(gkList, GameService.POSITION_SELL_FLOOR.GK, gkStartersCount);
+    processPosition(defList, GameService.POSITION_SELL_FLOOR.DEF, defStartersCount);
+    processPosition(midList, GameService.POSITION_SELL_FLOOR.MID, midStartersCount);
+    processPosition(fwdList, GameService.POSITION_SELL_FLOOR.FWD, fwdStartersCount);
 
     return [...new Set(teamListings)];
   }
@@ -972,9 +974,9 @@ export class GameService {
     }
 
     const sellerPlayers = seller.players ?? [];
-    const playersAtPosition = sellerPlayers.filter(p => p.position === player.position);
+    const playersAtPosition = sellerPlayers.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
     
-    const minLimit = GameService.POSITION_SELL_FLOOR[player.position];
+    const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
 
     if (playersAtPosition.length <= minLimit) {
       const offerId = this.generateOfferId();
@@ -1331,10 +1333,11 @@ export class GameService {
           }
         }
       } else {
-        if (position === Position.GOALKEEPER) requiredStarters = 1;
-        else if (position === Position.DEFENDER) requiredStarters = 4;
-        else if (position === Position.MIDFIELDER) requiredStarters = 4;
-        else if (position === Position.FORWARD) requiredStarters = 2;
+        const group = getPositionGroup(position);
+        if (group === 'GK') requiredStarters = 1;
+        else if (group === 'DEF') requiredStarters = 2;
+        else if (group === 'MID') requiredStarters = 2;
+        else if (group === 'FWD') requiredStarters = 1;
       }
 
       const depth = posPlayers.length;
@@ -1403,7 +1406,11 @@ export class GameService {
       }
 
       // 3. Compute weaknesses
-      const positions = [Position.GOALKEEPER, Position.DEFENDER, Position.MIDFIELDER, Position.FORWARD];
+      const positions = [
+        Position.GK, Position.CB, Position.FB,
+        Position.CDM, Position.CM, Position.CAM, Position.WNG,
+        Position.ST
+      ];
       const weaknesses = positions.map(pos => {
         const evaluation = getPositionWeakness(buyerTeam, pos);
         return { position: pos, ...evaluation };
@@ -1447,8 +1454,8 @@ export class GameService {
           }
 
           // 2. Live position depth check
-          const sellerPlayersAtPosition = seller.players.filter(p => p.position === player.position);
-          const minLimit = GameService.POSITION_SELL_FLOOR[player.position];
+          const sellerPlayersAtPosition = seller.players.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
+          const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
 
           if (sellerPlayersAtPosition.length <= minLimit) {
             continue;
@@ -2413,27 +2420,41 @@ export class GameService {
     overallOf: (p: Player) => number
   ): Map<Position, Player[]> {
     const gk: { p: Player; o: number }[] = [];
-    const def: { p: Player; o: number }[] = [];
-    const mid: { p: Player; o: number }[] = [];
-    const fwd: { p: Player; o: number }[] = [];
+    const cb: { p: Player; o: number }[] = [];
+    const fb: { p: Player; o: number }[] = [];
+    const cdm: { p: Player; o: number }[] = [];
+    const cm: { p: Player; o: number }[] = [];
+    const cam: { p: Player; o: number }[] = [];
+    const wng: { p: Player; o: number }[] = [];
+    const st: { p: Player; o: number }[] = [];
 
     for (const p of players) {
       if (eligible(p)) {
         const o = overallOf(p);
-        if (p.position === Position.GOALKEEPER) gk.push({ p, o });
-        else if (p.position === Position.DEFENDER) def.push({ p, o });
-        else if (p.position === Position.MIDFIELDER) mid.push({ p, o });
-        else if (p.position === Position.FORWARD) fwd.push({ p, o });
+        switch (p.position) {
+          case Position.GK: gk.push({ p, o }); break;
+          case Position.CB: cb.push({ p, o }); break;
+          case Position.FB: fb.push({ p, o }); break;
+          case Position.CDM: cdm.push({ p, o }); break;
+          case Position.CM: cm.push({ p, o }); break;
+          case Position.CAM: cam.push({ p, o }); break;
+          case Position.WNG: wng.push({ p, o }); break;
+          case Position.ST: st.push({ p, o }); break;
+        }
       }
     }
 
     const sortFn = (a: { o: number }, b: { o: number }) => b.o - a.o;
 
     return new Map<Position, Player[]>([
-      [Position.GOALKEEPER, gk.sort(sortFn).map(x => x.p)],
-      [Position.DEFENDER, def.sort(sortFn).map(x => x.p)],
-      [Position.MIDFIELDER, mid.sort(sortFn).map(x => x.p)],
-      [Position.FORWARD, fwd.sort(sortFn).map(x => x.p)],
+      [Position.GK, gk.sort(sortFn).map(x => x.p)],
+      [Position.CB, cb.sort(sortFn).map(x => x.p)],
+      [Position.FB, fb.sort(sortFn).map(x => x.p)],
+      [Position.CDM, cdm.sort(sortFn).map(x => x.p)],
+      [Position.CM, cm.sort(sortFn).map(x => x.p)],
+      [Position.CAM, cam.sort(sortFn).map(x => x.p)],
+      [Position.WNG, wng.sort(sortFn).map(x => x.p)],
+      [Position.ST, st.sort(sortFn).map(x => x.p)],
     ]);
   }
 
@@ -2479,23 +2500,25 @@ export class GameService {
     if (bestSlotAssignments) {
       formationAssignments = bestSlotAssignments;
     } else {
-      const gks = byPosition.get(Position.GOALKEEPER) ?? [];
-      const defs = byPosition.get(Position.DEFENDER) ?? [];
-      const mids = byPosition.get(Position.MIDFIELDER) ?? [];
-      const fwds = byPosition.get(Position.FORWARD) ?? [];
+      const gks = byPosition.get(Position.GK) ?? [];
+      const cbs = byPosition.get(Position.CB) ?? [];
+      const fbs = byPosition.get(Position.FB) ?? [];
+      const cms = byPosition.get(Position.CM) ?? [];
+      const wngs = byPosition.get(Position.WNG) ?? [];
+      const sts = byPosition.get(Position.ST) ?? [];
 
       formationAssignments = {
         gk_1: gks[0]?.id ?? '',
-        def_l: defs[0]?.id ?? '',
-        def_lc: defs[1]?.id ?? '',
-        def_rc: defs[2]?.id ?? '',
-        def_r: defs[3]?.id ?? '',
-        mid_l: mids[0]?.id ?? '',
-        mid_lc: mids[1]?.id ?? '',
-        mid_rc: mids[2]?.id ?? '',
-        mid_r: mids[3]?.id ?? '',
-        att_l: fwds[0]?.id ?? '',
-        att_r: fwds[1]?.id ?? '',
+        def_l: fbs[0]?.id ?? '',
+        def_lc: cbs[0]?.id ?? '',
+        def_rc: cbs[1]?.id ?? '',
+        def_r: fbs[1]?.id ?? '',
+        mid_l: wngs[0]?.id ?? '',
+        mid_lc: cms[0]?.id ?? '',
+        mid_rc: cms[1]?.id ?? '',
+        mid_r: wngs[1]?.id ?? '',
+        att_l: sts[0]?.id ?? '',
+        att_r: sts[1]?.id ?? '',
       };
     }
 
@@ -2514,10 +2537,20 @@ export class GameService {
       if (starterIds.has(player.id)) player.role = Role.STARTER;
     }
 
-    const benchGks = (byPosition.get(Position.GOALKEEPER) ?? []).filter(p => !starterIds.has(p.id));
-    const benchDefs = (byPosition.get(Position.DEFENDER) ?? []).filter(p => !starterIds.has(p.id));
-    const benchMids = (byPosition.get(Position.MIDFIELDER) ?? []).filter(p => !starterIds.has(p.id));
-    const benchFwds = (byPosition.get(Position.FORWARD) ?? []).filter(p => !starterIds.has(p.id));
+    const benchGks = (byPosition.get(Position.GK) ?? []).filter(p => !starterIds.has(p.id));
+    const benchDefs = [
+      ...(byPosition.get(Position.CB) ?? []),
+      ...(byPosition.get(Position.FB) ?? [])
+    ].filter(p => !starterIds.has(p.id)).sort((a,b) => overallOf(b) - overallOf(a));
+    const benchMids = [
+      ...(byPosition.get(Position.CDM) ?? []),
+      ...(byPosition.get(Position.CM) ?? []),
+      ...(byPosition.get(Position.CAM) ?? [])
+    ].filter(p => !starterIds.has(p.id)).sort((a,b) => overallOf(b) - overallOf(a));
+    const benchFwds = [
+      ...(byPosition.get(Position.WNG) ?? []),
+      ...(byPosition.get(Position.ST) ?? [])
+    ].filter(p => !starterIds.has(p.id)).sort((a,b) => overallOf(b) - overallOf(a));
 
     if (benchGks.length > 0) benchGks[0].role = Role.BENCH;
     for (let i = 0; i < Math.min(2, benchDefs.length); i++) benchDefs[i].role = Role.BENCH;
@@ -3011,13 +3044,13 @@ export class GameService {
     switch (event.type) {
       case EventType.TACKLE:
         if (playerId !== primaryPlayerId) return;
-        if (player.position !== Position.GOALKEEPER) {
+        if (player.position !== Position.GK) {
           stats.tackles++;
         }
         break;
       case EventType.INTERCEPTION:
         if (playerId !== primaryPlayerId) return;
-        if (player.position !== Position.GOALKEEPER) {
+        if (player.position !== Position.GK) {
           stats.interceptions++;
         }
         break;
@@ -3088,6 +3121,53 @@ export class GameService {
     }
 
     for (const event of events) {
+      if (event.additionalData?.aerialWinner) {
+        const winner = allPlayers.get(event.additionalData.aerialWinner);
+        if (winner) {
+          const stats = getStats(winner);
+          stats.aerialDuelsWon = (stats.aerialDuelsWon ?? 0) + 1;
+          if (event.additionalData.isCorner) {
+            stats.cornersWon = (stats.cornersWon ?? 0) + 1;
+          }
+        }
+      }
+      if (event.additionalData?.aerialLoser) {
+        const loser = allPlayers.get(event.additionalData.aerialLoser);
+        if (loser) {
+          const stats = getStats(loser);
+          stats.aerialDuelsLost = (stats.aerialDuelsLost ?? 0) + 1;
+        }
+      }
+
+      if (event.type === EventType.CORNER) {
+        const taker = allPlayers.get(event.playerIds[0]);
+        if (taker) {
+          const stats = getStats(taker);
+          stats.cornersTaken = (stats.cornersTaken ?? 0) + 1;
+        }
+      }
+
+      if (event.type === EventType.FREE_KICK) {
+        const taker = allPlayers.get(event.playerIds[0]);
+        if (taker) {
+          const stats = getStats(taker);
+          stats.freeKicksTaken = (stats.freeKicksTaken ?? 0) + 1;
+        }
+      }
+
+      if (event.type === EventType.PENALTY) {
+        const taker = allPlayers.get(event.playerIds[0]);
+        if (taker) {
+          const stats = getStats(taker);
+          stats.penaltiesTaken = (stats.penaltiesTaken ?? 0) + 1;
+        }
+        const GK = allPlayers.get(event.playerIds[1]);
+        if (GK) {
+          const stats = getStats(GK);
+          stats.penaltiesFaced = (stats.penaltiesFaced ?? 0) + 1;
+        }
+      }
+
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
         if (scorer) {
@@ -3095,6 +3175,19 @@ export class GameService {
           stats.shots++;
           stats.shotsOnTarget++;
           stats.goals++;
+          if (event.additionalData?.isFreeKick) {
+            if (event.additionalData?.freeKickDirect) {
+              stats.freeKickGoals = (stats.freeKickGoals ?? 0) + 1;
+            } else {
+              stats.indirectFreeKickGoals = (stats.indirectFreeKickGoals ?? 0) + 1;
+            }
+          }
+          if (event.additionalData?.isPenalty) {
+            stats.penaltiesScored = (stats.penaltiesScored ?? 0) + 1;
+          }
+          if (event.additionalData?.isCorner) {
+            stats.cornerGoals = (stats.cornerGoals ?? 0) + 1;
+          }
         }
         continue;
       }
@@ -3111,6 +3204,9 @@ export class GameService {
         if (keeper) {
           const stats = getStats(keeper);
           stats.saves++;
+          if (event.additionalData?.isPenalty) {
+            stats.penaltiesSaved = (stats.penaltiesSaved ?? 0) + 1;
+          }
         }
         continue;
       }

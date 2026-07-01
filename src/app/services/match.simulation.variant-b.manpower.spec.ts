@@ -390,20 +390,20 @@ function createMatchState(teamId: string, playerId: string, location: { x: numbe
 
 function create442PlayersWithBench(prefix: string): Player[] {
   return [
-    createPlayer(`${prefix}-gk1`, prefix, PositionEnum.GOALKEEPER, Role.STARTER, 85),
-    createPlayer(`${prefix}-def1`, prefix, PositionEnum.DEFENDER, Role.STARTER, 74),
-    createPlayer(`${prefix}-def2`, prefix, PositionEnum.DEFENDER, Role.STARTER, 75),
-    createPlayer(`${prefix}-def3`, prefix, PositionEnum.DEFENDER, Role.STARTER, 76),
-    createPlayer(`${prefix}-def4`, prefix, PositionEnum.DEFENDER, Role.STARTER, 74),
-    createPlayer(`${prefix}-mid1`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 77),
-    createPlayer(`${prefix}-mid2`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 79),
-    createPlayer(`${prefix}-mid3`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 78),
-    createPlayer(`${prefix}-mid4`, prefix, PositionEnum.MIDFIELDER, Role.STARTER, 77),
-    createPlayer(`${prefix}-fwd1`, prefix, PositionEnum.FORWARD, Role.STARTER, 80),
-    createPlayer(`${prefix}-fwd2`, prefix, PositionEnum.FORWARD, Role.STARTER, 81),
-    createPlayer(`${prefix}-midb1`, prefix, PositionEnum.MIDFIELDER, Role.BENCH, 76),
-    createPlayer(`${prefix}-defb1`, prefix, PositionEnum.DEFENDER, Role.BENCH, 73),
-    createPlayer(`${prefix}-midr1`, prefix, PositionEnum.MIDFIELDER, Role.RESERVE, 75)
+    createPlayer(`${prefix}-gk1`, prefix, PositionEnum.GK, Role.STARTER, 85),
+    createPlayer(`${prefix}-def1`, prefix, PositionEnum.FB, Role.STARTER, 74),
+    createPlayer(`${prefix}-def2`, prefix, PositionEnum.CB, Role.STARTER, 75),
+    createPlayer(`${prefix}-def3`, prefix, PositionEnum.CB, Role.STARTER, 76),
+    createPlayer(`${prefix}-def4`, prefix, PositionEnum.FB, Role.STARTER, 74),
+    createPlayer(`${prefix}-mid1`, prefix, PositionEnum.CM, Role.STARTER, 77),
+    createPlayer(`${prefix}-mid2`, prefix, PositionEnum.CM, Role.STARTER, 79),
+    createPlayer(`${prefix}-mid3`, prefix, PositionEnum.CM, Role.STARTER, 78),
+    createPlayer(`${prefix}-mid4`, prefix, PositionEnum.CM, Role.STARTER, 77),
+    createPlayer(`${prefix}-fwd1`, prefix, PositionEnum.ST, Role.STARTER, 80),
+    createPlayer(`${prefix}-fwd2`, prefix, PositionEnum.ST, Role.STARTER, 81),
+    createPlayer(`${prefix}-midb1`, prefix, PositionEnum.CM, Role.BENCH, 76),
+    createPlayer(`${prefix}-defb1`, prefix, PositionEnum.CB, Role.BENCH, 73),
+    createPlayer(`${prefix}-midr1`, prefix, PositionEnum.CM, Role.RESERVE, 75)
   ];
 }
 

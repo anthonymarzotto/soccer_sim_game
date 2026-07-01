@@ -94,7 +94,7 @@ describe('StatisticsService', () => {
 
   describe('generatePlayerStatistics — rating', () => {
     it('uses a fixed base of 50 for a starter at kickoff', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.MIDFIELDER });
+      const player = createTestPlayer({ id: 'p1', position: Position.CM });
       const team = makeTeam([player]);
       const state = makeMatchState([], 0);
 
@@ -104,7 +104,7 @@ describe('StatisticsService', () => {
     });
 
     it('uses a fixed base of 50 for a starter with no events', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.MIDFIELDER });
+      const player = createTestPlayer({ id: 'p1', position: Position.CM });
       const team = makeTeam([player]);
       const state = makeMatchState([]);
 
@@ -114,8 +114,8 @@ describe('StatisticsService', () => {
     });
 
     it('gives 0 rating to a bench player who never enters', () => {
-      const starter = createTestPlayer({ id: 'starter', position: Position.MIDFIELDER });
-      const bench = createTestPlayer({ id: 'bench', position: Position.FORWARD, role: Role.BENCH });
+      const starter = createTestPlayer({ id: 'starter', position: Position.CM });
+      const bench = createTestPlayer({ id: 'bench', position: Position.ST, role: Role.BENCH });
       const team = makeTeam([starter], [bench]);
       const state = makeMatchState([]);
 
@@ -126,8 +126,8 @@ describe('StatisticsService', () => {
     });
 
     it('credits tackle stats and rating only to the turnover winner', () => {
-      const defender = createTestPlayer({ id: 'home-def', teamId: 'home', position: Position.DEFENDER });
-      const attacker = createTestPlayer({ id: 'away-att', teamId: 'away', position: Position.FORWARD });
+      const defender = createTestPlayer({ id: 'home-def', teamId: 'home', position: Position.CB });
+      const attacker = createTestPlayer({ id: 'away-att', teamId: 'away', position: Position.ST });
       const homeTeam = makeTeam([defender], [], 'home');
       const awayTeam = makeTeam([attacker], [], 'away');
       const state = makeMatchState([
@@ -146,8 +146,8 @@ describe('StatisticsService', () => {
     });
 
     it('credits interception stats and rating only to the turnover winner', () => {
-      const defender = createTestPlayer({ id: 'home-def', teamId: 'home', position: Position.DEFENDER });
-      const attacker = createTestPlayer({ id: 'away-att', teamId: 'away', position: Position.FORWARD });
+      const defender = createTestPlayer({ id: 'home-def', teamId: 'home', position: Position.CB });
+      const attacker = createTestPlayer({ id: 'away-att', teamId: 'away', position: Position.ST });
       const homeTeam = makeTeam([defender], [], 'home');
       const awayTeam = makeTeam([attacker], [], 'away');
       const state = makeMatchState([
@@ -164,7 +164,7 @@ describe('StatisticsService', () => {
     });
 
     it('applies a moderated tackle bonus for multiple successful tackles', () => {
-      const defender = createTestPlayer({ id: 'home-def', teamId: 'home', position: Position.DEFENDER });
+      const defender = createTestPlayer({ id: 'home-def', teamId: 'home', position: Position.CB });
       const homeTeam = makeTeam([defender], [], 'home');
 
       const state = makeMatchState([
@@ -181,8 +181,8 @@ describe('StatisticsService', () => {
     });
 
     it('uses a fixed base of 50 for a substitute immediately after entering', () => {
-      const starter = createTestPlayer({ id: 'starter', position: Position.MIDFIELDER });
-      const bench = createTestPlayer({ id: 'bench', position: Position.FORWARD, role: Role.BENCH });
+      const starter = createTestPlayer({ id: 'starter', position: Position.CM });
+      const bench = createTestPlayer({ id: 'bench', position: Position.ST, role: Role.BENCH });
       const team = makeTeam([starter], [bench]);
       const state = makeMatchState([
         makeEvent(EventType.SUBSTITUTION, ['starter', 'bench'], 60)
@@ -196,7 +196,7 @@ describe('StatisticsService', () => {
     });
 
     it('increases rating above 50 for a GOAL event', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.FORWARD });
+      const player = createTestPlayer({ id: 'p1', position: Position.ST });
       const team = makeTeam([player]);
       const state = makeMatchState([makeEvent(EventType.GOAL, ['p1'], 30)]);
 
@@ -206,8 +206,8 @@ describe('StatisticsService', () => {
     });
 
     it('does not allow successful pass volume alone to force an early 10.0 rating', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.MIDFIELDER });
-      const receiver = createTestPlayer({ id: 'p2', position: Position.MIDFIELDER });
+      const player = createTestPlayer({ id: 'p1', position: Position.CM });
+      const receiver = createTestPlayer({ id: 'p2', position: Position.CM });
       const team = makeTeam([player, receiver]);
       const events: PlayByPlayEvent[] = [];
 
@@ -226,7 +226,7 @@ describe('StatisticsService', () => {
     });
 
     it('decreases rating below 50 for a MISS event', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.FORWARD });
+      const player = createTestPlayer({ id: 'p1', position: Position.ST });
       const team = makeTeam([player]);
       const state = makeMatchState([makeEvent(EventType.MISS, ['p1'], 30)]);
 
@@ -236,7 +236,7 @@ describe('StatisticsService', () => {
     });
 
     it('increases rating above 50 when the player is the victim of a foul', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.FORWARD });
+      const player = createTestPlayer({ id: 'p1', position: Position.ST });
       const team = makeTeam([player]);
       // playerIds[1] = victim of the foul
       const state = makeMatchState([makeEvent(EventType.FOUL, ['opponent', 'p1'], 20)]);
@@ -247,7 +247,7 @@ describe('StatisticsService', () => {
     });
 
     it('increases GK rating above 50 for SAVE events', () => {
-      const gk = createTestPlayer({ id: 'gk1', position: Position.GOALKEEPER });
+      const gk = createTestPlayer({ id: 'gk1', position: Position.GK });
       const team = makeTeam([gk]);
       // save event: playerIds[0] = shooter, playerIds[1] = keeper
       const state = makeMatchState([makeEvent(EventType.SAVE, ['shooter', 'gk1'], 45)]);
@@ -258,8 +258,8 @@ describe('StatisticsService', () => {
     });
 
     it('gives shooter a shots-on-target bonus for a SAVE event, not the GK save bonus', () => {
-      const shooter = createTestPlayer({ id: 'fwd1', position: Position.FORWARD });
-      const gk = createTestPlayer({ id: 'gk1', position: Position.GOALKEEPER });
+      const shooter = createTestPlayer({ id: 'fwd1', position: Position.ST });
+      const gk = createTestPlayer({ id: 'gk1', position: Position.GK });
       const team = makeTeam([shooter, gk]);
       // shooter appears as playerIds[0] in SAVE event
       const state = makeMatchState([makeEvent(EventType.SAVE, ['fwd1', 'gk1'], 45)]);
@@ -274,7 +274,7 @@ describe('StatisticsService', () => {
     });
 
     it('clamps minimum rating to 1 even with many negative events', () => {
-      const player = createTestPlayer({ id: 'p1', position: Position.MIDFIELDER });
+      const player = createTestPlayer({ id: 'p1', position: Position.CM });
       const team = makeTeam([player]);
       const events = [
         makeEvent(EventType.RED_CARD, ['p1'], 10),
@@ -292,9 +292,9 @@ describe('StatisticsService', () => {
 
   describe('generatePlayerStatistics — assists', () => {
     it('credits only the final successful pass to the goal scorer', () => {
-      const passerEarly = createTestPlayer({ id: 'p-early', teamId: 'team-1', position: Position.MIDFIELDER });
-      const passerFinal = createTestPlayer({ id: 'p-final', teamId: 'team-1', position: Position.MIDFIELDER });
-      const scorer = createTestPlayer({ id: 'p-scorer', teamId: 'team-1', position: Position.FORWARD });
+      const passerEarly = createTestPlayer({ id: 'p-early', teamId: 'team-1', position: Position.CM });
+      const passerFinal = createTestPlayer({ id: 'p-final', teamId: 'team-1', position: Position.CM });
+      const scorer = createTestPlayer({ id: 'p-scorer', teamId: 'team-1', position: Position.ST });
       const team = makeTeam([passerEarly, passerFinal, scorer], [], 'team-1');
       const state = makeMatchState([
         makeEvent(EventType.PASS, ['p-early', 'p-scorer'], 10),
@@ -313,8 +313,8 @@ describe('StatisticsService', () => {
     });
 
     it('does not credit unsuccessful or opponent passes as assists', () => {
-      const homePasser = createTestPlayer({ id: 'home-pass', teamId: 'home', position: Position.MIDFIELDER });
-      const homeScorer = createTestPlayer({ id: 'home-score', teamId: 'home', position: Position.FORWARD });
+      const homePasser = createTestPlayer({ id: 'home-pass', teamId: 'home', position: Position.CM });
+      const homeScorer = createTestPlayer({ id: 'home-score', teamId: 'home', position: Position.ST });
       const homeTeam = makeTeam([homePasser, homeScorer], [], 'home');
       const state = makeMatchState([
         makeEvent(EventType.PASS, ['away-pass', 'home-score'], 20),
@@ -327,6 +327,58 @@ describe('StatisticsService', () => {
       const scorerStats = results.find(s => s.playerId === 'home-score')!;
 
       expect(passerStats.assists).toBe(0);
+      expect(scorerStats.assists).toBe(0);
+    });
+
+    it('credits the corner taker with an assist when a goal is scored from a corner', () => {
+      const taker = createTestPlayer({ id: 'p-taker', teamId: 'team-1', position: Position.CM });
+      const scorer = createTestPlayer({ id: 'p-scorer', teamId: 'team-1', position: Position.ST });
+      const team = makeTeam([taker, scorer], [], 'team-1');
+      const state = makeMatchState([
+        makeEvent(EventType.CORNER, ['p-taker'], 10),
+        {
+          id: 'e-goal',
+          type: EventType.GOAL,
+          description: 'Goal scored from corner',
+          playerIds: ['p-scorer'],
+          location: { x: 50, y: 50 },
+          time: 10,
+          success: true,
+          additionalData: { isCorner: true }
+        }
+      ]);
+
+      const results = service.generatePlayerStatistics(state, team, [taker, scorer]);
+      const takerStats = results.find(s => s.playerId === 'p-taker')!;
+      const scorerStats = results.find(s => s.playerId === 'p-scorer')!;
+
+      expect(takerStats.assists).toBe(1);
+      expect(scorerStats.assists).toBe(0);
+    });
+
+    it('credits the free kick taker with an assist when a goal is scored from an indirect free kick', () => {
+      const taker = createTestPlayer({ id: 'p-taker', teamId: 'team-1', position: Position.CM });
+      const scorer = createTestPlayer({ id: 'p-scorer', teamId: 'team-1', position: Position.ST });
+      const team = makeTeam([taker, scorer], [], 'team-1');
+      const state = makeMatchState([
+        makeEvent(EventType.FREE_KICK, ['p-taker'], 15),
+        {
+          id: 'e-goal',
+          type: EventType.GOAL,
+          description: 'Goal scored from free kick',
+          playerIds: ['p-scorer'],
+          location: { x: 50, y: 50 },
+          time: 15,
+          success: true,
+          additionalData: { isFreeKick: true, freeKickDirect: false }
+        }
+      ]);
+
+      const results = service.generatePlayerStatistics(state, team, [taker, scorer]);
+      const takerStats = results.find(s => s.playerId === 'p-taker')!;
+      const scorerStats = results.find(s => s.playerId === 'p-scorer')!;
+
+      expect(takerStats.assists).toBe(1);
       expect(scorerStats.assists).toBe(0);
     });
   });

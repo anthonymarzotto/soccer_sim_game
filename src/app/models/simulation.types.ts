@@ -75,6 +75,12 @@ export interface PlayByPlayEventAdditionalData {
   passFailure?: PassFailureMetadata;
   carryResult?: CarryResultMetadata;
   injury?: InjuryEventMetadata;
+  isCorner?: boolean;
+  isFreeKick?: boolean;
+  isPenalty?: boolean;
+  freeKickDirect?: boolean;
+  aerialWinner?: string;
+  aerialLoser?: string;
 }
 
 export interface Possession {
@@ -145,6 +151,14 @@ export interface VariantBTuningConfig {
   cardChanceBase: number;
   directRedChance: number;
   secondYellowChanceMultiplier: number;
+  penaltyFoulRateMultiplier: number;
+  saveToCornerChance: number;
+  missToCornerChance: number;
+  cornerGoalChanceBase: number;
+  cornerGoalChanceMax: number;
+  indirectFkGoalChanceBase: number;
+  indirectFkGoalChanceMax: number;
+  skillCompressionFactor?: number;
 }
 
 export interface TickTrace {
@@ -188,6 +202,16 @@ export interface MatchState {
   awayYellowCards: number;
   homeRedCards: number;
   awayRedCards: number;
+  homeFreeKicks?: number;
+  awayFreeKicks?: number;
+  homeFreeKickGoals?: number;
+  awayFreeKickGoals?: number;
+  homePenalties?: number;
+  awayPenalties?: number;
+  homePenaltyGoals?: number;
+  awayPenaltyGoals?: number;
+  homeSetPieceGoals?: number;
+  awaySetPieceGoals?: number;
 }
 
 export type SimulationVariant = 'B';

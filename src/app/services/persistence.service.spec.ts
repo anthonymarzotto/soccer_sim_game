@@ -24,7 +24,7 @@ describe('PersistenceService', () => {
             id: `${id}-p1`,
             name: `Player ${id}`,
             teamId: id,
-            position: Position.GOALKEEPER,
+            position: Position.GK,
             role: Role.STARTER,
             age: 29, height: 190, weight: 84, nationality: 'ENG',
             seasonYear: 2026,

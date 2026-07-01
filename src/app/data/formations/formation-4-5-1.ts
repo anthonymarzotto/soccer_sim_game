@@ -12,77 +12,77 @@ export const FORMATION_4_5_1: FormationSchema = {
     {
       slotId: 'gk_1',
       label: 'Goalkeeper',
-      preferredPosition: Position.GOALKEEPER,
+      preferredPosition: Position.GK,
       coordinates: { x: 50, y: 5 },
       zone: FieldZone.DEFENSE
     },
     {
       slotId: 'def_l',
       label: 'Left Back',
-      preferredPosition: Position.DEFENDER,
+      preferredPosition: Position.FB,
       coordinates: { x: 20, y: 24 },
       zone: FieldZone.DEFENSE
     },
     {
       slotId: 'def_lc',
       label: 'Left Center-Back',
-      preferredPosition: Position.DEFENDER,
+      preferredPosition: Position.CB,
       coordinates: { x: 37, y: 16 },
       zone: FieldZone.DEFENSE
     },
     {
       slotId: 'def_rc',
       label: 'Right Center-Back',
-      preferredPosition: Position.DEFENDER,
+      preferredPosition: Position.CB,
       coordinates: { x: 63, y: 16 },
       zone: FieldZone.DEFENSE
     },
     {
       slotId: 'def_r',
       label: 'Right Back',
-      preferredPosition: Position.DEFENDER,
+      preferredPosition: Position.FB,
       coordinates: { x: 80, y: 24 },
       zone: FieldZone.DEFENSE
     },
     {
       slotId: 'mid_l',
       label: 'Left Midfielder',
-      preferredPosition: Position.MIDFIELDER,
+      preferredPosition: Position.WNG,
       coordinates: { x: 12, y: 52 },
       zone: FieldZone.MIDFIELD
     },
     {
       slotId: 'mid_lc',
       label: 'Left Center-Midfielder',
-      preferredPosition: Position.MIDFIELDER,
+      preferredPosition: Position.CM,
       coordinates: { x: 35, y: 52 },
       zone: FieldZone.MIDFIELD
     },
     {
       slotId: 'mid_c',
       label: 'Center-Midfielder',
-      preferredPosition: Position.MIDFIELDER,
+      preferredPosition: Position.CM,
       coordinates: { x: 50, y: 48 },
       zone: FieldZone.MIDFIELD
     },
     {
       slotId: 'mid_rc',
       label: 'Right Center-Midfielder',
-      preferredPosition: Position.MIDFIELDER,
+      preferredPosition: Position.CM,
       coordinates: { x: 65, y: 52 },
       zone: FieldZone.MIDFIELD
     },
     {
       slotId: 'mid_r',
       label: 'Right Midfielder',
-      preferredPosition: Position.MIDFIELDER,
+      preferredPosition: Position.WNG,
       coordinates: { x: 88, y: 52 },
       zone: FieldZone.MIDFIELD
     },
     {
       slotId: 'att_c',
       label: 'Center Forward',
-      preferredPosition: Position.FORWARD,
+      preferredPosition: Position.ST,
       coordinates: { x: 50, y: 82 },
       zone: FieldZone.ATTACK
     }

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { GeneratorService } from './generator.service';
 import { FormationLibraryService } from './formation-library.service';
-import { Role as RoleEnum, Position as PositionEnum } from '../models/enums';
+import { Role as RoleEnum, getPositionGroup } from '../models/enums';
 import { calculatePlayerWageCost } from '../models/player-progression';
 
 describe('GeneratorService', () => {
@@ -68,10 +68,10 @@ describe('GeneratorService', () => {
         const reserves = team.players.filter(p => p.role === RoleEnum.RESERVE);
         expect(reserves.length).toBe(5);
 
-        const gks = reserves.filter(p => p.position === PositionEnum.GOALKEEPER);
-        const defs = reserves.filter(p => p.position === PositionEnum.DEFENDER);
-        const mids = reserves.filter(p => p.position === PositionEnum.MIDFIELDER);
-        const fwds = reserves.filter(p => p.position === PositionEnum.FORWARD);
+        const gks = reserves.filter(p => getPositionGroup(p.position) === 'GK');
+        const defs = reserves.filter(p => getPositionGroup(p.position) === 'DEF');
+        const mids = reserves.filter(p => getPositionGroup(p.position) === 'MID');
+        const fwds = reserves.filter(p => getPositionGroup(p.position) === 'FWD');
 
         expect(gks.length).toBeLessThanOrEqual(1);
         expect(defs.length).toBeGreaterThanOrEqual(1);

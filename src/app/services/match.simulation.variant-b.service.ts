@@ -1,5 +1,5 @@
 import { Injectable, inject } from "@angular/core";
-import { Match, Team, Player } from "../models/types";
+import { Match, Team, Player, StatKey } from "../models/types";
 import {
   MatchState,
   SimulationConfig,
@@ -26,6 +26,7 @@ import {
   MatchPhase,
   PlayingStyle,
   Position as PositionEnum,
+  getPositionGroup,
   Role,
   TeamSide,
 } from "../models/enums";
@@ -134,16 +135,24 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.185,
+  goalChanceBase: 0.15,
   goalChanceSkillVsKeeperScale: 0.0008,
   goalChanceWidePenalty: 0.035,
-  goalChanceMin: 0.1,
-  goalChanceMax: 0.42,
+  goalChanceMin: 0.07,
+  goalChanceMax: 0.35,
 
   homeAdvantageGoalBonus: 0.04,
   cardChanceBase: 0.40,
   directRedChance: 0.01,
   secondYellowChanceMultiplier: 0.25,
+  penaltyFoulRateMultiplier: 0.20,
+  saveToCornerChance: 0.45,
+  missToCornerChance: 0.30,
+  cornerGoalChanceBase: 0.035,
+  cornerGoalChanceMax: 0.10,
+  indirectFkGoalChanceBase: 0.035,
+  indirectFkGoalChanceMax: 0.10,
+  skillCompressionFactor: 0.60,
 };
 
 @Injectable({
@@ -172,6 +181,16 @@ export class MatchSimulationVariantBService {
 
   didLastSimulationEndByForfeit(): boolean {
     return this.lastSimulationForfeit !== null;
+  }
+
+  private getPlayerStat(player: Player, statKey: StatKey): number {
+    const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
+    const rawVal = ((attrs as unknown as Record<string, unknown>)[statKey] as { value: number } | undefined)?.value ?? 70;
+    if (statKey === 'endurance' || statKey === 'injuryRate' || statKey === 'overall') {
+      return rawVal;
+    }
+    const factor = this.activeTuning.skillCompressionFactor ?? 1.0;
+    return 70 + (rawVal - 70) * factor;
   }
 
   simulateMatch(
@@ -396,7 +415,9 @@ export class MatchSimulationVariantBService {
     return {
       ballPossession: {
         teamId: homeTeam.id,
-        playerWithBall: this.getRandomPlayerId(homePlayers),
+        playerWithBall: this.getRandomPlayerId(
+          homePlayers.filter((p) => p.position !== PositionEnum.GK),
+        ),
         location: { x: 50, y: 50 },
         phase: MatchPhase.BUILD_UP,
         passes: 0,
@@ -421,6 +442,14 @@ export class MatchSimulationVariantBService {
       awayYellowCards: 0,
       homeRedCards: 0,
       awayRedCards: 0,
+      homeFreeKicks: 0,
+      awayFreeKicks: 0,
+      homePenalties: 0,
+      awayPenalties: 0,
+      homePenaltyGoals: 0,
+      awayPenaltyGoals: 0,
+      homeSetPieceGoals: 0,
+      awaySetPieceGoals: 0,
     };
   }
 
@@ -553,12 +582,33 @@ export class MatchSimulationVariantBService {
   ): void {
     const attackingBias = currentTeam === TeamSide.HOME ? 1 : -1;
     const urgency = minute >= 75 ? this.activeTuning.lateUrgencyMultiplier : 1;
-    const roleBias =
-      carrier.position === PositionEnum.FORWARD
-        ? 1.2
-        : carrier.position === PositionEnum.MIDFIELDER
-          ? 1
-          : 0.8;
+    let roleBias = 1.0;
+    switch (carrier.position) {
+      case PositionEnum.ST:
+        roleBias = 1.25;
+        break;
+      case PositionEnum.WNG:
+        roleBias = 1.2;
+        break;
+      case PositionEnum.CAM:
+        roleBias = 1.1;
+        break;
+      case PositionEnum.CM:
+        roleBias = 1.0;
+        break;
+      case PositionEnum.CDM:
+        roleBias = 0.9;
+        break;
+      case PositionEnum.FB:
+        roleBias = 0.95;
+        break;
+      case PositionEnum.CB:
+        roleBias = 0.75;
+        break;
+      case PositionEnum.GK:
+        roleBias = 0.5;
+        break;
+    }
 
     const yStep =
       (this.activeTuning.movementStepBase +
@@ -627,27 +677,52 @@ export class MatchSimulationVariantBService {
       passWeight -= 0.01;
     }
 
-    if (carrier.position === PositionEnum.FORWARD) {
-      carryWeight -= 0.02;
-      shotWeight += 0.05;
-      passWeight -= 0.01;
+    switch (carrier.position) {
+      case PositionEnum.GK:
+        passWeight += 0.08;
+        carryWeight += 0.04;
+        shotWeight = 0;
+        break;
+      case PositionEnum.CB:
+        passWeight += 0.08;
+        carryWeight += 0.02;
+        shotWeight -= 0.08;
+        break;
+      case PositionEnum.FB:
+        passWeight += 0.04;
+        carryWeight += 0.06;
+        shotWeight -= 0.08;
+        break;
+      case PositionEnum.CDM:
+        passWeight += 0.05;
+        carryWeight += 0.01;
+        shotWeight -= 0.03;
+        break;
+      case PositionEnum.CM:
+        passWeight += 0.03;
+        carryWeight += 0.01;
+        shotWeight += 0.00;
+        break;
+      case PositionEnum.CAM:
+        passWeight += 0.02;
+        carryWeight += 0.01;
+        shotWeight += 0.03;
+        break;
+      case PositionEnum.WNG:
+        passWeight -= 0.03;
+        carryWeight += 0.06;
+        shotWeight += 0.05;
+        break;
+      case PositionEnum.ST:
+        passWeight -= 0.05;
+        carryWeight -= 0.01;
+        shotWeight += 0.12;
+        break;
     }
 
-    if (carrier.position === PositionEnum.DEFENDER) {
-      carryWeight += 0.05;
-      passWeight += 0.08;
-      shotWeight -= 0.08;
-    }
-
-    if (carrier.position === PositionEnum.GOALKEEPER) {
-      // Keep keepers focused on build-up/recycle actions.
-      passWeight += 0.08;
-      carryWeight += 0.04;
-      shotWeight = 0;
-    } else {
+    if (carrier.position !== PositionEnum.GK) {
       // Recover shot volume lost by removing goalies from pass actions and scoring.
-      // Increased from 0.018 to compensate for reduced pass network connectivity.
-      shotWeight += 0.035;
+      shotWeight += 0.018;
       passWeight -= 0.006;
     }
 
@@ -678,7 +753,7 @@ export class MatchSimulationVariantBService {
     passWeight -= chainQuality * 0.01;
 
     const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
-    shotWeight *= (1 - pressure * 0.5);
+    shotWeight *= (1 - pressure * 0.60);
 
     if (!shootingWindow) {
       shotWeight *= this.activeTuning.outOfWindowShotMultiplier;
@@ -686,10 +761,15 @@ export class MatchSimulationVariantBService {
       carryWeight += 0.03;
     }
 
+    const inPenaltyArea = relativeY >= 90 && Math.abs(location.x - 50) <= 20;
+    if (inPenaltyArea) {
+      foulWeight *= this.activeTuning.penaltyFoulRateMultiplier;
+    }
+
     passWeight = Math.max(0.2, passWeight);
     carryWeight = Math.max(0.04, carryWeight);
     shotWeight =
-      carrier.position === PositionEnum.GOALKEEPER
+      carrier.position === PositionEnum.GK
         ? 0
         : Math.max(0.005, shotWeight);
     foulWeight = Math.max(0.01, foulWeight);
@@ -945,20 +1025,35 @@ export class MatchSimulationVariantBService {
   ): number {
     let successChance = 0.72;
 
-    if (carrier.position === PositionEnum.FORWARD) {
-      successChance += 0.04;
-    } else if (carrier.position === PositionEnum.MIDFIELDER) {
-      successChance += 0.015;
-    } else if (carrier.position === PositionEnum.DEFENDER) {
-      successChance -= 0.05;
+    switch (carrier.position) {
+      case PositionEnum.GK:
+        successChance -= 0.15;
+        break;
+      case PositionEnum.CB:
+        successChance -= 0.07;
+        break;
+      case PositionEnum.FB:
+        successChance += 0.02;
+        break;
+      case PositionEnum.CDM:
+        successChance += 0.01;
+        break;
+      case PositionEnum.CM:
+        successChance += 0.025;
+        break;
+      case PositionEnum.CAM:
+        successChance += 0.055;
+        break;
+      case PositionEnum.WNG:
+        successChance += 0.065;
+        break;
+      case PositionEnum.ST:
+        successChance += 0.03;
+        break;
     }
 
-    const carrierAttrs = getCurrentPlayerSeasonAttributes(
-      carrier,
-      this.currentSeasonYear,
-    );
-    successChance += (carrierAttrs.speed.value - 70) * 0.002;
-    successChance += (carrierAttrs.flair.value - 70) * 0.0015;
+    successChance += (this.getPlayerStat(carrier, 'speed') - 70) * 0.002;
+    successChance += (this.getPlayerStat(carrier, 'flair') - 70) * 0.0015;
 
     const attackingY =
       currentTeam === TeamSide.HOME
@@ -1369,6 +1464,7 @@ export class MatchSimulationVariantBService {
     homePlayers: Player[],
     awayPlayers: Player[],
     tactics: { home: TacticalSetup; away: TacticalSetup },
+    additionalData?: PlayByPlayEventAdditionalData,
   ): void {
     const currentTeam =
       state.ballPossession.teamId === homeTeam.id
@@ -1389,11 +1485,13 @@ export class MatchSimulationVariantBService {
       minute,
       true,
       config,
+      additionalData,
     );
     state.ballPossession.teamId =
       currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
     state.ballPossession.playerWithBall = this.getRandomPlayerId(
-      state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers,
+      (state.ballPossession.teamId === homeTeam.id ? homePlayers : awayPlayers)
+        .filter((p) => p.position !== PositionEnum.GK),
     );
     state.ballPossession.location = { x: 50, y: 50 };
     state.ballPossession.passes = 0;
@@ -1525,15 +1623,6 @@ export class MatchSimulationVariantBService {
       this.dismissPlayer(defendingTeam, offender.id, defendingPlayers, tactics);
     }
 
-    state.ballPossession.teamId =
-      attackingTeam === TeamSide.HOME ? homeTeam.id : awayTeam.id;
-    state.ballPossession.playerWithBall = victim.id;
-    state.ballPossession.location = this.getFoulRestartLocation(
-      attackingTeam,
-      state.ballPossession.location,
-    );
-    state.ballPossession.passes = 0;
-
     // Foul injuries: roll on both offender and victim with a 1.5x contact modifier.
     // tryRollInjury is a no-op if the offender was just sent off (role !== STARTER).
     const attackingPlayers =
@@ -1560,6 +1649,30 @@ export class MatchSimulationVariantBService {
       attackingPlayers,
       tactics,
     );
+
+    // Determine restart kind
+    const relativeY = attackingTeam === TeamSide.HOME ? state.ballPossession.location.y : 100 - state.ballPossession.location.y;
+    const inPenaltyArea = relativeY >= 90 && Math.abs(state.ballPossession.location.x - 50) <= 20;
+
+    if (inPenaltyArea) {
+      this.executeVariantBPenalty(state, attackingTeam, defendingTeam, homeTeam, awayTeam, minute, config, { homePlayers, awayPlayers, homeBench: [], awayBench: [] }, tactics);
+      return;
+    }
+
+    if (relativeY >= 75) {
+      this.executeVariantBFreeKick(state, attackingTeam, defendingTeam, homeTeam, awayTeam, minute, config, { homePlayers, awayPlayers, homeBench: [], awayBench: [] }, tactics);
+      return;
+    }
+
+    // Default quick restart:
+    state.ballPossession.teamId =
+      attackingTeam === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+    state.ballPossession.playerWithBall = victim.id;
+    state.ballPossession.location = this.getFoulRestartLocation(
+      attackingTeam,
+      state.ballPossession.location,
+    );
+    state.ballPossession.passes = 0;
   }
 
   private getFoulRestartLocation(
@@ -1602,25 +1715,53 @@ export class MatchSimulationVariantBService {
       (player) => player.role === Role.STARTER,
     );
     const activePlayers = starters.length > 0 ? starters : teamPlayers;
-    const preferredPlayers = activePlayers.filter(
-      (player) =>
-        player.position === PositionEnum.DEFENDER ||
-        player.position === PositionEnum.MIDFIELDER,
-    );
     const outfieldPlayers = activePlayers.filter(
-      (player) => player.position !== PositionEnum.GOALKEEPER,
+      (player) => player.position !== PositionEnum.GK,
     );
-    const candidatePool =
-      preferredPlayers.length > 0
-        ? preferredPlayers
-        : outfieldPlayers.length > 0
-          ? outfieldPlayers
-          : activePlayers;
+    const candidates = outfieldPlayers.length > 0 ? outfieldPlayers : activePlayers;
 
-    return (
-      candidatePool[Math.floor(this.rng.random() * candidatePool.length)] ??
-      teamPlayers[0]
-    );
+    let totalWeight = 0;
+    const playerWeights = candidates.map(player => {
+      let weight = 1.0;
+      switch (player.position) {
+        case PositionEnum.CB:
+          weight = 3.0;
+          break;
+        case PositionEnum.FB:
+          weight = 2.5;
+          break;
+        case PositionEnum.CDM:
+          weight = 3.5;
+          break;
+        case PositionEnum.CM:
+          weight = 2.0;
+          break;
+        case PositionEnum.CAM:
+          weight = 1.0;
+          break;
+        case PositionEnum.WNG:
+          weight = 0.8;
+          break;
+        case PositionEnum.ST:
+          weight = 0.8;
+          break;
+        case PositionEnum.GK:
+          weight = 0.1;
+          break;
+      }
+      totalWeight += weight;
+      return { player, weight };
+    });
+
+    const roll = this.rng.random() * totalWeight;
+    let sum = 0;
+    for (const entry of playerWeights) {
+      sum += entry.weight;
+      if (roll <= sum) {
+        return entry.player;
+      }
+    }
+    return candidates[0] ?? teamPlayers[0];
   }
 
   private incrementCardCount(
@@ -1903,12 +2044,8 @@ export class MatchSimulationVariantBService {
     const passerFatigue = fatigue.find((entry) => entry.playerId === passer.id);
     const targetFatigue = fatigue.find((entry) => entry.playerId === target.id);
 
-    const passerAttrs = getCurrentPlayerSeasonAttributes(
-      passer,
-      this.currentSeasonYear,
-    );
     let baseChance =
-      (passerAttrs.shortPassing.value + passerAttrs.longPassing.value) / 2;
+      (this.getPlayerStat(passer, 'shortPassing') + this.getPlayerStat(passer, 'longPassing')) / 2;
 
     if (passerFatigue) {
       baseChance *= passerFatigue.performanceModifier;
@@ -1932,7 +2069,7 @@ export class MatchSimulationVariantBService {
       baseChance -= 5;
     }
 
-    baseChance -= pressure * 28;
+    baseChance -= pressure * 22;
 
     const attackingY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
     if (attackingY > 50) {
@@ -2014,28 +2151,30 @@ export class MatchSimulationVariantBService {
       minute,
     );
 
-    if (
-      (passer.position === PositionEnum.DEFENDER ||
-        (passerFatigue?.fatigueLevel ?? 0) > 75) &&
-      attackingY < 78
-    ) {
+    const passerGroup = getPositionGroup(passer.position);
+    const isGKOrCB =
+      passer.position === PositionEnum.GK ||
+      passer.position === PositionEnum.CB;
+    const isFatigued = (passerFatigue?.fatigueLevel ?? 0) > 75;
+
+    if ((isGKOrCB || isFatigued) && attackingY < 78) {
       return PASS_INTENT.RECYCLE;
     }
 
-    if (
-      attackingY >= 82 &&
-      wideChannel &&
-      (passer.position === PositionEnum.MIDFIELDER ||
-        passer.position === PositionEnum.FORWARD)
-    ) {
+    const canCross =
+      passerGroup === 'MID' ||
+      passerGroup === 'FWD' ||
+      passer.position === PositionEnum.FB;
+
+    if (attackingY >= 82 && wideChannel && canCross) {
       return PASS_INTENT.CROSS;
     }
 
     if (
       attackingY >= 78 &&
       !wideChannel &&
-      (passer.position === PositionEnum.MIDFIELDER ||
-        passer.position === PositionEnum.FORWARD)
+      (passerGroup === 'MID' ||
+        passerGroup === 'FWD')
     ) {
       return PASS_INTENT.THROUGH_BALL;
     }
@@ -2055,7 +2194,7 @@ export class MatchSimulationVariantBService {
       return wideChannel ? PASS_INTENT.CROSS : PASS_INTENT.THROUGH_BALL;
     }
 
-    if (attackingY < 67) {
+    if (attackingY < 63) {
       return PASS_INTENT.RECYCLE;
     }
 
@@ -2103,17 +2242,38 @@ export class MatchSimulationVariantBService {
       let totalSkill = 0;
       for (const player of players) {
         let weight = 0;
-        if (player.position === PositionEnum.DEFENDER) {
-          weight = 1.5;
-        } else if (player.position === PositionEnum.GOALKEEPER) {
-          weight = 0.0;
-        } else {
-          weight = 1.0;
+        switch (player.position) {
+          case PositionEnum.CB:
+            weight = 1.5;
+            break;
+          case PositionEnum.FB:
+            weight = 1.4;
+            break;
+          case PositionEnum.CDM:
+            weight = 1.2;
+            break;
+          case PositionEnum.CM:
+            weight = 1.0;
+            break;
+          case PositionEnum.CAM:
+            weight = 0.9;
+            break;
+          case PositionEnum.WNG:
+            weight = 0.8;
+            break;
+          case PositionEnum.ST:
+            weight = 0.7;
+            break;
+          case PositionEnum.GK:
+            weight = 0.0;
+            break;
+          default:
+            weight = 1.0;
+            break;
         }
 
         if (weight > 0) {
-          const attrs = getCurrentPlayerSeasonAttributes(player, this.currentSeasonYear);
-          const playerSkill = (attrs.tackling.value + attrs.speed.value) / 2;
+          const playerSkill = (this.getPlayerStat(player, 'tackling') + this.getPlayerStat(player, 'speed')) / 2;
           totalSkill += playerSkill * weight;
           totalWeight += weight;
         }
@@ -2292,7 +2452,7 @@ export class MatchSimulationVariantBService {
     );
     // teamOnField is starters-only; filter out goalkeepers for outgoing candidates.
     const starterOutfield = teamOnField.filter(
-      (player) => player.position !== PositionEnum.GOALKEEPER,
+      (player) => player.position !== PositionEnum.GK,
     );
 
     let bestCandidate: {
@@ -2462,7 +2622,7 @@ export class MatchSimulationVariantBService {
     // teamPlayers is the on-field array (starters only).
     const fatiguedStarters = teamPlayers.filter(
       (player) =>
-        player.position !== PositionEnum.GOALKEEPER &&
+        player.position !== PositionEnum.GK &&
         (fatigueByPlayer.get(player.id) ?? 0) >= 62,
     ).length;
 
@@ -2479,7 +2639,7 @@ export class MatchSimulationVariantBService {
     );
     // teamPlayers is the on-field array (starters only).
     const starterOutfield = teamPlayers.filter(
-      (player) => player.position !== PositionEnum.GOALKEEPER,
+      (player) => player.position !== PositionEnum.GK,
     );
 
     if (starterOutfield.length === 0) {
@@ -2518,8 +2678,11 @@ export class MatchSimulationVariantBService {
     const samePositionPool = eligible.filter(
       (player) => player.position === outgoingPosition,
     );
+    const sameGroupPool = samePositionPool.length > 0 ? samePositionPool : eligible.filter(
+      (player) => getPositionGroup(player.position) === getPositionGroup(outgoingPosition),
+    );
     const candidatePool =
-      samePositionPool.length > 0 ? samePositionPool : eligible;
+      sameGroupPool.length > 0 ? sameGroupPool : eligible;
 
     const sortedByQuality = [...candidatePool].sort((left, right) => {
       const leftAttrs = getCurrentPlayerSeasonAttributes(
@@ -2574,7 +2737,7 @@ export class MatchSimulationVariantBService {
         const endurance = attrs.endurance.value;
         const baseFatigueAccrual = 0.5;
         let fatigueAccrual = baseFatigueAccrual * (1 - (endurance - 50) * 0.005);
-        if (player.position === PositionEnum.GOALKEEPER) {
+        if (player.position === PositionEnum.GK) {
           fatigueAccrual *= this.goalkeeperStaminaDrainMultiplier;
         }
 
@@ -2661,7 +2824,7 @@ export class MatchSimulationVariantBService {
       (player) => player.role === Role.STARTER,
     );
     const goalkeeper = onFieldOpponentPlayers.find(
-      (player) => player.position === PositionEnum.GOALKEEPER,
+      (player) => player.position === PositionEnum.GK,
     );
     const fatigueBucket = isHomeInPossession ? fatigue.home : fatigue.away;
     const shooterFatigue = fatigueBucket.find(
@@ -2690,13 +2853,9 @@ export class MatchSimulationVariantBService {
       state.awayShots++;
     }
 
-    const shooterAttrs = getCurrentPlayerSeasonAttributes(
-      shooter,
-      this.currentSeasonYear,
-    );
     let onTargetChance =
       this.activeTuning.onTargetBase +
-      (shooterAttrs.shooting.value - 70) * this.activeTuning.onTargetSkillScale;
+      (this.getPlayerStat(shooter, 'shooting') - 70) * this.activeTuning.onTargetSkillScale;
     if (attackingY >= 85) {
       onTargetChance += 0.28;
     } else if (attackingY >= 75) {
@@ -2748,6 +2907,19 @@ export class MatchSimulationVariantBService {
         shooterTeamPlayers,
         tactics,
       );
+
+      // Chance that a miss is deflected for a corner
+      if (this.rng.random() < this.activeTuning.missToCornerChance) {
+        const defendingTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+        this.executeVariantBCorner(state, currentTeam, defendingTeamSide, homeTeam, awayTeam, minute, config, rosters, tactics);
+      } else {
+        // Goal kick: turn over possession to defending GK
+        const gk = onFieldOpponentPlayers.find(p => p.position === PositionEnum.GK) ?? onFieldOpponentPlayers[0];
+        state.ballPossession.teamId = currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+        state.ballPossession.playerWithBall = gk.id;
+        state.ballPossession.location = currentTeam === TeamSide.HOME ? { x: 50, y: 85 } : { x: 50, y: 15 };
+        state.ballPossession.passes = 0;
+      }
       return;
     }
 
@@ -2757,15 +2929,12 @@ export class MatchSimulationVariantBService {
       state.awayShotsOnTarget++;
     }
 
-    const keeperAttrs = goalkeeper
-      ? getCurrentPlayerSeasonAttributes(goalkeeper, this.currentSeasonYear)
-      : null;
-    const keeperSkill = keeperAttrs
-      ? (keeperAttrs.handling.value + keeperAttrs.reflexes.value) / 2
+    const keeperSkill = goalkeeper
+      ? (this.getPlayerStat(goalkeeper, 'handling') + this.getPlayerStat(goalkeeper, 'reflexes')) / 2
       : 70;
     let goalChance =
       this.activeTuning.goalChanceBase +
-      (shooterAttrs.shooting.value - keeperSkill) *
+      (this.getPlayerStat(shooter, 'shooting') - keeperSkill) *
       this.activeTuning.goalChanceSkillVsKeeperScale;
 
     if (attackingY >= 85) {
@@ -2837,23 +3006,579 @@ export class MatchSimulationVariantBService {
       );
     }
 
-    state.ballPossession.teamId = isHomeInPossession
-      ? awayTeam.id
-      : homeTeam.id;
-    const newOwnerPool =
-      state.ballPossession.teamId === homeTeam.id
-        ? rosters.homePlayers
-        : rosters.awayPlayers;
-    const starters = newOwnerPool.filter(
-      (player) => player.role === Role.STARTER,
+    // Chance that a save is deflected for a corner
+    if (this.rng.random() < this.activeTuning.saveToCornerChance) {
+      const defendingTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      this.executeVariantBCorner(state, currentTeam, defendingTeamSide, homeTeam, awayTeam, minute, config, rosters, tactics);
+    } else {
+      state.ballPossession.teamId = isHomeInPossession
+        ? awayTeam.id
+        : homeTeam.id;
+      const newOwnerPool =
+        state.ballPossession.teamId === homeTeam.id
+          ? rosters.homePlayers
+          : rosters.awayPlayers;
+      const starters = newOwnerPool.filter(
+        (player) => player.role === Role.STARTER,
+      );
+      const selectablePlayers = starters.length > 0 ? starters : newOwnerPool;
+      const newOwner =
+        selectablePlayers[
+        Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))
+        ] ?? newOwnerPool[0];
+      state.ballPossession.playerWithBall = newOwner.id;
+      state.ballPossession.passes = 0;
+    }
+  }
+
+  private executeVariantBCorner(
+    state: MatchState,
+    attackingTeamSide: TeamSide,
+    defendingTeamSide: TeamSide,
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+  ): void {
+    const attackers = attackingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const defenders = defendingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+
+    const onFieldAttackers = attackers.filter(p => p.role === Role.STARTER && p.position !== PositionEnum.GK);
+    const onFieldDefenders = defenders.filter(p => p.role === Role.STARTER);
+
+    if (attackingTeamSide === TeamSide.HOME) {
+      state.homeCorners = (state.homeCorners ?? 0) + 1;
+    } else {
+      state.awayCorners = (state.awayCorners ?? 0) + 1;
+    }
+
+    const taker = [...onFieldAttackers].sort((a, b) => {
+      return (this.getPlayerStat(b, 'longPassing') + this.getPlayerStat(b, 'flair')) - (this.getPlayerStat(a, 'longPassing') + this.getPlayerStat(a, 'flair'));
+    })[0] ?? onFieldAttackers[0] ?? attackers[0];
+
+    this.createEvent(
+      state,
+      EventType.CORNER,
+      [taker.id],
+      attackingTeamSide === TeamSide.HOME ? { x: 95, y: 98 } : { x: 5, y: 2 },
+      minute,
+      true,
+      config
     );
-    const selectablePlayers = starters.length > 0 ? starters : newOwnerPool;
-    const newOwner =
-      selectablePlayers[
-      Math.floor(this.rng.random() * Math.max(selectablePlayers.length, 1))
-      ] ?? newOwnerPool[0];
-    state.ballPossession.playerWithBall = newOwner.id;
-    state.ballPossession.passes = 0;
+
+    const getAttackingAerialWeight = (p: Player) => {
+      let posBonus = 0;
+      switch (p.position) {
+        case PositionEnum.ST: posBonus = 25; break;
+        case PositionEnum.CB: posBonus = 20; break;
+        case PositionEnum.CM: case PositionEnum.CAM: case PositionEnum.CDM: posBonus = 10; break;
+        default: posBonus = 0;
+      }
+      return this.getPlayerStat(p, 'heading') + this.getPlayerStat(p, 'strength') + posBonus;
+    };
+
+    const sortedAttackingTargets = [...onFieldAttackers].sort((a, b) => getAttackingAerialWeight(b) - getAttackingAerialWeight(a));
+    const attackingTarget = sortedAttackingTargets[Math.floor(this.rng.random() * Math.min(3, sortedAttackingTargets.length))] ?? onFieldAttackers[0] ?? attackers[0];
+
+    const getDefendingAerialWeight = (p: Player) => {
+      let posBonus = 0;
+      switch (p.position) {
+        case PositionEnum.GK: posBonus = 35; break;
+        case PositionEnum.CB: posBonus = 25; break;
+        case PositionEnum.CDM: posBonus = 15; break;
+        case PositionEnum.FB: posBonus = 10; break;
+        default: posBonus = 0;
+      }
+      return this.getPlayerStat(p, 'heading') + this.getPlayerStat(p, 'strength') + posBonus;
+    };
+
+    const sortedDefenders = [...onFieldDefenders].sort((a, b) => getDefendingAerialWeight(b) - getDefendingAerialWeight(a));
+    const defenderMarker = sortedDefenders[Math.floor(this.rng.random() * Math.min(3, sortedDefenders.length))] ?? onFieldDefenders[0] ?? defenders[0];
+
+    const deliveryScore = (this.getPlayerStat(taker, 'longPassing') + this.getPlayerStat(taker, 'flair')) / 2 + this.rng.random() * 20;
+
+    const attackerScore = this.getPlayerStat(attackingTarget, 'heading') + this.getPlayerStat(attackingTarget, 'strength') + deliveryScore * 0.15 + this.rng.random() * 30;
+    const defenderScore = this.getPlayerStat(defenderMarker, 'heading') + this.getPlayerStat(defenderMarker, 'strength') + this.rng.random() * 30;
+
+    const attackerWins = attackerScore > defenderScore;
+
+    if (attackerWins) {
+      const additionalData = {
+        isCorner: true,
+        aerialWinner: attackingTarget.id,
+        aerialLoser: defenderMarker.id
+      };
+
+      const gk = onFieldDefenders.find(p => p.position === PositionEnum.GK) ?? onFieldDefenders[0] ?? defenders[0];
+      const keeperSkill = (this.getPlayerStat(gk, 'reflexes') + this.getPlayerStat(gk, 'handling')) / 2;
+
+      let goalChance = this.activeTuning.cornerGoalChanceBase + (this.getPlayerStat(attackingTarget, 'heading') - keeperSkill) * 0.002;
+      goalChance = this.clampChance(goalChance, 0.02, this.activeTuning.cornerGoalChanceMax);
+
+      if (attackingTeamSide === TeamSide.HOME) {
+        state.homeShots++;
+      } else {
+        state.awayShots++;
+      }
+
+      if (this.rng.random() < goalChance) {
+        if (attackingTeamSide === TeamSide.HOME) {
+          state.homeShotsOnTarget++;
+          state.homeSetPieceGoals = (state.homeSetPieceGoals ?? 0) + 1;
+        } else {
+          state.awayShotsOnTarget++;
+          state.awaySetPieceGoals = (state.awaySetPieceGoals ?? 0) + 1;
+        }
+
+        this.handleGoal(
+          state,
+          { type: EventType.GOAL, player: attackingTarget },
+          homeTeam,
+          awayTeam,
+          minute,
+          config,
+          rosters.homePlayers,
+          rosters.awayPlayers,
+          tactics,
+          additionalData,
+        );
+      } else {
+        const isSaved = this.rng.random() < 0.60;
+        if (isSaved) {
+          if (attackingTeamSide === TeamSide.HOME) {
+            state.homeShotsOnTarget++;
+          } else {
+            state.awayShotsOnTarget++;
+          }
+
+          this.createEvent(
+            state,
+            EventType.SAVE,
+            [attackingTarget.id, gk.id],
+            attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+            minute,
+            true,
+            config,
+            additionalData
+          );
+
+          if (this.rng.random() < 0.25) {
+            this.executeVariantBCorner(state, attackingTeamSide, defendingTeamSide, homeTeam, awayTeam, minute, config, rosters, tactics);
+          } else {
+            state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+            state.ballPossession.playerWithBall = gk.id;
+            state.ballPossession.location = defendingTeamSide === TeamSide.HOME ? { x: 50, y: 15 } : { x: 50, y: 85 };
+            state.ballPossession.passes = 0;
+          }
+        } else {
+          this.createEvent(
+            state,
+            EventType.MISS,
+            [attackingTarget.id],
+            attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+            minute,
+            false,
+            config,
+            additionalData
+          );
+
+          state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+          state.ballPossession.playerWithBall = gk.id;
+          state.ballPossession.location = defendingTeamSide === TeamSide.HOME ? { x: 50, y: 15 } : { x: 50, y: 85 };
+          state.ballPossession.passes = 0;
+        }
+      }
+    } else {
+      const additionalData = {
+        isCorner: true,
+        aerialWinner: defenderMarker.id,
+        aerialLoser: attackingTarget.id
+      };
+
+      this.createEvent(
+        state,
+        EventType.INTERCEPTION,
+        [defenderMarker.id, taker.id],
+        attackingTeamSide === TeamSide.HOME ? { x: 50, y: 90 } : { x: 50, y: 10 },
+        minute,
+        true,
+        config,
+        additionalData
+      );
+
+      state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+      state.ballPossession.playerWithBall = defenderMarker.id;
+      state.ballPossession.location = defendingTeamSide === TeamSide.HOME
+        ? { x: 30 + this.rng.random() * 40, y: 20 }
+        : { x: 30 + this.rng.random() * 40, y: 80 };
+      state.ballPossession.passes = 0;
+    }
+  }
+
+  private executeVariantBFreeKick(
+    state: MatchState,
+    attackingTeamSide: TeamSide,
+    defendingTeamSide: TeamSide,
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+  ): void {
+    const attackers = attackingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const defenders = defendingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+
+    const onFieldAttackers = attackers.filter(p => p.role === Role.STARTER && p.position !== PositionEnum.GK);
+    const onFieldDefenders = defenders.filter(p => p.role === Role.STARTER);
+
+    if (attackingTeamSide === TeamSide.HOME) {
+      state.homeFreeKicks = (state.homeFreeKicks ?? 0) + 1;
+    } else {
+      state.awayFreeKicks = (state.awayFreeKicks ?? 0) + 1;
+    }
+
+    const taker = [...onFieldAttackers].sort((a, b) => {
+      return (this.getPlayerStat(b, 'shooting') + this.getPlayerStat(b, 'longPassing') + this.getPlayerStat(b, 'flair')) - 
+             (this.getPlayerStat(a, 'shooting') + this.getPlayerStat(a, 'longPassing') + this.getPlayerStat(a, 'flair'));
+    })[0] ?? onFieldAttackers[0] ?? attackers[0];
+
+    this.createEvent(
+      state,
+      EventType.FREE_KICK,
+      [taker.id],
+      { ...state.ballPossession.location },
+      minute,
+      true,
+      config
+    );
+
+    const relativeY = attackingTeamSide === TeamSide.HOME ? state.ballPossession.location.y : 100 - state.ballPossession.location.y;
+    const directShot = relativeY >= 85 ? this.rng.random() < 0.70 : this.rng.random() < 0.30;
+
+    const additionalData = {
+      isFreeKick: true,
+      freeKickDirect: directShot
+    };
+
+    if (directShot) {
+      const gk = onFieldDefenders.find(p => p.position === PositionEnum.GK) ?? onFieldDefenders[0] ?? defenders[0];
+      const keeperSkill = (this.getPlayerStat(gk, 'reflexes') + this.getPlayerStat(gk, 'handling')) / 2;
+
+      if (attackingTeamSide === TeamSide.HOME) {
+        state.homeShots++;
+      } else {
+        state.awayShots++;
+      }
+
+      const shotOnTargetChance = 0.30 + (this.getPlayerStat(taker, 'shooting') - keeperSkill) * 0.002;
+      const onTarget = this.rng.random() < this.clampChance(shotOnTargetChance, 0.10, 0.50);
+
+      if (!onTarget) {
+        this.createEvent(
+          state,
+          EventType.MISS,
+          [taker.id],
+          attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+          minute,
+          false,
+          config,
+          additionalData
+        );
+
+        state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+        state.ballPossession.playerWithBall = gk.id;
+        state.ballPossession.location = defendingTeamSide === TeamSide.HOME ? { x: 50, y: 15 } : { x: 50, y: 85 };
+        state.ballPossession.passes = 0;
+      } else {
+        if (attackingTeamSide === TeamSide.HOME) {
+          state.homeShotsOnTarget++;
+        } else {
+          state.awayShotsOnTarget++;
+        }
+
+        let goalChance = 0.12 + (this.getPlayerStat(taker, 'shooting') - keeperSkill) * 0.002;
+        goalChance = this.clampChance(goalChance, 0.03, 0.30);
+
+        if (this.rng.random() < goalChance) {
+          if (attackingTeamSide === TeamSide.HOME) {
+            state.homeSetPieceGoals = (state.homeSetPieceGoals ?? 0) + 1;
+            state.homeFreeKickGoals = (state.homeFreeKickGoals ?? 0) + 1;
+          } else {
+            state.awaySetPieceGoals = (state.awaySetPieceGoals ?? 0) + 1;
+            state.awayFreeKickGoals = (state.awayFreeKickGoals ?? 0) + 1;
+          }
+
+          this.handleGoal(
+            state,
+            { type: EventType.GOAL, player: taker },
+            homeTeam,
+            awayTeam,
+            minute,
+            config,
+            rosters.homePlayers,
+            rosters.awayPlayers,
+            tactics,
+            additionalData,
+          );
+        } else {
+          this.createEvent(
+            state,
+            EventType.SAVE,
+            [taker.id, gk.id],
+            attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+            minute,
+            true,
+            config,
+            additionalData
+          );
+
+          state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+          state.ballPossession.playerWithBall = gk.id;
+          state.ballPossession.location = defendingTeamSide === TeamSide.HOME ? { x: 50, y: 15 } : { x: 50, y: 85 };
+          state.ballPossession.passes = 0;
+        }
+      }
+    } else {
+      const getAttackingAerialWeight = (p: Player) => {
+        let posBonus = 0;
+        switch (p.position) {
+          case PositionEnum.ST: posBonus = 25; break;
+          case PositionEnum.CB: posBonus = 20; break;
+          case PositionEnum.CM: case PositionEnum.CAM: case PositionEnum.CDM: posBonus = 10; break;
+          default: posBonus = 0;
+        }
+        return this.getPlayerStat(p, 'heading') + this.getPlayerStat(p, 'strength') + posBonus;
+      };
+
+      const sortedAttackingTargets = [...onFieldAttackers].sort((a, b) => getAttackingAerialWeight(b) - getAttackingAerialWeight(a));
+      const attackingTarget = sortedAttackingTargets[Math.floor(this.rng.random() * Math.min(3, sortedAttackingTargets.length))] ?? onFieldAttackers[0] ?? attackers[0];
+
+      const getDefendingAerialWeight = (p: Player) => {
+        let posBonus = 0;
+        switch (p.position) {
+          case PositionEnum.GK: posBonus = 35; break;
+          case PositionEnum.CB: posBonus = 25; break;
+          case PositionEnum.CDM: posBonus = 15; break;
+          case PositionEnum.FB: posBonus = 10; break;
+          default: posBonus = 0;
+        }
+        return this.getPlayerStat(p, 'heading') + this.getPlayerStat(p, 'strength') + posBonus;
+      };
+
+      const sortedDefenders = [...onFieldDefenders].sort((a, b) => getDefendingAerialWeight(b) - getDefendingAerialWeight(a));
+      const defenderMarker = sortedDefenders[Math.floor(this.rng.random() * Math.min(3, sortedDefenders.length))] ?? onFieldDefenders[0] ?? defenders[0];
+
+      const deliveryScore = (this.getPlayerStat(taker, 'longPassing') + this.getPlayerStat(taker, 'flair')) / 2 + this.rng.random() * 20;
+
+      const attackerScore = this.getPlayerStat(attackingTarget, 'heading') + this.getPlayerStat(attackingTarget, 'strength') + deliveryScore * 0.15 + this.rng.random() * 30;
+      const defenderScore = this.getPlayerStat(defenderMarker, 'heading') + this.getPlayerStat(defenderMarker, 'strength') + this.rng.random() * 30;
+
+      const attackerWins = attackerScore > defenderScore;
+
+      const aerialData = {
+        isFreeKick: true,
+        freeKickDirect: false,
+        aerialWinner: attackerWins ? attackingTarget.id : defenderMarker.id,
+        aerialLoser: attackerWins ? defenderMarker.id : attackingTarget.id
+      };
+
+      if (attackerWins) {
+        const gk = onFieldDefenders.find(p => p.position === PositionEnum.GK) ?? onFieldDefenders[0] ?? defenders[0];
+        const keeperSkill = (this.getPlayerStat(gk, 'reflexes') + this.getPlayerStat(gk, 'handling')) / 2;
+
+        if (attackingTeamSide === TeamSide.HOME) {
+          state.homeShots++;
+        } else {
+          state.awayShots++;
+        }
+
+        let goalChance = this.activeTuning.indirectFkGoalChanceBase + (this.getPlayerStat(attackingTarget, 'heading') - keeperSkill) * 0.003;
+        goalChance = this.clampChance(goalChance, 0.03, this.activeTuning.indirectFkGoalChanceMax);
+
+        if (this.rng.random() < goalChance) {
+          if (attackingTeamSide === TeamSide.HOME) {
+            state.homeShotsOnTarget++;
+            state.homeSetPieceGoals = (state.homeSetPieceGoals ?? 0) + 1;
+          } else {
+            state.awayShotsOnTarget++;
+            state.awaySetPieceGoals = (state.awaySetPieceGoals ?? 0) + 1;
+          }
+
+          this.handleGoal(
+            state,
+            { type: EventType.GOAL, player: attackingTarget },
+            homeTeam,
+            awayTeam,
+            minute,
+            config,
+            rosters.homePlayers,
+            rosters.awayPlayers,
+            tactics,
+            aerialData,
+          );
+        } else {
+          const isSaved = this.rng.random() < 0.60;
+          if (isSaved) {
+            if (attackingTeamSide === TeamSide.HOME) {
+              state.homeShotsOnTarget++;
+            } else {
+              state.awayShotsOnTarget++;
+            }
+
+            this.createEvent(
+              state,
+              EventType.SAVE,
+              [attackingTarget.id, gk.id],
+              attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+              minute,
+              true,
+              config,
+              aerialData
+            );
+          } else {
+            this.createEvent(
+              state,
+              EventType.MISS,
+              [attackingTarget.id],
+              attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+              minute,
+              false,
+              config,
+              aerialData
+            );
+          }
+
+          state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+          state.ballPossession.playerWithBall = gk.id;
+          state.ballPossession.location = defendingTeamSide === TeamSide.HOME ? { x: 50, y: 15 } : { x: 50, y: 85 };
+          state.ballPossession.passes = 0;
+        }
+      } else {
+        this.createEvent(
+          state,
+          EventType.INTERCEPTION,
+          [defenderMarker.id, taker.id],
+          attackingTeamSide === TeamSide.HOME ? { x: 50, y: 90 } : { x: 50, y: 10 },
+          minute,
+          true,
+          config,
+          aerialData
+        );
+
+        state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+        state.ballPossession.playerWithBall = defenderMarker.id;
+        state.ballPossession.location = defendingTeamSide === TeamSide.HOME
+          ? { x: 30 + this.rng.random() * 40, y: 20 }
+          : { x: 30 + this.rng.random() * 40, y: 80 };
+        state.ballPossession.passes = 0;
+      }
+    }
+  }
+
+  private executeVariantBPenalty(
+    state: MatchState,
+    attackingTeamSide: TeamSide,
+    defendingTeamSide: TeamSide,
+    homeTeam: Team,
+    awayTeam: Team,
+    minute: number,
+    config: SimulationConfig,
+    rosters: ResolvedRosters,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+  ): void {
+    const attackers = attackingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+    const defenders = defendingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+
+    const onFieldAttackers = attackers.filter(p => p.role === Role.STARTER && p.position !== PositionEnum.GK);
+    const onFieldDefenders = defenders.filter(p => p.role === Role.STARTER);
+
+    const shooter = [...onFieldAttackers].sort((a, b) => {
+      return (this.getPlayerStat(b, 'composure') + this.getPlayerStat(b, 'shooting')) - 
+             (this.getPlayerStat(a, 'composure') + this.getPlayerStat(a, 'shooting'));
+    })[0] ?? onFieldAttackers[0] ?? attackers[0];
+
+    const goalkeeper = onFieldDefenders.find(p => p.position === PositionEnum.GK) ?? onFieldDefenders[0] ?? defenders[0];
+
+    this.createEvent(
+      state,
+      EventType.PENALTY,
+      [shooter.id, goalkeeper.id],
+      attackingTeamSide === TeamSide.HOME ? { x: 50, y: 88 } : { x: 50, y: 12 },
+      minute,
+      true,
+      config
+    );
+
+    if (attackingTeamSide === TeamSide.HOME) {
+      state.homePenalties = (state.homePenalties ?? 0) + 1;
+    } else {
+      state.awayPenalties = (state.awayPenalties ?? 0) + 1;
+    }
+
+    const shooterScore = (this.getPlayerStat(shooter, 'shooting') + this.getPlayerStat(shooter, 'composure')) / 2;
+    const gkScore = this.getPlayerStat(goalkeeper, 'reflexes');
+
+    let penaltySuccessChance = 0.75 + (shooterScore - gkScore) * 0.002;
+    penaltySuccessChance = this.clampChance(penaltySuccessChance, 0.55, 0.88);
+
+    const goalScored = this.rng.random() < penaltySuccessChance;
+    const additionalData = { isPenalty: true };
+
+    if (goalScored) {
+      if (attackingTeamSide === TeamSide.HOME) {
+        state.homePenaltyGoals = (state.homePenaltyGoals ?? 0) + 1;
+        state.homeSetPieceGoals = (state.homeSetPieceGoals ?? 0) + 1;
+      } else {
+        state.awayPenaltyGoals = (state.awayPenaltyGoals ?? 0) + 1;
+        state.awaySetPieceGoals = (state.awaySetPieceGoals ?? 0) + 1;
+      }
+
+      this.handleGoal(
+        state,
+        { type: EventType.GOAL, player: shooter },
+        homeTeam,
+        awayTeam,
+        minute,
+        config,
+        rosters.homePlayers,
+        rosters.awayPlayers,
+        tactics,
+        additionalData,
+      );
+    } else {
+      const isSaved = this.rng.random() < 0.70;
+      if (isSaved) {
+        this.createEvent(
+          state,
+          EventType.SAVE,
+          [shooter.id, goalkeeper.id],
+          attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+          minute,
+          true,
+          config,
+          additionalData
+        );
+      } else {
+        this.createEvent(
+          state,
+          EventType.MISS,
+          [shooter.id],
+          attackingTeamSide === TeamSide.HOME ? { x: 50, y: 95 } : { x: 50, y: 5 },
+          minute,
+          false,
+          config,
+          additionalData
+        );
+      }
+
+      state.ballPossession.teamId = defendingTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
+      state.ballPossession.playerWithBall = goalkeeper.id;
+      state.ballPossession.location = defendingTeamSide === TeamSide.HOME ? { x: 50, y: 15 } : { x: 50, y: 85 };
+      state.ballPossession.passes = 0;
+    }
   }
 
   private clampChance(value: number, min: number, max: number): number {
@@ -2897,7 +3622,10 @@ export class MatchSimulationVariantBService {
         player.position === carrier.position,
     );
     const fallbackPlayers = currentPlayers.filter(
-      (player) => player.id !== carrier.id && player.role === Role.STARTER,
+      (player) =>
+        player.id !== carrier.id &&
+        player.role === Role.STARTER &&
+        player.position !== PositionEnum.GK,
     );
     const candidatePool =
       sameRolePlayers.length > 0 ? sameRolePlayers : fallbackPlayers;
@@ -2920,12 +3648,33 @@ export class MatchSimulationVariantBService {
     pressure: number,
   ): number {
     const baseAdvance = 1.0 + this.rng.random() * 2.0;
-    const roleMultiplier =
-      carrier.position === PositionEnum.FORWARD
-        ? 1.15
-        : carrier.position === PositionEnum.MIDFIELDER
-          ? 1
-          : 0.85;
+    let roleMultiplier = 1.0;
+    switch (carrier.position) {
+      case PositionEnum.GK:
+        roleMultiplier = 0.4;
+        break;
+      case PositionEnum.CB:
+        roleMultiplier = 0.7;
+        break;
+      case PositionEnum.FB:
+        roleMultiplier = 1.1;
+        break;
+      case PositionEnum.CDM:
+        roleMultiplier = 0.9;
+        break;
+      case PositionEnum.CM:
+        roleMultiplier = 1.0;
+        break;
+      case PositionEnum.CAM:
+        roleMultiplier = 1.1;
+        break;
+      case PositionEnum.WNG:
+        roleMultiplier = 1.25;
+        break;
+      case PositionEnum.ST:
+        roleMultiplier = 1.15;
+        break;
+    }
     const pressureMultiplier = this.clamp(1 - pressure * 0.65, 0.35, 1);
 
     return baseAdvance * roleMultiplier * pressureMultiplier;
@@ -3035,13 +3784,23 @@ export class MatchSimulationVariantBService {
     config: SimulationConfig,
     additionalData?: PlayByPlayEventAdditionalData,
   ): string {
+    const defendingTeamSide =
+      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const isGKAllowed =
+      (defendingTeamSide === TeamSide.HOME && currentLocation.y <= 18) ||
+      (defendingTeamSide === TeamSide.AWAY && currentLocation.y >= 82);
+
+    const eligibleOpponentPlayers = isGKAllowed
+      ? opponentPlayers
+      : opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
+
     const turnoverWinnerId =
       this.selectTurnoverWinner(
         eventType,
         currentLocation,
         currentTeam,
-        opponentPlayers,
-      )?.id ?? this.getRandomPlayerId(opponentPlayers);
+        eligibleOpponentPlayers,
+      )?.id ?? this.getRandomPlayerId(eligibleOpponentPlayers);
 
     this.createEvent(
       state,
@@ -3162,28 +3921,24 @@ export class MatchSimulationVariantBService {
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
     distance: number,
   ): number {
-    const attrs = getCurrentPlayerSeasonAttributes(
-      player,
-      this.currentSeasonYear,
-    );
     const proximityScore = Math.max(0, 30 - distance) * 2.5;
 
     if (eventType === EventType.TACKLE) {
       return (
         proximityScore +
-        attrs.tackling.value +
-        attrs.strength.value * 0.5 +
-        attrs.determination.value * 0.35 +
-        attrs.speed.value * 0.2
+        this.getPlayerStat(player, 'tackling') +
+        this.getPlayerStat(player, 'strength') * 0.5 +
+        this.getPlayerStat(player, 'determination') * 0.35 +
+        this.getPlayerStat(player, 'speed') * 0.2
       );
     }
 
     return (
       proximityScore +
-      attrs.vision.value +
-      attrs.tackling.value * 0.5 +
-      attrs.determination.value * 0.35 +
-      attrs.speed.value * 0.2
+      this.getPlayerStat(player, 'vision') +
+      this.getPlayerStat(player, 'tackling') * 0.5 +
+      this.getPlayerStat(player, 'determination') * 0.35 +
+      this.getPlayerStat(player, 'speed') * 0.2
     );
   }
 
@@ -3211,41 +3966,63 @@ export class MatchSimulationVariantBService {
     const centrality = 50 - Math.abs(targetPosition.x - 50);
 
     let score = 0;
+    const targetGroup = getPositionGroup(target.position);
 
     if (passIntent === PASS_INTENT.RECYCLE) {
       score += (34 - Math.min(distance, 34)) * 2.2;
       score -= Math.max(0, progression - 6) * 1.2;
       score -= Math.max(0, -progression) * 0.3;
       score -= Math.max(0, lateralDistance - 24) * 0.3;
-      if (
-        target.position === PositionEnum.DEFENDER ||
-        target.position === PositionEnum.MIDFIELDER
-      ) {
+      if (targetGroup === 'DEF' || targetGroup === 'MID') {
         score += 7;
+        if (target.position === PositionEnum.CDM || target.position === PositionEnum.CB) {
+          score += 1.0;
+        }
+        if (target.position === PositionEnum.CAM) {
+          score -= 3.0;
+        }
       }
     } else if (passIntent === PASS_INTENT.PROGRESSION) {
       score += Math.max(0, progression) * 1.7;
       score -= Math.max(0, distance - 26) * 0.7;
       score -= Math.max(0, -progression) * 2.5;
-      if (target.position === PositionEnum.MIDFIELDER) {
+      if (targetGroup === 'MID') {
         score += 4;
+        if (target.position === PositionEnum.CAM) {
+          score += 1.0;
+        }
       }
-      if (target.position === PositionEnum.FORWARD) {
+      if (targetGroup === 'FWD') {
         score += 3;
+        if (target.position === PositionEnum.WNG) {
+          score += 1.0;
+        }
       }
     } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
       score += Math.max(0, progression) * 2.2;
       score -= Math.max(0, 14 - progression) * 1.5;
       score -= Math.max(0, distance - 32) * 0.8;
-      if (target.position === PositionEnum.FORWARD) {
+      if (targetGroup === 'FWD') {
         score += 10;
+        if (target.position === PositionEnum.ST) {
+          score += 1.5;
+        }
+      } else if (target.position === PositionEnum.CAM) {
+        score += 3.0;
       }
     } else {
       score += Math.max(0, progression) * 1.3;
       score += centrality * 0.35;
       score -= Math.max(0, distance - 30) * 0.6;
-      if (target.position === PositionEnum.FORWARD) {
+      if (targetGroup === 'FWD') {
         score += 8;
+        if (target.position === PositionEnum.ST) {
+          score += 2.0;
+        } else {
+          score -= 1.0;
+        }
+      } else if (target.position === PositionEnum.CAM) {
+        score += 4.0;
       }
     }
 
@@ -3263,7 +4040,7 @@ export class MatchSimulationVariantBService {
       score += Math.max(0, progression) * 0.35;
     }
 
-    if (target.position === PositionEnum.GOALKEEPER) {
+    if (target.position === PositionEnum.GK) {
       const keeperRecycleAllowed = this.isGoalkeeperRecycleTargetAllowed(
         passer,
         currentLocation,
@@ -3351,9 +4128,10 @@ export class MatchSimulationVariantBService {
       return false;
     }
 
+    const passerGroup = getPositionGroup(passer.position);
     if (
-      passer.position !== PositionEnum.DEFENDER &&
-      passer.position !== PositionEnum.MIDFIELDER
+      passerGroup !== 'DEF' &&
+      passerGroup !== 'MID'
     ) {
       return false;
     }
@@ -3893,52 +4671,38 @@ export class MatchSimulationVariantBService {
       return 140;
     }
 
-    if (
-      playerPosition === PositionEnum.GOALKEEPER ||
-      slotPosition === PositionEnum.GOALKEEPER
-    ) {
+    const playerGroup = getPositionGroup(playerPosition);
+    const slotGroup = getPositionGroup(slotPosition);
+
+    if (playerGroup === slotGroup) {
+      return 120; // High compatibility for same group (e.g. CB at FB, or CM at CAM)
+    }
+
+    if (playerGroup === 'GK' || slotGroup === 'GK') {
       return -1000;
     }
 
-    if (
-      playerPosition === PositionEnum.DEFENDER &&
-      slotPosition === PositionEnum.MIDFIELDER
-    ) {
+    if (playerGroup === 'DEF' && slotGroup === 'MID') {
       return 72;
     }
 
-    if (
-      playerPosition === PositionEnum.MIDFIELDER &&
-      slotPosition === PositionEnum.DEFENDER
-    ) {
+    if (playerGroup === 'MID' && slotGroup === 'DEF') {
       return 68;
     }
 
-    if (
-      playerPosition === PositionEnum.MIDFIELDER &&
-      slotPosition === PositionEnum.FORWARD
-    ) {
+    if (playerGroup === 'MID' && slotGroup === 'FWD') {
       return 62;
     }
 
-    if (
-      playerPosition === PositionEnum.FORWARD &&
-      slotPosition === PositionEnum.MIDFIELDER
-    ) {
+    if (playerGroup === 'FWD' && slotGroup === 'MID') {
       return 58;
     }
 
-    if (
-      playerPosition === PositionEnum.DEFENDER &&
-      slotPosition === PositionEnum.FORWARD
-    ) {
+    if (playerGroup === 'DEF' && slotGroup === 'FWD') {
       return 20;
     }
 
-    if (
-      playerPosition === PositionEnum.FORWARD &&
-      slotPosition === PositionEnum.DEFENDER
-    ) {
+    if (playerGroup === 'FWD' && slotGroup === 'DEF') {
       return 10;
     }
 
@@ -3948,15 +4712,15 @@ export class MatchSimulationVariantBService {
   private getShapeSlotPriority(slot: ActiveShapeSlot): number {
     const centrality = 50 - Math.abs(slot.coordinates.x - 50);
 
-    if (slot.preferredPosition === PositionEnum.GOALKEEPER) {
+    if (slot.preferredPosition === PositionEnum.GK) {
       return 1000;
     }
 
-    if (slot.preferredPosition === PositionEnum.DEFENDER) {
+    if (getPositionGroup(slot.preferredPosition) === 'DEF') {
       return 330 + centrality * 2 + (slot.zone === FieldZone.DEFENSE ? 40 : 0);
     }
 
-    if (slot.preferredPosition === PositionEnum.MIDFIELDER) {
+    if (getPositionGroup(slot.preferredPosition) === 'MID') {
       return 230 + centrality + (slot.zone === FieldZone.MIDFIELD ? 25 : 0);
     }
 

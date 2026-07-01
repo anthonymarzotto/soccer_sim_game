@@ -9,7 +9,7 @@ import { FormationLibraryService } from '../../services/formation-library.servic
 import { Player, PlayerCareerStats, Role, SuspensionRecord } from '../../models/types';
 import { FormationSlot } from '../../models/simulation.types';
 import { calculateFatigueModifier, scaleOverallWithFatigue } from '../../models/simulation.types';
-import { MatchResult, Position as PositionEnum, TeamDetailsViewMode } from '../../models/enums';
+import { MatchResult, Position as PositionEnum, TeamDetailsViewMode, getPositionGroup } from '../../models/enums';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player-career-stats';
 import { getActiveInjury, isPlayerInjured, getActiveSuspension, isPlayerSuspended, isPlayerEligible } from '../../models/season-history';
@@ -51,6 +51,7 @@ export class TeamDetailsComponent {
 
   // Expose enums for template
   Position = PositionEnum;
+  getPositionGroup = getPositionGroup;
   MatchResult = MatchResult;
   ViewMode = TeamDetailsViewMode;
 
@@ -251,11 +252,15 @@ export class TeamDetailsComponent {
 
   private positionWeight(pos: string): number {
     switch (pos) {
-      case this.Position.GOALKEEPER: return 1;
-      case this.Position.DEFENDER: return 2;
-      case this.Position.MIDFIELDER: return 3;
-      case this.Position.FORWARD: return 4;
-      default: return 5;
+      case this.Position.GK: return 1;
+      case this.Position.CB: return 2;
+      case this.Position.FB: return 3;
+      case this.Position.CDM: return 4;
+      case this.Position.CM: return 5;
+      case this.Position.CAM: return 6;
+      case this.Position.WNG: return 7;
+      case this.Position.ST: return 8;
+      default: return 9;
     }
   }
 
@@ -399,14 +404,14 @@ export class TeamDetailsComponent {
   }
 
   slotBadgeClass(slot: FormationSlot): string {
-    switch (slot.position) {
-      case this.Position.GOALKEEPER:
+    switch (getPositionGroup(slot.position)) {
+      case 'GK':
         return 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30';
-      case this.Position.DEFENDER:
+      case 'DEF':
         return 'bg-blue-500/15 text-blue-300 border-blue-500/30';
-      case this.Position.MIDFIELDER:
-        return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
-      case this.Position.FORWARD:
+      case 'MID':
+        return 'bg-accent/15 text-accent border-accent/30';
+      case 'FWD':
         return 'bg-red-500/15 text-red-300 border-red-500/30';
       default:
         return 'bg-zinc-800 text-zinc-300 border-zinc-700';

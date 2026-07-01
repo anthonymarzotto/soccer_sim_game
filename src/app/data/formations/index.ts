@@ -7,6 +7,7 @@ import { FORMATION_3_5_2 } from './formation-3-5-2';
 import { FORMATION_5_3_2 } from './formation-5-3-2';
 import { FORMATION_4_5_1 } from './formation-4-5-1';
 import { FORMATION_3_6_1 } from './formation-3-6-1';
+import { FORMATION_SPINE_OVERLOAD } from './formation-spine-overload';
 
 export const ALL_PREDEFINED_FORMATIONS: FormationSchema[] = [
   FORMATION_4_4_2,
@@ -16,5 +17,6 @@ export const ALL_PREDEFINED_FORMATIONS: FormationSchema[] = [
   FORMATION_3_5_2,
   FORMATION_4_5_1,
   FORMATION_5_3_2,
-  FORMATION_3_6_1
+  FORMATION_3_6_1,
+  FORMATION_SPINE_OVERLOAD
 ];

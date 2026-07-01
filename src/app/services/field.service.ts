@@ -184,7 +184,7 @@ export class FieldService {
       }
 
       // Check position compatibility (goalkeeper must be in goalkeeper slot)
-      if (slot.preferredPosition === Position.GOALKEEPER && player.position !== Position.GOALKEEPER) {
+      if (slot.preferredPosition === Position.GK && player.position !== Position.GK) {
         errors.push(`${slot.label} must be filled by a goalkeeper`);
       }
 
@@ -204,7 +204,9 @@ export class FieldService {
   }
 
   getAvailableFormations(): string[] {
-    return this.formationLibrary.getAllFormations().map(f => f.id);
+    return this.formationLibrary.getAllFormations()
+      .filter(f => !f.isDevOnly)
+      .map(f => f.id);
   }
 
   calculateTeamTactics(team: Team, seasonYear: number, players?: Player[]): TacticalSetup {

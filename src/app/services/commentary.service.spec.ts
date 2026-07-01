@@ -21,13 +21,13 @@ describe('CommentaryService', () => {
     service = TestBed.inject(CommentaryService);
 
     homePlayers = [
-      createPlayer('home-mid', 'team-home', 'Home Mid', PositionEnum.MIDFIELDER),
-      createPlayer('home-fwd', 'team-home', 'Home Fwd', PositionEnum.FORWARD)
+      createPlayer('home-mid', 'team-home', 'Home Mid', PositionEnum.CM),
+      createPlayer('home-fwd', 'team-home', 'Home Fwd', PositionEnum.ST)
     ];
 
     awayPlayers = [
-      createPlayer('away-mid', 'team-away', 'Away Mid', PositionEnum.MIDFIELDER),
-      createPlayer('away-def', 'team-away', 'Away Def', PositionEnum.DEFENDER)
+      createPlayer('away-mid', 'team-away', 'Away Mid', PositionEnum.CM),
+      createPlayer('away-def', 'team-away', 'Away Def', PositionEnum.CB)
     ];
 
     homeTeam = createTeam('team-home', 'Home FC', homePlayers);

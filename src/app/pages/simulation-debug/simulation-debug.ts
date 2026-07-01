@@ -316,6 +316,125 @@ interface FormationOption {
                   </div>
 
                   <div>
+                    <label for="penaltyFoulRateMultiplier" class="block text-xs font-medium text-text-secondary mb-2">
+                      Penalty Foul Multiplier: {{ penaltyFoulRateMultiplier().toFixed(2) }}
+                    </label>
+                    <input
+                      id="penaltyFoulRateMultiplier"
+                      type="range"
+                      min="0.00"
+                      max="1.00"
+                      step="0.05"
+                      [value]="penaltyFoulRateMultiplier()"
+                      (input)="setPenaltyFoulRateMultiplier($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Foul probability multiplier when ball is inside the penalty box (caution coefficient)</p>
+                  </div>
+
+                  <div>
+                    <label for="saveToCornerChance" class="block text-xs font-medium text-text-secondary mb-2">
+                      Save to Corner Chance: {{ saveToCornerChance().toFixed(2) }}
+                    </label>
+                    <input
+                      id="saveToCornerChance"
+                      type="range"
+                      min="0.00"
+                      max="0.80"
+                      step="0.01"
+                      [value]="saveToCornerChance()"
+                      (input)="setSaveToCornerChance($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Chance that a goalkeeper save is deflected out for a corner kick</p>
+                  </div>
+
+                  <div>
+                    <label for="missToCornerChance" class="block text-xs font-medium text-text-secondary mb-2">
+                      Miss to Corner Chance: {{ missToCornerChance().toFixed(2) }}
+                    </label>
+                    <input
+                      id="missToCornerChance"
+                      type="range"
+                      min="0.00"
+                      max="0.50"
+                      step="0.01"
+                      [value]="missToCornerChance()"
+                      (input)="setMissToCornerChance($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Chance that a missed shot is deflected out for a corner kick</p>
+                  </div>
+
+                  <div>
+                    <label for="cornerGoalChanceBase" class="block text-xs font-medium text-text-secondary mb-2">
+                      Corner Goal Chance Base: {{ cornerGoalChanceBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="cornerGoalChanceBase"
+                      type="range"
+                      min="0.01"
+                      max="0.25"
+                      step="0.01"
+                      [value]="cornerGoalChanceBase()"
+                      (input)="setCornerGoalChanceBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Base chance that a won corner header results in a goal</p>
+                  </div>
+
+                  <div>
+                    <label for="cornerGoalChanceMax" class="block text-xs font-medium text-text-secondary mb-2">
+                      Corner Goal Chance Max: {{ cornerGoalChanceMax().toFixed(2) }}
+                    </label>
+                    <input
+                      id="cornerGoalChanceMax"
+                      type="range"
+                      min="0.05"
+                      max="0.50"
+                      step="0.01"
+                      [value]="cornerGoalChanceMax()"
+                      (input)="setCornerGoalChanceMax($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Maximum goal probability cap for corner header attempts</p>
+                  </div>
+
+                  <div>
+                    <label for="indirectFkGoalChanceBase" class="block text-xs font-medium text-text-secondary mb-2">
+                      Indirect FK Goal Chance Base: {{ indirectFkGoalChanceBase().toFixed(2) }}
+                    </label>
+                    <input
+                      id="indirectFkGoalChanceBase"
+                      type="range"
+                      min="0.01"
+                      max="0.30"
+                      step="0.01"
+                      [value]="indirectFkGoalChanceBase()"
+                      (input)="setIndirectFkGoalChanceBase($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Base chance that a won indirect free-kick header results in a goal</p>
+                  </div>
+
+                  <div>
+                    <label for="indirectFkGoalChanceMax" class="block text-xs font-medium text-text-secondary mb-2">
+                      Indirect FK Goal Chance Max: {{ indirectFkGoalChanceMax().toFixed(2) }}
+                    </label>
+                    <input
+                      id="indirectFkGoalChanceMax"
+                      type="range"
+                      min="0.05"
+                      max="0.60"
+                      step="0.01"
+                      [value]="indirectFkGoalChanceMax()"
+                      (input)="setIndirectFkGoalChanceMax($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Maximum goal probability cap for indirect free-kick header attempts</p>
+                  </div>
+
+                  <div>
                     <label for="cardChanceBase" class="block text-xs font-medium text-text-secondary mb-2">
                       Card Chance Base: {{ cardChanceBase().toFixed(2) }}
                     </label>
@@ -364,6 +483,23 @@ interface FormationOption {
                       class="w-full"
                     />
                     <p class="text-xs text-text-muted mt-1">Card chance multiplier for players already on a yellow card</p>
+                  </div>
+
+                  <div>
+                    <label for="skillCompressionFactor" class="block text-xs font-medium text-text-secondary mb-2">
+                      Skill Compression Factor: {{ skillCompressionFactor().toFixed(2) }}
+                    </label>
+                    <input
+                      id="skillCompressionFactor"
+                      type="range"
+                      min="0.20"
+                      max="1.00"
+                      step="0.05"
+                      [value]="skillCompressionFactor()"
+                      (input)="setSkillCompressionFactor($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Compresses player stats around 70 to balance game results (1.0 = no compression)</p>
                   </div>
                 </div>
               </div>
@@ -475,17 +611,25 @@ export class SimulationDebugComponent {
   readonly showTuning = signal(false);
 
   // Tuning parameters
-  readonly goalChanceBase = signal(0.21);
-  readonly goalChanceMin = signal(0.1);
-  readonly goalChanceMax = signal(0.50);
-  readonly onTargetBase = signal(0.31);
-  readonly passWeightBase = signal(0.57);
+  readonly goalChanceBase = signal(0.15);
+  readonly goalChanceMin = signal(0.07);
+  readonly goalChanceMax = signal(0.35);
+  readonly onTargetBase = signal(0.25);
+  readonly passWeightBase = signal(0.62);
   readonly carryWeightBase = signal(0.12);
-  readonly shotWeightBase = signal(0.24);
+  readonly shotWeightBase = signal(0.17);
   readonly homeAdvantageGoalBonus = signal(0.04);
   readonly cardChanceBase = signal(0.40);
   readonly directRedChance = signal(0.01);
   readonly secondYellowChanceMultiplier = signal(0.25);
+  readonly penaltyFoulRateMultiplier = signal(0.20);
+  readonly saveToCornerChance = signal(0.45);
+  readonly missToCornerChance = signal(0.30);
+  readonly cornerGoalChanceBase = signal(0.035);
+  readonly cornerGoalChanceMax = signal(0.10);
+  readonly indirectFkGoalChanceBase = signal(0.035);
+  readonly indirectFkGoalChanceMax = signal(0.10);
+  readonly skillCompressionFactor = signal(0.60);
 
   readonly canRun = computed(() => {
     return this.homeTeamId().length > 0 && this.awayTeamId().length > 0 && this.homeTeamId() !== this.awayTeamId();
@@ -688,6 +832,62 @@ export class SimulationDebugComponent {
     }
   }
 
+  setPenaltyFoulRateMultiplier(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.penaltyFoulRateMultiplier.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setSaveToCornerChance(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.saveToCornerChance.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setMissToCornerChance(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.missToCornerChance.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setCornerGoalChanceBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.cornerGoalChanceBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setCornerGoalChanceMax(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.cornerGoalChanceMax.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setIndirectFkGoalChanceBase(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.indirectFkGoalChanceBase.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setIndirectFkGoalChanceMax(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.indirectFkGoalChanceMax.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setSkillCompressionFactor(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.skillCompressionFactor.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
   async runSandbox(): Promise<void> {
     if (!this.canRun() || this.isRunning()) {
       return;
@@ -774,7 +974,15 @@ export class SimulationDebugComponent {
       homeAdvantageGoalBonus: this.homeAdvantageGoalBonus(),
       cardChanceBase: this.cardChanceBase(),
       directRedChance: this.directRedChance(),
-      secondYellowChanceMultiplier: this.secondYellowChanceMultiplier()
+      secondYellowChanceMultiplier: this.secondYellowChanceMultiplier(),
+      penaltyFoulRateMultiplier: this.penaltyFoulRateMultiplier(),
+      saveToCornerChance: this.saveToCornerChance(),
+      missToCornerChance: this.missToCornerChance(),
+      cornerGoalChanceBase: this.cornerGoalChanceBase(),
+      cornerGoalChanceMax: this.cornerGoalChanceMax(),
+      indirectFkGoalChanceBase: this.indirectFkGoalChanceBase(),
+      indirectFkGoalChanceMax: this.indirectFkGoalChanceMax(),
+      skillCompressionFactor: this.skillCompressionFactor()
     };
 
     const config: SimulationConfig = {
@@ -846,10 +1054,10 @@ export class SimulationDebugComponent {
       return exactPositionMatch;
     }
 
-    if (preferredPosition === Position.GOALKEEPER) {
+    if (preferredPosition === Position.GK) {
       return availableStarters[0];
     }
 
-    return availableStarters.find(player => player.position !== Position.GOALKEEPER) ?? availableStarters[0];
+    return availableStarters.find(player => player.position !== Position.GK) ?? availableStarters[0];
   }
 }

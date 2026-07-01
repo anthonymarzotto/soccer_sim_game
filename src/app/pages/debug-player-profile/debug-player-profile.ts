@@ -86,10 +86,9 @@ import { Position as PositionEnum } from '../../models/enums';
                       <div>
                         <label for="playerPosition" class="block text-xs font-medium text-text-muted mb-1">Position</label>
                         <select id="playerPosition" [value]="p.position" (change)="updatePosition($event)" class="w-full bg-canvas border border-border rounded px-3 py-1.5 text-sm focus:border-emerald-500 outline-none">
-                          <option [value]="PositionEnum.GOALKEEPER">GK</option>
-                          <option [value]="PositionEnum.DEFENDER">DEF</option>
-                          <option [value]="PositionEnum.MIDFIELDER">MID</option>
-                          <option [value]="PositionEnum.FORWARD">FWD</option>
+                          @for (pos of availablePositions; track pos) {
+                            <option [value]="pos">{{ pos }}</option>
+                          }
                         </select>
                       </div>
                       <div>
@@ -248,6 +247,7 @@ export class DebugPlayerProfileComponent {
 
   player = signal<Player | null>(null);
   PositionEnum = PositionEnum;
+  availablePositions = Object.values(PositionEnum);
   statCategories: StatCategory[] = ['physical', 'skill', 'goalkeeping', 'mental'];
 
   currentAttributes = computed<PlayerSeasonAttributes | null>(() => {
@@ -271,7 +271,7 @@ export class DebugPlayerProfileComponent {
   generateRandomPlayer() {
     const year = this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear();
     // Pass the selected age directly — generatePlayer handles youth quality scaling internally.
-    const p = this.generator.generatePlayer('debug', PositionEnum.FORWARD, Role.STARTER, 1.0, year, this.selectedAge() ?? undefined);
+    const p = this.generator.generatePlayer('debug', PositionEnum.ST, Role.STARTER, 1.0, year, this.selectedAge() ?? undefined);
     this.player.set(p);
   }
 
