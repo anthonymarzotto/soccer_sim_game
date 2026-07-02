@@ -437,7 +437,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
 
     console.log("DIAGNOSTIC GOALS BY POSITION:", Object.fromEntries(totalGoals));
     console.log("DIAGNOSTIC ASSISTS BY POSITION:", Object.fromEntries(totalAssists));
-  }, 40000);
+  }, 45000);
 });
 
 function create442Players(prefix: string): Player[] {

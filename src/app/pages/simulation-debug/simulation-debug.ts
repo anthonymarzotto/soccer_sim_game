@@ -505,6 +505,40 @@ interface FormationOption {
                     />
                     <p class="text-xs text-text-muted mt-1">Compresses player stats around 70 to balance game results (1.0 = no compression)</p>
                   </div>
+
+                  <div>
+                    <label for="passTurnoverRecoveryChance" class="block text-xs font-medium text-text-secondary mb-2">
+                       Pass Turnover Recovery Chance: {{ passTurnoverRecoveryChance().toFixed(2) }}
+                    </label>
+                    <input
+                      id="passTurnoverRecoveryChance"
+                      type="range"
+                      min="0.00"
+                      max="1.00"
+                      step="0.01"
+                      [value]="passTurnoverRecoveryChance()"
+                      (input)="setPassTurnoverRecoveryChance($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Chance that a standard pass turnover resolves as a loose ball recovery instead of an interception</p>
+                  </div>
+
+                  <div>
+                    <label for="passOverhitRecoveryChance" class="block text-xs font-medium text-text-secondary mb-2">
+                       Pass Overhit Recovery Chance: {{ passOverhitRecoveryChance().toFixed(2) }}
+                    </label>
+                    <input
+                      id="passOverhitRecoveryChance"
+                      type="range"
+                      min="0.00"
+                      max="1.00"
+                      step="0.01"
+                      [value]="passOverhitRecoveryChance()"
+                      (input)="setPassOverhitRecoveryChance($any($event.target).value)"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-text-muted mt-1">Chance that an overhit pass turnover resolves as a loose ball recovery instead of an interception</p>
+                  </div>
                 </div>
               </div>
             }
@@ -638,6 +672,8 @@ export class SimulationDebugComponent {
   readonly indirectFkGoalChanceBase = signal(0.035);
   readonly indirectFkGoalChanceMax = signal(0.10);
   readonly skillCompressionFactor = signal(0.60);
+  readonly passTurnoverRecoveryChance = signal(0.70);
+  readonly passOverhitRecoveryChance = signal(0.90);
 
   readonly canRun = computed(() => {
     return this.homeTeamId().length > 0 && this.awayTeamId().length > 0 && this.homeTeamId() !== this.awayTeamId();
@@ -900,6 +936,20 @@ export class SimulationDebugComponent {
     }
   }
 
+  setPassTurnoverRecoveryChance(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.passTurnoverRecoveryChance.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
+  setPassOverhitRecoveryChance(value: string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      this.passOverhitRecoveryChance.set(Math.round(parsed * 100) / 100);
+    }
+  }
+
   async runSandbox(): Promise<void> {
     if (!this.canRun() || this.isRunning()) {
       return;
@@ -998,7 +1048,9 @@ export class SimulationDebugComponent {
       cornerGoalChanceMax: this.cornerGoalChanceMax(),
       indirectFkGoalChanceBase: this.indirectFkGoalChanceBase(),
       indirectFkGoalChanceMax: this.indirectFkGoalChanceMax(),
-      skillCompressionFactor: this.skillCompressionFactor()
+      skillCompressionFactor: this.skillCompressionFactor(),
+      passTurnoverRecoveryChance: this.passTurnoverRecoveryChance(),
+      passOverhitRecoveryChance: this.passOverhitRecoveryChance()
     };
 
     const config: SimulationConfig = {

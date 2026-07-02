@@ -297,6 +297,17 @@ export class CommentaryService {
     playerName: string,
     targetName: string
   ): string {
+    if (!event.success) {
+      const recoveryTemplates = [
+        "{player} misplaces the pass, and {target} recovers the ball.",
+        "A poor pass from {player} is picked up by {target}.",
+        "{player} overhits the ball, allowing {target} to collect it.",
+        "{player} fails to find their teammate, and {target} claims possession."
+      ];
+      const template = this.getRandomCommentary(recoveryTemplates);
+      return this.formatCommentary(template, playerName, targetName);
+    }
+
     const passIntent = this.getPassIntent(event);
 
     if (style === CommentaryStyle.DETAILED && passIntent) {
