@@ -197,6 +197,7 @@ export class PlayerStatsComponent {
     { key: 'matchesPlayed', label: 'MP', sortable: true },
     { key: 'goals', label: 'Goals', sortable: true },
     { key: 'assists', label: 'Assists', sortable: true },
+    { key: 'offsides', label: 'Offsides', sortable: true },
     { key: 'shots', label: 'Shots', sortable: true },
     { key: 'shotsOnTarget', label: 'SoT', sortable: true },
     { key: 'passes', label: 'Passes', sortable: true },

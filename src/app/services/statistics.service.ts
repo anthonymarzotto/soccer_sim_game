@@ -124,6 +124,7 @@ export class StatisticsService {
         misses: primaryPlayerEvents.filter(e => e.type === EventType.MISS).length,
         goals: playerEvents.filter(e => e.type === EventType.GOAL).length,
         assists: assistsByPlayer.get(player.id) ?? 0,
+        offsides: matchState.events.filter(e => e.additionalData?.isOffside === true && e.additionalData?.offsidePlayerId === player.id).length,
         tackles: player.position === Position.GK ? 0 : tackleEvents.length,
         tacklesSuccessful: player.position === Position.GK ? 0 : tackleEvents.filter(e => e.success).length,
         interceptions: interceptionEvents.length,

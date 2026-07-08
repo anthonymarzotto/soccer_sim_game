@@ -90,6 +90,7 @@ describe('WatchGameComponent', () => {
     misses: 0,
     goals: 0,
     assists: 0,
+    offsides: 0,
     tackles: 0,
     tacklesSuccessful: 0,
     interceptions: 0,

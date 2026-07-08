@@ -116,6 +116,7 @@ export interface PlayerCareerStats {
   gamesSubbed: number;
   goals: number;
   assists: number;
+  offsides: number;
   yellowCards: number;
   redCards: number;
   shots: number;
@@ -312,6 +313,7 @@ export interface PlayerStatistics {
   misses: number;
   goals: number;
   assists: number;
+  offsides: number;
   tackles: number;
   tacklesSuccessful: number;
   interceptions: number;

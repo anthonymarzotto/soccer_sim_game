@@ -34,6 +34,7 @@ describe('LeagueAssemblyService', () => {
                 gamesSubbed: 0,
                 goals: 0,
                 assists: 0,
+                offsides: 0,
                 yellowCards: 1,
                 redCards: 0,
                 shots: 0,

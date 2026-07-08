@@ -81,33 +81,41 @@
         @if (currentTick(); as tick) {
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <div class="relative w-full max-w-[360px] mx-auto overflow-hidden rounded-xl border border-border bg-emerald-900/20" style="aspect-ratio: 0.65; max-height: 70vh;">
+            <div class="relative w-full max-w-[360px] mx-auto overflow-hidden rounded-xl border border-emerald-500/35 bg-linear-to-b from-emerald-900 via-emerald-800 to-emerald-900 shadow-xl" style="aspect-ratio: 0.65; max-height: 70vh;">
 
-              <!-- Pitch markings (simplified from watch-game) -->
-              <div class="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 bg-white/20"></div>
-              <div class="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/20"></div>
-              <div class="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40"></div>
-              <div class="absolute left-1/2 top-0 h-24 w-40 -translate-x-1/2 rounded-b-sm border-2 border-t-0 border-white/20"></div>
-              <div class="absolute left-1/2 top-0 h-10 w-16 -translate-x-1/2 rounded-b-sm border-2 border-t-0 border-white/20"></div>
-              <div class="absolute bottom-0 left-1/2 h-24 w-40 -translate-x-1/2 rounded-t-sm border-2 border-b-0 border-white/20"></div>
-              <div class="absolute bottom-0 left-1/2 h-10 w-16 -translate-x-1/2 rounded-t-sm border-2 border-b-0 border-white/20"></div>
+              <!-- Pitch markings (same as watch-game) -->
+              <div class="absolute inset-0 bg-[repeating-linear-gradient(to_bottom,rgba(16,185,129,0.08)_0,rgba(16,185,129,0.08)_10%,transparent_10%,transparent_20%)]"></div>
+              <div class="absolute left-0 right-0 top-1/2 h-px bg-emerald-200/70"></div>
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border border-emerald-200/70"></div>
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-100"></div>
+              <!-- Top 18-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 0%; height: 15.7%; left: 20.4%; right: 20.4%; width: 59.2%;"></div>
+              <!-- Bottom 18-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 84.3%; height: 15.7%; left: 20.4%; right: 20.4%; width: 59.2%;"></div>
+              <!-- Top 6-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 0%; height: 5.2%; left: 36.5%; right: 36.5%; width: 27%;"></div>
+              <!-- Bottom 6-yard box -->
+              <div class="absolute border border-emerald-200/70" style="top: 94.8%; height: 5.2%; left: 36.5%; right: 36.5%; width: 27%;"></div>
 
               <!-- Ball -->
-              <div class="absolute w-3 h-3 bg-white rounded-full z-10 shadow border border-zinc-400"
-                   style="transform: translate(-50%, -50%); transition: left 0.3s, top 0.3s;"
+              <div class="absolute -translate-x-1/2 -translate-y-1/2 z-20 text-base filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all duration-300"
+                   style="transition: left 0.3s, top 0.3s;"
                    [style.left.%]="100 - tick.ballPossession.location.x"
-                   [style.top.%]="tick.ballPossession.location.y">
+                   [style.top.%]="tick.ballPossession.location.y"
+                   title="Ball">
+                ⚽
               </div>
 
               <!-- Home Dots -->
               @for (dot of homeDots(); track dot.id) {
                 <div class="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
-                     [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.HOME).left"
-                     [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.HOME).top"
+                     [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}).left"
+                     [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}).top"
                      [title]="dot.fullName">
-                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center"
-                       [class.ring-2]="tick.ballPossession.playerWithBall === dot.playerId"
-                       [class.ring-white]="tick.ballPossession.playerWithBall === dot.playerId"
+                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center cursor-pointer transition-all duration-300"
+                       [class.ring-4]="tick.ballPossession.playerWithBall === dot.playerId"
+                       [class.ring-amber-400]="tick.ballPossession.playerWithBall === dot.playerId"
+                       [class.scale-110]="tick.ballPossession.playerWithBall === dot.playerId"
                        [style.background-color]="homeTeamColor()"
                        [style.border-color]="homeTeamAccentColor()">
                     {{ dot.label }}
@@ -118,12 +126,13 @@
               <!-- Away Dots -->
               @for (dot of awayDots(); track dot.id) {
                 <div class="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
-                     [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.AWAY).left"
-                     [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}, TeamSide.AWAY).top"
+                     [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}).left"
+                     [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}).top"
                      [title]="dot.fullName">
-                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center"
-                       [class.ring-2]="tick.ballPossession.playerWithBall === dot.playerId"
-                       [class.ring-white]="tick.ballPossession.playerWithBall === dot.playerId"
+                  <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center cursor-pointer transition-all duration-300"
+                       [class.ring-4]="tick.ballPossession.playerWithBall === dot.playerId"
+                       [class.ring-amber-400]="tick.ballPossession.playerWithBall === dot.playerId"
+                       [class.scale-110]="tick.ballPossession.playerWithBall === dot.playerId"
                        [style.background-color]="awayTeamColor()"
                        [style.border-color]="awayTeamAccentColor()">
                     {{ dot.label }}

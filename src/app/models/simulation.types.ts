@@ -81,6 +81,9 @@ export interface PlayByPlayEventAdditionalData {
   freeKickDirect?: boolean;
   aerialWinner?: string;
   aerialLoser?: string;
+  isOffside?: boolean;
+  offsidePlayerId?: string;
+  playerWithBall?: string;
 }
 
 export interface Possession {
@@ -185,6 +188,7 @@ export interface MatchState {
   events: PlayByPlayEvent[];
   fatigueTimeline: MatchFatigueTimeline;
   tickTraces?: TickTrace[];
+  counterAttackTicks?: number;
   currentMinute: number;
   homeScore: number;
   awayScore: number;

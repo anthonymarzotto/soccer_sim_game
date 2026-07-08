@@ -25,6 +25,7 @@
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Minutes Played">MIN</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Goals">G</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Assists">A</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Offsides">OFF</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots">SH</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots on Target">SOG</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Passes Attempted">P</th>
@@ -72,6 +73,7 @@
                   <td class="px-4 py-3 text-center font-mono">{{ log.playerStats.minutesPlayed }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="log.playerStats.goals > 0" [class.font-bold]="log.playerStats.goals > 0" [class.text-text-muted]="log.playerStats.goals === 0">{{ log.playerStats.goals }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="log.playerStats.assists > 0" [class.font-bold]="log.playerStats.assists > 0" [class.text-text-muted]="log.playerStats.assists === 0">{{ log.playerStats.assists }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="log.playerStats.offsides > 0" [class.font-bold]="log.playerStats.offsides > 0" [class.text-text-muted]="log.playerStats.offsides === 0">{{ log.playerStats.offsides }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.shots === 0">{{ log.playerStats.shots }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.shotsOnTarget === 0">{{ log.playerStats.shotsOnTarget }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.passes === 0">{{ log.playerStats.passes }}</td>
@@ -93,7 +95,7 @@
                     {{ scaleMatchRating(log.playerStats.rating) | number:'1.1-1' }}
                   </td>
                 } @else {
-                  <td colspan="16" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
+                  <td colspan="17" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
                 }
               </tr>
             }

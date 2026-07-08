@@ -275,7 +275,6 @@ export class TickDebugComponent {
     if (!teamObj) return [];
 
     const playersById = new Map((teamObj.players ?? []).map(p => [p.id, p]));
-    const mirrorYAxis = teamSide === TeamSide.AWAY;
 
     return slots.map(slot => {
       const player = slot.playerId ? playersById.get(slot.playerId) : null;
@@ -289,21 +288,14 @@ export class TickDebugComponent {
         label: this.toInitials(fullName),
         fullName,
         x: slot.coordinates.x,
-        y: mirrorYAxis ? 100 - slot.coordinates.y : slot.coordinates.y
+        y: slot.coordinates.y
       };
     });
   }
 
-  getPitchPoint(coords: { x: number, y: number }, teamSide?: TeamSide): PitchPoint {
+  getPitchPoint(coords: { x: number, y: number }): PitchPoint {
     const left = 100 - coords.x;
-    let top: number;
-
-    if (teamSide === TeamSide.AWAY) {
-      top = 50 + coords.y / 2;
-    } else {
-      top = coords.y / 2;
-    }
-
+    const top = coords.y;
     return { left, top };
   }
 
