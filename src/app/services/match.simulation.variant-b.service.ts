@@ -16,6 +16,8 @@ import {
   calculateFatigueModifier,
   scaleOverallWithFatigue,
   CardReason,
+  PassCandidateDecision,
+  PassScoreBreakdown,
 } from "../models/simulation.types";
 import { FieldService } from "./field.service";
 import { RngService } from "./rng.service";
@@ -130,18 +132,18 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   foulWeightBase: 0.03,
   outOfWindowShotMultiplier: 0.25,
 
-  onTargetBase: 0.25,
+  onTargetBase: 0.28,
   onTargetSkillScale: 0.0012,
   onTargetWidePenalty: 0.06,
   onTargetFatiguePenalty: 0.04,
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.15,
+  goalChanceBase: 0.19,
   goalChanceSkillVsKeeperScale: 0.0008,
   goalChanceWidePenalty: 0.035,
-  goalChanceMin: 0.07,
-  goalChanceMax: 0.35,
+  goalChanceMin: 0.10,
+  goalChanceMax: 0.52,
 
   homeAdvantageGoalBonus: 0.04,
   cardChanceBase: 0.40,
@@ -180,6 +182,7 @@ export class MatchSimulationVariantBService {
   private lastSimulationForfeit: TeamSide | null = null;
   private currentSeasonYear = new Date().getFullYear();
   private activeRosters: ResolvedRosters | null = null;
+  private lastPassDecisions: PassCandidateDecision[] | null = null;
 
   didLastSimulationEndByForfeit(): boolean {
     return this.lastSimulationForfeit !== null;
@@ -319,6 +322,7 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
   ): MatchState {
     const newState = { ...state };
+    this.lastPassDecisions = null;
     newState.currentMinute = minute;
 
     this.updateFatigue(fatigue, minute, rosters);
@@ -435,7 +439,8 @@ export class MatchSimulationVariantBService {
           centralSlots: coverage?.centralSlots.length ?? 0
         },
         eventCreated: eventDetails,
-        matchShapeSnapshot: this.createFormationSnapshot() ?? null
+        matchShapeSnapshot: this.createFormationSnapshot() ?? null,
+        passDecisions: this.lastPassDecisions ?? undefined
       });
     }
 
@@ -801,6 +806,19 @@ export class MatchSimulationVariantBService {
     const inPenaltyArea = relativeY >= 90 && Math.abs(location.x - 50) <= 20;
     if (inPenaltyArea) {
       foulWeight *= this.activeTuning.penaltyFoulRateMultiplier;
+    }
+
+    // Option A: Increase shot urgency for forwards inside the opponent's box
+    const inOpponentBox = relativeY >= 86 && Math.abs(location.x - 50) <= 22;
+    if (inOpponentBox && (carrier.position === PositionEnum.ST || carrier.position === PositionEnum.WNG || carrier.position === PositionEnum.CAM)) {
+      shotWeight += 0.08;
+      passWeight -= 0.04;
+      carryWeight -= 0.02;
+    }
+
+    // Option B: Reduce CB/GK carry probability in their defensive zone
+    if (zone === FieldZone.DEFENSE && (carrier.position === PositionEnum.CB || carrier.position === PositionEnum.GK)) {
+      carryWeight = 0.08;
     }
 
     passWeight = Math.max(0.2, passWeight);
@@ -1280,7 +1298,7 @@ export class MatchSimulationVariantBService {
         : state.ballPossession.location.y - targetPosition.y;
 
     const isOffside = this.isPlayerOffside(targetPlayer.id, currentTeam, state.ballPossession.location);
-    const passSuccess = !isOffside && this.calculatePassSuccess(
+    const basePassSuccess = this.calculatePassSuccess(
       passer,
       targetPlayer,
       teamTactics,
@@ -1290,6 +1308,9 @@ export class MatchSimulationVariantBService {
       passIntent,
       pressure,
     );
+
+    const offsideCalled = isOffside && basePassSuccess;
+    const passSuccess = basePassSuccess && !offsideCalled;
 
     if (passSuccess) {
       state.ballPossession.playerWithBall = targetPlayer.id;
@@ -1328,7 +1349,7 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    const failureMode = isOffside
+    const failureMode = offsideCalled
       ? PASS_FAILURE_MODE.LANE_CUT_OUT
       : this.determinePassFailureMode(
           state.ballPossession.location,
@@ -1339,7 +1360,7 @@ export class MatchSimulationVariantBService {
           progression,
         );
 
-    const failureLocation = isOffside ? targetPosition : state.ballPossession.location;
+    const failureLocation = offsideCalled ? targetPosition : state.ballPossession.location;
 
     const turnoverWinnerId = this.createPassFailureEvent(
       state,
@@ -1351,7 +1372,7 @@ export class MatchSimulationVariantBService {
       passIntent,
       minute,
       config,
-      isOffside,
+      offsideCalled,
       targetPlayer.id,
     );
 
@@ -1360,7 +1381,7 @@ export class MatchSimulationVariantBService {
     state.ballPossession.playerWithBall = turnoverWinnerId;
     state.ballPossession.passes = 0;
 
-    if (isOffside) {
+    if (offsideCalled) {
       state.ballPossession.location = { ...targetPosition };
       state.ballPossession.phase = this.getPhaseFromLocation(
         targetPosition,
@@ -2110,7 +2131,7 @@ export class MatchSimulationVariantBService {
     const targetFatigue = fatigue.find((entry) => entry.playerId === target.id);
 
     let baseChance =
-      (this.getPlayerStat(passer, 'shortPassing') + this.getPlayerStat(passer, 'longPassing')) / 2;
+      (this.getPlayerStat(passer, 'shortPassing') + this.getPlayerStat(passer, 'longPassing')) / 2 + 16.0;
 
     if (passerFatigue) {
       baseChance *= passerFatigue.performanceModifier;
@@ -2255,7 +2276,7 @@ export class MatchSimulationVariantBService {
       else if (teamTactics.playingStyle === PlayingStyle.POSSESSION) styleModifier = -0.15;
       else if (teamTactics.playingStyle === PlayingStyle.DEFENSIVE) styleModifier = 0.05;
 
-      const progressionChance = this.clamp(0.05 + pressure * 0.20 + styleModifier + statModifier, 0.05, 0.30);
+      const progressionChance = this.clamp(0.06 + pressure * 0.22 + styleModifier + statModifier, 0.05, 0.58);
       
       if (this.rng.random() < progressionChance) {
         return PASS_INTENT.PROGRESSION;
@@ -2294,11 +2315,12 @@ export class MatchSimulationVariantBService {
 
 
 
-    if (scorelineState === LATE_GAME_SCORELINE.TRAILING && attackingY >= 72) {
+    if (scorelineState === LATE_GAME_SCORELINE.TRAILING && attackingY >= 79) {
       return wideChannel ? PASS_INTENT.CROSS : PASS_INTENT.THROUGH_BALL;
     }
 
-    if (attackingY < 63) {
+    const recycleLimit = scorelineState === LATE_GAME_SCORELINE.TRAILING ? 68 : 63;
+    if (attackingY < recycleLimit) {
       return PASS_INTENT.RECYCLE;
     }
 
@@ -3059,7 +3081,7 @@ export class MatchSimulationVariantBService {
 
     goalChance -=
       (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
-    goalChance -= pressure * 0.09;
+    goalChance -= pressure * 0.05;
     goalChance += chainQuality * 0.015;
     goalChance += shotShapeModifier.goalChanceBonus;
     if (isHomeInPossession) {
@@ -3170,6 +3192,14 @@ export class MatchSimulationVariantBService {
     const taker = [...onFieldAttackers].sort((a, b) => {
       return (this.getPlayerStat(b, 'longPassing') + this.getPlayerStat(b, 'flair')) - (this.getPlayerStat(a, 'longPassing') + this.getPlayerStat(a, 'flair'));
     })[0] ?? onFieldAttackers[0] ?? attackers[0];
+
+    if (this.activeMatchShape) {
+      const cornerCoords = attackingTeamSide === TeamSide.HOME ? { x: 95, y: 98 } : { x: 5, y: 2 };
+      const takerSlot = this.activeMatchShape[attackingTeamSide].find(s => s.playerId === taker.id);
+      if (takerSlot) {
+        takerSlot.coordinates = { ...cornerCoords };
+      }
+    }
 
     this.createEvent(
       state,
@@ -4062,6 +4092,28 @@ export class MatchSimulationVariantBService {
     );
   }
 
+  private getDistanceToLineSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+    
+    const ab2 = abx * abx + aby * aby;
+    if (ab2 === 0) return Math.sqrt(apx * apx + apy * apy);
+    
+    let t = (apx * abx + apy * aby) / ab2;
+    if (t < 0.0 || t > 1.0) {
+       return 999.0;
+    }
+    t = Math.max(0, Math.min(1, t)); // clamp to line segment
+    
+    const closestX = ax + t * abx;
+    const closestY = ay + t * aby;
+    const dx = px - closestX;
+    const dy = py - closestY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   private scorePassTarget(
     target: Player,
     passer: Player,
@@ -4069,7 +4121,8 @@ export class MatchSimulationVariantBService {
     currentLocation: Coordinates,
     currentTeam: TeamSide,
     passIntent: PassIntent,
-  ): { target: Player; score: number; distance: number } {
+    isTargetOffside: boolean,
+  ): { target: Player; score: number; distance: number; breakdown: PassScoreBreakdown } {
     const targetPosition = this.getCurrentPositionForPlayer(
       target,
       currentTeam,
@@ -4156,18 +4209,24 @@ export class MatchSimulationVariantBService {
       }
     }
 
+    const base = score;
+    let style = 0;
+    let flank = 0;
+    let block = 0;
+    let offside = 0;
+
     if (
       tactics.playingStyle === PlayingStyle.POSSESSION &&
       passIntent !== PASS_INTENT.THROUGH_BALL
     ) {
-      score += (34 - Math.min(distance, 34)) * 0.2;
+      style += (34 - Math.min(distance, 34)) * 0.2;
     }
 
     if (
       tactics.playingStyle === PlayingStyle.COUNTER_ATTACK &&
       passIntent !== PASS_INTENT.RECYCLE
     ) {
-      score += Math.max(0, progression) * 0.35;
+      style += Math.max(0, progression) * 0.35;
     }
 
     if (target.position === PositionEnum.GK) {
@@ -4177,10 +4236,67 @@ export class MatchSimulationVariantBService {
         currentTeam,
         passIntent,
       );
-      score += keeperRecycleAllowed ? 2 : -6;
+      style += keeperRecycleAllowed ? 2 : -6;
+    }
+    score += style;
+
+    // Spread play and flank progression boosts for wide players
+    const passerIsCentral = Math.abs(currentLocation.x - 50) <= 20;
+    const targetIsWide = Math.abs(targetPosition.x - 50) >= 20;
+    
+    if (targetIsWide && (target.position === PositionEnum.WNG || target.position === PositionEnum.FB)) {
+      if (passerIsCentral) {
+        flank += 6.5;
+        const baseDistanceLimit = passIntent === PASS_INTENT.THROUGH_BALL ? 32 : 26;
+        const distCoeff = passIntent === PASS_INTENT.THROUGH_BALL ? 0.8 : 0.7;
+        const distPenalty = Math.max(0, distance - baseDistanceLimit) * distCoeff;
+        flank += distPenalty * 0.45;
+      } else {
+        // Passer is wide. If target is wide on the same side:
+        const sameFlank = (currentLocation.x - 50) * (targetPosition.x - 50) > 0;
+        if (sameFlank && target.position === PositionEnum.WNG) {
+          flank += 5.0;
+        }
+      }
+    }
+    score += flank;
+
+    // Apply passing-lane blocking penalty for defenders in line of sight
+    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    if (this.activeMatchShape && this.activeMatchShape[defendingTeam]) {
+      const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+      for (const def of defenders) {
+        const distToPath = this.getDistanceToLineSegment(
+          def.coordinates.x,
+          def.coordinates.y,
+          currentLocation.x,
+          currentLocation.y,
+          targetPosition.x,
+          targetPosition.y
+        );
+        if (distToPath < 4.5) {
+          const proximityPenalty = (4.5 - distToPath) * 3.5;
+          block -= proximityPenalty;
+          score -= proximityPenalty;
+        }
+      }
+    }
+    // Apply offside awareness penalty (better passer vision/passing reduces chance of selecting offside target)
+    if (isTargetOffside) {
+      const vision = this.getPlayerStat(passer, 'vision');
+      const offsidePenalty = vision <= 40
+        ? 0
+        : Math.pow(vision - 40, 2) * 0.08 + 10.0;
+      offside -= offsidePenalty;
+      score -= offsidePenalty;
     }
 
-    return { target, score, distance };
+    return {
+      target,
+      score,
+      distance,
+      breakdown: { base, style, flank, block, offside }
+    };
   }
 
   private findPassTarget(
@@ -4199,6 +4315,32 @@ export class MatchSimulationVariantBService {
       return null;
     }
 
+    // Pre-calculate offside player IDs once to make lookup O(1) inside target scoring loop
+    const offsidePlayerIds = new Set<string>();
+    if (this.activeMatchShape) {
+      const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+      if (defenders.length >= 2) {
+        const defenderAttY = defenders.map(s =>
+          currentTeam === TeamSide.HOME ? s.coordinates.y : 100 - s.coordinates.y
+        );
+        defenderAttY.sort((a, b) => b - a);
+        const offsideLine = defenderAttY[1];
+        const ballAttY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
+        const offsideThresholdY = Math.max(50, ballAttY, offsideLine);
+
+        const attackers = this.activeMatchShape[currentTeam];
+        for (const slot of attackers) {
+          if (slot.playerId && slot.preferredPosition !== PositionEnum.GK) {
+            const attackerAttY = currentTeam === TeamSide.HOME ? slot.coordinates.y : 100 - slot.coordinates.y;
+            if (attackerAttY > offsideThresholdY) {
+              offsidePlayerIds.add(slot.playerId);
+            }
+          }
+        }
+      }
+    }
+
     const scoredTargets = potentialTargets
       .map((target) =>
         this.scorePassTarget(
@@ -4208,6 +4350,7 @@ export class MatchSimulationVariantBService {
           currentLocation,
           currentTeam,
           passIntent,
+          offsidePlayerIds.has(target.id),
         ),
       )
       .sort((left, right) => {
@@ -4224,28 +4367,76 @@ export class MatchSimulationVariantBService {
 
     const topCandidates = scoredTargets.slice(
       0,
-      Math.min(2, scoredTargets.length),
+      Math.min(5, scoredTargets.length),
     );
 
-    if (topCandidates.length === 1) {
-      return topCandidates[0].target;
+    // Save details about all candidates' pass decisions for the debug trace
+    const playerRoles = new Map<string, string>();
+    if (tactics.formation && tactics.formation.positions) {
+      for (const pos of tactics.formation.positions) {
+        playerRoles.set(pos.playerId, pos.role);
+      }
     }
 
-    const weakestTopScore = topCandidates[topCandidates.length - 1].score;
-    const weightedCandidates = topCandidates.map((candidate, index) => {
-      const normalizedScore = candidate.score - weakestTopScore;
-      const scoreWeight = Math.max(0.1, normalizedScore + 1);
-      const rankWeight = index === 0 ? 1.6 : 0.35;
+    const decisions: PassCandidateDecision[] = [];
+    const probabilities = new Map<string, number>();
 
-      return {
-        target: candidate.target,
-        weight: scoreWeight * rankWeight,
-      };
-    });
+    let pickedTarget: Player;
+    let weightedCandidates: { target: Player; weight: number }[] = [];
 
-    return (
-      this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target
-    );
+    if (topCandidates.length === 1) {
+      probabilities.set(topCandidates[0].target.id, 1.0);
+      pickedTarget = topCandidates[0].target;
+    } else {
+      // Temperature T controls selection randomness (lower = more deterministic, higher = more random/varied).
+      const T = 12.0;
+      
+      // Subtract maxScore to avoid floating-point overflow with Math.exp
+      const maxScore = topCandidates[0].score;
+      
+      weightedCandidates = topCandidates.map((candidate) => {
+        const weight = Math.exp((candidate.score - maxScore) / T);
+        return {
+          target: candidate.target,
+          weight,
+        };
+      });
+
+      const totalWeight = weightedCandidates.reduce(
+        (sum, entry) => sum + entry.weight,
+        0,
+      );
+
+      if (totalWeight > 0) {
+        for (const candidate of weightedCandidates) {
+          probabilities.set(candidate.target.id, candidate.weight / totalWeight);
+        }
+      } else {
+        probabilities.set(topCandidates[0].target.id, 1.0);
+      }
+
+      pickedTarget = this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target;
+    }
+
+    for (const scored of scoredTargets) {
+      const target = scored.target;
+      const isOffside = offsidePlayerIds.has(target.id);
+      const role = playerRoles.get(target.id) ?? target.position;
+      decisions.push({
+        playerId: target.id,
+        playerName: target.name,
+        role,
+        score: scored.score,
+        distance: scored.distance,
+        probability: probabilities.get(target.id) ?? 0,
+        isTargetOffside: isOffside,
+        breakdown: scored.breakdown
+      });
+    }
+
+    this.lastPassDecisions = decisions;
+
+    return pickedTarget;
   }
 
   private isGoalkeeperRecycleTargetAllowed(
@@ -4541,7 +4732,7 @@ export class MatchSimulationVariantBService {
 
       // 2. Compute dynamic coordinates (Option A Block Shifts + Option B Offsets)
       const dropMidPlayerIds = new Set<string>();
-      if (inPossession && ballAttY < 45) {
+      if (inPossession && ballAttY < 55) {
         const midSlots = slots.filter(slot => slot.playerId && getPositionGroup(slot.preferredPosition) === 'MID');
         const positionOrder: Record<PositionEnum, number> = {
           [PositionEnum.CDM]: 0,
@@ -4581,7 +4772,7 @@ export class MatchSimulationVariantBService {
           const progressionRatio = ballAttY / 100;
 
           if (slot.preferredPosition === PositionEnum.GK) {
-            // Goalkeeper stays near goal
+            // Goalkeeper Y starts from ownGoalY (which is always absolute own goal)
             newY = ownGoalY + attackingBias * (5 + ballAttY * 0.10);
             newY = this.clamp(newY, isHome ? 2 : 83, isHome ? 17 : 98);
           } else {
@@ -4599,7 +4790,7 @@ export class MatchSimulationVariantBService {
 
             // Midfielders dropping deep to support build-up
             if (slot.playerId && dropMidPlayerIds.has(slot.playerId)) {
-              const dropDistance = 12 * (1 - ballAttY / 45);
+              const dropDistance = 22 * (1 - ballAttY / 55);
               newY -= dropDistance * attackingBias;
             }
 
@@ -4609,16 +4800,24 @@ export class MatchSimulationVariantBService {
               const spreadFactor = 1 - buildUpProgress;
 
               if (slot.preferredPosition === PositionEnum.CB) {
-                if (baseCoords.x < 50) {
-                  newX -= 8 * spreadFactor;
+                if (basePos.coordinates.x < 50) {
+                  newX -= 8 * spreadFactor * attackingBias;
                 } else {
-                  newX += 8 * spreadFactor;
+                  newX += 8 * spreadFactor * attackingBias;
                 }
               } else if (slot.preferredPosition === PositionEnum.FB) {
-                if (baseCoords.x < 50) {
-                  newX = Math.max(5, newX - 6 * spreadFactor);
+                if (basePos.coordinates.x < 50) {
+                  if (isHome) {
+                    newX = Math.max(5, newX - 6 * spreadFactor);
+                  } else {
+                    newX = Math.min(95, newX + 6 * spreadFactor);
+                  }
                 } else {
-                  newX = Math.min(95, newX + 6 * spreadFactor);
+                  if (isHome) {
+                    newX = Math.min(95, newX + 6 * spreadFactor);
+                  } else {
+                    newX = Math.max(5, newX - 6 * spreadFactor);
+                  }
                 }
                 newY += 4 * attackingBias * spreadFactor;
               }
@@ -4628,10 +4827,10 @@ export class MatchSimulationVariantBService {
             const isWideFlank = Math.abs(ballX - 50) >= 18;
             if (isWideFlank) {
               const ballOnLeft = ballX < 50;
-              const slotOnLeft = baseCoords.x < 50;
+              const slotOnLeft = basePos.coordinates.x < 50;
               
               if (slot.preferredPosition === PositionEnum.FB || slot.preferredPosition === PositionEnum.WNG) {
-                if (ballOnLeft === slotOnLeft) {
+                if (ballOnLeft === (isHome ? slotOnLeft : !slotOnLeft)) {
                   // Ball side FB/WNG pushes high
                   newY += 10 * attackingBias;
                 } else if (slot.preferredPosition === PositionEnum.FB) {
@@ -4684,9 +4883,119 @@ export class MatchSimulationVariantBService {
           }
         }
 
-        // Clamp positions to field boundaries
-        slot.coordinates.x = this.clamp(newX, 2, 98);
-        slot.coordinates.y = this.clamp(newY, isHome ? 2 : 0, isHome ? 100 : 98);
+        // Apply dynamic space-seeking repulsion for attackers & positional marking for defenders (in absolute coordinates)
+        let targetX = newX;
+        let targetY = newY;
+
+        if (slot.preferredPosition !== PositionEnum.GK) {
+          const opponentSide = isHome ? TeamSide.AWAY : TeamSide.HOME;
+          if (inPossession) {
+            // Attacking: Repulse away from closest defender within 8 yards to find space
+            const defenders = this.activeMatchShape[opponentSide].filter(s => s.playerId !== null);
+            let closestDef: ActiveShapeSlot | null = null;
+            let minDistance = 999;
+            for (const def of defenders) {
+              const dist = this.fieldService.getDistance({ x: targetX, y: targetY }, def.coordinates);
+              if (dist < minDistance) {
+                minDistance = dist;
+                closestDef = def;
+              }
+            }
+            if (closestDef && minDistance < 8.0) {
+              const repulseFactor = (8.0 - minDistance) * 0.35;
+              const dx = targetX - closestDef.coordinates.x;
+              const dy = targetY - closestDef.coordinates.y;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              targetX += (dx / len) * repulseFactor;
+              targetY += (dy / len) * repulseFactor;
+            }
+          } else {
+            // Defending: Attract towards closest attacker within 12 yards to mark them
+            const attackers = this.activeMatchShape[opponentSide].filter(s => s.playerId !== null && s.preferredPosition !== PositionEnum.GK);
+            let closestAtt: ActiveShapeSlot | null = null;
+            let minDistance = 999;
+            for (const att of attackers) {
+              const dist = this.fieldService.getDistance({ x: targetX, y: targetY }, att.coordinates);
+              if (dist < minDistance) {
+                minDistance = dist;
+                closestAtt = att;
+              }
+            }
+            if (closestAtt && minDistance < 12.0) {
+              const attractFactor = (12.0 - minDistance) * 0.22;
+              const dx = closestAtt.coordinates.x - targetX;
+              const dy = closestAtt.coordinates.y - targetY;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              targetX += (dx / len) * attractFactor;
+              targetY += (dy / len) * attractFactor;
+            }
+          }
+        }
+
+        const lastEvent = state.events[state.events.length - 1];
+        const isFreeKickOrOffside = lastEvent && (
+          lastEvent.type === EventType.FOUL ||
+          (lastEvent.additionalData && lastEvent.additionalData.isOffside === true)
+        );
+
+        // Pull offside attackers back onside on a new possession (passes === 0) only for free kicks and offsides
+        if (inPossession && state.ballPossession.passes === 0 && isFreeKickOrOffside && slot.preferredPosition !== PositionEnum.GK) {
+          const defendingTeam = isHome ? TeamSide.AWAY : TeamSide.HOME;
+          const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+          if (defenders.length >= 2) {
+            const defenderAttY = defenders.map(s =>
+              isHome ? s.coordinates.y : 100 - s.coordinates.y
+            );
+            defenderAttY.sort((a, b) => b - a);
+            const offsideLine = defenderAttY[1];
+            const ballAttY = isHome ? ball.y : 100 - ball.y;
+            const limitAttY = Math.max(offsideLine, ballAttY);
+            const attackerAttY = isHome ? targetY : 100 - targetY;
+            if (attackerAttY > 50 && attackerAttY > limitAttY) {
+              const adjustedAttY = limitAttY - 0.5;
+              targetY = isHome ? adjustedAttY : 100 - adjustedAttY;
+            }
+          }
+        }
+
+        // Dynamic Offside Pullback: keep attackers onside during open play unless they are actively making a run
+        if (inPossession && slot.preferredPosition !== PositionEnum.GK && slot.runProgress === 0) {
+          const defendingTeam = isHome ? TeamSide.AWAY : TeamSide.HOME;
+          const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+          if (defenders.length >= 2) {
+            const defenderAttY = defenders.map(s =>
+              isHome ? s.coordinates.y : 100 - s.coordinates.y
+            );
+            defenderAttY.sort((a, b) => b - a);
+            const offsideLine = defenderAttY[1];
+            const ballAttY = isHome ? ball.y : 100 - ball.y;
+            const limitAttY = Math.max(50, ballAttY, offsideLine) - 1.2;
+            const attackerAttY = isHome ? targetY : 100 - targetY;
+            if (attackerAttY > limitAttY) {
+              targetY = isHome ? limitAttY : 100 - limitAttY;
+            }
+          }
+        }
+
+        // Clamp positions to field boundaries in absolute space
+        targetX = this.clamp(targetX, 2, 98);
+        targetY = this.clamp(targetY, isHome ? 2 : 0, isHome ? 100 : 98);
+
+        // Smoothly interpolate coordinate shifts to model movement lag / transition time
+        const prevX = slot.coordinates.x;
+        const prevY = slot.coordinates.y;
+
+        const isKickoff = ball.x === 50 && ball.y === 50 && state.ballPossession.passes === 0;
+        const isNewPossession = inPossession && state.ballPossession.passes === 0 && isFreeKickOrOffside;
+        if (isKickoff || (prevX === 0 && prevY === 0) || isNewPossession) {
+          slot.coordinates.x = targetX;
+          slot.coordinates.y = targetY;
+        } else {
+          // Attacking transition is faster, defensive transition is smoother
+          const interpRate = inPossession ? 0.70 : 0.30;
+          slot.coordinates.x = prevX + (targetX - prevX) * interpRate;
+          slot.coordinates.y = prevY + (targetY - prevY) * interpRate;
+        }
         
         // Update slot zone based on current Y
         const relativeY = isHome ? slot.coordinates.y : 100 - slot.coordinates.y;
@@ -5201,6 +5510,7 @@ export class MatchSimulationVariantBService {
         coordinates: { ...slot.coordinates },
         zone: slot.zone,
         role: slot.role,
+        runProgress: slot.runProgress,
       })),
       away: this.activeMatchShape.away.map((slot) => ({
         slotId: slot.slotId,
@@ -5208,6 +5518,7 @@ export class MatchSimulationVariantBService {
         coordinates: { ...slot.coordinates },
         zone: slot.zone,
         role: slot.role,
+        runProgress: slot.runProgress,
       })),
     };
   }

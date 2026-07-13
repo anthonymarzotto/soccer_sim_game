@@ -46,6 +46,7 @@ export interface VariantBShapeSlotSnapshot {
   coordinates: Coordinates;
   zone: FieldZone;
   role: string;
+  runProgress?: number;
 }
 
 export interface VariantBMatchShapeSnapshot {
@@ -163,6 +164,24 @@ export interface VariantBTuningConfig {
   indirectFkGoalChanceMax: number;
   skillCompressionFactor?: number;
 }
+export interface PassScoreBreakdown {
+  base: number;
+  style: number;
+  flank: number;
+  block: number;
+  offside: number;
+}
+
+export interface PassCandidateDecision {
+  playerId: string;
+  playerName: string;
+  role: string;
+  score: number;
+  distance: number;
+  probability: number;
+  isTargetOffside: boolean;
+  breakdown: PassScoreBreakdown;
+}
 
 export interface TickTrace {
   minute: number;
@@ -181,6 +200,7 @@ export interface TickTrace {
   };
   eventCreated: PlayByPlayEvent | null;
   matchShapeSnapshot: VariantBMatchShapeSnapshot | null;
+  passDecisions?: PassCandidateDecision[];
 }
 
 export interface MatchState {
