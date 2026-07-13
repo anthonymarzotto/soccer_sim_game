@@ -1360,7 +1360,17 @@ export class MatchSimulationVariantBService {
           progression,
         );
 
-    const failureLocation = offsideCalled ? targetPosition : state.ballPossession.location;
+    let failureLocation = state.ballPossession.location;
+    if (offsideCalled || failureMode === PASS_FAILURE_MODE.OVERHIT) {
+      failureLocation = targetPosition;
+    } else if (failureMode === PASS_FAILURE_MODE.LANE_CUT_OUT) {
+      failureLocation = this.getPassInterceptionLocation(
+        state.ballPossession.location,
+        targetPosition,
+        currentTeam,
+        opponentPlayers,
+      );
+    }
 
     const turnoverWinnerId = this.createPassFailureEvent(
       state,
@@ -2165,6 +2175,8 @@ export class MatchSimulationVariantBService {
     if (attackingY > 50) {
       baseChance -= (attackingY - 50) * 0.15;
     }
+
+
 
     baseChance += this.calculatePassShapeModifier(
       currentLocation,
@@ -4083,12 +4095,20 @@ export class MatchSimulationVariantBService {
       );
     }
 
+    let positionalModifier = 0;
+    if (player.position === PositionEnum.ST) {
+      positionalModifier = -15;
+    } else if (player.position === PositionEnum.CB || player.position === PositionEnum.CDM) {
+      positionalModifier = 5;
+    }
+
     return (
       proximityScore +
       this.getPlayerStat(player, 'vision') +
       this.getPlayerStat(player, 'tackling') * 0.5 +
       this.getPlayerStat(player, 'determination') * 0.35 +
-      this.getPlayerStat(player, 'speed') * 0.2
+      this.getPlayerStat(player, 'speed') * 0.2 +
+      positionalModifier
     );
   }
 
@@ -4112,6 +4132,88 @@ export class MatchSimulationVariantBService {
     const dx = px - closestX;
     const dy = py - closestY;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private getPassInterceptionLocation(
+    start: Coordinates,
+    target: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
+  ): Coordinates {
+    if (!this.activeMatchShape) {
+      return { x: start.x + 0.6 * (target.x - start.x), y: start.y + 0.6 * (target.y - start.y) };
+    }
+
+    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+
+    let bestScore = -Infinity;
+    let bestT = 0.6; // Default fallback to midpoint
+
+    const ax = start.x;
+    const ay = start.y;
+    const bx = target.x;
+    const by = target.y;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const ab2 = abx * abx + aby * aby;
+
+    if (ab2 === 0) {
+      return { ...start };
+    }
+
+    for (const def of defenders) {
+      const player = this.findPlayerById(def.playerId!, opponentPlayers);
+      if (!player || player.position === PositionEnum.GK) continue;
+
+      const px = def.coordinates.x;
+      const py = def.coordinates.y;
+
+      const apx = px - ax;
+      const apy = py - ay;
+
+      const t = (apx * abx + apy * aby) / ab2;
+
+      // Only evaluate defenders whose projection is along the pass path
+      if (t >= 0.0 && t <= 1.0) {
+        const closestX = ax + t * abx;
+        const closestY = ay + t * aby;
+        const dx = px - closestX;
+        const dy = py - closestY;
+        const distToPath = Math.sqrt(dx * dx + dy * dy);
+
+        const proximityScore = Math.max(0, 30 - distToPath) * 2.5;
+        let positionalModifier = 0;
+        if (player.position === PositionEnum.ST) {
+          positionalModifier = -15;
+        } else if (player.position === PositionEnum.CB || player.position === PositionEnum.CDM) {
+          positionalModifier = 5;
+        }
+
+        const attributesScore =
+          this.getPlayerStat(player, 'vision') +
+          this.getPlayerStat(player, 'tackling') * 0.5 +
+          this.getPlayerStat(player, 'determination') * 0.35 +
+          this.getPlayerStat(player, 'speed') * 0.2 +
+          positionalModifier;
+
+        const score = proximityScore + attributesScore;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestT = t;
+        }
+      }
+    }
+
+    // Clamp t to prevent the failure location from being exactly at the feet of the passer or target
+    const clampedT = Math.max(0.2, Math.min(0.9, bestT));
+
+    return {
+      x: start.x + clampedT * (target.x - start.x),
+      y: start.y + clampedT * (target.y - start.y),
+    };
   }
 
   private scorePassTarget(

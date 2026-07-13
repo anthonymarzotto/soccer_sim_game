@@ -109,6 +109,20 @@
                 }
               </svg>
 
+              <!-- Interception/Tackle Event Marker -->
+              @if (tick.eventCreated; as event) {
+                @if (event.type === 'INTERCEPTION' || event.type === 'TACKLE') {
+                  <div class="absolute -translate-x-1/2 -translate-y-1/2 z-20 text-base p-0.5 rounded-full bg-black/60 border border-solid animate-pulse flex items-center justify-center"
+                       [class.border-yellow-400]="event.type === 'INTERCEPTION'"
+                       [class.border-red-500]="event.type === 'TACKLE'"
+                       [style.left.%]="getPitchPoint(event.location).left"
+                       [style.top.%]="getPitchPoint(event.location).top"
+                       [title]="event.type + ' Location: X=' + event.location.x.toFixed(1) + ' Y=' + event.location.y.toFixed(1)">
+                    {{ event.type === 'INTERCEPTION' ? '🛑' : '🛡️' }}
+                  </div>
+                }
+              }
+
               <!-- Ball -->
               <div class="absolute -translate-x-1/2 -translate-y-1/2 z-20 text-base filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all duration-300"
                    style="transition: left 0.3s, top 0.3s;"
@@ -209,6 +223,16 @@
                             <span class="text-text-muted">Intercepted By:</span>
                             <span class="text-text-primary">{{ event.winnerName }}</span>
                           </div>
+                          @if (event.distanceToLane !== undefined) {
+                            <div class="flex justify-between">
+                              <span class="text-text-muted">Dist to Pass Lane:</span>
+                              <span class="text-text-primary font-semibold">{{ event.distanceToLane.toFixed(1) }}m</span>
+                            </div>
+                          }
+                          <div class="flex justify-between">
+                            <span class="text-text-muted">Interception Location:</span>
+                            <span class="text-text-primary font-semibold">X: {{ event.location.x.toFixed(1) }}, Y: {{ event.location.y.toFixed(1) }}</span>
+                          </div>
                         }
                       </div>
                     }
@@ -227,6 +251,10 @@
                         <div class="flex justify-between">
                           <span class="text-text-muted">Tackler:</span>
                           <span class="text-text-primary">{{ event.winnerName }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span class="text-text-muted">Tackle Location:</span>
+                          <span class="text-text-primary font-semibold">X: {{ event.location.x.toFixed(1) }}, Y: {{ event.location.y.toFixed(1) }}</span>
                         </div>
                         <div class="flex justify-between border-t border-border/30 pt-1.5 mt-1">
                           <span class="text-text-muted">Outcome:</span>

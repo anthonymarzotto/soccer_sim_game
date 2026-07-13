@@ -163,6 +163,29 @@ export class TickDebugComponent {
     const isFailedPass = isTurnover && cleanedData?.passFailure !== undefined;
     const isCarryTackle = isTurnover && !isFailedPass;
 
+    let distanceToLane: number | undefined = undefined;
+    if (isFailedPass && event.additionalData?.passFailure === 'LANE_CUT_OUT') {
+      const interceptorId = event.playerIds?.[0];
+      const passerId = event.playerIds?.[1];
+      const targetId = event.additionalData?.offsidePlayerId;
+      if (interceptorId && passerId && targetId) {
+        const allDots = [...this.homeDots(), ...this.awayDots()];
+        const interceptorDot = allDots.find(d => d.playerId === interceptorId);
+        const passerDot = allDots.find(d => d.playerId === passerId);
+        const targetDot = allDots.find(d => d.playerId === targetId);
+        if (interceptorDot && passerDot && targetDot) {
+          distanceToLane = this.getDistanceToLineSegment(
+            interceptorDot.x,
+            interceptorDot.y,
+            passerDot.x,
+            passerDot.y,
+            targetDot.x,
+            targetDot.y
+          );
+        }
+      }
+    }
+
     return {
       type: event.type,
       description: event.description,
@@ -178,7 +201,9 @@ export class TickDebugComponent {
       passFailure: cleanedData?.passFailure,
       winnerName: isTurnover ? playerNames[0] : undefined,
       loserName: isTurnover ? playerNames[1] : undefined,
-      offsideCalled: cleanedData?.isOffside || false
+      offsideCalled: cleanedData?.isOffside || false,
+      distanceToLane,
+      location: event.location
     };
   });
 
@@ -258,17 +283,16 @@ export class TickDebugComponent {
     if (!tick || !tick.eventCreated) return null;
 
     const event = tick.eventCreated;
-    if (event.playerIds && event.playerIds.length >= 2) {
+    const isTurnover = event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION;
+    const isPass = event.type === EventType.PASS;
+    const isFailedPass = isTurnover && event.additionalData?.passFailure !== undefined;
+
+    if (isPass && event.playerIds && event.playerIds.length >= 2) {
       const actorId = event.playerIds[0];
       const targetId = event.playerIds[1];
-
-      const homeDots = this.homeDots();
-      const awayDots = this.awayDots();
-      const allDots = [...homeDots, ...awayDots];
-
+      const allDots = [...this.homeDots(), ...this.awayDots()];
       const actorDot = allDots.find(d => d.playerId === actorId);
       const targetDot = allDots.find(d => d.playerId === targetId);
-
       if (actorDot && targetDot) {
         return {
           x1: actorDot.x,
@@ -276,6 +300,22 @@ export class TickDebugComponent {
           x2: targetDot.x,
           y2: targetDot.y
         };
+      }
+    } else if (isFailedPass) {
+      const passerId = event.playerIds?.[1];
+      const targetId = event.additionalData?.offsidePlayerId;
+      if (passerId && targetId) {
+        const allDots = [...this.homeDots(), ...this.awayDots()];
+        const passerDot = allDots.find(d => d.playerId === passerId);
+        const targetDot = allDots.find(d => d.playerId === targetId);
+        if (passerDot && targetDot) {
+          return {
+            x1: passerDot.x,
+            y1: passerDot.y,
+            x2: targetDot.x,
+            y2: targetDot.y
+          };
+        }
       }
     }
     return null;

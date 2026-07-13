@@ -4,7 +4,7 @@ import { SIMULATION_SEED_MAX_LENGTH } from '../../constants';
 import { GameService } from '../../services/game.service';
 import { MatchSimulationVariantBService } from '../../services/match.simulation.variant-b.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
-import { CommentaryStyle, Position, Role } from '../../models/enums';
+import { CommentaryStyle, Position, Role, EventType } from '../../models/enums';
 import { Match, Player, Team } from '../../models/types';
 import { MatchState, SimulationConfig, VariantBTuningConfig } from '../../models/simulation.types';
 import { normalizeTeamFormation } from '../../models/team-migration';
@@ -17,6 +17,8 @@ interface VariantMetrics {
   totalShots: number;
   shotsOnTarget: number;
   events: number;
+  tackles: number;
+  interceptions: number;
 }
 
 interface SimulationRunRow {
@@ -33,6 +35,8 @@ interface SimulationSummary {
   homeWins: number;
   draws: number;
   awayWins: number;
+  avgTackles: number;
+  avgInterceptions: number;
 }
 
 interface TeamOption {
@@ -524,15 +528,15 @@ interface FormationOption {
             </div>
 
             @if (summaryB()) {
-              <div class="rounded-xl border border-border bg-canvas p-4">
-                <h3 class="text-sm font-semibold text-text-secondary">Batch Summary</h3>
-
+              <div class="space-y-4">
                 <div class="mt-3 rounded-lg border border-border p-4">
                   <h4 class="text-cyan-300 font-semibold">Variant B</h4>
                   <p class="mt-2 text-sm text-text-secondary">Runs: {{ summaryB()!.runs }}</p>
                   <p class="text-sm text-text-secondary">Avg Goals: {{ summaryB()!.avgGoals.toFixed(2) }}</p>
                   <p class="text-sm text-text-secondary">Avg Shots: {{ summaryB()!.avgShots.toFixed(2) }}</p>
                   <p class="text-sm text-text-secondary">Avg SOT: {{ summaryB()!.avgShotsOnTarget.toFixed(2) }}</p>
+                  <p class="text-sm text-text-secondary">Avg Tackles: {{ summaryB()!.avgTackles.toFixed(2) }}</p>
+                  <p class="text-sm text-text-secondary">Avg Interceptions: {{ summaryB()!.avgInterceptions.toFixed(2) }}</p>
                   <p class="text-sm text-text-muted">W-D-L: {{ summaryB()!.homeWins }}-{{ summaryB()!.draws }}-{{ summaryB()!.awayWins }}</p>
                 </div>
               </div>
@@ -550,6 +554,8 @@ interface FormationOption {
                         <th class="px-3 py-2">B Goals</th>
                         <th class="px-3 py-2">Shots</th>
                         <th class="px-3 py-2">SOT</th>
+                        <th class="px-3 py-2">Tackles</th>
+                        <th class="px-3 py-2">Intercepts</th>
                         <th class="px-3 py-2">Events</th>
                       </tr>
                     </thead>
@@ -562,6 +568,8 @@ interface FormationOption {
                           <td class="px-3 py-2">{{ row.variantB.totalGoals }}</td>
                           <td class="px-3 py-2">{{ row.variantB.totalShots }}</td>
                           <td class="px-3 py-2">{{ row.variantB.shotsOnTarget }}</td>
+                          <td class="px-3 py-2">{{ row.variantB.tackles }}</td>
+                          <td class="px-3 py-2">{{ row.variantB.interceptions }}</td>
                           <td class="px-3 py-2">{{ row.variantB.events }}</td>
                         </tr>
                       }
@@ -646,12 +654,14 @@ export class SimulationDebugComponent {
         acc.goals += row.variantB.totalGoals;
         acc.shots += row.variantB.totalShots;
         acc.shotsOnTarget += row.variantB.shotsOnTarget;
+        acc.tackles += row.variantB.tackles;
+        acc.interceptions += row.variantB.interceptions;
         if (row.variantB.homeScore > row.variantB.awayScore) acc.homeWins++;
         else if (row.variantB.homeScore < row.variantB.awayScore) acc.awayWins++;
         else acc.draws++;
         return acc;
       },
-      { goals: 0, shots: 0, shotsOnTarget: 0, homeWins: 0, awayWins: 0, draws: 0 }
+      { goals: 0, shots: 0, shotsOnTarget: 0, homeWins: 0, awayWins: 0, draws: 0, tackles: 0, interceptions: 0 }
     );
 
     return {
@@ -661,7 +671,9 @@ export class SimulationDebugComponent {
       avgShotsOnTarget: totals.shotsOnTarget / rows.length,
       homeWins: totals.homeWins,
       draws: totals.draws,
-      awayWins: totals.awayWins
+      awayWins: totals.awayWins,
+      avgTackles: totals.tackles / rows.length,
+      avgInterceptions: totals.interceptions / rows.length
     };
   });
 
@@ -946,13 +958,17 @@ export class SimulationDebugComponent {
   }
 
   private toMetrics(state: MatchState): VariantMetrics {
+    const tackles = state.events.filter(e => e.type === EventType.TACKLE).length;
+    const interceptions = state.events.filter(e => e.type === EventType.INTERCEPTION).length;
     return {
       homeScore: state.homeScore,
       awayScore: state.awayScore,
       totalGoals: state.homeScore + state.awayScore,
       totalShots: state.homeShots + state.awayShots,
       shotsOnTarget: state.homeShotsOnTarget + state.awayShotsOnTarget,
-      events: state.events.length
+      events: state.events.length,
+      tackles,
+      interceptions
     };
   }
 
