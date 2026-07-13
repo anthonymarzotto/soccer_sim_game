@@ -1,0 +1,84 @@
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-7xl space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Team Statistics</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">Team Performance Leaderboards</p>
+      </div>
+    </div>
+
+    <div class="bg-panel border border-border rounded-xl p-4 md:p-6 shadow-xl space-y-4">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label for="season-filter" class="filter-label">Season</label>
+          <select id="season-filter" class="filter-control" [ngModel]="selectedYear() || currentSeasonYear()"
+            (ngModelChange)="selectedYear.set($event)">
+            @for (season of availableSeasons(); track season) {
+            <option [ngValue]="season">{{ season }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-panel border border-border rounded-xl overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="stats-table w-full text-sm text-left">
+          <thead class="text-xs text-text-muted uppercase bg-panel border-b-2 border-border sticky top-0 z-10 font-display">
+            <tr>
+              <th class="px-4 py-4 font-bold tracking-wider whitespace-nowrap text-center">Logo</th>
+              @for (col of columns; track col.key) {
+              <th class="px-4 py-4 font-bold tracking-wider whitespace-nowrap" [class.sortable]="col.sortable"
+                [class.text-center]="col.key !== 'name'"
+                [title]="col.tooltip"
+                (click)="col.sortable && toggleSort(col.key)">
+                {{ col.label }}
+                @if (isSorted(col.key)) {
+                <span class="sort-indicator">{{ getSortIndicator(col.key) }}</span>
+                }
+              </th>
+              }
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            @for (row of filteredAndSortedTeams(); track row.team.id + '-' + row.seasonYear) {
+            <tr class="hover:bg-canvas/50 transition-colors group" [class.row-user-highlight]="isUserTeam(row)">
+              <td class="px-4 py-3 whitespace-nowrap text-text-secondary col-team"
+                [class.cell-user-highlight]="isUserTeam(row)">
+                <app-team-badge [teamId]="row.team.id" size="sm" [link]="false" />
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap font-bold text-text-primary uppercase font-display tracking-tight text-base animate-none col-team-name">
+                <div class="team-cell">
+                  <a [routerLink]="['/team', row.team.id]"
+                    class="hover:text-accent transition-colors team-name-link" [title]="row.team.name">
+                    <span class="team-name-text">{{ row.team.name }}</span>
+                  </a>
+                </div>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.played }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.won }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.drawn }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.lost }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.goalsFor }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.goalsAgainst }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center font-bold text-accent text-base stat-number tabular-nums">{{ row.points }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.shots }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.shotsOnTarget }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.passes }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.tackles }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.interceptions }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.saves }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.cleanSheets }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.fouls }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-warning tabular-nums">{{ row.yellowCards }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center stat-number text-danger tabular-nums">{{ row.redCards }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-warning stat-number tabular-nums">{{ getFormattedAverageRating(row) }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
