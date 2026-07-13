@@ -27,7 +27,7 @@
 
       <div class="space-y-3">
         @for (match of matches(); track match.id) {
-          <div class="flex flex-col p-4 rounded-lg bg-canvas border border-border">
+          <div [class]="'flex flex-col p-4 rounded-lg bg-canvas border ' + ((match.homeTeamId === userTeamId() || match.awayTeamId === userTeamId()) ? 'border-accent' : 'border-border')">
             <app-match-summary
               [match]="match"
               [showProbabilities]="!match.played"

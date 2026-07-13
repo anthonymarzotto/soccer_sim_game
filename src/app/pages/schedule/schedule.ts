@@ -15,6 +15,7 @@ export class ScheduleComponent {
   scheduleStateService = inject(ScheduleStateService);
   isSchemaMismatchBlocking = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
 
+  userTeamId = computed(() => this.gameService.league()?.userTeamId);
   selectedWeek = this.scheduleStateService.selectedWeek;
 
   maxWeeks = computed(() => {
