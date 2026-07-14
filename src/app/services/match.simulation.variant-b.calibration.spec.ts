@@ -549,8 +549,11 @@ function calculatePassQuality(events: PlayByPlayEvent[]): {
   progressionCompleted: number;
   turnovers: number;
 } {
-  const completedPasses = events.filter(event => event.type === EventType.PASS);
+  const completedPasses = events.filter(event => event.type === EventType.PASS && event.success);
   const failedPasses = events.filter(event => {
+    if (event.type === EventType.PASS && !event.success) {
+      return true;
+    }
     if (event.type !== EventType.TACKLE && event.type !== EventType.INTERCEPTION) {
       return false;
     }

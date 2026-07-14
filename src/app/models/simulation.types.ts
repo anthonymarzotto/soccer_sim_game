@@ -60,7 +60,7 @@ export type PassIntentMetadata = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'C
 
 export type PassFailureMetadata = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
 
-export type CarryResultMetadata = 'DISPOSSESSED';
+export type CarryResultMetadata = 'DISPOSSESSED' | 'SCRAMBLE_RECOVERED' | 'SCRAMBLE_LOST';
 
 export interface InjuryEventMetadata {
   definitionId: string;
@@ -85,6 +85,28 @@ export interface PlayByPlayEventAdditionalData {
   isOffside?: boolean;
   offsidePlayerId?: string;
   playerWithBall?: string;
+  recoveredByTeam?: 'Home' | 'Away';
+  scrambleWinnerId?: string;
+  scrambleWinnerName?: string;
+  scrambleDecisions?: ScrambleCandidateDecision[];
+  tackleDecisions?: TackleCandidateDecision[];
+  interceptionDecisions?: TackleCandidateDecision[];
+}
+
+export interface ScrambleCandidateDecision {
+  playerId: string;
+  playerName: string;
+  teamSide: 'Home' | 'Away';
+  distance: number;
+  score: number;
+  probability: number;
+}
+
+export interface TackleCandidateDecision {
+  playerId: string;
+  playerName: string;
+  distance: number;
+  score: number;
 }
 
 export interface Possession {

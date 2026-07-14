@@ -18,6 +18,8 @@ import {
   CardReason,
   PassCandidateDecision,
   PassScoreBreakdown,
+  ScrambleCandidateDecision,
+  TackleCandidateDecision,
 } from "../models/simulation.types";
 import { FieldService } from "./field.service";
 import { RngService } from "./rng.service";
@@ -39,6 +41,9 @@ import {
   pickInjuryDefinition,
   rollInjuryDurationWeeks,
 } from "../data/injuries";
+
+const PASSIVE_INTERCEPTION_CHANCE = 0.50; // 50% of interceptions become loose-ball scramble
+const PASSIVE_TACKLE_CHANCE = 0.65;        // 65% of tackles from carries become loose-ball scramble
 
 interface ResolvedRosters {
   /** On-field starters only — all gameplay methods use these exclusively. */
@@ -976,73 +981,107 @@ export class MatchSimulationVariantBService {
     );
 
     if (this.rng.random() >= successChance) {
-      const turnoverWinnerId = this.createTurnoverEvent(
-        state,
-        EventType.TACKLE,
-        { ...state.ballPossession.location },
-        currentTeam,
-        currentTeam === TeamSide.HOME
-          ? rosters.awayPlayers
-          : rosters.homePlayers,
-        action.player.id,
-        minute,
-        true,
-        config,
-        { carryResult: "DISPOSSESSED" },
-      );
+      const isPassiveTackle = this.rng.random() < PASSIVE_TACKLE_CHANCE;
+      let turnoverWinnerId: string;
+      let winnerTeamSide: TeamSide;
+
+      const attackingPlayers = currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+      const defendingPlayers = currentTeam === TeamSide.HOME ? rosters.awayPlayers : rosters.homePlayers;
+
+      if (isPassiveTackle) {
+        const scramble = this.resolveLooseBallScramble(
+          state.ballPossession.location,
+          currentTeam,
+          defendingPlayers,
+          attackingPlayers,
+          10.0, // defenderBias of 10.0 for carry scrambles
+        );
+        turnoverWinnerId = scramble.winner.id;
+        winnerTeamSide = scramble.winnerTeam;
+
+        const isRecovery = scramble.winnerTeam === currentTeam;
+        this.createEvent(
+          state,
+          EventType.CARRY,
+          [action.player.id, scramble.winner.id],
+          { ...state.ballPossession.location },
+          minute,
+          false,
+          config,
+          {
+            carryResult: isRecovery ? "SCRAMBLE_RECOVERED" : "SCRAMBLE_LOST",
+            recoveredByTeam: scramble.winnerTeam === TeamSide.HOME ? 'Home' : 'Away',
+            scrambleWinnerId: scramble.winner.id,
+            scrambleWinnerName: scramble.winner.name,
+            scrambleDecisions: scramble.decisions,
+          },
+        );
+      } else {
+        turnoverWinnerId = this.createTurnoverEvent(
+          state,
+          EventType.TACKLE,
+          { ...state.ballPossession.location },
+          currentTeam,
+          defendingPlayers,
+          action.player.id,
+          minute,
+          true,
+          config,
+          { carryResult: "DISPOSSESSED" },
+        );
+        winnerTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      }
 
       state.ballPossession.teamId =
-        currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+        winnerTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
       state.ballPossession.playerWithBall = turnoverWinnerId;
       state.ballPossession.passes = 0;
 
-      const newPossessionTeam =
-        state.ballPossession.teamId === homeTeam.id
-          ? TeamSide.HOME
-          : TeamSide.AWAY;
+      const newPossessionTeam = winnerTeamSide;
       state.ballPossession.phase = this.getPhaseFromLocation(
         state.ballPossession.location,
         newPossessionTeam,
         state,
       );
 
-      // Tackle injuries: roll on both the dispossessed carrier and the winner.
-      const winnerTeamPlayers =
-        currentTeam === TeamSide.HOME
-          ? rosters.awayPlayers
-          : rosters.homePlayers;
-      const winnerKey: TeamSide =
-        currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
-      const loserPlayers =
-        currentTeam === TeamSide.HOME
-          ? rosters.homePlayers
-          : rosters.awayPlayers;
-      this.tryRollInjury(
-        action.player,
-        currentTeam,
-        InjuryRollKind.CONTACT,
-        INJURY_TACKLE_MODIFIER,
-        state,
-        minute,
-        config,
-        loserPlayers,
-        tactics,
-      );
-      const winnerPlayer = winnerTeamPlayers.find(
-        (player) => player.id === turnoverWinnerId,
-      );
-      if (winnerPlayer) {
+      if (!isPassiveTackle) {
+        const winnerTeamPlayers =
+          currentTeam === TeamSide.HOME
+            ? rosters.awayPlayers
+            : rosters.homePlayers;
+        const winnerKey: TeamSide =
+          currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+        const loserPlayers =
+          currentTeam === TeamSide.HOME
+            ? rosters.homePlayers
+            : rosters.awayPlayers;
         this.tryRollInjury(
-          winnerPlayer,
-          winnerKey,
+          action.player,
+          currentTeam,
           InjuryRollKind.CONTACT,
           INJURY_TACKLE_MODIFIER,
           state,
           minute,
           config,
-          winnerTeamPlayers,
+          loserPlayers,
           tactics,
         );
+        const winnerPlayer = winnerTeamPlayers.find(
+          (player) => player.id === turnoverWinnerId,
+        );
+        if (winnerPlayer) {
+          this.tryRollInjury(
+            winnerPlayer,
+            winnerKey,
+            InjuryRollKind.CONTACT,
+            INJURY_TACKLE_MODIFIER,
+            state,
+            minute,
+            config,
+            winnerTeamPlayers,
+            tactics,
+          );
+        }
       }
       return true;
     }
@@ -1372,22 +1411,62 @@ export class MatchSimulationVariantBService {
       );
     }
 
-    const turnoverWinnerId = this.createPassFailureEvent(
-      state,
-      failureMode,
-      failureLocation,
-      currentTeam,
-      opponentPlayers,
-      passer.id,
-      passIntent,
-      minute,
-      config,
-      offsideCalled,
-      targetPlayer.id,
-    );
+    const isPassiveInterception =
+      !offsideCalled &&
+      (failureMode === PASS_FAILURE_MODE.TACKLED
+        ? this.rng.random() < PASSIVE_TACKLE_CHANCE
+        : this.rng.random() < PASSIVE_INTERCEPTION_CHANCE);
+
+    let turnoverWinnerId: string;
+    let winnerTeamSide: TeamSide;
+
+    if (isPassiveInterception) {
+      const scramble = this.resolveLooseBallScramble(
+        failureLocation,
+        currentTeam,
+        opponentPlayers,
+        teamPlayers,
+        25.0, // defenderBias of 25.0 for pass failures
+      );
+      turnoverWinnerId = scramble.winner.id;
+      winnerTeamSide = scramble.winnerTeam;
+
+      this.createEvent(
+        state,
+        EventType.PASS,
+        [passer.id, scramble.winner.id],
+        { ...failureLocation },
+        minute,
+        false,
+        config,
+        {
+          passFailure: failureMode,
+          passIntent,
+          recoveredByTeam: scramble.winnerTeam === TeamSide.HOME ? 'Home' : 'Away',
+          scrambleWinnerId: scramble.winner.id,
+          scrambleWinnerName: scramble.winner.name,
+          scrambleDecisions: scramble.decisions,
+        },
+      );
+    } else {
+      turnoverWinnerId = this.createPassFailureEvent(
+        state,
+        failureMode,
+        failureLocation,
+        currentTeam,
+        opponentPlayers,
+        passer.id,
+        passIntent,
+        minute,
+        config,
+        offsideCalled,
+        targetPlayer.id,
+      );
+      winnerTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    }
 
     state.ballPossession.teamId =
-      currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+      winnerTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
     state.ballPossession.playerWithBall = turnoverWinnerId;
     state.ballPossession.passes = 0;
 
@@ -1402,29 +1481,42 @@ export class MatchSimulationVariantBService {
     }
 
     // TACKLED is contact (both passer and winner); intercept paths are non-contact (winner only).
-    const winnerKey: TeamSide =
-      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
-    const winner = opponentPlayers.find(
+    const winnerKey: TeamSide = winnerTeamSide;
+    const winner = (winnerKey === currentTeam ? teamPlayers : opponentPlayers).find(
       (player) => player.id === turnoverWinnerId,
     );
-    if (failureMode === PASS_FAILURE_MODE.TACKLED) {
-      this.tryRollInjury(
-        passer,
-        currentTeam,
-        InjuryRollKind.CONTACT,
-        INJURY_TACKLE_MODIFIER,
-        state,
-        minute,
-        config,
-        teamPlayers,
-        tactics,
-      );
-      if (winner) {
+    if (!isPassiveInterception) {
+      if (failureMode === PASS_FAILURE_MODE.TACKLED) {
+        this.tryRollInjury(
+          passer,
+          currentTeam,
+          InjuryRollKind.CONTACT,
+          INJURY_TACKLE_MODIFIER,
+          state,
+          minute,
+          config,
+          teamPlayers,
+          tactics,
+        );
+        if (winner) {
+          this.tryRollInjury(
+            winner,
+            winnerKey,
+            InjuryRollKind.CONTACT,
+            INJURY_TACKLE_MODIFIER,
+            state,
+            minute,
+            config,
+            opponentPlayers,
+            tactics,
+          );
+        }
+      } else if (winner) {
         this.tryRollInjury(
           winner,
           winnerKey,
-          InjuryRollKind.CONTACT,
-          INJURY_TACKLE_MODIFIER,
+          InjuryRollKind.NON_CONTACT,
+          1,
           state,
           minute,
           config,
@@ -1432,7 +1524,7 @@ export class MatchSimulationVariantBService {
           tactics,
         );
       }
-    } else if (winner) {
+    } else if (winner && winnerKey !== currentTeam) {
       this.tryRollInjury(
         winner,
         winnerKey,
@@ -1505,7 +1597,10 @@ export class MatchSimulationVariantBService {
       return PASS_FAILURE_MODE.LANE_CUT_OUT;
     }
 
-    return PASS_FAILURE_MODE.TACKLED;
+    if (pressure >= 0.45) {
+      return PASS_FAILURE_MODE.TACKLED;
+    }
+    return PASS_FAILURE_MODE.LANE_CUT_OUT;
   }
 
   private createPassFailureEvent(
@@ -3934,6 +4029,97 @@ export class MatchSimulationVariantBService {
     return players.find((player) => player.id === playerId) ?? null;
   }
 
+  private resolveLooseBallScramble(
+    location: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
+    teamPlayers: Player[],
+    defenderBias: number,
+  ): { winner: Player; winnerTeam: TeamSide; decisions: ScrambleCandidateDecision[] } {
+    const homeTeamSide = TeamSide.HOME;
+    const awayTeamSide = TeamSide.AWAY;
+
+    if (!this.activeMatchShape) {
+      const homeTeamSide = currentTeam;
+      const awayTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      const att = teamPlayers.filter(p => p.position !== PositionEnum.GK);
+      const def = opponentPlayers.filter(p => p.position !== PositionEnum.GK);
+      const randAtt = att[Math.floor(this.rng.random() * att.length)] ?? teamPlayers[0];
+      const randDef = def[Math.floor(this.rng.random() * def.length)] ?? opponentPlayers[0];
+      
+      const isDefendingWinner = this.rng.random() * 100 < (defenderBias > 15 ? 80 : 60);
+      if (isDefendingWinner) {
+        return { winner: randDef, winnerTeam: awayTeamSide, decisions: [] };
+      } else {
+        return { winner: randAtt, winnerTeam: homeTeamSide, decisions: [] };
+      }
+    }
+
+    const candidates: { player: Player; teamSide: TeamSide; score: number; distance: number }[] = [];
+
+    const checkSlots = [
+      ...this.activeMatchShape.home.map(s => ({ ...s, teamSide: homeTeamSide })),
+      ...this.activeMatchShape.away.map(s => ({ ...s, teamSide: awayTeamSide }))
+    ];
+
+    for (const slot of checkSlots) {
+      if (!slot.playerId) continue;
+
+      const playerList = slot.teamSide === currentTeam ? teamPlayers : opponentPlayers;
+      const player = this.findPlayerById(slot.playerId, playerList);
+      if (!player || player.position === PositionEnum.GK) continue;
+
+      const dx = slot.coordinates.x - location.x;
+      const dy = slot.coordinates.y - location.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const proximityScore = Math.max(0, 30 - distance) * 2.0;
+      const attributesScore =
+        this.getPlayerStat(player, 'speed') * 0.4 +
+        this.getPlayerStat(player, 'determination') * 0.3 +
+        this.getPlayerStat(player, 'strength') * 0.3;
+
+      const bias = slot.teamSide !== currentTeam ? defenderBias : 0;
+      const score = proximityScore + attributesScore + bias;
+
+      candidates.push({ player, teamSide: slot.teamSide, score, distance });
+    }
+
+    if (candidates.length === 0) {
+      return { winner: teamPlayers[0], winnerTeam: currentTeam, decisions: [] };
+    }
+
+    // Sort by score descending
+    candidates.sort((a, b) => b.score - a.score);
+
+    const T = 12.0;
+    const maxScore = candidates[0].score;
+    const weights = candidates.map(c => Math.exp((c.score - maxScore) / T));
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    let roll = this.rng.random() * totalWeight;
+    let winnerIndex = 0;
+    for (let i = 0; i < candidates.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) {
+        winnerIndex = i;
+        break;
+      }
+    }
+
+    const decisions = candidates.map((c, i) => ({
+      playerId: c.player.id,
+      playerName: c.player.name,
+      teamSide: c.teamSide === TeamSide.HOME ? 'Home' as const : 'Away' as const,
+      distance: c.distance,
+      score: c.score,
+      probability: totalWeight > 0 ? weights[i] / totalWeight : 0,
+    }));
+
+    const winner = candidates[winnerIndex];
+    return { winner: winner.player, winnerTeam: winner.teamSide, decisions };
+  }
+
   private createTurnoverEvent(
     state: MatchState,
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
@@ -3956,13 +4142,24 @@ export class MatchSimulationVariantBService {
       ? opponentPlayers
       : opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
 
-    const turnoverWinnerId =
-      this.selectTurnoverWinner(
-        eventType,
-        currentLocation,
-        currentTeam,
-        eligibleOpponentPlayers,
-      )?.id ?? this.getRandomPlayerId(eligibleOpponentPlayers);
+    const result = this.selectTurnoverWinner(
+      eventType,
+      currentLocation,
+      currentTeam,
+      eligibleOpponentPlayers,
+    );
+
+    const turnoverWinnerId = result.winner?.id ?? this.getRandomPlayerId(eligibleOpponentPlayers);
+
+    const mergedAdditionalData: PlayByPlayEventAdditionalData = {
+      ...additionalData,
+    };
+
+    if (eventType === EventType.TACKLE) {
+      mergedAdditionalData.tackleDecisions = result.decisions;
+    } else if (eventType === EventType.INTERCEPTION) {
+      mergedAdditionalData.interceptionDecisions = result.decisions;
+    }
 
     this.createEvent(
       state,
@@ -3972,7 +4169,7 @@ export class MatchSimulationVariantBService {
       minute,
       success,
       config,
-      additionalData,
+      mergedAdditionalData,
     );
 
     return turnoverWinnerId;
@@ -3983,7 +4180,7 @@ export class MatchSimulationVariantBService {
     currentLocation: Coordinates,
     currentTeam: TeamSide,
     opponentPlayers: Player[],
-  ): Player | null {
+  ): { winner: Player | null; decisions: TackleCandidateDecision[] } {
     const seenPlayerIds = new Set<string>();
     const context = this.getDefendingShapeContextForLocation(
       currentLocation,
@@ -3992,90 +4189,59 @@ export class MatchSimulationVariantBService {
     const defendingTeam =
       currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
 
-    return (
-      this.findBestTurnoverShapePlayer(
-        context?.channelSlots ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      this.findBestTurnoverShapePlayer(
-        context?.centralSlots ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      this.findBestTurnoverShapePlayer(
-        context?.staffedZoneSlots ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      this.findBestTurnoverShapePlayer(
-        this.activeMatchShape?.[defendingTeam] ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      null
-    );
-  }
+    const allDecisions: TackleCandidateDecision[] = [];
 
-  private findBestTurnoverShapePlayer(
-    slots: ActiveShapeSlot[],
-    eventType: EventType.TACKLE | EventType.INTERCEPTION,
-    currentLocation: Coordinates,
-    players: Player[],
-    seenPlayerIds: Set<string>,
-  ): Player | null {
-    const rankedCandidates = slots
-      .filter(
-        (slot): slot is ActiveShapeSlot & { playerId: string } =>
-          typeof slot.playerId === "string" &&
-          !seenPlayerIds.has(slot.playerId),
-      )
-      .map((slot) => {
-        seenPlayerIds.add(slot.playerId);
-        const player = this.findPlayerById(slot.playerId, players);
-        if (!player) {
-          return null;
-        }
+    const getRankedCandidatesForSlots = (slots: ActiveShapeSlot[]) => {
+      return slots
+        .filter(
+          (slot): slot is ActiveShapeSlot & { playerId: string } =>
+            typeof slot.playerId === "string" &&
+            !seenPlayerIds.has(slot.playerId),
+        )
+        .map((slot) => {
+          seenPlayerIds.add(slot.playerId);
+          const player = this.findPlayerById(slot.playerId, opponentPlayers);
+          if (!player) return null;
 
-        const distance = this.fieldService.getDistance(
-          currentLocation,
-          slot.coordinates,
-        );
-        return {
-          distance,
-          player,
-          score: this.scoreTurnoverWinnerCandidate(player, eventType, distance),
-        };
-      })
-      .filter(
-        (
-          candidate,
-        ): candidate is { distance: number; player: Player; score: number } =>
-          candidate !== null,
-      )
-      .sort((left, right) => {
-        const scoreDelta = right.score - left.score;
-        if (scoreDelta !== 0) {
-          return scoreDelta;
-        }
+          const distance = this.fieldService.getDistance(
+            currentLocation,
+            slot.coordinates,
+          );
+          const score = this.scoreTurnoverWinnerCandidate(player, eventType, distance);
+          return { player, distance, score };
+        })
+        .filter((c): c is { player: Player; distance: number; score: number } => c !== null)
+        .sort((left, right) => {
+          const scoreDelta = right.score - left.score;
+          if (scoreDelta !== 0) return scoreDelta;
+          const distanceDelta = left.distance - right.distance;
+          if (distanceDelta !== 0) return distanceDelta;
+          return left.player.id.localeCompare(right.player.id);
+        });
+    };
 
-        const distanceDelta = left.distance - right.distance;
-        if (distanceDelta !== 0) {
-          return distanceDelta;
-        }
+    let winner: Player | null = null;
 
-        return left.player.id.localeCompare(right.player.id);
-      });
+    const channelCand = getRankedCandidatesForSlots(context?.channelSlots ?? []);
+    channelCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (channelCand.length > 0 && !winner) winner = channelCand[0].player;
 
-    return rankedCandidates[0]?.player ?? null;
+    const centralCand = getRankedCandidatesForSlots(context?.centralSlots ?? []);
+    centralCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (centralCand.length > 0 && !winner) winner = centralCand[0].player;
+
+    const staffedCand = getRankedCandidatesForSlots(context?.staffedZoneSlots ?? []);
+    staffedCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (staffedCand.length > 0 && !winner) winner = staffedCand[0].player;
+
+    const fallbackCand = getRankedCandidatesForSlots(this.activeMatchShape?.[defendingTeam] ?? []);
+    fallbackCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (fallbackCand.length > 0 && !winner) winner = fallbackCand[0].player;
+
+    // Sort all decisions by score descending
+    allDecisions.sort((a, b) => b.score - a.score);
+
+    return { winner, decisions: allDecisions };
   }
 
   private scoreTurnoverWinnerCandidate(

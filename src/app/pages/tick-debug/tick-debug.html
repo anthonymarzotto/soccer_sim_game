@@ -111,14 +111,15 @@
 
               <!-- Interception/Tackle Event Marker -->
               @if (tick.eventCreated; as event) {
-                @if (event.type === 'INTERCEPTION' || event.type === 'TACKLE') {
+                @if (event.type === 'INTERCEPTION' || event.type === 'TACKLE' || event.type === 'CARRY' || (event.type === 'PASS' && !event.success)) {
                   <div class="absolute -translate-x-1/2 -translate-y-1/2 z-20 text-base p-0.5 rounded-full bg-black/60 border border-solid animate-pulse flex items-center justify-center"
                        [class.border-yellow-400]="event.type === 'INTERCEPTION'"
                        [class.border-red-500]="event.type === 'TACKLE'"
+                       [class.border-orange-400]="event.type === 'CARRY' || event.type === 'PASS'"
                        [style.left.%]="getPitchPoint(event.location).left"
                        [style.top.%]="getPitchPoint(event.location).top"
                        [title]="event.type + ' Location: X=' + event.location.x.toFixed(1) + ' Y=' + event.location.y.toFixed(1)">
-                    {{ event.type === 'INTERCEPTION' ? '🛑' : '🛡️' }}
+                    {{ event.type === 'INTERCEPTION' ? '🛑' : (event.type === 'TACKLE' ? '🛡️' : '🟡') }}
                   </div>
                 }
               }
@@ -128,7 +129,7 @@
                    style="transition: left 0.3s, top 0.3s;"
                    [style.left.%]="100 - tick.ballPossession.location.x"
                    [style.top.%]="tick.ballPossession.location.y"
-                   title="Ball">
+                   [title]="'Ball [X: ' + tick.ballPossession.location.x.toFixed(1) + ', Y: ' + tick.ballPossession.location.y.toFixed(1) + ']'">
                 ⚽
               </div>
 
@@ -137,7 +138,7 @@
                 <div class="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
                      [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}).left"
                      [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}).top"
-                     [title]="dot.fullName + ' (' + dot.slotLabel + ')' + (dot.runProgress > 0 ? ' - Run: ' + dot.runProgress + '%' : '')">
+                     [title]="dot.fullName + ' (' + dot.slotLabel + ') [X: ' + dot.x.toFixed(1) + ', Y: ' + dot.y.toFixed(1) + ']' + (dot.runProgress > 0 ? ' - Run: ' + dot.runProgress + '%' : '')">
                   <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center cursor-pointer transition-all duration-300"
                        [class.ring-4]="tick.ballPossession.playerWithBall === dot.playerId || blockingDefenders().has(dot.playerId)"
                        [class.ring-amber-400]="tick.ballPossession.playerWithBall === dot.playerId"
@@ -160,7 +161,7 @@
                 <div class="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
                      [style.left.%]="getPitchPoint({x: dot.x, y: dot.y}).left"
                      [style.top.%]="getPitchPoint({x: dot.x, y: dot.y}).top"
-                     [title]="dot.fullName + ' (' + dot.slotLabel + ')' + (dot.runProgress > 0 ? ' - Run: ' + dot.runProgress + '%' : '')">
+                     [title]="dot.fullName + ' (' + dot.slotLabel + ') [X: ' + dot.x.toFixed(1) + ', Y: ' + dot.y.toFixed(1) + ']' + (dot.runProgress > 0 ? ' - Run: ' + dot.runProgress + '%' : '')">
                   <div class="relative w-6 h-6 rounded-full border-2 shadow-md text-[9px] font-bold text-text-primary flex items-center justify-center cursor-pointer transition-all duration-300"
                        [class.ring-4]="tick.ballPossession.playerWithBall === dot.playerId || blockingDefenders().has(dot.playerId)"
                        [class.ring-amber-400]="tick.ballPossession.playerWithBall === dot.playerId"
@@ -189,7 +190,7 @@
                   }
                 </div>
 
-                @if (formattedEvent(); as event) {
+                @if (eventDetails; as event) {
                   <div class="text-sm space-y-3">
                     <p class="text-text-primary italic border-l-2 border-amber-500 pl-3 py-1 font-medium">{{ event.description }}</p>
 
@@ -201,28 +202,44 @@
                           <span class="text-text-primary font-semibold">Pass ({{ event.passIntent }})</span>
                         </div>
                         <div class="flex justify-between">
+                          <span class="text-text-muted">Pass Sequence:</span>
+                          <span class="text-text-primary font-semibold">{{ event.passSequence }} completed</span>
+                        </div>
+                        <div class="flex justify-between">
                           <span class="text-text-muted">Passer:</span>
                           <span class="text-text-primary">{{ event.passerName }}</span>
                         </div>
-                        <div class="flex justify-between">
-                          <span class="text-text-muted">Intended Target:</span>
-                          <span class="text-text-primary">{{ event.isPass ? event.receiverName : event.intendedTargetName }}</span>
-                        </div>
+                        @if (event.isPass || event.type === 'INTERCEPTION') {
+                          <div class="flex justify-between">
+                            <span class="text-text-muted">Intended Target:</span>
+                            <span class="text-text-primary">{{ event.isPass ? event.receiverName : event.intendedTargetName }}</span>
+                          </div>
+                        }
                         <div class="flex justify-between border-t border-border/30 pt-1.5 mt-1">
                           <span class="text-text-muted">Outcome:</span>
                           @if (event.isPass) {
                             <span class="text-emerald-400 font-bold">✓ Complete</span>
                           } @else if (event.offsideCalled) {
                             <span class="text-red-400 font-bold">✗ Offside Called</span>
+                          } @else if (event.type === 'PASS') {
+                            <span class="text-yellow-400 font-bold">✗ Loose Ball Scramble ({{ event.passFailure }})</span>
                           } @else {
                             <span class="text-red-400 font-bold">✗ Intercepted ({{ event.passFailure }})</span>
                           }
                         </div>
                         @if (event.isFailedPass && event.winnerName) {
                           <div class="flex justify-between">
-                            <span class="text-text-muted">Intercepted By:</span>
+                            <span class="text-text-muted">
+                              {{ event.type === 'PASS' ? 'Recovered By:' : 'Intercepted By:' }}
+                            </span>
                             <span class="text-text-primary">{{ event.winnerName }}</span>
                           </div>
+                          @if (event.type === 'PASS') {
+                            <div class="flex justify-between">
+                              <span class="text-text-muted">Recovery Team:</span>
+                              <span class="text-text-primary font-semibold">{{ event.additionalData?.recoveredByTeam }}</span>
+                            </div>
+                          }
                           @if (event.distanceToLane !== undefined) {
                             <div class="flex justify-between">
                               <span class="text-text-muted">Dist to Pass Lane:</span>
@@ -230,40 +247,142 @@
                             </div>
                           }
                           <div class="flex justify-between">
-                            <span class="text-text-muted">Interception Location:</span>
+                            <span class="text-text-muted">
+                              {{ event.type === 'PASS' ? 'Scramble Location:' : 'Interception Location:' }}
+                            </span>
                             <span class="text-text-primary font-semibold">X: {{ event.location.x.toFixed(1) }}, Y: {{ event.location.y.toFixed(1) }}</span>
                           </div>
+                          <!-- Scramble Decisions Breakdown -->
+                          @if (event.additionalData?.scrambleDecisions; as decisions) {
+                            <div class="border-t border-border/30 pt-2.5 mt-2 space-y-1">
+                              <span class="text-text-muted font-bold text-[10px] uppercase tracking-wider block">Scramble Candidates (T=12):</span>
+                              <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                                @for (c of decisions; track c.playerId) {
+                                  <div class="flex justify-between items-center text-[10px] pl-1.5 border-l border-border/40"
+                                       [class.border-amber-500]="c.playerId === (event.additionalData?.scrambleWinnerId ?? '')"
+                                       [class.bg-amber-500/10]="c.playerId === (event.additionalData?.scrambleWinnerId ?? '')">
+                                    <div class="flex items-center space-x-1">
+                                      <span class="font-semibold text-text-primary" [class.text-amber-400]="c.playerId === (event.additionalData?.scrambleWinnerId ?? '')">{{ c.playerName }}</span>
+                                      <span class="text-[9px] text-text-muted">({{ c.teamSide }})</span>
+                                    </div>
+                                    <div class="flex space-x-2 text-right">
+                                      <span class="text-text-muted">Dist: {{ c.distance.toFixed(1) }}m</span>
+                                      <span class="text-text-muted">Score: {{ c.score.toFixed(1) }}</span>
+                                      <span class="font-semibold text-text-primary" [class.text-emerald-400]="c.probability > 0.5">{{ (c.probability * 100).toFixed(0) }}%</span>
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+                          <!-- Interception Decisions Breakdown -->
+                          @if (event.additionalData?.interceptionDecisions; as decisions) {
+                            <div class="border-t border-border/30 pt-2.5 mt-2 space-y-1">
+                              <span class="text-text-muted font-bold text-[10px] uppercase tracking-wider block">Interception Candidates:</span>
+                              <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                                @for (c of decisions; track c.playerId) {
+                                  <div class="flex justify-between items-center text-[10px] pl-1.5 border-l border-border/40"
+                                       [class.border-amber-500]="c.playerId === event.winnerName || c.playerName === event.winnerName"
+                                       [class.bg-amber-500/10]="c.playerId === event.winnerName || c.playerName === event.winnerName">
+                                    <div class="flex items-center space-x-1">
+                                      <span class="font-semibold text-text-primary" [class.text-amber-400]="c.playerId === event.winnerName || c.playerName === event.winnerName">{{ c.playerName }}</span>
+                                    </div>
+                                    <div class="flex space-x-2 text-right">
+                                      <span class="text-text-muted">Dist: {{ c.distance.toFixed(1) }}m</span>
+                                      <span class="font-semibold text-text-primary">Score: {{ c.score.toFixed(1) }}</span>
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
                         }
                       </div>
                     }
 
                     <!-- Carry Tackle Details -->
-                    @if (event.isCarryTackle) {
+                    @if (event.isCarryTackle || event.isPassiveCarry) {
                       <div class="bg-zinc-800/20 rounded p-2.5 space-y-2 border border-border/20 text-xs font-mono">
                         <div class="flex justify-between">
                           <span class="text-text-muted">Action Type:</span>
-                          <span class="text-text-primary font-semibold">Carry Turnover</span>
+                          <span class="text-text-primary font-semibold">{{ event.isPassiveCarry ? 'Carry Scramble' : 'Carry Turnover' }}</span>
                         </div>
                         <div class="flex justify-between">
                           <span class="text-text-muted">Ball Carrier:</span>
                           <span class="text-text-primary">{{ event.loserName }}</span>
                         </div>
                         <div class="flex justify-between">
-                          <span class="text-text-muted">Tackler:</span>
+                          <span class="text-text-muted">{{ event.isPassiveCarry ? 'Recovered By:' : 'Tackler:' }}</span>
                           <span class="text-text-primary">{{ event.winnerName }}</span>
                         </div>
+                        @if (event.isPassiveCarry) {
+                          <div class="flex justify-between">
+                            <span class="text-text-muted">Recovery Team:</span>
+                            <span class="text-text-primary font-semibold">{{ event.additionalData?.recoveredByTeam }}</span>
+                          </div>
+                        }
                         <div class="flex justify-between">
-                          <span class="text-text-muted">Tackle Location:</span>
+                          <span class="text-text-muted">
+                            {{ event.isPassiveCarry ? 'Scramble Location:' : 'Tackle Location:' }}
+                          </span>
                           <span class="text-text-primary font-semibold">X: {{ event.location.x.toFixed(1) }}, Y: {{ event.location.y.toFixed(1) }}</span>
                         </div>
+                        <!-- Scramble Decisions Breakdown -->
+                        @if (event.additionalData?.scrambleDecisions; as decisions) {
+                          <div class="border-t border-border/30 pt-2.5 mt-2 space-y-1">
+                            <span class="text-text-muted font-bold text-[10px] uppercase tracking-wider block">Scramble Candidates (T=12):</span>
+                            <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                              @for (c of decisions; track c.playerId) {
+                                <div class="flex justify-between items-center text-[10px] pl-1.5 border-l border-border/40"
+                                     [class.border-amber-500]="c.playerId === (event.additionalData?.scrambleWinnerId ?? '')"
+                                     [class.bg-amber-500/10]="c.playerId === (event.additionalData?.scrambleWinnerId ?? '')">
+                                  <div class="flex items-center space-x-1">
+                                    <span class="font-semibold text-text-primary" [class.text-amber-400]="c.playerId === (event.additionalData?.scrambleWinnerId ?? '')">{{ c.playerName }}</span>
+                                    <span class="text-[9px] text-text-muted">({{ c.teamSide }})</span>
+                                  </div>
+                                  <div class="flex space-x-2 text-right">
+                                    <span class="text-text-muted">Dist: {{ c.distance.toFixed(1) }}m</span>
+                                    <span class="text-text-muted">Score: {{ c.score.toFixed(1) }}</span>
+                                    <span class="font-semibold text-text-primary" [class.text-emerald-400]="c.probability > 0.5">{{ (c.probability * 100).toFixed(0) }}%</span>
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        }
+                        <!-- Tackle Decisions Breakdown -->
+                        @if (event.additionalData?.tackleDecisions; as decisions) {
+                          <div class="border-t border-border/30 pt-2.5 mt-2 space-y-1">
+                            <span class="text-text-muted font-bold text-[10px] uppercase tracking-wider block">Tackle Candidates:</span>
+                            <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                              @for (c of decisions; track c.playerId) {
+                                <div class="flex justify-between items-center text-[10px] pl-1.5 border-l border-border/40"
+                                     [class.border-amber-500]="c.playerId === event.winnerName || c.playerName === event.winnerName"
+                                     [class.bg-amber-500/10]="c.playerId === event.winnerName || c.playerName === event.winnerName">
+                                  <div class="flex items-center space-x-1">
+                                    <span class="font-semibold text-text-primary" [class.text-amber-400]="c.playerId === event.winnerName || c.playerName === event.winnerName">{{ c.playerName }}</span>
+                                  </div>
+                                  <div class="flex space-x-2 text-right">
+                                    <span class="text-text-muted">Dist: {{ c.distance.toFixed(1) }}m</span>
+                                    <span class="font-semibold text-text-primary">Score: {{ c.score.toFixed(1) }}</span>
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        }
                         <div class="flex justify-between border-t border-border/30 pt-1.5 mt-1">
                           <span class="text-text-muted">Outcome:</span>
-                          <span class="text-red-400 font-bold">✗ Tackled</span>
+                          @if (event.isPassiveCarry) {
+                            <span class="text-yellow-400 font-bold">✗ Loose Ball ({{ event.additionalData?.carryResult === 'SCRAMBLE_RECOVERED' ? 'Retained' : 'Lost' }})</span>
+                          } @else {
+                            <span class="text-red-400 font-bold">✗ Tackled</span>
+                          }
                         </div>
                       </div>
                     }
 
-                    @if (event.playerNames.length > 0 && !event.isPass && !event.isFailedPass && !event.isCarryTackle) {
+                    @if (event.playerNames.length > 0 && !event.isPass && !event.isFailedPass && !event.isCarryTackle && !event.isPassiveCarry) {
                       <p class="text-xs text-text-muted">Involved: {{ event.playerNames.join(', ') }}</p>
                     }
                     

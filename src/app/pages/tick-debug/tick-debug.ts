@@ -52,6 +52,28 @@ interface CleanedAdditionalData extends Omit<PlayByPlayEventAdditionalData, 'var
   offsidePlayer?: string;
 }
 
+export interface CleanedEvent {
+  type: string;
+  description: string;
+  playerNames: string[];
+  additionalData: CleanedAdditionalData | null;
+  isPass: boolean;
+  isFailedPass: boolean;
+  isCarryTackle: boolean;
+  isPassiveCarry: boolean;
+  passSequence: number;
+  passerName?: string;
+  receiverName?: string;
+  intendedTargetName?: string;
+  passIntent?: string;
+  passFailure?: string;
+  winnerName?: string;
+  loserName?: string;
+  offsideCalled: boolean;
+  distanceToLane?: number;
+  location: { x: number; y: number };
+}
+
 @Component({
   selector: 'app-tick-debug',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,7 +139,7 @@ export class TickDebugComponent {
     return map;
   });
 
-  readonly formattedEvent = computed(() => {
+  readonly formattedEvent = computed<CleanedEvent | null>(() => {
     const tick = this.currentTick();
     if (!tick || !tick.eventCreated) return null;
 
@@ -156,15 +178,38 @@ export class TickDebugComponent {
       if (cleanedData.playerWithBall) {
         cleanedData.playerWithBall = names.get(cleanedData.playerWithBall) || cleanedData.playerWithBall;
       }
+      if (cleanedData.scrambleWinnerId) {
+        cleanedData.scrambleWinnerName = names.get(cleanedData.scrambleWinnerId) || cleanedData.scrambleWinnerId;
+      }
+      if (cleanedData.scrambleDecisions) {
+        cleanedData.scrambleDecisions = cleanedData.scrambleDecisions.map(d => ({
+          ...d,
+          playerName: names.get(d.playerId) || d.playerName
+        }));
+      }
+      if (cleanedData.tackleDecisions) {
+        cleanedData.tackleDecisions = cleanedData.tackleDecisions.map(d => ({
+          ...d,
+          playerName: names.get(d.playerId) || d.playerName
+        }));
+      }
+      if (cleanedData.interceptionDecisions) {
+        cleanedData.interceptionDecisions = cleanedData.interceptionDecisions.map(d => ({
+          ...d,
+          playerName: names.get(d.playerId) || d.playerName
+        }));
+      }
     }
 
-    const isTurnover = event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION;
-    const isPass = event.type === EventType.PASS;
-    const isFailedPass = isTurnover && cleanedData?.passFailure !== undefined;
-    const isCarryTackle = isTurnover && !isFailedPass;
+    const isPass = event.type === EventType.PASS && event.success === true;
+    const isFailedPass =
+      (event.type === EventType.INTERCEPTION && cleanedData?.passFailure !== undefined) ||
+      (event.type === EventType.PASS && event.success === false);
+    const isCarryTackle = event.type === EventType.TACKLE && event.success === true;
+    const isPassiveCarry = event.type === EventType.CARRY;
 
     let distanceToLane: number | undefined = undefined;
-    if (isFailedPass && event.additionalData?.passFailure === 'LANE_CUT_OUT') {
+    if (isFailedPass && event.type === EventType.INTERCEPTION && event.additionalData?.passFailure === 'LANE_CUT_OUT') {
       const interceptorId = event.playerIds?.[0];
       const passerId = event.playerIds?.[1];
       const targetId = event.additionalData?.offsidePlayerId;
@@ -194,18 +239,24 @@ export class TickDebugComponent {
       isPass,
       isFailedPass,
       isCarryTackle,
-      passerName: isPass ? playerNames[0] : (isFailedPass ? playerNames[1] : undefined),
+      isPassiveCarry,
+      passSequence: tick.ballPossession.passes,
+      passerName: event.type === EventType.PASS ? playerNames[0] : (event.type === EventType.INTERCEPTION ? playerNames[1] : undefined),
       receiverName: isPass ? playerNames[1] : undefined,
-      intendedTargetName: isFailedPass && cleanedData?.offsidePlayer ? cleanedData.offsidePlayer : undefined,
+      intendedTargetName: isFailedPass && event.type === EventType.INTERCEPTION && cleanedData?.offsidePlayer ? cleanedData.offsidePlayer : undefined,
       passIntent: cleanedData?.passIntent,
       passFailure: cleanedData?.passFailure,
-      winnerName: isTurnover ? playerNames[0] : undefined,
-      loserName: isTurnover ? playerNames[1] : undefined,
+      winnerName: (isCarryTackle || (isFailedPass && event.type === EventType.INTERCEPTION)) ? playerNames[0] : ((isPassiveCarry || (isFailedPass && event.type === EventType.PASS)) ? playerNames[1] : undefined),
+      loserName: isCarryTackle ? playerNames[1] : (isPassiveCarry ? playerNames[0] : undefined),
       offsideCalled: cleanedData?.isOffside || false,
       distanceToLane,
       location: event.location
     };
   });
+
+  get eventDetails(): CleanedEvent | null {
+    return this.formattedEvent();
+  }
 
   readonly actionWeightsWithPercentages = computed(() => {
     const tick = this.currentTick();
@@ -264,18 +315,23 @@ export class TickDebugComponent {
     const possessionTeam = tick.ballPossession.teamId === this.homeTeamId() ? TeamSide.HOME : TeamSide.AWAY;
     const dots = possessionTeam === TeamSide.HOME ? this.awayDots() : this.homeDots();
     
-    // Filter out Goalkeeper
-    const outfieldDefenders = dots.filter(d => d.slotLabel !== 'GK');
-    if (outfieldDefenders.length < 2) return null;
+    // Filter to only active defenders (slots with a player assigned)
+    const activeDefenders = dots.filter(d => d.playerId);
+    if (activeDefenders.length < 2) return null;
 
-    const yCoords = outfieldDefenders.map(d => d.y);
-    if (possessionTeam === TeamSide.HOME) {
-      yCoords.sort((a, b) => a - b);
-      return yCoords[1] ?? null;
-    } else {
-      yCoords.sort((a, b) => b - a);
-      return yCoords[1] ?? null;
-    }
+    // Get defenders' Y coordinates from attacker's perspective (opponent goal is at 100)
+    const defenderAttY = activeDefenders.map(d =>
+      possessionTeam === TeamSide.HOME ? d.y : 100 - d.y
+    );
+
+    // Sort descending (highest attY is closest to defender's own goal line)
+    defenderAttY.sort((a, b) => b - a);
+
+    // The offside line is the second-last defender (index 1)
+    const offsideLineAttY = defenderAttY[1];
+
+    // Convert back to raw coordinates for drawing on the pitch
+    return possessionTeam === TeamSide.HOME ? offsideLineAttY : 100 - offsideLineAttY;
   });
 
   readonly passLine = computed(() => {
@@ -283,9 +339,9 @@ export class TickDebugComponent {
     if (!tick || !tick.eventCreated) return null;
 
     const event = tick.eventCreated;
-    const isTurnover = event.type === EventType.TACKLE || event.type === EventType.INTERCEPTION;
-    const isPass = event.type === EventType.PASS;
-    const isFailedPass = isTurnover && event.additionalData?.passFailure !== undefined;
+    const isPass = event.type === EventType.PASS && event.success === true;
+    const isFailedPass = (event.type === EventType.INTERCEPTION && event.additionalData?.passFailure !== undefined);
+    const isPassiveFailedPass = event.type === EventType.PASS && event.success === false;
 
     if (isPass && event.playerIds && event.playerIds.length >= 2) {
       const actorId = event.playerIds[0];
@@ -314,6 +370,20 @@ export class TickDebugComponent {
             y1: passerDot.y,
             x2: targetDot.x,
             y2: targetDot.y
+          };
+        }
+      }
+    } else if (isPassiveFailedPass) {
+      const passerId = event.playerIds?.[0];
+      if (passerId) {
+        const allDots = [...this.homeDots(), ...this.awayDots()];
+        const passerDot = allDots.find(d => d.playerId === passerId);
+        if (passerDot) {
+          return {
+            x1: passerDot.x,
+            y1: passerDot.y,
+            x2: event.location.x,
+            y2: event.location.y
           };
         }
       }
