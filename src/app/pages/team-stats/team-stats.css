@@ -1,0 +1,98 @@
+.filter-grid {
+  display: flex;
+  gap: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 150px;
+}
+
+.filter-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.filter-control {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-canvas);
+  color: var(--color-text-secondary);
+  border-radius: 0.375rem; /* 6px */
+  padding: 0.55rem 0.7rem;
+  font-size: 0.875rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.filter-control::placeholder {
+  color: var(--color-text-muted);
+}
+
+.filter-control:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-accent) 20%, transparent);
+}
+
+.stats-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.stats-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.stats-table th.sortable:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-panel);
+}
+
+.sort-indicator {
+  margin-left: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--color-accent);
+}
+
+.stat-number {
+  font-size: 0.82rem;
+}
+
+.col-team {
+  width: 4.5rem;
+  max-width: 4.5rem;
+  text-align: center;
+}
+
+.col-team-name {
+  width: 14rem;
+  max-width: 14rem;
+}
+
+.team-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.team-name-link {
+  display: inline-block;
+  min-width: 0;
+  max-width: 12rem;
+}
+
+.team-name-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}

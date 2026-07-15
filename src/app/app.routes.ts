@@ -8,6 +8,7 @@ import { TeamScheduleComponent } from './pages/team-schedule/team-schedule';
 import { PlayerProfileComponent } from './pages/player-profile/player-profile';
 import { PlayerGameLogComponent } from './pages/player-game-log/player-game-log';
 import { PlayerStatsComponent } from './pages/player-stats/player-stats';
+import { TeamStatsComponent } from './pages/team-stats/team-stats';
 import { PlayerAttributesComponent } from './pages/player-attributes/player-attributes';
 import { ScheduleComponent } from './pages/schedule/schedule';
 import { SettingsComponent } from './pages/settings/settings';
@@ -39,6 +40,7 @@ export const routes: Routes = [
   { path: 'finances', component: LeagueFinancesComponent },
   { path: 'transfer-market', component: TransferMarketComponent },
   { path: 'player-stats', component: PlayerStatsComponent },
+  { path: 'team-stats', component: TeamStatsComponent },
   { path: 'player-attributes', component: PlayerAttributesComponent },
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },
   { path: 'team/:id', component: TeamDetailsComponent },
