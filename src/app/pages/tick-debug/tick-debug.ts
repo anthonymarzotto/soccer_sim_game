@@ -50,6 +50,7 @@ interface CleanedVariantBReplay {
 interface CleanedAdditionalData extends Omit<PlayByPlayEventAdditionalData, 'variantBReplay'> {
   variantBReplay?: CleanedVariantBReplay;
   offsidePlayer?: string;
+  targetPlayer?: string;
 }
 
 export interface CleanedEvent {
