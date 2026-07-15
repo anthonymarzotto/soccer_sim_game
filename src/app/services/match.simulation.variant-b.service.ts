@@ -981,7 +981,12 @@ export class MatchSimulationVariantBService {
     );
 
     if (this.rng.random() >= successChance) {
-      const isPassiveTackle = this.rng.random() < PASSIVE_TACKLE_CHANCE;
+      const attackingY =
+        currentTeam === TeamSide.HOME
+          ? state.ballPossession.location.y
+          : 100 - state.ballPossession.location.y;
+      const passiveChance = attackingY <= 35 ? 0.85 : PASSIVE_TACKLE_CHANCE;
+      const isPassiveTackle = this.rng.random() < passiveChance;
       let turnoverWinnerId: string;
       let winnerTeamSide: TeamSide;
 
@@ -1411,11 +1416,20 @@ export class MatchSimulationVariantBService {
       );
     }
 
+    const attackingY =
+      currentTeam === TeamSide.HOME
+        ? state.ballPossession.location.y
+        : 100 - state.ballPossession.location.y;
+
+    let passiveChance = PASSIVE_INTERCEPTION_CHANCE;
+    if (attackingY <= 35) {
+      passiveChance = 0.85;
+    } else if (failureMode === PASS_FAILURE_MODE.TACKLED) {
+      passiveChance = PASSIVE_TACKLE_CHANCE;
+    }
+
     const isPassiveInterception =
-      !offsideCalled &&
-      (failureMode === PASS_FAILURE_MODE.TACKLED
-        ? this.rng.random() < PASSIVE_TACKLE_CHANCE
-        : this.rng.random() < PASSIVE_INTERCEPTION_CHANCE);
+      !offsideCalled && this.rng.random() < passiveChance;
 
     let turnoverWinnerId: string;
     let winnerTeamSide: TeamSide;
@@ -1557,7 +1571,15 @@ export class MatchSimulationVariantBService {
       (context?.centralSlots.length ?? 0) >= 2 &&
       (context?.zoneCoverage ?? 0) >= 0.75;
 
+    const attackingY =
+      currentTeam === TeamSide.HOME
+        ? currentLocation.y
+        : 100 - currentLocation.y;
+
     if (pressure >= 0.6 && passDistance <= 24 && !uncoveredChannel) {
+      if (attackingY <= 35) {
+        return PASS_FAILURE_MODE.LANE_CUT_OUT;
+      }
       return PASS_FAILURE_MODE.TACKLED;
     }
 
@@ -1597,7 +1619,7 @@ export class MatchSimulationVariantBService {
       return PASS_FAILURE_MODE.LANE_CUT_OUT;
     }
 
-    if (pressure >= 0.45) {
+    if (pressure >= 0.45 && attackingY > 35) {
       return PASS_FAILURE_MODE.TACKLED;
     }
     return PASS_FAILURE_MODE.LANE_CUT_OUT;
@@ -2269,6 +2291,8 @@ export class MatchSimulationVariantBService {
     const attackingY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
     if (attackingY > 50) {
       baseChance -= (attackingY - 50) * 0.15;
+    } else if (attackingY <= 35) {
+      baseChance += 5.0;
     }
 
 
@@ -4252,12 +4276,17 @@ export class MatchSimulationVariantBService {
     const proximityScore = Math.max(0, 30 - distance) * 2.5;
 
     if (eventType === EventType.TACKLE) {
+      let positionalModifier = 0;
+      if (player.position === PositionEnum.ST) {
+        positionalModifier = -10;
+      }
       return (
         proximityScore +
         this.getPlayerStat(player, 'tackling') +
         this.getPlayerStat(player, 'strength') * 0.5 +
         this.getPlayerStat(player, 'determination') * 0.35 +
-        this.getPlayerStat(player, 'speed') * 0.2
+        this.getPlayerStat(player, 'speed') * 0.2 +
+        positionalModifier
       );
     }
 

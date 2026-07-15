@@ -454,7 +454,7 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     const tackleScoreST = internals.scoreTurnoverWinnerCandidate(striker, EventType.TACKLE, 10);
     const tackleScoreCB = internals.scoreTurnoverWinnerCandidate(defender, EventType.TACKLE, 10);
-    expect(tackleScoreST).toBe(tackleScoreCB);
+    expect(tackleScoreCB - tackleScoreST).toBe(10);
 
     const intScoreST = internals.scoreTurnoverWinnerCandidate(striker, EventType.INTERCEPTION, 10);
     const intScoreCB = internals.scoreTurnoverWinnerCandidate(defender, EventType.INTERCEPTION, 10);
