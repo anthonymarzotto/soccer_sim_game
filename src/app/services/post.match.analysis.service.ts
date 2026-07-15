@@ -131,7 +131,7 @@ export class PostMatchAnalysisService {
           playerIds: event.playerIds,
           location: event.location,
           icon: '📐',
-          importance: EventImportance.MEDIUM
+          importance: EventImportance.LOW
         });
       } else if (event.type === EventType.SUBSTITUTION) {
         keyMoments.push({

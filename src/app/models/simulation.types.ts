@@ -46,6 +46,7 @@ export interface VariantBShapeSlotSnapshot {
   coordinates: Coordinates;
   zone: FieldZone;
   role: string;
+  runProgress?: number;
 }
 
 export interface VariantBMatchShapeSnapshot {
@@ -59,7 +60,7 @@ export type PassIntentMetadata = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'C
 
 export type PassFailureMetadata = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
 
-export type CarryResultMetadata = 'DISPOSSESSED';
+export type CarryResultMetadata = 'DISPOSSESSED' | 'SCRAMBLE_RECOVERED' | 'SCRAMBLE_LOST';
 
 export interface InjuryEventMetadata {
   definitionId: string;
@@ -81,6 +82,32 @@ export interface PlayByPlayEventAdditionalData {
   freeKickDirect?: boolean;
   aerialWinner?: string;
   aerialLoser?: string;
+  isOffside?: boolean;
+  offsidePlayerId?: string;
+  targetPlayerId?: string;
+  playerWithBall?: string;
+  recoveredByTeam?: 'Home' | 'Away';
+  scrambleWinnerId?: string;
+  scrambleWinnerName?: string;
+  scrambleDecisions?: ScrambleCandidateDecision[];
+  tackleDecisions?: TackleCandidateDecision[];
+  interceptionDecisions?: TackleCandidateDecision[];
+}
+
+export interface ScrambleCandidateDecision {
+  playerId: string;
+  playerName: string;
+  teamSide: 'Home' | 'Away';
+  distance: number;
+  score: number;
+  probability: number;
+}
+
+export interface TackleCandidateDecision {
+  playerId: string;
+  playerName: string;
+  distance: number;
+  score: number;
 }
 
 export interface Possession {
@@ -160,6 +187,24 @@ export interface VariantBTuningConfig {
   indirectFkGoalChanceMax: number;
   skillCompressionFactor?: number;
 }
+export interface PassScoreBreakdown {
+  base: number;
+  style: number;
+  flank: number;
+  block: number;
+  offside: number;
+}
+
+export interface PassCandidateDecision {
+  playerId: string;
+  playerName: string;
+  role: string;
+  score: number;
+  distance: number;
+  probability: number;
+  isTargetOffside: boolean;
+  breakdown: PassScoreBreakdown;
+}
 
 export interface TickTrace {
   minute: number;
@@ -178,6 +223,7 @@ export interface TickTrace {
   };
   eventCreated: PlayByPlayEvent | null;
   matchShapeSnapshot: VariantBMatchShapeSnapshot | null;
+  passDecisions?: PassCandidateDecision[];
 }
 
 export interface MatchState {
@@ -185,6 +231,7 @@ export interface MatchState {
   events: PlayByPlayEvent[];
   fatigueTimeline: MatchFatigueTimeline;
   tickTraces?: TickTrace[];
+  counterAttackTicks?: number;
   currentMinute: number;
   homeScore: number;
   awayScore: number;

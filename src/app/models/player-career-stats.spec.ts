@@ -12,6 +12,7 @@ describe('player-career-stats defaults', () => {
       gamesSubbed: 0,
       goals: 0,
       assists: 0,
+      offsides: 0,
       yellowCards: 0,
       redCards: 0,
       shots: 0,

@@ -140,6 +140,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   activeEventTeamSide = signal<TeamSide | null>(null);
   activeEventPlayerIds = signal<string[]>([]);
   activeEventInitiatorPlayerId = signal<string | null>(null);
+  activePlayerWithBall = signal<string | null>(null);
   homeTeamColor = signal<string>('#0ea5e9');
   homeTeamAccentColor = signal<string>('#f43f5e');
   awayTeamColor = signal<string>('#f43f5e');
@@ -619,6 +620,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.activeEventTeamSide.set(item.teamSide ?? null);
     this.activeEventPlayerIds.set([...item.playerIds]);
     this.activeEventInitiatorPlayerId.set(item.playerIds[0] ?? null);
+    this.activePlayerWithBall.set(item.additionalData?.playerWithBall ?? null);
     this.currentCommentaryItem.set(item);
     this.applyCommentaryPitchState(item);
 
@@ -1046,16 +1048,9 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.awayRemovedPlayers.set(new Map());
   }
 
-  getPitchPoint(coords: Coordinates, teamSide?: TeamSide): PitchPoint {
+  getPitchPoint(coords: Coordinates): PitchPoint {
     const left = 100 - coords.x;
-    let top: number;
-
-    if (teamSide === TeamSide.AWAY) {
-      top = 50 + coords.y / 2;
-    } else {
-      top = coords.y / 2;
-    }
-
+    const top = coords.y;
     return { left, top };
   }
 
@@ -1412,18 +1407,57 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     this.activeEventTeamSide.set(null);
     this.activeEventPlayerIds.set([]);
     this.activeEventInitiatorPlayerId.set(null);
+    this.activePlayerWithBall.set(null);
     this.currentCommentaryItem.set(null);
   }
 
-  private applyCommentaryPitchState(item: CommentaryItem) {
-    if (item.type === EventType.SUBSTITUTION && item.playerIds.length >= 2 && item.teamSide) {
-      const snapshot = this.getFormationSnapshot(item);
-      if (snapshot) {
-        this.applyFormationSnapshot(snapshot, item.teamSide, item.minute);
-        return;
-      }
+  isActivePlayerWithBall(playerId: string): boolean {
+    return this.activePlayerWithBall() === playerId;
+  }
 
-      console.error('Missing formation snapshot for substitution event', item.id);
+  getBallLocation(fallbackLocation: Coordinates | null): Coordinates | null {
+    if (!fallbackLocation) {
+      return null;
+    }
+
+    const currentItem = this.currentCommentaryItem();
+    if (currentItem) {
+      const type = currentItem.type;
+      if (
+        type === EventType.SHOT ||
+        type === EventType.GOAL ||
+        type === EventType.MISS ||
+        type === EventType.SAVE ||
+        type === EventType.CORNER
+      ) {
+        return fallbackLocation;
+      }
+    }
+
+    const playerId = this.activePlayerWithBall();
+    if (playerId) {
+      const dot =
+        this.homeFormationDots().find((d) => d.playerId === playerId) ||
+        this.awayFormationDots().find((d) => d.playerId === playerId);
+      if (dot) {
+        return { x: dot.x, y: dot.y };
+      }
+    }
+
+    return fallbackLocation;
+  }
+
+  private applyCommentaryPitchState(item: CommentaryItem) {
+    const snapshot = this.getFormationSnapshot(item);
+    if (snapshot) {
+      this.applyFormationSnapshot(snapshot, TeamSide.HOME, item.minute);
+      this.applyFormationSnapshot(snapshot, TeamSide.AWAY, item.minute);
+    }
+
+    if (item.type === EventType.SUBSTITUTION && item.playerIds.length >= 2 && item.teamSide) {
+      if (!snapshot) {
+        console.error('Missing formation snapshot for substitution event', item.id);
+      }
       return;
     }
 
@@ -1555,7 +1589,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
       nextDots.push({
         ...templateDot,
         x: slot.coordinates.x,
-        y: mirrorYAxis ? 100 - slot.coordinates.y : slot.coordinates.y,
+        y: slot.coordinates.y,
         slotLabel: slot.role,
         playerId: slot.playerId,
         label: this.toInitials(fullName),

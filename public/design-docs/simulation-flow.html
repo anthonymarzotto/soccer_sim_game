@@ -43,7 +43,8 @@
       `TICK_LOOP --> ${rect('FATIGUE', 'Update fatigue (starters only)', 'GK stamina drain reduced')}`,
       `FATIGUE --> ${rect('CARRIER', 'Identify ball carrier')}`,
       `CARRIER --> ${rect('MOVE', 'Apply carrier movement on the pitch')}`,
-      `MOVE --> ${decision('ACTION', 'Weighted action roll', 'zone role tactics fatigue scoreline', 'plus possession-chain quality', 'GK constraint: no SHOT roll')}`,
+      `MOVE --> ${rect('DYNAMIC_SHIFTS', 'Update dynamic player positions', 'block shifting + run/mark offsets + build-up spacing')}`,
+      `DYNAMIC_SHIFTS --> ${decision('ACTION', 'Weighted action roll', 'zone role tactics fatigue scoreline', 'plus possession-chain quality', 'GK constraint: no SHOT roll')}`,
       '',
       `ACTION -->|CARRY| ${rect('CARRY_ATTEMPT', 'Carry attempt')}`,
       `CARRY_ATTEMPT --> ${decision('CARRY_SUCCESS', 'Carry succeeds?', 'carrier quality vs pressure and fatigue', 'plus defensive shape coverage')}`,
@@ -53,10 +54,12 @@
       `ACTION -->|SHOT| ${rect('SHOT_START', 'Shot attempt', 'Increment team shots')}`,
       `ACTION -->|FOUL| ${rect('FOUL_START', 'Defending player fouls carrier', 'Increment defending team fouls', 'Emit FOUL event')}`,
       '',
-      `PASS_START --> ${rect('PASS_INTENT', 'Select pass intent', 'RECYCLE / PROGRESSION / THROUGH_BALL / CROSS')}`,
+      `PASS_START --> ${rect('PASS_INTENT', 'Select pass intent', 'RECYCLE / PROGRESSION / THROUGH_BALL / CROSS + probabilistic CB/GK gate')}`,
       `PASS_INTENT --> ${decision('PASS_TARGET', 'Pass target found?', 'intent scoring plus weighted draw across top candidates')}`,
       `PASS_TARGET -->|No| ${rect('TACKLE', 'TACKLE event', 'Turnover')}`,
-      `PASS_TARGET -->|Yes| ${decision('PASS_SUCCESS', 'Pass success?', 'skill fatigue pressure intent style', 'pressure plus direct defensive shape lane coverage')}`,
+      `PASS_TARGET -->|Yes| ${decision('OFFSIDE_CHECK', 'Target Offside?', 'isPlayerOffside')}`,
+      `OFFSIDE_CHECK -->|Yes| ${rect('OFFSIDE_TURNOVER', 'INTERCEPTION event', 'isOffside=true', 'Award defender possession at offside spot')}`,
+      `OFFSIDE_CHECK -->|No| ${decision('PASS_SUCCESS', 'Pass success?', 'skill fatigue pressure intent style', 'pressure plus direct defensive shape lane coverage')}`,
       `PASS_SUCCESS -->|Yes| ${rect('PASS_COMPLETE', 'PASS event', 'Receiver takes ball', 'Ball position advances')}`,
       `PASS_SUCCESS -->|No| ${decision('PASS_FAIL', 'Failure type', 'shape-aware lane vs overhit pressure')}`,
       `PASS_FAIL -->|Tackled| ${rect('TACKLE_FAIL', 'TACKLE event', 'Turnover')}`,
@@ -158,6 +161,7 @@
       `TACKLE_FAIL --> INJ_ROLL`,
       `INTERCEPTION --> INJ_ROLL`,
       `OVERHIT --> INJ_ROLL`,
+      `OFFSIDE_TURNOVER --> NEXT_TICK`,
       `INJ_ROLL -->|No| NEXT_TICK`,
       `INJ_ROLL -->|Yes| ${rect('INJURY_EVENT', 'INJURY event', 'Pick weighted definition + roll duration', 'Withdraw player + rebalance shape')}`,
       `INJURY_EVENT --> ${decision('INJ_REPLACE', 'Replacement allowed?', 'subs used < 5 AND eligible bench player exists')}`,
@@ -206,7 +210,10 @@
       'style CORNER_GOAL fill:#166534,color:#fff',
       'style FK_D_GOAL fill:#166534,color:#fff',
       'style FK_IND_GOAL fill:#166534,color:#fff',
-      'style PEN_GOAL fill:#166534,color:#fff'
+      'style PEN_GOAL fill:#166534,color:#fff',
+      'style OFFSIDE_TURNOVER fill:#1e3a5f,color:#fff',
+      'style DYNAMIC_SHIFTS fill:#3f3f46,color:#ccc',
+      'style OFFSIDE_CHECK fill:#1c1917,color:#fff,stroke:#a8a29e'
     ];
 
     const diagramSource = diagramLines.join('\n');

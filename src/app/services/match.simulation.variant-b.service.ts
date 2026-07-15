@@ -16,6 +16,10 @@ import {
   calculateFatigueModifier,
   scaleOverallWithFatigue,
   CardReason,
+  PassCandidateDecision,
+  PassScoreBreakdown,
+  ScrambleCandidateDecision,
+  TackleCandidateDecision,
 } from "../models/simulation.types";
 import { FieldService } from "./field.service";
 import { RngService } from "./rng.service";
@@ -38,6 +42,9 @@ import {
   rollInjuryDurationWeeks,
 } from "../data/injuries";
 
+const PASSIVE_INTERCEPTION_CHANCE = 0.50; // 50% of interceptions become loose-ball scramble
+const PASSIVE_TACKLE_CHANCE = 0.65;        // 65% of tackles from carries become loose-ball scramble
+
 interface ResolvedRosters {
   /** On-field starters only — all gameplay methods use these exclusively. */
   homePlayers: Player[];
@@ -58,6 +65,8 @@ interface ActiveShapeSlot {
   zone: FieldZone;
   role: string;
   preferredPosition: PositionEnum;
+  runProgress: number;
+  markingTargetPlayerId: string | null;
 }
 
 interface MatchShapeState {
@@ -122,24 +131,24 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   movementStepRandom: 3.0,
   lateUrgencyMultiplier: 1.2,
 
-  passWeightBase: 0.62,
+  passWeightBase: 0.63,
   carryWeightBase: 0.12,
-  shotWeightBase: 0.17,
+  shotWeightBase: 0.16,
   foulWeightBase: 0.03,
-  outOfWindowShotMultiplier: 0.27,
+  outOfWindowShotMultiplier: 0.25,
 
-  onTargetBase: 0.25,
+  onTargetBase: 0.28,
   onTargetSkillScale: 0.0012,
   onTargetWidePenalty: 0.06,
   onTargetFatiguePenalty: 0.04,
   onTargetMin: 0.15,
   onTargetMax: 0.82,
 
-  goalChanceBase: 0.15,
+  goalChanceBase: 0.19,
   goalChanceSkillVsKeeperScale: 0.0008,
   goalChanceWidePenalty: 0.035,
-  goalChanceMin: 0.07,
-  goalChanceMax: 0.35,
+  goalChanceMin: 0.10,
+  goalChanceMax: 0.52,
 
   homeAdvantageGoalBonus: 0.04,
   cardChanceBase: 0.40,
@@ -178,6 +187,7 @@ export class MatchSimulationVariantBService {
   private lastSimulationForfeit: TeamSide | null = null;
   private currentSeasonYear = new Date().getFullYear();
   private activeRosters: ResolvedRosters | null = null;
+  private lastPassDecisions: PassCandidateDecision[] | null = null;
 
   didLastSimulationEndByForfeit(): boolean {
     return this.lastSimulationForfeit !== null;
@@ -317,6 +327,7 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
   ): MatchState {
     const newState = { ...state };
+    this.lastPassDecisions = null;
     newState.currentMinute = minute;
 
     this.updateFatigue(fatigue, minute, rosters);
@@ -325,6 +336,21 @@ export class MatchSimulationVariantBService {
       newState.ballPossession.teamId === homeTeam.id
         ? TeamSide.HOME
         : TeamSide.AWAY;
+
+    // Decrement counterAttackTicks if active
+    if (newState.counterAttackTicks !== undefined && newState.counterAttackTicks > 0) {
+      newState.counterAttackTicks--;
+      if (newState.counterAttackTicks === 0) {
+        newState.ballPossession.phase = this.getPhaseFromLocation(
+          newState.ballPossession.location,
+          currentTeam,
+          newState,
+        );
+      }
+    }
+
+    const teamBeforeAction = newState.ballPossession.teamId;
+
     const teamPlayers =
       currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
 
@@ -335,6 +361,8 @@ export class MatchSimulationVariantBService {
     const locationBeforeMove = { ...newState.ballPossession.location };
     this.applyCarrierMovement(newState, carrier, currentTeam, minute);
     const locationBeforeAction = { ...newState.ballPossession.location };
+
+    this.updateDynamicPlayerPositions(newState, tactics, rosters, fatigue);
 
     const action = this.determineCarrierAction(
       newState,
@@ -357,6 +385,23 @@ export class MatchSimulationVariantBService {
       rosters,
     );
     const locationAfterAction = { ...newState.ballPossession.location };
+
+    const teamAfterAction = newState.ballPossession.teamId;
+    if (teamBeforeAction !== teamAfterAction) {
+      const newTeamSide = teamAfterAction === homeTeam.id ? TeamSide.HOME : TeamSide.AWAY;
+      const ballLoc = newState.ballPossession.location;
+      const attackingY = newTeamSide === TeamSide.HOME ? ballLoc.y : 100 - ballLoc.y;
+      
+      const hasTurnoverEvent = newState.events.length > eventsBefore &&
+        (newState.events[newState.events.length - 1].type === EventType.TACKLE ||
+         newState.events[newState.events.length - 1].type === EventType.INTERCEPTION);
+
+      // If won deep via actual turnover, start counter-attack
+      if (attackingY < 50 && hasTurnoverEvent) {
+        newState.ballPossession.phase = MatchPhase.COUNTER_ATTACK;
+        newState.counterAttackTicks = 2;
+      }
+    }
 
     if (eventCreated) {
       const replayActionType = this.resolveReplayActionType(
@@ -399,7 +444,8 @@ export class MatchSimulationVariantBService {
           centralSlots: coverage?.centralSlots.length ?? 0
         },
         eventCreated: eventDetails,
-        matchShapeSnapshot: this.createFormationSnapshot() ?? null
+        matchShapeSnapshot: this.createFormationSnapshot() ?? null,
+        passDecisions: this.lastPassDecisions ?? undefined
       });
     }
 
@@ -425,6 +471,7 @@ export class MatchSimulationVariantBService {
       },
       events: [],
       fatigueTimeline: [],
+      counterAttackTicks: 0,
       currentMinute: 0,
       homeScore: 0,
       awayScore: 0,
@@ -668,8 +715,8 @@ export class MatchSimulationVariantBService {
       shotWeight -= 0.03;
     } else {
       carryWeight -= 0.04;
-      shotWeight += 0.18;
-      passWeight -= 0.08;
+      shotWeight += 0.15;
+      passWeight -= 0.05;
     }
 
     if (teamTactics.playingStyle === PlayingStyle.COUNTER_ATTACK) {
@@ -739,9 +786,9 @@ export class MatchSimulationVariantBService {
     }
 
     if (scorelineState === LATE_GAME_SCORELINE.TRAILING) {
-      shotWeight += 0.07;
+      shotWeight += 0.04;
       carryWeight += 0.03;
-      passWeight -= 0.02;
+      passWeight -= 0.01;
       foulWeight += 0.01;
     } else if (scorelineState === LATE_GAME_SCORELINE.LEADING) {
       passWeight += 0.05;
@@ -764,6 +811,19 @@ export class MatchSimulationVariantBService {
     const inPenaltyArea = relativeY >= 90 && Math.abs(location.x - 50) <= 20;
     if (inPenaltyArea) {
       foulWeight *= this.activeTuning.penaltyFoulRateMultiplier;
+    }
+
+    // Option A: Increase shot urgency for forwards inside the opponent's box
+    const inOpponentBox = relativeY >= 86 && Math.abs(location.x - 50) <= 22;
+    if (inOpponentBox && (carrier.position === PositionEnum.ST || carrier.position === PositionEnum.WNG || carrier.position === PositionEnum.CAM)) {
+      shotWeight += 0.08;
+      passWeight -= 0.04;
+      carryWeight -= 0.02;
+    }
+
+    // Option B: Reduce CB/GK carry probability in their defensive zone
+    if (zone === FieldZone.DEFENSE && (carrier.position === PositionEnum.CB || carrier.position === PositionEnum.GK)) {
+      carryWeight = 0.08;
     }
 
     passWeight = Math.max(0.2, passWeight);
@@ -796,7 +856,7 @@ export class MatchSimulationVariantBService {
           state,
           carrier,
           currentTeam,
-          teamTactics,
+          tactics,
           minute,
           teamFatigue,
         ),
@@ -921,72 +981,112 @@ export class MatchSimulationVariantBService {
     );
 
     if (this.rng.random() >= successChance) {
-      const turnoverWinnerId = this.createTurnoverEvent(
-        state,
-        EventType.TACKLE,
-        { ...state.ballPossession.location },
-        currentTeam,
+      const attackingY =
         currentTeam === TeamSide.HOME
-          ? rosters.awayPlayers
-          : rosters.homePlayers,
-        action.player.id,
-        minute,
-        true,
-        config,
-        { carryResult: "DISPOSSESSED" },
-      );
+          ? state.ballPossession.location.y
+          : 100 - state.ballPossession.location.y;
+      const passiveChance = attackingY <= 35 ? 0.85 : PASSIVE_TACKLE_CHANCE;
+      const isPassiveTackle = this.rng.random() < passiveChance;
+      let turnoverWinnerId: string;
+      let winnerTeamSide: TeamSide;
+
+      const attackingPlayers = currentTeam === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
+      const defendingPlayers = currentTeam === TeamSide.HOME ? rosters.awayPlayers : rosters.homePlayers;
+
+      if (isPassiveTackle) {
+        const scramble = this.resolveLooseBallScramble(
+          state.ballPossession.location,
+          currentTeam,
+          defendingPlayers,
+          attackingPlayers,
+          10.0, // defenderBias of 10.0 for carry scrambles
+        );
+        turnoverWinnerId = scramble.winner.id;
+        winnerTeamSide = scramble.winnerTeam;
+
+        const isRecovery = scramble.winnerTeam === currentTeam;
+        this.createEvent(
+          state,
+          EventType.CARRY,
+          [action.player.id, scramble.winner.id],
+          { ...state.ballPossession.location },
+          minute,
+          false,
+          config,
+          {
+            carryResult: isRecovery ? "SCRAMBLE_RECOVERED" : "SCRAMBLE_LOST",
+            recoveredByTeam: scramble.winnerTeam === TeamSide.HOME ? 'Home' : 'Away',
+            scrambleWinnerId: scramble.winner.id,
+            scrambleWinnerName: scramble.winner.name,
+            scrambleDecisions: scramble.decisions,
+          },
+        );
+      } else {
+        turnoverWinnerId = this.createTurnoverEvent(
+          state,
+          EventType.TACKLE,
+          { ...state.ballPossession.location },
+          currentTeam,
+          defendingPlayers,
+          action.player.id,
+          minute,
+          true,
+          config,
+          { carryResult: "DISPOSSESSED" },
+        );
+        winnerTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      }
 
       state.ballPossession.teamId =
-        currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+        winnerTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
       state.ballPossession.playerWithBall = turnoverWinnerId;
       state.ballPossession.passes = 0;
 
-      const newPossessionTeam =
-        state.ballPossession.teamId === homeTeam.id
-          ? TeamSide.HOME
-          : TeamSide.AWAY;
+      const newPossessionTeam = winnerTeamSide;
       state.ballPossession.phase = this.getPhaseFromLocation(
         state.ballPossession.location,
         newPossessionTeam,
+        state,
       );
 
-      // Tackle injuries: roll on both the dispossessed carrier and the winner.
-      const winnerTeamPlayers =
-        currentTeam === TeamSide.HOME
-          ? rosters.awayPlayers
-          : rosters.homePlayers;
-      const winnerKey: TeamSide =
-        currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
-      const loserPlayers =
-        currentTeam === TeamSide.HOME
-          ? rosters.homePlayers
-          : rosters.awayPlayers;
-      this.tryRollInjury(
-        action.player,
-        currentTeam,
-        InjuryRollKind.CONTACT,
-        INJURY_TACKLE_MODIFIER,
-        state,
-        minute,
-        config,
-        loserPlayers,
-        tactics,
-      );
-      const winnerPlayer = winnerTeamPlayers.find(
-        (player) => player.id === turnoverWinnerId,
-      );
-      if (winnerPlayer) {
+      if (!isPassiveTackle) {
+        const winnerTeamPlayers =
+          currentTeam === TeamSide.HOME
+            ? rosters.awayPlayers
+            : rosters.homePlayers;
+        const winnerKey: TeamSide =
+          currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+        const loserPlayers =
+          currentTeam === TeamSide.HOME
+            ? rosters.homePlayers
+            : rosters.awayPlayers;
         this.tryRollInjury(
-          winnerPlayer,
-          winnerKey,
+          action.player,
+          currentTeam,
           InjuryRollKind.CONTACT,
           INJURY_TACKLE_MODIFIER,
           state,
           minute,
           config,
-          winnerTeamPlayers,
+          loserPlayers,
           tactics,
         );
+        const winnerPlayer = winnerTeamPlayers.find(
+          (player) => player.id === turnoverWinnerId,
+        );
+        if (winnerPlayer) {
+          this.tryRollInjury(
+            winnerPlayer,
+            winnerKey,
+            InjuryRollKind.CONTACT,
+            INJURY_TACKLE_MODIFIER,
+            state,
+            minute,
+            config,
+            winnerTeamPlayers,
+            tactics,
+          );
+        }
       }
       return true;
     }
@@ -1150,7 +1250,7 @@ export class MatchSimulationVariantBService {
         state,
         passer,
         currentTeam,
-        teamTactics,
+        tactics,
         minute,
         teamFatigue.find((entry) => entry.playerId === passer.id),
       );
@@ -1227,8 +1327,9 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    const targetPosition = this.fieldService.getStartingPositionForPlayer(
+    const targetPosition = this.getCurrentPositionForPlayer(
       targetPlayer,
+      currentTeam,
       teamTactics.formation,
     );
     const passDistance = this.fieldService.getDistance(
@@ -1240,7 +1341,8 @@ export class MatchSimulationVariantBService {
         ? targetPosition.y - state.ballPossession.location.y
         : state.ballPossession.location.y - targetPosition.y;
 
-    const passSuccess = this.calculatePassSuccess(
+    const isOffside = this.isPlayerOffside(targetPlayer.id, currentTeam, state.ballPossession.location);
+    const basePassSuccess = this.calculatePassSuccess(
       passer,
       targetPlayer,
       teamTactics,
@@ -1251,12 +1353,20 @@ export class MatchSimulationVariantBService {
       pressure,
     );
 
+    const offsideCalled = isOffside && basePassSuccess;
+    const passSuccess = basePassSuccess && !offsideCalled;
+
     if (passSuccess) {
       state.ballPossession.playerWithBall = targetPlayer.id;
       state.ballPossession.passes++;
       state.ballPossession.location = this.calculateNewBallPosition(
         state.ballPossession.location,
         targetPosition,
+      );
+      state.ballPossession.phase = this.getPhaseFromLocation(
+        state.ballPossession.location,
+        currentTeam,
+        state,
       );
       this.createEvent(
         state,
@@ -1283,54 +1393,149 @@ export class MatchSimulationVariantBService {
       return;
     }
 
-    const failureMode = this.determinePassFailureMode(
-      state.ballPossession.location,
-      currentTeam,
-      passIntent,
-      pressure,
-      passDistance,
-      progression,
-    );
-    const turnoverWinnerId = this.createPassFailureEvent(
-      state,
-      failureMode,
-      state.ballPossession.location,
-      currentTeam,
-      opponentPlayers,
-      passer.id,
-      passIntent,
-      minute,
-      config,
-    );
+    const failureMode = offsideCalled
+      ? PASS_FAILURE_MODE.LANE_CUT_OUT
+      : this.determinePassFailureMode(
+          state.ballPossession.location,
+          currentTeam,
+          passIntent,
+          pressure,
+          passDistance,
+          progression,
+        );
+
+    let failureLocation = state.ballPossession.location;
+    let predeterminedWinnerId: string | undefined;
+
+    if (offsideCalled || failureMode === PASS_FAILURE_MODE.OVERHIT) {
+      failureLocation = targetPosition;
+    } else if (failureMode === PASS_FAILURE_MODE.LANE_CUT_OUT) {
+      const interception = this.getPassInterceptionLocation(
+        state.ballPossession.location,
+        targetPosition,
+        currentTeam,
+        opponentPlayers,
+      );
+      failureLocation = interception.location;
+      predeterminedWinnerId = interception.interceptorId;
+    }
+
+    const attackingY =
+      currentTeam === TeamSide.HOME
+        ? state.ballPossession.location.y
+        : 100 - state.ballPossession.location.y;
+
+    let passiveChance = PASSIVE_INTERCEPTION_CHANCE;
+    if (attackingY <= 35) {
+      passiveChance = 0.93;
+    } else if (failureMode === PASS_FAILURE_MODE.TACKLED) {
+      passiveChance = PASSIVE_TACKLE_CHANCE;
+    }
+
+    const isPassiveInterception =
+      !offsideCalled && this.rng.random() < passiveChance;
+
+    let turnoverWinnerId: string;
+    let winnerTeamSide: TeamSide;
+
+    if (isPassiveInterception) {
+      const scramble = this.resolveLooseBallScramble(
+        failureLocation,
+        currentTeam,
+        opponentPlayers,
+        teamPlayers,
+        25.0, // defenderBias of 25.0 for pass failures
+      );
+      turnoverWinnerId = scramble.winner.id;
+      winnerTeamSide = scramble.winnerTeam;
+
+      this.createEvent(
+        state,
+        EventType.PASS,
+        [passer.id, scramble.winner.id],
+        { ...failureLocation },
+        minute,
+        false,
+        config,
+        {
+          passFailure: failureMode,
+          passIntent,
+          recoveredByTeam: scramble.winnerTeam === TeamSide.HOME ? 'Home' : 'Away',
+          scrambleWinnerId: scramble.winner.id,
+          scrambleWinnerName: scramble.winner.name,
+          scrambleDecisions: scramble.decisions,
+        },
+      );
+    } else {
+      turnoverWinnerId = this.createPassFailureEvent(
+        state,
+        failureMode,
+        failureLocation,
+        currentTeam,
+        opponentPlayers,
+        passer.id,
+        passIntent,
+        minute,
+        config,
+        offsideCalled,
+        targetPlayer.id,
+        predeterminedWinnerId,
+      );
+      winnerTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    }
+
     state.ballPossession.teamId =
-      currentTeam === TeamSide.HOME ? awayTeam.id : homeTeam.id;
+      winnerTeamSide === TeamSide.HOME ? homeTeam.id : awayTeam.id;
     state.ballPossession.playerWithBall = turnoverWinnerId;
     state.ballPossession.passes = 0;
 
+    if (offsideCalled) {
+      state.ballPossession.location = { ...targetPosition };
+      state.ballPossession.phase = this.getPhaseFromLocation(
+        targetPosition,
+        currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME,
+        state,
+      );
+      return;
+    }
+
     // TACKLED is contact (both passer and winner); intercept paths are non-contact (winner only).
-    const winnerKey: TeamSide =
-      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
-    const winner = opponentPlayers.find(
+    const winnerKey: TeamSide = winnerTeamSide;
+    const winner = (winnerKey === currentTeam ? teamPlayers : opponentPlayers).find(
       (player) => player.id === turnoverWinnerId,
     );
-    if (failureMode === PASS_FAILURE_MODE.TACKLED) {
-      this.tryRollInjury(
-        passer,
-        currentTeam,
-        InjuryRollKind.CONTACT,
-        INJURY_TACKLE_MODIFIER,
-        state,
-        minute,
-        config,
-        teamPlayers,
-        tactics,
-      );
-      if (winner) {
+    if (!isPassiveInterception) {
+      if (failureMode === PASS_FAILURE_MODE.TACKLED) {
+        this.tryRollInjury(
+          passer,
+          currentTeam,
+          InjuryRollKind.CONTACT,
+          INJURY_TACKLE_MODIFIER,
+          state,
+          minute,
+          config,
+          teamPlayers,
+          tactics,
+        );
+        if (winner) {
+          this.tryRollInjury(
+            winner,
+            winnerKey,
+            InjuryRollKind.CONTACT,
+            INJURY_TACKLE_MODIFIER,
+            state,
+            minute,
+            config,
+            opponentPlayers,
+            tactics,
+          );
+        }
+      } else if (winner) {
         this.tryRollInjury(
           winner,
           winnerKey,
-          InjuryRollKind.CONTACT,
-          INJURY_TACKLE_MODIFIER,
+          InjuryRollKind.NON_CONTACT,
+          1,
           state,
           minute,
           config,
@@ -1338,7 +1543,7 @@ export class MatchSimulationVariantBService {
           tactics,
         );
       }
-    } else if (winner) {
+    } else if (winner && winnerKey !== currentTeam) {
       this.tryRollInjury(
         winner,
         winnerKey,
@@ -1371,7 +1576,15 @@ export class MatchSimulationVariantBService {
       (context?.centralSlots.length ?? 0) >= 2 &&
       (context?.zoneCoverage ?? 0) >= 0.75;
 
+    const attackingY =
+      currentTeam === TeamSide.HOME
+        ? currentLocation.y
+        : 100 - currentLocation.y;
+
     if (pressure >= 0.6 && passDistance <= 24 && !uncoveredChannel) {
+      if (attackingY <= 35) {
+        return PASS_FAILURE_MODE.LANE_CUT_OUT;
+      }
       return PASS_FAILURE_MODE.TACKLED;
     }
 
@@ -1411,7 +1624,10 @@ export class MatchSimulationVariantBService {
       return PASS_FAILURE_MODE.LANE_CUT_OUT;
     }
 
-    return PASS_FAILURE_MODE.TACKLED;
+    if (pressure >= 0.45 && attackingY > 35) {
+      return PASS_FAILURE_MODE.TACKLED;
+    }
+    return PASS_FAILURE_MODE.LANE_CUT_OUT;
   }
 
   private createPassFailureEvent(
@@ -1424,7 +1640,18 @@ export class MatchSimulationVariantBService {
     passIntent: PassIntent,
     minute: number,
     config: SimulationConfig,
+    isOffside?: boolean,
+    targetPlayerId?: string,
+    predeterminedWinnerId?: string,
   ): string {
+    const additionalData = {
+      passFailure: mode,
+      passIntent,
+      isOffside,
+      offsidePlayerId: isOffside ? targetPlayerId : undefined,
+      targetPlayerId,
+    };
+
     if (mode === PASS_FAILURE_MODE.TACKLED) {
       return this.createTurnoverEvent(
         state,
@@ -1436,7 +1663,8 @@ export class MatchSimulationVariantBService {
         minute,
         true,
         config,
-        { passFailure: mode, passIntent },
+        additionalData,
+        predeterminedWinnerId,
       );
     }
 
@@ -1450,7 +1678,8 @@ export class MatchSimulationVariantBService {
       minute,
       false,
       config,
-      { passFailure: mode, passIntent },
+      additionalData,
+      predeterminedWinnerId,
     );
   }
 
@@ -2045,7 +2274,7 @@ export class MatchSimulationVariantBService {
     const targetFatigue = fatigue.find((entry) => entry.playerId === target.id);
 
     let baseChance =
-      (this.getPlayerStat(passer, 'shortPassing') + this.getPlayerStat(passer, 'longPassing')) / 2;
+      (this.getPlayerStat(passer, 'shortPassing') + this.getPlayerStat(passer, 'longPassing')) / 2 + 16.0;
 
     if (passerFatigue) {
       baseChance *= passerFatigue.performanceModifier;
@@ -2060,13 +2289,17 @@ export class MatchSimulationVariantBService {
     }
 
     if (passIntent === PASS_INTENT.RECYCLE) {
-      baseChance += 1;
+      baseChance += 1.5;
     } else if (passIntent === PASS_INTENT.PROGRESSION) {
-      baseChance -= 1;
+      baseChance -= 0.5;
     } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
-      baseChance -= 6;
+      baseChance -= 5.5;
     } else if (passIntent === PASS_INTENT.CROSS) {
-      baseChance -= 5;
+      baseChance -= 4.5;
+    }
+
+    if (target.position === PositionEnum.FB && (passer.position === PositionEnum.CB || passer.position === PositionEnum.GK)) {
+      baseChance += 12.0;
     }
 
     baseChance -= pressure * 22;
@@ -2074,7 +2307,11 @@ export class MatchSimulationVariantBService {
     const attackingY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
     if (attackingY > 50) {
       baseChance -= (attackingY - 50) * 0.15;
+    } else if (attackingY <= 35) {
+      baseChance += 5.0;
     }
+
+
 
     baseChance += this.calculatePassShapeModifier(
       currentLocation,
@@ -2137,10 +2374,11 @@ export class MatchSimulationVariantBService {
     state: MatchState,
     passer: Player,
     currentTeam: TeamSide,
-    teamTactics: TacticalSetup,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
     minute: number,
     passerFatigue?: PlayerFatigue,
   ): PassIntent {
+    const teamTactics = tactics[currentTeam];
     const y = state.ballPossession.location.y;
     const x = state.ballPossession.location.x;
     const attackingY = currentTeam === TeamSide.HOME ? y : 100 - y;
@@ -2152,12 +2390,48 @@ export class MatchSimulationVariantBService {
     );
 
     const passerGroup = getPositionGroup(passer.position);
-    const isGKOrCB =
-      passer.position === PositionEnum.GK ||
-      passer.position === PositionEnum.CB;
     const isFatigued = (passerFatigue?.fatigueLevel ?? 0) > 75;
 
-    if ((isGKOrCB || isFatigued) && attackingY < 78) {
+    if (scorelineState === LATE_GAME_SCORELINE.LEADING && attackingY < 82) {
+      return PASS_INTENT.RECYCLE;
+    }
+
+    const pressure = this.calculateDefensivePressure(state, currentTeam, tactics);
+
+    if (passer.position === PositionEnum.GK && attackingY < 78) {
+      if (pressure > 0.65 && this.rng.random() < 0.30) {
+        return PASS_INTENT.PROGRESSION;
+      }
+      return PASS_INTENT.RECYCLE;
+    }
+
+    if (passer.position === PositionEnum.CB && attackingY < 78) {
+      if (isFatigued) {
+        return PASS_INTENT.RECYCLE;
+      }
+      if (state.ballPossession.phase === MatchPhase.COUNTER_ATTACK) {
+        return PASS_INTENT.PROGRESSION;
+      }
+      
+      const vision = this.getPlayerStat(passer, 'vision') || 50;
+      const passing = this.getPlayerStat(passer, 'shortPassing') || 50;
+      const statModifier = (((vision + passing) / 2) - 50) / 250;
+
+      let styleModifier = 0;
+      if (teamTactics.playingStyle === PlayingStyle.COUNTER_ATTACK) styleModifier = 0.25;
+      else if (teamTactics.playingStyle === PlayingStyle.PRESSING) styleModifier = 0.10;
+      else if (teamTactics.playingStyle === PlayingStyle.POSSESSION) styleModifier = -0.15;
+      else if (teamTactics.playingStyle === PlayingStyle.DEFENSIVE) styleModifier = 0.05;
+
+      const progressionChance = this.clamp(0.06 + pressure * 0.22 + styleModifier + statModifier, 0.05, 0.58);
+      
+      if (this.rng.random() < progressionChance) {
+        return PASS_INTENT.PROGRESSION;
+      }
+      return PASS_INTENT.RECYCLE;
+    }
+
+    if (isFatigued && attackingY < 78) {
       return PASS_INTENT.RECYCLE;
     }
 
@@ -2186,15 +2460,14 @@ export class MatchSimulationVariantBService {
       return PASS_INTENT.RECYCLE;
     }
 
-    if (scorelineState === LATE_GAME_SCORELINE.LEADING && attackingY < 82) {
-      return PASS_INTENT.RECYCLE;
-    }
 
-    if (scorelineState === LATE_GAME_SCORELINE.TRAILING && attackingY >= 70) {
+
+    if (scorelineState === LATE_GAME_SCORELINE.TRAILING && attackingY >= 79) {
       return wideChannel ? PASS_INTENT.CROSS : PASS_INTENT.THROUGH_BALL;
     }
 
-    if (attackingY < 63) {
+    const recycleLimit = scorelineState === LATE_GAME_SCORELINE.TRAILING ? 68 : 63;
+    if (attackingY < recycleLimit) {
       return PASS_INTENT.RECYCLE;
     }
 
@@ -2777,9 +3050,17 @@ export class MatchSimulationVariantBService {
     location: Coordinates,
     time: number,
     success: boolean,
-    _config: SimulationConfig,
+    config: SimulationConfig,
     additionalData?: PlayByPlayEventAdditionalData,
   ): void {
+    const finalData: PlayByPlayEventAdditionalData = { ...additionalData };
+    if (config.enableSpatialTracking) {
+      finalData.formationSnapshot = this.createFormationSnapshot();
+      if (state.ballPossession?.playerWithBall) {
+        finalData.playerWithBall = state.ballPossession.playerWithBall;
+      }
+    }
+
     state.events.push({
       id: this.createRandomId(),
       type,
@@ -2788,7 +3069,7 @@ export class MatchSimulationVariantBService {
       location,
       time,
       success,
-      additionalData,
+      additionalData: Object.keys(finalData).length > 0 ? finalData : undefined,
     });
   }
 
@@ -2947,7 +3228,7 @@ export class MatchSimulationVariantBService {
 
     goalChance -=
       (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
-    goalChance -= pressure * 0.09;
+    goalChance -= pressure * 0.05;
     goalChance += chainQuality * 0.015;
     goalChance += shotShapeModifier.goalChanceBonus;
     if (isHomeInPossession) {
@@ -3042,6 +3323,7 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
+    state.counterAttackTicks = 0;
     const attackers = attackingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     const defenders = defendingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
 
@@ -3057,6 +3339,14 @@ export class MatchSimulationVariantBService {
     const taker = [...onFieldAttackers].sort((a, b) => {
       return (this.getPlayerStat(b, 'longPassing') + this.getPlayerStat(b, 'flair')) - (this.getPlayerStat(a, 'longPassing') + this.getPlayerStat(a, 'flair'));
     })[0] ?? onFieldAttackers[0] ?? attackers[0];
+
+    if (this.activeMatchShape) {
+      const cornerCoords = attackingTeamSide === TeamSide.HOME ? { x: 95, y: 98 } : { x: 5, y: 2 };
+      const takerSlot = this.activeMatchShape[attackingTeamSide].find(s => s.playerId === taker.id);
+      if (takerSlot) {
+        takerSlot.coordinates = { ...cornerCoords };
+      }
+    }
 
     this.createEvent(
       state,
@@ -3228,6 +3518,7 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
+    state.counterAttackTicks = 0;
     const attackers = attackingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     const defenders = defendingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
 
@@ -3489,6 +3780,7 @@ export class MatchSimulationVariantBService {
     rosters: ResolvedRosters,
     tactics: { home: TacticalSetup; away: TacticalSetup },
   ): void {
+    state.counterAttackTicks = 0;
     const attackers = attackingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
     const defenders = defendingTeamSide === TeamSide.HOME ? rosters.homePlayers : rosters.awayPlayers;
 
@@ -3640,6 +3932,7 @@ export class MatchSimulationVariantBService {
     state.ballPossession.phase = this.getPhaseFromLocation(
       state.ballPossession.location,
       currentTeam,
+      state,
     );
   }
 
@@ -3683,7 +3976,11 @@ export class MatchSimulationVariantBService {
   private getPhaseFromLocation(
     location: Coordinates,
     currentTeam: TeamSide,
+    state?: MatchState,
   ): MatchPhase {
+    if (state?.counterAttackTicks && state.counterAttackTicks > 0) {
+      return MatchPhase.COUNTER_ATTACK;
+    }
     const attackingY =
       currentTeam === TeamSide.HOME ? location.y : 100 - location.y;
     return attackingY >= 67 ? MatchPhase.ATTACKING : MatchPhase.BUILD_UP;
@@ -3772,6 +4069,97 @@ export class MatchSimulationVariantBService {
     return players.find((player) => player.id === playerId) ?? null;
   }
 
+  private resolveLooseBallScramble(
+    location: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
+    teamPlayers: Player[],
+    defenderBias: number,
+  ): { winner: Player; winnerTeam: TeamSide; decisions: ScrambleCandidateDecision[] } {
+    const homeTeamSide = TeamSide.HOME;
+    const awayTeamSide = TeamSide.AWAY;
+
+    if (!this.activeMatchShape) {
+      const homeTeamSide = currentTeam;
+      const awayTeamSide = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      const att = teamPlayers.filter(p => p.position !== PositionEnum.GK);
+      const def = opponentPlayers.filter(p => p.position !== PositionEnum.GK);
+      const randAtt = att[Math.floor(this.rng.random() * att.length)] ?? teamPlayers[0];
+      const randDef = def[Math.floor(this.rng.random() * def.length)] ?? opponentPlayers[0];
+      
+      const isDefendingWinner = this.rng.random() * 100 < (defenderBias > 15 ? 80 : 60);
+      if (isDefendingWinner) {
+        return { winner: randDef, winnerTeam: awayTeamSide, decisions: [] };
+      } else {
+        return { winner: randAtt, winnerTeam: homeTeamSide, decisions: [] };
+      }
+    }
+
+    const candidates: { player: Player; teamSide: TeamSide; score: number; distance: number }[] = [];
+
+    const checkSlots = [
+      ...this.activeMatchShape.home.map(s => ({ ...s, teamSide: homeTeamSide })),
+      ...this.activeMatchShape.away.map(s => ({ ...s, teamSide: awayTeamSide }))
+    ];
+
+    for (const slot of checkSlots) {
+      if (!slot.playerId) continue;
+
+      const playerList = slot.teamSide === currentTeam ? teamPlayers : opponentPlayers;
+      const player = this.findPlayerById(slot.playerId, playerList);
+      if (!player || player.position === PositionEnum.GK) continue;
+
+      const dx = slot.coordinates.x - location.x;
+      const dy = slot.coordinates.y - location.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const proximityScore = Math.max(0, 30 - distance) * 2.0;
+      const attributesScore =
+        this.getPlayerStat(player, 'speed') * 0.4 +
+        this.getPlayerStat(player, 'determination') * 0.3 +
+        this.getPlayerStat(player, 'strength') * 0.3;
+
+      const bias = slot.teamSide !== currentTeam ? defenderBias : 0;
+      const score = proximityScore + attributesScore + bias;
+
+      candidates.push({ player, teamSide: slot.teamSide, score, distance });
+    }
+
+    if (candidates.length === 0) {
+      return { winner: teamPlayers[0], winnerTeam: currentTeam, decisions: [] };
+    }
+
+    // Sort by score descending
+    candidates.sort((a, b) => b.score - a.score);
+
+    const T = 12.0;
+    const maxScore = candidates[0].score;
+    const weights = candidates.map(c => Math.exp((c.score - maxScore) / T));
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    let roll = this.rng.random() * totalWeight;
+    let winnerIndex = 0;
+    for (let i = 0; i < candidates.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) {
+        winnerIndex = i;
+        break;
+      }
+    }
+
+    const decisions = candidates.map((c, i) => ({
+      playerId: c.player.id,
+      playerName: c.player.name,
+      teamSide: c.teamSide === TeamSide.HOME ? 'Home' as const : 'Away' as const,
+      distance: c.distance,
+      score: c.score,
+      probability: totalWeight > 0 ? weights[i] / totalWeight : 0,
+    }));
+
+    const winner = candidates[winnerIndex];
+    return { winner: winner.player, winnerTeam: winner.teamSide, decisions };
+  }
+
   private createTurnoverEvent(
     state: MatchState,
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
@@ -3783,6 +4171,7 @@ export class MatchSimulationVariantBService {
     success: boolean,
     config: SimulationConfig,
     additionalData?: PlayByPlayEventAdditionalData,
+    predeterminedWinnerId?: string,
   ): string {
     const defendingTeamSide =
       currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
@@ -3794,13 +4183,24 @@ export class MatchSimulationVariantBService {
       ? opponentPlayers
       : opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
 
-    const turnoverWinnerId =
-      this.selectTurnoverWinner(
-        eventType,
-        currentLocation,
-        currentTeam,
-        eligibleOpponentPlayers,
-      )?.id ?? this.getRandomPlayerId(eligibleOpponentPlayers);
+    const result = this.selectTurnoverWinner(
+      eventType,
+      currentLocation,
+      currentTeam,
+      eligibleOpponentPlayers,
+    );
+
+    const turnoverWinnerId = predeterminedWinnerId ?? result.winner?.id ?? this.getRandomPlayerId(eligibleOpponentPlayers);
+
+    const mergedAdditionalData: PlayByPlayEventAdditionalData = {
+      ...additionalData,
+    };
+
+    if (eventType === EventType.TACKLE) {
+      mergedAdditionalData.tackleDecisions = result.decisions;
+    } else if (eventType === EventType.INTERCEPTION) {
+      mergedAdditionalData.interceptionDecisions = result.decisions;
+    }
 
     this.createEvent(
       state,
@@ -3810,7 +4210,7 @@ export class MatchSimulationVariantBService {
       minute,
       success,
       config,
-      additionalData,
+      mergedAdditionalData,
     );
 
     return turnoverWinnerId;
@@ -3821,7 +4221,7 @@ export class MatchSimulationVariantBService {
     currentLocation: Coordinates,
     currentTeam: TeamSide,
     opponentPlayers: Player[],
-  ): Player | null {
+  ): { winner: Player | null; decisions: TackleCandidateDecision[] } {
     const seenPlayerIds = new Set<string>();
     const context = this.getDefendingShapeContextForLocation(
       currentLocation,
@@ -3830,90 +4230,59 @@ export class MatchSimulationVariantBService {
     const defendingTeam =
       currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
 
-    return (
-      this.findBestTurnoverShapePlayer(
-        context?.channelSlots ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      this.findBestTurnoverShapePlayer(
-        context?.centralSlots ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      this.findBestTurnoverShapePlayer(
-        context?.staffedZoneSlots ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      this.findBestTurnoverShapePlayer(
-        this.activeMatchShape?.[defendingTeam] ?? [],
-        eventType,
-        currentLocation,
-        opponentPlayers,
-        seenPlayerIds,
-      ) ??
-      null
-    );
-  }
+    const allDecisions: TackleCandidateDecision[] = [];
 
-  private findBestTurnoverShapePlayer(
-    slots: ActiveShapeSlot[],
-    eventType: EventType.TACKLE | EventType.INTERCEPTION,
-    currentLocation: Coordinates,
-    players: Player[],
-    seenPlayerIds: Set<string>,
-  ): Player | null {
-    const rankedCandidates = slots
-      .filter(
-        (slot): slot is ActiveShapeSlot & { playerId: string } =>
-          typeof slot.playerId === "string" &&
-          !seenPlayerIds.has(slot.playerId),
-      )
-      .map((slot) => {
-        seenPlayerIds.add(slot.playerId);
-        const player = this.findPlayerById(slot.playerId, players);
-        if (!player) {
-          return null;
-        }
+    const getRankedCandidatesForSlots = (slots: ActiveShapeSlot[]) => {
+      return slots
+        .filter(
+          (slot): slot is ActiveShapeSlot & { playerId: string } =>
+            typeof slot.playerId === "string" &&
+            !seenPlayerIds.has(slot.playerId),
+        )
+        .map((slot) => {
+          seenPlayerIds.add(slot.playerId);
+          const player = this.findPlayerById(slot.playerId, opponentPlayers);
+          if (!player) return null;
 
-        const distance = this.fieldService.getDistance(
-          currentLocation,
-          slot.coordinates,
-        );
-        return {
-          distance,
-          player,
-          score: this.scoreTurnoverWinnerCandidate(player, eventType, distance),
-        };
-      })
-      .filter(
-        (
-          candidate,
-        ): candidate is { distance: number; player: Player; score: number } =>
-          candidate !== null,
-      )
-      .sort((left, right) => {
-        const scoreDelta = right.score - left.score;
-        if (scoreDelta !== 0) {
-          return scoreDelta;
-        }
+          const distance = this.fieldService.getDistance(
+            currentLocation,
+            slot.coordinates,
+          );
+          const score = this.scoreTurnoverWinnerCandidate(player, eventType, distance);
+          return { player, distance, score };
+        })
+        .filter((c): c is { player: Player; distance: number; score: number } => c !== null)
+        .sort((left, right) => {
+          const scoreDelta = right.score - left.score;
+          if (scoreDelta !== 0) return scoreDelta;
+          const distanceDelta = left.distance - right.distance;
+          if (distanceDelta !== 0) return distanceDelta;
+          return left.player.id.localeCompare(right.player.id);
+        });
+    };
 
-        const distanceDelta = left.distance - right.distance;
-        if (distanceDelta !== 0) {
-          return distanceDelta;
-        }
+    let winner: Player | null = null;
 
-        return left.player.id.localeCompare(right.player.id);
-      });
+    const channelCand = getRankedCandidatesForSlots(context?.channelSlots ?? []);
+    channelCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (channelCand.length > 0 && !winner) winner = channelCand[0].player;
 
-    return rankedCandidates[0]?.player ?? null;
+    const centralCand = getRankedCandidatesForSlots(context?.centralSlots ?? []);
+    centralCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (centralCand.length > 0 && !winner) winner = centralCand[0].player;
+
+    const staffedCand = getRankedCandidatesForSlots(context?.staffedZoneSlots ?? []);
+    staffedCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (staffedCand.length > 0 && !winner) winner = staffedCand[0].player;
+
+    const fallbackCand = getRankedCandidatesForSlots(this.activeMatchShape?.[defendingTeam] ?? []);
+    fallbackCand.forEach(c => allDecisions.push({ playerId: c.player.id, playerName: c.player.name, distance: c.distance, score: c.score }));
+    if (fallbackCand.length > 0 && !winner) winner = fallbackCand[0].player;
+
+    // Sort all decisions by score descending
+    allDecisions.sort((a, b) => b.score - a.score);
+
+    return { winner, decisions: allDecisions };
   }
 
   private scoreTurnoverWinnerCandidate(
@@ -3921,16 +4290,29 @@ export class MatchSimulationVariantBService {
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
     distance: number,
   ): number {
-    const proximityScore = Math.max(0, 30 - distance) * 2.5;
+    const proximityMultiplier = eventType === EventType.INTERCEPTION ? 5.0 : 2.5;
+    const proximityScore = Math.max(0, 30 - distance) * proximityMultiplier;
 
     if (eventType === EventType.TACKLE) {
+      let positionalModifier = 0;
+      if (player.position === PositionEnum.ST) {
+        positionalModifier = -10;
+      }
       return (
         proximityScore +
         this.getPlayerStat(player, 'tackling') +
         this.getPlayerStat(player, 'strength') * 0.5 +
         this.getPlayerStat(player, 'determination') * 0.35 +
-        this.getPlayerStat(player, 'speed') * 0.2
+        this.getPlayerStat(player, 'speed') * 0.2 +
+        positionalModifier
       );
+    }
+
+    let positionalModifier = 0;
+    if (player.position === PositionEnum.ST) {
+      positionalModifier = -25;
+    } else if (player.position === PositionEnum.CB || player.position === PositionEnum.CDM) {
+      positionalModifier = 5;
     }
 
     return (
@@ -3938,8 +4320,134 @@ export class MatchSimulationVariantBService {
       this.getPlayerStat(player, 'vision') +
       this.getPlayerStat(player, 'tackling') * 0.5 +
       this.getPlayerStat(player, 'determination') * 0.35 +
-      this.getPlayerStat(player, 'speed') * 0.2
+      this.getPlayerStat(player, 'speed') * 0.2 +
+      positionalModifier
     );
+  }
+
+  private getDistanceToLineSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+    
+    const ab2 = abx * abx + aby * aby;
+    if (ab2 === 0) return Math.sqrt(apx * apx + apy * apy);
+    
+    let t = (apx * abx + apy * aby) / ab2;
+    if (t < 0.0 || t > 1.0) {
+       return 999.0;
+    }
+    t = Math.max(0, Math.min(1, t)); // clamp to line segment
+    
+    const closestX = ax + t * abx;
+    const closestY = ay + t * aby;
+    const dx = px - closestX;
+    const dy = py - closestY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private getPassInterceptionLocation(
+    start: Coordinates,
+    target: Coordinates,
+    currentTeam: TeamSide,
+    opponentPlayers: Player[],
+  ): { location: Coordinates; interceptorId: string } {
+    const defaultLocation = {
+      x: start.x + 0.6 * (target.x - start.x),
+      y: start.y + 0.6 * (target.y - start.y),
+    };
+
+    if (!this.activeMatchShape) {
+      const outfielders = opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
+      return {
+        location: defaultLocation,
+        interceptorId: this.getRandomPlayerId(outfielders.length > 0 ? outfielders : opponentPlayers),
+      };
+    }
+
+    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+
+    let bestScore = -Infinity;
+    let bestT = 0.6; // Default fallback to midpoint
+    let bestPlayerId: string | null = null;
+
+    const ax = start.x;
+    const ay = start.y;
+    const bx = target.x;
+    const by = target.y;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const ab2 = abx * abx + aby * aby;
+
+    if (ab2 === 0) {
+      const outfielders = opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
+      return {
+        location: { ...start },
+        interceptorId: this.getRandomPlayerId(outfielders.length > 0 ? outfielders : opponentPlayers),
+      };
+    }
+
+    for (const def of defenders) {
+      const player = this.findPlayerById(def.playerId!, opponentPlayers);
+      if (!player || player.position === PositionEnum.GK) continue;
+
+      const px = def.coordinates.x;
+      const py = def.coordinates.y;
+
+      const apx = px - ax;
+      const apy = py - ay;
+
+      const t = (apx * abx + apy * aby) / ab2;
+
+      // Only evaluate defenders whose projection is along the pass path
+      if (t >= 0.0 && t <= 1.0) {
+        const closestX = ax + t * abx;
+        const closestY = ay + t * aby;
+        const dx = px - closestX;
+        const dy = py - closestY;
+        const distToPath = Math.sqrt(dx * dx + dy * dy);
+
+        const proximityScore = Math.max(0, 30 - distToPath) * 5.0;
+        let positionalModifier = 0;
+        if (player.position === PositionEnum.ST) {
+          positionalModifier = -25;
+        } else if (player.position === PositionEnum.CB || player.position === PositionEnum.CDM) {
+          positionalModifier = 5;
+        }
+
+        const attributesScore =
+          this.getPlayerStat(player, 'vision') +
+          this.getPlayerStat(player, 'tackling') * 0.5 +
+          this.getPlayerStat(player, 'determination') * 0.35 +
+          this.getPlayerStat(player, 'speed') * 0.2 +
+          positionalModifier;
+
+        const score = proximityScore + attributesScore;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestT = t;
+          bestPlayerId = player.id;
+        }
+      }
+    }
+
+    // Clamp t to prevent the failure location from being exactly at the feet of the passer or target
+    const clampedT = Math.max(0.2, Math.min(0.9, bestT));
+    const location = {
+      x: start.x + clampedT * (target.x - start.x),
+      y: start.y + clampedT * (target.y - start.y),
+    };
+
+    const outfielders = opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
+    const interceptorId =
+      bestPlayerId ||
+      this.getRandomPlayerId(outfielders.length > 0 ? outfielders : opponentPlayers);
+
+    return { location, interceptorId };
   }
 
   private scorePassTarget(
@@ -3949,9 +4457,11 @@ export class MatchSimulationVariantBService {
     currentLocation: Coordinates,
     currentTeam: TeamSide,
     passIntent: PassIntent,
-  ): { target: Player; score: number; distance: number } {
-    const targetPosition = this.fieldService.getStartingPositionForPlayer(
+    isTargetOffside: boolean,
+  ): { target: Player; score: number; distance: number; breakdown: PassScoreBreakdown } {
+    const targetPosition = this.getCurrentPositionForPlayer(
       target,
+      currentTeam,
       tactics.formation,
     );
     const distance = this.fieldService.getDistance(
@@ -3998,6 +4508,15 @@ export class MatchSimulationVariantBService {
           score += 1.0;
         }
       }
+      if (target.position === PositionEnum.FB && progression > 0) {
+        score += 3.0;
+        const attackingY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
+        if (attackingY < 45) {
+          score += 5.0; // FB build-up outlet boost
+          const distancePenalty = Math.max(0, distance - 26) * 0.7;
+          score += distancePenalty * 0.55; // Offset distance penalty
+        }
+      }
     } else if (passIntent === PASS_INTENT.THROUGH_BALL) {
       score += Math.max(0, progression) * 2.2;
       score -= Math.max(0, 14 - progression) * 1.5;
@@ -4026,18 +4545,24 @@ export class MatchSimulationVariantBService {
       }
     }
 
+    const base = score;
+    let style = 0;
+    let flank = 0;
+    let block = 0;
+    let offside = 0;
+
     if (
       tactics.playingStyle === PlayingStyle.POSSESSION &&
       passIntent !== PASS_INTENT.THROUGH_BALL
     ) {
-      score += (34 - Math.min(distance, 34)) * 0.2;
+      style += (34 - Math.min(distance, 34)) * 0.2;
     }
 
     if (
       tactics.playingStyle === PlayingStyle.COUNTER_ATTACK &&
       passIntent !== PASS_INTENT.RECYCLE
     ) {
-      score += Math.max(0, progression) * 0.35;
+      style += Math.max(0, progression) * 0.35;
     }
 
     if (target.position === PositionEnum.GK) {
@@ -4047,10 +4572,67 @@ export class MatchSimulationVariantBService {
         currentTeam,
         passIntent,
       );
-      score += keeperRecycleAllowed ? 2 : -6;
+      style += keeperRecycleAllowed ? 2 : -6;
+    }
+    score += style;
+
+    // Spread play and flank progression boosts for wide players
+    const passerIsCentral = Math.abs(currentLocation.x - 50) <= 20;
+    const targetIsWide = Math.abs(targetPosition.x - 50) >= 20;
+    
+    if (targetIsWide && (target.position === PositionEnum.WNG || target.position === PositionEnum.FB)) {
+      if (passerIsCentral) {
+        flank += 6.5;
+        const baseDistanceLimit = passIntent === PASS_INTENT.THROUGH_BALL ? 32 : 26;
+        const distCoeff = passIntent === PASS_INTENT.THROUGH_BALL ? 0.8 : 0.7;
+        const distPenalty = Math.max(0, distance - baseDistanceLimit) * distCoeff;
+        flank += distPenalty * 0.45;
+      } else {
+        // Passer is wide. If target is wide on the same side:
+        const sameFlank = (currentLocation.x - 50) * (targetPosition.x - 50) > 0;
+        if (sameFlank && target.position === PositionEnum.WNG) {
+          flank += 5.0;
+        }
+      }
+    }
+    score += flank;
+
+    // Apply passing-lane blocking penalty for defenders in line of sight
+    const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    if (this.activeMatchShape && this.activeMatchShape[defendingTeam]) {
+      const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+      for (const def of defenders) {
+        const distToPath = this.getDistanceToLineSegment(
+          def.coordinates.x,
+          def.coordinates.y,
+          currentLocation.x,
+          currentLocation.y,
+          targetPosition.x,
+          targetPosition.y
+        );
+        if (distToPath < 4.5) {
+          const proximityPenalty = (4.5 - distToPath) * 3.5;
+          block -= proximityPenalty;
+          score -= proximityPenalty;
+        }
+      }
+    }
+    // Apply offside awareness penalty (better passer vision/passing reduces chance of selecting offside target)
+    if (isTargetOffside) {
+      const vision = this.getPlayerStat(passer, 'vision');
+      const offsidePenalty = vision <= 40
+        ? 0
+        : Math.pow(vision - 40, 2) * 0.08 + 10.0;
+      offside -= offsidePenalty;
+      score -= offsidePenalty;
     }
 
-    return { target, score, distance };
+    return {
+      target,
+      score,
+      distance,
+      breakdown: { base, style, flank, block, offside }
+    };
   }
 
   private findPassTarget(
@@ -4069,6 +4651,32 @@ export class MatchSimulationVariantBService {
       return null;
     }
 
+    // Pre-calculate offside player IDs once to make lookup O(1) inside target scoring loop
+    const offsidePlayerIds = new Set<string>();
+    if (this.activeMatchShape) {
+      const defendingTeam = currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+      const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+      if (defenders.length >= 2) {
+        const defenderAttY = defenders.map(s =>
+          currentTeam === TeamSide.HOME ? s.coordinates.y : 100 - s.coordinates.y
+        );
+        defenderAttY.sort((a, b) => b - a);
+        const offsideLine = defenderAttY[1];
+        const ballAttY = currentTeam === TeamSide.HOME ? currentLocation.y : 100 - currentLocation.y;
+        const offsideThresholdY = Math.max(50, ballAttY, offsideLine);
+
+        const attackers = this.activeMatchShape[currentTeam];
+        for (const slot of attackers) {
+          if (slot.playerId && slot.preferredPosition !== PositionEnum.GK) {
+            const attackerAttY = currentTeam === TeamSide.HOME ? slot.coordinates.y : 100 - slot.coordinates.y;
+            if (attackerAttY > offsideThresholdY) {
+              offsidePlayerIds.add(slot.playerId);
+            }
+          }
+        }
+      }
+    }
+
     const scoredTargets = potentialTargets
       .map((target) =>
         this.scorePassTarget(
@@ -4078,6 +4686,7 @@ export class MatchSimulationVariantBService {
           currentLocation,
           currentTeam,
           passIntent,
+          offsidePlayerIds.has(target.id),
         ),
       )
       .sort((left, right) => {
@@ -4094,28 +4703,76 @@ export class MatchSimulationVariantBService {
 
     const topCandidates = scoredTargets.slice(
       0,
-      Math.min(2, scoredTargets.length),
+      Math.min(5, scoredTargets.length),
     );
 
-    if (topCandidates.length === 1) {
-      return topCandidates[0].target;
+    // Save details about all candidates' pass decisions for the debug trace
+    const playerRoles = new Map<string, string>();
+    if (tactics.formation && tactics.formation.positions) {
+      for (const pos of tactics.formation.positions) {
+        playerRoles.set(pos.playerId, pos.role);
+      }
     }
 
-    const weakestTopScore = topCandidates[topCandidates.length - 1].score;
-    const weightedCandidates = topCandidates.map((candidate, index) => {
-      const normalizedScore = candidate.score - weakestTopScore;
-      const scoreWeight = Math.max(0.1, normalizedScore + 1);
-      const rankWeight = index === 0 ? 1.6 : 0.35;
+    const decisions: PassCandidateDecision[] = [];
+    const probabilities = new Map<string, number>();
 
-      return {
-        target: candidate.target,
-        weight: scoreWeight * rankWeight,
-      };
-    });
+    let pickedTarget: Player;
+    let weightedCandidates: { target: Player; weight: number }[] = [];
 
-    return (
-      this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target
-    );
+    if (topCandidates.length === 1) {
+      probabilities.set(topCandidates[0].target.id, 1.0);
+      pickedTarget = topCandidates[0].target;
+    } else {
+      // Temperature T controls selection randomness (lower = more deterministic, higher = more random/varied).
+      const T = 12.0;
+      
+      // Subtract maxScore to avoid floating-point overflow with Math.exp
+      const maxScore = topCandidates[0].score;
+      
+      weightedCandidates = topCandidates.map((candidate) => {
+        const weight = Math.exp((candidate.score - maxScore) / T);
+        return {
+          target: candidate.target,
+          weight,
+        };
+      });
+
+      const totalWeight = weightedCandidates.reduce(
+        (sum, entry) => sum + entry.weight,
+        0,
+      );
+
+      if (totalWeight > 0) {
+        for (const candidate of weightedCandidates) {
+          probabilities.set(candidate.target.id, candidate.weight / totalWeight);
+        }
+      } else {
+        probabilities.set(topCandidates[0].target.id, 1.0);
+      }
+
+      pickedTarget = this.pickWeightedTarget(weightedCandidates) ?? topCandidates[0].target;
+    }
+
+    for (const scored of scoredTargets) {
+      const target = scored.target;
+      const isOffside = offsidePlayerIds.has(target.id);
+      const role = playerRoles.get(target.id) ?? target.position;
+      decisions.push({
+        playerId: target.id,
+        playerName: target.name,
+        role,
+        score: scored.score,
+        distance: scored.distance,
+        probability: probabilities.get(target.id) ?? 0,
+        isTargetOffside: isOffside,
+        breakdown: scored.breakdown
+      });
+    }
+
+    this.lastPassDecisions = decisions;
+
+    return pickedTarget;
   }
 
   private isGoalkeeperRecycleTargetAllowed(
@@ -4264,6 +4921,9 @@ export class MatchSimulationVariantBService {
 
   private getRandomPlayerId(teamPlayers: Player[]): string {
     // teamPlayers contains only on-field starters.
+    if (teamPlayers.length === 0) {
+      return '';
+    }
     return teamPlayers[
       Math.floor(this.rng.random() * teamPlayers.length)
     ].id;
@@ -4271,6 +4931,416 @@ export class MatchSimulationVariantBService {
 
   private createRandomId(): string {
     return this.rng.random().toString(36).substring(2, 9);
+  }
+
+  private getCurrentPositionForPlayer(
+    player: Player,
+    teamSide: TeamSide,
+    tacticsFormation: TeamFormation,
+  ): Coordinates {
+    if (this.activeMatchShape) {
+      const slot = this.activeMatchShape[teamSide].find((s) => s.playerId === player.id);
+      if (slot) {
+        return { ...slot.coordinates };
+      }
+    }
+    return this.fieldService.getStartingPositionForPlayer(player, tacticsFormation);
+  }
+
+  private isPlayerOffside(
+    playerId: string,
+    attackingTeam: TeamSide,
+    ballLocation: Coordinates,
+  ): boolean {
+    if (!this.activeMatchShape) return false;
+
+    const defendingTeam = attackingTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+
+    if (defenders.length < 2) return false;
+
+    // Get defenders' Y coordinates from attacker's perspective (opponent goal is at 100)
+    const defenderAttY = defenders.map(s =>
+      attackingTeam === TeamSide.HOME ? s.coordinates.y : 100 - s.coordinates.y
+    );
+
+    // Sort descending (highest attY is closest to defender's own goal line)
+    defenderAttY.sort((a, b) => b - a);
+
+    // The offside line is the second-last defender (index 1)
+    const offsideLine = defenderAttY[1];
+
+    const attackerSlot = this.activeMatchShape[attackingTeam].find(s => s.playerId === playerId);
+    if (!attackerSlot) return false;
+
+    const attackerAttY = attackingTeam === TeamSide.HOME
+      ? attackerSlot.coordinates.y
+      : 100 - attackerSlot.coordinates.y;
+
+    const ballAttY = attackingTeam === TeamSide.HOME
+      ? ballLocation.y
+      : 100 - ballLocation.y;
+
+    // A player is offside if they are in the opponent's half (Y > 50),
+    // ahead of the ball (Y > ballAttY), and ahead of the second-last defender (Y > offsideLine).
+    return attackerAttY > 50 && attackerAttY > ballAttY && attackerAttY > offsideLine;
+  }
+
+  private updateDynamicPlayerPositions(
+    state: MatchState,
+    tactics: { home: TacticalSetup; away: TacticalSetup },
+    rosters: ResolvedRosters,
+    fatigue: { home: PlayerFatigue[]; away: PlayerFatigue[] },
+  ): void {
+    if (!this.activeMatchShape) return;
+
+    const ball = state.ballPossession.location;
+    const possessionTeamId = state.ballPossession.teamId;
+
+    const sides = [TeamSide.HOME, TeamSide.AWAY];
+
+    for (const side of sides) {
+      const isHome = side === TeamSide.HOME;
+      const teamTactics = isHome ? tactics.home : tactics.away;
+      const inPossession = teamTactics.teamId === possessionTeamId;
+      const attackingBias = isHome ? 1 : -1;
+      const ownGoalY = isHome ? 0 : 100;
+
+      // Attacking Y perspective (how far forward the ball is from this team's perspective)
+      const ballAttY = isHome ? ball.y : 100 - ball.y;
+      const ballX = ball.x;
+
+      const slots = this.activeMatchShape[side];
+      const formationPositions = teamTactics.formation.positions;
+      const playerList = isHome ? rosters.homePlayers : rosters.awayPlayers;
+
+      // 1. Update run progress first (Option B runs)
+      for (const slot of slots) {
+        if (!slot.playerId) {
+          slot.runProgress = 0;
+          slot.markingTargetPlayerId = null;
+          continue;
+        }
+
+        const player = playerList.find(p => p.id === slot.playerId);
+        if (!player) continue;
+
+        if (inPossession) {
+          slot.markingTargetPlayerId = null; // Can't mark if team is in possession
+          
+          const targetGroup = getPositionGroup(slot.preferredPosition);
+          const isEligibleForRun = targetGroup === 'MID' || targetGroup === 'FWD' || slot.preferredPosition === PositionEnum.FB;
+
+          if (isEligibleForRun && ballAttY >= 40) {
+            if (slot.runProgress > 0) {
+              // Continue run
+              slot.runProgress = Math.min(100, slot.runProgress + 20);
+              // Apply small extra fatigue drain for running
+              const playerFatigue = fatigue[side].find(f => f.playerId === slot.playerId);
+              if (playerFatigue) {
+                playerFatigue.fatigueLevel = Math.min(100, playerFatigue.fatigueLevel + 0.04);
+              }
+            } else {
+              // Probability to start a run
+              let baseProb = 0.05;
+              if (slot.preferredPosition === PositionEnum.WNG) baseProb = 0.12;
+              if (slot.preferredPosition === PositionEnum.CAM) baseProb = 0.08;
+              if (slot.preferredPosition === PositionEnum.FB) baseProb = 0.06;
+
+              if (state.ballPossession.phase === MatchPhase.COUNTER_ATTACK) {
+                baseProb += 0.08;
+              }
+
+              const attrSpeed = this.getPlayerStat(player, 'speed') || 70;
+              const speedModifier = (attrSpeed - 50) / 100;
+              const runRoll = this.rng.random();
+
+              if (runRoll < baseProb + speedModifier * 0.05) {
+                slot.runProgress = 20;
+              }
+            }
+          } else {
+            // Decay run if ball is too deep
+            slot.runProgress = Math.max(0, slot.runProgress - 30);
+          }
+        } else {
+          // Defending: runs reset to 0
+          slot.runProgress = 0;
+        }
+      }
+
+      // 2. Compute dynamic coordinates (Option A Block Shifts + Option B Offsets)
+      const dropMidPlayerIds = new Set<string>();
+      if (inPossession && ballAttY < 55) {
+        const midSlots = slots.filter(slot => slot.playerId && getPositionGroup(slot.preferredPosition) === 'MID');
+        const positionOrder: Record<PositionEnum, number> = {
+          [PositionEnum.CDM]: 0,
+          [PositionEnum.CM]: 1,
+          [PositionEnum.CAM]: 2,
+          [PositionEnum.GK]: 9,
+          [PositionEnum.CB]: 9,
+          [PositionEnum.FB]: 9,
+          [PositionEnum.WNG]: 9,
+          [PositionEnum.ST]: 9
+        };
+        const sortedMidSlots = [...midSlots].sort((a, b) => {
+          const orderA = positionOrder[a.preferredPosition] ?? 99;
+          const orderB = positionOrder[b.preferredPosition] ?? 99;
+          return orderA - orderB;
+        });
+        const midsToDropCount = Math.max(1, Math.floor(sortedMidSlots.length / 2));
+        for (let i = 0; i < Math.min(midsToDropCount, sortedMidSlots.length); i++) {
+          if (sortedMidSlots[i].playerId) {
+            dropMidPlayerIds.add(sortedMidSlots[i].playerId!);
+          }
+        }
+      }
+
+      for (const slot of slots) {
+        const basePos = formationPositions.find(p => p.slotId === slot.slotId);
+        if (!basePos) continue;
+
+        const baseCoords = basePos.coordinates;
+        const baseGroup = getPositionGroup(slot.preferredPosition);
+
+        let newX = baseCoords.x;
+        let newY = baseCoords.y;
+
+        if (inPossession) {
+          // Attacking: entire block slides forward based on ball Y progression
+          const progressionRatio = ballAttY / 100;
+
+          if (slot.preferredPosition === PositionEnum.GK) {
+            // Goalkeeper Y starts from ownGoalY (which is always absolute own goal)
+            newY = ownGoalY + attackingBias * (5 + ballAttY * 0.10);
+            newY = this.clamp(newY, isHome ? 2 : 83, isHome ? 17 : 98);
+          } else {
+            let pushFactor = 0;
+            if (baseGroup === 'DEF') {
+              pushFactor = 15; // defenders push up
+            } else if (baseGroup === 'MID') {
+              pushFactor = 18; // midfielders push up
+            } else if (baseGroup === 'FWD') {
+              pushFactor = 12; // forwards push up
+            }
+
+            const blockShiftY = progressionRatio * pushFactor * attackingBias;
+            newY += blockShiftY;
+
+            // Midfielders dropping deep to support build-up
+            if (slot.playerId && dropMidPlayerIds.has(slot.playerId)) {
+              const dropDistance = 22 * (1 - ballAttY / 55);
+              newY -= dropDistance * attackingBias;
+            }
+
+            // Dynamic Build-up Spacing (Split CBs and wide FBs during BUILD_UP)
+            if (state.ballPossession.phase === MatchPhase.BUILD_UP && ballAttY < 40) {
+              const buildUpProgress = ballAttY / 40;
+              const spreadFactor = 1 - buildUpProgress;
+
+              if (slot.preferredPosition === PositionEnum.CB) {
+                if (basePos.coordinates.x < 50) {
+                  newX -= 8 * spreadFactor * attackingBias;
+                } else {
+                  newX += 8 * spreadFactor * attackingBias;
+                }
+              } else if (slot.preferredPosition === PositionEnum.FB) {
+                if (basePos.coordinates.x < 50) {
+                  if (isHome) {
+                    newX = Math.max(5, newX - 6 * spreadFactor);
+                  } else {
+                    newX = Math.min(95, newX + 6 * spreadFactor);
+                  }
+                } else {
+                  if (isHome) {
+                    newX = Math.min(95, newX + 6 * spreadFactor);
+                  } else {
+                    newX = Math.max(5, newX - 6 * spreadFactor);
+                  }
+                }
+                newY += 4 * attackingBias * spreadFactor;
+              }
+            }
+
+            // Wing overlap & opposite fullback tuck-in
+            const isWideFlank = Math.abs(ballX - 50) >= 18;
+            if (isWideFlank) {
+              const ballOnLeft = ballX < 50;
+              const slotOnLeft = basePos.coordinates.x < 50;
+              
+              if (slot.preferredPosition === PositionEnum.FB || slot.preferredPosition === PositionEnum.WNG) {
+                if (ballOnLeft === (isHome ? slotOnLeft : !slotOnLeft)) {
+                  // Ball side FB/WNG pushes high
+                  newY += 10 * attackingBias;
+                } else if (slot.preferredPosition === PositionEnum.FB) {
+                  // Opposite FB tucks inside to cover center
+                  newX = 50 + (baseCoords.x - 50) * 0.7;
+                }
+              }
+            }
+
+            // Option B Individual Attacking Run Offset
+            if (slot.runProgress > 0) {
+              const runOffset = (slot.runProgress / 100) * 10 * attackingBias;
+              newY += runOffset;
+            }
+          }
+        } else {
+          // Defending: block compacts laterally and drops back relative to the ball
+          if (slot.preferredPosition !== PositionEnum.GK) {
+            // Lateral compaction (X-axis) - reduced during counter attack
+            const compactionFactor = state.ballPossession.phase === MatchPhase.COUNTER_ATTACK ? 0.94 : 0.90;
+            newX = 50 + (baseCoords.x - 50) * compactionFactor;
+
+            // Y-axis drop back/compression
+            const defensiveLineDrop = (100 - ballAttY) * 0.10 * attackingBias;
+            newY -= defensiveLineDrop;
+
+            // Option B Defensive Run Tracking (Defenders track opponent runs)
+            const opponentSide = isHome ? TeamSide.AWAY : TeamSide.HOME;
+            const activeOpponentRuns = this.activeMatchShape[opponentSide].filter(s => s.playerId && s.runProgress > 30);
+            
+            let closestOpponent: ActiveShapeSlot | null = null;
+            let minDistance = Number.MAX_VALUE;
+
+            for (const oppSlot of activeOpponentRuns) {
+              const dist = this.fieldService.getDistance(baseCoords, oppSlot.coordinates);
+              if (dist < minDistance && dist < 22) { // must be within marking radius
+                minDistance = dist;
+                closestOpponent = oppSlot;
+              }
+            }
+
+            if (closestOpponent) {
+              // Drag defender towards runner by 40% of the distance
+              newX = newX + (closestOpponent.coordinates.x - newX) * 0.40;
+              newY = newY + (closestOpponent.coordinates.y - newY) * 0.40;
+              slot.markingTargetPlayerId = closestOpponent.playerId;
+            } else {
+              slot.markingTargetPlayerId = null;
+            }
+          }
+        }
+
+        // Apply dynamic space-seeking repulsion for attackers & positional marking for defenders (in absolute coordinates)
+        let targetX = newX;
+        let targetY = newY;
+
+        if (slot.preferredPosition !== PositionEnum.GK) {
+          const opponentSide = isHome ? TeamSide.AWAY : TeamSide.HOME;
+          if (inPossession) {
+            // Attacking: Repulse away from closest defender within 8 yards to find space
+            const defenders = this.activeMatchShape[opponentSide].filter(s => s.playerId !== null);
+            let closestDef: ActiveShapeSlot | null = null;
+            let minDistance = 999;
+            for (const def of defenders) {
+              const dist = this.fieldService.getDistance({ x: targetX, y: targetY }, def.coordinates);
+              if (dist < minDistance) {
+                minDistance = dist;
+                closestDef = def;
+              }
+            }
+            if (closestDef && minDistance < 8.0) {
+              const repulseFactor = (8.0 - minDistance) * 0.35;
+              const dx = targetX - closestDef.coordinates.x;
+              const dy = targetY - closestDef.coordinates.y;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              targetX += (dx / len) * repulseFactor;
+              targetY += (dy / len) * repulseFactor;
+            }
+          } else {
+            // Defending: Attract towards closest attacker within 12 yards to mark them
+            const attackers = this.activeMatchShape[opponentSide].filter(s => s.playerId !== null && s.preferredPosition !== PositionEnum.GK);
+            let closestAtt: ActiveShapeSlot | null = null;
+            let minDistance = 999;
+            for (const att of attackers) {
+              const dist = this.fieldService.getDistance({ x: targetX, y: targetY }, att.coordinates);
+              if (dist < minDistance) {
+                minDistance = dist;
+                closestAtt = att;
+              }
+            }
+            if (closestAtt && minDistance < 12.0) {
+              const attractFactor = (12.0 - minDistance) * 0.22;
+              const dx = closestAtt.coordinates.x - targetX;
+              const dy = closestAtt.coordinates.y - targetY;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              targetX += (dx / len) * attractFactor;
+              targetY += (dy / len) * attractFactor;
+            }
+          }
+        }
+
+        const lastEvent = state.events[state.events.length - 1];
+        const isFreeKickOrOffside = lastEvent && (
+          lastEvent.type === EventType.FOUL ||
+          (lastEvent.additionalData && lastEvent.additionalData.isOffside === true)
+        );
+
+        // Pull offside attackers back onside on a new possession (passes === 0) only for free kicks and offsides
+        if (inPossession && state.ballPossession.passes === 0 && isFreeKickOrOffside && slot.preferredPosition !== PositionEnum.GK) {
+          const defendingTeam = isHome ? TeamSide.AWAY : TeamSide.HOME;
+          const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+          if (defenders.length >= 2) {
+            const defenderAttY = defenders.map(s =>
+              isHome ? s.coordinates.y : 100 - s.coordinates.y
+            );
+            defenderAttY.sort((a, b) => b - a);
+            const offsideLine = defenderAttY[1];
+            const ballAttY = isHome ? ball.y : 100 - ball.y;
+            const limitAttY = Math.max(offsideLine, ballAttY);
+            const attackerAttY = isHome ? targetY : 100 - targetY;
+            if (attackerAttY > 50 && attackerAttY > limitAttY) {
+              const adjustedAttY = limitAttY - 0.5;
+              targetY = isHome ? adjustedAttY : 100 - adjustedAttY;
+            }
+          }
+        }
+
+        // Dynamic Offside Pullback: keep attackers onside during open play unless they are actively making a run
+        if (inPossession && slot.preferredPosition !== PositionEnum.GK && slot.runProgress === 0) {
+          const defendingTeam = isHome ? TeamSide.AWAY : TeamSide.HOME;
+          const defenders = this.activeMatchShape[defendingTeam].filter(s => s.playerId !== null);
+          if (defenders.length >= 2) {
+            const defenderAttY = defenders.map(s =>
+              isHome ? s.coordinates.y : 100 - s.coordinates.y
+            );
+            defenderAttY.sort((a, b) => b - a);
+            const offsideLine = defenderAttY[1];
+            const ballAttY = isHome ? ball.y : 100 - ball.y;
+            const limitAttY = Math.max(50, ballAttY, offsideLine) - 1.2;
+            const attackerAttY = isHome ? targetY : 100 - targetY;
+            if (attackerAttY > limitAttY) {
+              targetY = isHome ? limitAttY : 100 - limitAttY;
+            }
+          }
+        }
+
+        // Clamp positions to field boundaries in absolute space
+        targetX = this.clamp(targetX, 2, 98);
+        targetY = this.clamp(targetY, isHome ? 2 : 0, isHome ? 100 : 98);
+
+        // Smoothly interpolate coordinate shifts to model movement lag / transition time
+        const prevX = slot.coordinates.x;
+        const prevY = slot.coordinates.y;
+
+        const isKickoff = ball.x === 50 && ball.y === 50 && state.ballPossession.passes === 0;
+        const isNewPossession = inPossession && state.ballPossession.passes === 0 && isFreeKickOrOffside;
+        if (isKickoff || (prevX === 0 && prevY === 0) || isNewPossession) {
+          slot.coordinates.x = targetX;
+          slot.coordinates.y = targetY;
+        } else {
+          // Attacking transition is faster, defensive transition is smoother
+          const interpRate = inPossession ? 0.70 : 0.30;
+          slot.coordinates.x = prevX + (targetX - prevX) * interpRate;
+          slot.coordinates.y = prevY + (targetY - prevY) * interpRate;
+        }
+        
+        // Update slot zone based on current Y
+        const relativeY = isHome ? slot.coordinates.y : 100 - slot.coordinates.y;
+        slot.zone = this.fieldService.getZoneFromY(relativeY);
+      }
+    }
   }
 
   private initializeMatchShape(
@@ -4296,6 +5366,8 @@ export class MatchSimulationVariantBService {
         zone: slot.zone,
         role: slot.label,
         preferredPosition: slot.position,
+        runProgress: 0,
+        markingTargetPlayerId: null,
       };
     });
   }
@@ -4777,6 +5849,7 @@ export class MatchSimulationVariantBService {
         coordinates: { ...slot.coordinates },
         zone: slot.zone,
         role: slot.role,
+        runProgress: slot.runProgress,
       })),
       away: this.activeMatchShape.away.map((slot) => ({
         slotId: slot.slotId,
@@ -4784,6 +5857,7 @@ export class MatchSimulationVariantBService {
         coordinates: { ...slot.coordinates },
         zone: slot.zone,
         role: slot.role,
+        runProgress: slot.runProgress,
       })),
     };
   }

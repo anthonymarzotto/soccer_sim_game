@@ -2765,6 +2765,7 @@ export class GameService {
       gamesSubbed: 0,
       goals: 0,
       assists: 0,
+      offsides: 0,
       yellowCards: 0,
       redCards: 0,
       shots: 0,
@@ -2788,6 +2789,7 @@ export class GameService {
       aggregated.gamesSubbed += (season.gamesSubbed ?? 0);
       aggregated.goals += season.goals;
       aggregated.assists += season.assists;
+      aggregated.offsides += (season.offsides ?? 0);
       aggregated.yellowCards += season.yellowCards;
       aggregated.redCards += season.redCards;
       aggregated.shots += season.shots;
@@ -3141,6 +3143,17 @@ export class GameService {
     }
 
     for (const event of events) {
+      if (event.additionalData?.isOffside) {
+        const offsidePlayerId = event.additionalData.offsidePlayerId;
+        if (offsidePlayerId) {
+          const offsidePlayer = allPlayers.get(offsidePlayerId);
+          if (offsidePlayer) {
+            const stats = getStats(offsidePlayer);
+            stats.offsides = (stats.offsides ?? 0) + 1;
+          }
+        }
+      }
+
       if (event.additionalData?.aerialWinner) {
         const winner = allPlayers.get(event.additionalData.aerialWinner);
         if (winner) {
@@ -3439,7 +3452,7 @@ export class GameService {
           break;
         case EventType.CORNER:
           if (event.success) {
-            importance = EventImportance.MEDIUM;
+            importance = EventImportance.LOW;
             icon = '📐';
             description = `Dangerous corner at ${event.time}'`;
           }

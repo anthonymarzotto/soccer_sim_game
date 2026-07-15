@@ -111,6 +111,13 @@ export class CommentaryService {
       targetName = target ? target.name : 'Player';
     }
 
+    if (event.additionalData?.isOffside) {
+      const offsidePlayerId = event.additionalData.offsidePlayerId;
+      const offsidePlayer = offsidePlayerId ? this.findPlayerById(offsidePlayerId, homePlayers, awayPlayers) : null;
+      const offsideName = offsidePlayer ? offsidePlayer.name : 'Player';
+      return `Flag is up! ${offsideName} is caught offside.`;
+    }
+
     switch (event.type) {
       case EventType.PASS:
         return this.generatePassCommentary(event, style, commentaryStyle.pass, playerName, targetName);

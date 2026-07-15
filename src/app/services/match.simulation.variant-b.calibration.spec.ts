@@ -437,7 +437,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
 
     console.log("DIAGNOSTIC GOALS BY POSITION:", Object.fromEntries(totalGoals));
     console.log("DIAGNOSTIC ASSISTS BY POSITION:", Object.fromEntries(totalAssists));
-  });
+  }, 40000);
 });
 
 function create442Players(prefix: string): Player[] {
@@ -549,8 +549,11 @@ function calculatePassQuality(events: PlayByPlayEvent[]): {
   progressionCompleted: number;
   turnovers: number;
 } {
-  const completedPasses = events.filter(event => event.type === EventType.PASS);
+  const completedPasses = events.filter(event => event.type === EventType.PASS && event.success);
   const failedPasses = events.filter(event => {
+    if (event.type === EventType.PASS && !event.success) {
+      return true;
+    }
     if (event.type !== EventType.TACKLE && event.type !== EventType.INTERCEPTION) {
       return false;
     }

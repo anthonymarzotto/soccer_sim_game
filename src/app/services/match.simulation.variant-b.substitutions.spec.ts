@@ -14,7 +14,10 @@ type TeamSubstitutionUsage = Record<TeamSide, number>;
 
 interface VariantBSubstitutionInternals {
   rng: { random: () => number };
-  activeMatchShape: unknown;
+  activeMatchShape: {
+    home: TestShapeSlot[];
+    away: TestShapeSlot[];
+  } | null;
   pendingInjuryReplacements: Record<TeamSide, { playerId: string; position: PositionEnum }[]>;
   processMinuteSubstitutions: (
     state: MatchState,
@@ -49,6 +52,17 @@ interface VariantBSubstitutionInternals {
     minute: number,
     config: SimulationConfig
   ) => string;
+  getPassInterceptionLocation: (
+    start: { x: number; y: number },
+    target: { x: number; y: number },
+    currentTeam: TeamSide,
+    opponentPlayers: Player[]
+  ) => { location: { x: number; y: number }; interceptorId: string };
+  scoreTurnoverWinnerCandidate: (
+    player: Player,
+    eventType: EventType.TACKLE | EventType.INTERCEPTION,
+    distance: number
+  ) => number;
   handlePass: (
     state: MatchState,
     action: { type: EventType.PASS; player: Player; passIntent: 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS' },
@@ -93,7 +107,7 @@ interface VariantBSubstitutionInternals {
     benchPlayers: Player[],
     outgoingPosition: PositionEnum,
   ) => Player | null;
-  initializeMatchShape: (homeTeam: Team, awayTeam: Team) => unknown;
+  initializeMatchShape: (homeTeam: Team, awayTeam: Team) => { home: TestShapeSlot[]; away: TestShapeSlot[]; } | null;
   handleInjuryWithdrawal: (
     teamKey: TeamSide,
     playerId: string,
@@ -366,6 +380,85 @@ describe('Match Simulation Variant B Substitutions', () => {
     expect(turnoverWinnerId).toBe('away-def-smart');
     expect(state.events.at(-1)?.type).toBe(EventType.INTERCEPTION);
     expect(state.events.at(-1)?.playerIds).toEqual(['away-def-smart', 'home-mid1']);
+  });
+
+  it('should dynamically calculate the interception location based on defender proximity to the path and attributes', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+
+    const defender1 = createTestPlayer({
+      id: 'away-def1',
+      teamId: awayTeam.id,
+      position: PositionEnum.CB,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 70, speed: 70, vision: 80, determination: 80, tackling: 80 }
+    });
+
+    const defender2 = createTestPlayer({
+      id: 'away-def2',
+      teamId: awayTeam.id,
+      position: PositionEnum.FB,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 50,
+      stats: { overall: 50, speed: 50, vision: 50, determination: 50, tackling: 50 }
+    });
+
+    internals.activeMatchShape = {
+      home: [],
+      away: [
+        { slotId: '1', playerId: 'away-def1', coordinates: { x: 50, y: 50 }, zone: FieldZone.MIDFIELD, role: 'CB', preferredPosition: PositionEnum.CB },
+        { slotId: '2', playerId: 'away-def2', coordinates: { x: 80, y: 50 }, zone: FieldZone.MIDFIELD, role: 'FB', preferredPosition: PositionEnum.FB }
+      ]
+    };
+
+    const start = { x: 50, y: 10 };
+    const target = { x: 50, y: 90 };
+
+    const loc = internals.getPassInterceptionLocation(
+      start,
+      target,
+      TeamSide.HOME,
+      [defender1, defender2]
+    );
+
+    expect(loc.location.x).toBeCloseTo(50);
+    expect(loc.location.y).toBeCloseTo(50);
+
+    internals.activeMatchShape = null;
+  });
+
+  it('should apply positional modifiers (penalties for ST, bonuses for CB/CDM) for interceptions', () => {
+    const internals = simulationB as unknown as VariantBSubstitutionInternals;
+
+    const striker = createTestPlayer({
+      id: 'away-striker',
+      teamId: awayTeam.id,
+      position: PositionEnum.ST,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 70, speed: 70, vision: 80, determination: 80, tackling: 80 }
+    });
+
+    const defender = createTestPlayer({
+      id: 'away-cb',
+      teamId: awayTeam.id,
+      position: PositionEnum.CB,
+      role: Role.STARTER,
+      seasonYear: 2026,
+      defaultStat: 70,
+      stats: { overall: 70, speed: 70, vision: 80, determination: 80, tackling: 80 }
+    });
+
+    const tackleScoreST = internals.scoreTurnoverWinnerCandidate(striker, EventType.TACKLE, 10);
+    const tackleScoreCB = internals.scoreTurnoverWinnerCandidate(defender, EventType.TACKLE, 10);
+    expect(tackleScoreCB - tackleScoreST).toBe(10);
+
+    const intScoreST = internals.scoreTurnoverWinnerCandidate(striker, EventType.INTERCEPTION, 10);
+    const intScoreCB = internals.scoreTurnoverWinnerCandidate(defender, EventType.INTERCEPTION, 10);
+    expect(intScoreCB - intScoreST).toBeCloseTo(30);
   });
 
   it('should not reintroduce dismissed players and should honor substitution limits', () => {

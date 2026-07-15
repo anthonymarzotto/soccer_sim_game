@@ -880,6 +880,7 @@
                     @if (statsView === 'general') {
                       <th class="text-right py-3 px-4 font-semibold">Goals</th>
                       <th class="text-right py-3 px-4 font-semibold">Assists</th>
+                      <th class="text-right py-3 px-4 font-semibold">Offsides</th>
                       <th class="text-right py-3 px-4 font-semibold">Shots</th>
                       <th class="text-right py-3 px-4 font-semibold">SoT</th>
                       <th class="text-right py-3 px-4 font-semibold">Tackles</th>
@@ -926,6 +927,7 @@
                       @if (statsView === 'general') {
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ s.goals || 0 }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.offsides || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shots || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shotsOnTarget || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.tackles || 0 }}</td>
@@ -972,6 +974,7 @@
                       @if (statsView === 'general') {
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.goals }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.offsides || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shots }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shotsOnTarget }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.tackles }}</td>

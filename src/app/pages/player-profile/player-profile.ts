@@ -510,6 +510,7 @@ export class PlayerProfileComponent {
       minutesPlayed: allStats.reduce((sum, s) => sum + (s?.minutesPlayed || 0), 0),
       goals: allStats.reduce((sum, s) => sum + (s?.goals || 0), 0),
       assists: allStats.reduce((sum, s) => sum + (s?.assists || 0), 0),
+      offsides: allStats.reduce((sum, s) => sum + (s?.offsides || 0), 0),
       shots: allStats.reduce((sum, s) => sum + (s?.shots || 0), 0),
       shotsOnTarget: allStats.reduce((sum, s) => sum + (s?.shotsOnTarget || 0), 0),
       tackles: allStats.reduce((sum, s) => sum + (s?.tackles || 0), 0),
