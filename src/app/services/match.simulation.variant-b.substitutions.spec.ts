@@ -57,7 +57,7 @@ interface VariantBSubstitutionInternals {
     target: { x: number; y: number },
     currentTeam: TeamSide,
     opponentPlayers: Player[]
-  ) => { x: number; y: number };
+  ) => { location: { x: number; y: number }; interceptorId: string };
   scoreTurnoverWinnerCandidate: (
     player: Player,
     eventType: EventType.TACKLE | EventType.INTERCEPTION,
@@ -423,8 +423,8 @@ describe('Match Simulation Variant B Substitutions', () => {
       [defender1, defender2]
     );
 
-    expect(loc.x).toBeCloseTo(50);
-    expect(loc.y).toBeCloseTo(50);
+    expect(loc.location.x).toBeCloseTo(50);
+    expect(loc.location.y).toBeCloseTo(50);
 
     internals.activeMatchShape = null;
   });
@@ -458,7 +458,7 @@ describe('Match Simulation Variant B Substitutions', () => {
 
     const intScoreST = internals.scoreTurnoverWinnerCandidate(striker, EventType.INTERCEPTION, 10);
     const intScoreCB = internals.scoreTurnoverWinnerCandidate(defender, EventType.INTERCEPTION, 10);
-    expect(intScoreCB - intScoreST).toBe(20);
+    expect(intScoreCB - intScoreST).toBeCloseTo(30);
   });
 
   it('should not reintroduce dismissed players and should honor substitution limits', () => {

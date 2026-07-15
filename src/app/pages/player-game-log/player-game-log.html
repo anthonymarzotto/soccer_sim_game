@@ -39,6 +39,9 @@
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Penalties Scored">PKG</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Aerial Duels Won">AWD</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Match Rating">RTG</th>
+              @if (isDev) {
+                <th scope="col" class="px-4 py-3 w-20 text-center">Export</th>
+              }
             </tr>
           </thead>
           <tbody class="divide-y divide-border/60">
@@ -94,14 +97,32 @@
                       [class.text-red-400]="scaleMatchRating(log.playerStats.rating) < 6">
                     {{ scaleMatchRating(log.playerStats.rating) | number:'1.1-1' }}
                   </td>
+                  @if (isDev) {
+                    <td class="px-4 py-3 text-center">
+                      <button (click)="exportMatchJson(log)"
+                              class="inline-flex items-center justify-center px-2 py-1 text-xs font-mono font-bold uppercase tracking-wider bg-canvas hover:bg-canvas-hover border border-border rounded-lg text-text-secondary hover:text-text-primary transition-all duration-200 shadow-sm"
+                              title="Export Match JSON">
+                        JSON
+                      </button>
+                    </td>
+                  }
                 } @else {
                   <td colspan="17" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
+                  @if (isDev) {
+                    <td class="px-4 py-3 text-center">
+                      <button (click)="exportMatchJson(log)"
+                              class="inline-flex items-center justify-center px-2 py-1 text-xs font-mono font-bold uppercase tracking-wider bg-canvas hover:bg-canvas-hover border border-border rounded-lg text-text-secondary hover:text-text-primary transition-all duration-200 shadow-sm"
+                              title="Export Match JSON">
+                        JSON
+                      </button>
+                    </td>
+                  }
                 }
               </tr>
             }
             @if (gameLog().length === 0) {
               <tr>
-                <td colspan="19" class="px-4 py-8 text-center text-text-muted">
+                <td [attr.colspan]="isDev ? 21 : 20" class="px-4 py-8 text-center text-text-muted">
                   No games played in the current season yet.
                 </td>
               </tr>
