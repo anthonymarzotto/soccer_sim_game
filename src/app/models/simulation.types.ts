@@ -84,6 +84,7 @@ export interface PlayByPlayEventAdditionalData {
   aerialLoser?: string;
   isOffside?: boolean;
   offsidePlayerId?: string;
+  targetPlayerId?: string;
   playerWithBall?: string;
   recoveredByTeam?: 'Home' | 'Away';
   scrambleWinnerId?: string;

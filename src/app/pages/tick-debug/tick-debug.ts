@@ -175,6 +175,10 @@ export class TickDebugComponent {
         cleanedData.offsidePlayer = names.get(cleanedData.offsidePlayerId) || cleanedData.offsidePlayerId;
         delete cleanedData.offsidePlayerId;
       }
+      if (cleanedData.targetPlayerId) {
+        cleanedData.targetPlayer = names.get(cleanedData.targetPlayerId) || cleanedData.targetPlayerId;
+        delete cleanedData.targetPlayerId;
+      }
       if (cleanedData.playerWithBall) {
         cleanedData.playerWithBall = names.get(cleanedData.playerWithBall) || cleanedData.playerWithBall;
       }
@@ -212,7 +216,7 @@ export class TickDebugComponent {
     if (isFailedPass && event.type === EventType.INTERCEPTION && event.additionalData?.passFailure === 'LANE_CUT_OUT') {
       const interceptorId = event.playerIds?.[0];
       const passerId = event.playerIds?.[1];
-      const targetId = event.additionalData?.offsidePlayerId;
+      const targetId = event.additionalData?.targetPlayerId ?? event.additionalData?.offsidePlayerId;
       if (interceptorId && passerId && targetId) {
         const allDots = [...this.homeDots(), ...this.awayDots()];
         const interceptorDot = allDots.find(d => d.playerId === interceptorId);
@@ -359,7 +363,7 @@ export class TickDebugComponent {
       }
     } else if (isFailedPass) {
       const passerId = event.playerIds?.[1];
-      const targetId = event.additionalData?.offsidePlayerId;
+      const targetId = event.additionalData?.targetPlayerId ?? event.additionalData?.offsidePlayerId;
       if (passerId && targetId) {
         const allDots = [...this.homeDots(), ...this.awayDots()];
         const passerDot = allDots.find(d => d.playerId === passerId);

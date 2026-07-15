@@ -1641,9 +1641,17 @@ export class MatchSimulationVariantBService {
     minute: number,
     config: SimulationConfig,
     isOffside?: boolean,
-    offsidePlayerId?: string,
+    targetPlayerId?: string,
     predeterminedWinnerId?: string,
   ): string {
+    const additionalData = {
+      passFailure: mode,
+      passIntent,
+      isOffside,
+      offsidePlayerId: isOffside ? targetPlayerId : undefined,
+      targetPlayerId,
+    };
+
     if (mode === PASS_FAILURE_MODE.TACKLED) {
       return this.createTurnoverEvent(
         state,
@@ -1655,7 +1663,7 @@ export class MatchSimulationVariantBService {
         minute,
         true,
         config,
-        { passFailure: mode, passIntent, isOffside, offsidePlayerId },
+        additionalData,
         predeterminedWinnerId,
       );
     }
@@ -1670,7 +1678,7 @@ export class MatchSimulationVariantBService {
       minute,
       false,
       config,
-      { passFailure: mode, passIntent, isOffside, offsidePlayerId },
+      additionalData,
       predeterminedWinnerId,
     );
   }
@@ -4351,9 +4359,10 @@ export class MatchSimulationVariantBService {
     };
 
     if (!this.activeMatchShape) {
+      const outfielders = opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
       return {
         location: defaultLocation,
-        interceptorId: this.getRandomPlayerId(opponentPlayers.filter((p) => p.position !== PositionEnum.GK)),
+        interceptorId: this.getRandomPlayerId(outfielders.length > 0 ? outfielders : opponentPlayers),
       };
     }
 
@@ -4374,9 +4383,10 @@ export class MatchSimulationVariantBService {
     const ab2 = abx * abx + aby * aby;
 
     if (ab2 === 0) {
+      const outfielders = opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
       return {
         location: { ...start },
-        interceptorId: this.getRandomPlayerId(opponentPlayers.filter((p) => p.position !== PositionEnum.GK)),
+        interceptorId: this.getRandomPlayerId(outfielders.length > 0 ? outfielders : opponentPlayers),
       };
     }
 
@@ -4432,9 +4442,10 @@ export class MatchSimulationVariantBService {
       y: start.y + clampedT * (target.y - start.y),
     };
 
+    const outfielders = opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
     const interceptorId =
       bestPlayerId ||
-      this.getRandomPlayerId(opponentPlayers.filter((p) => p.position !== PositionEnum.GK));
+      this.getRandomPlayerId(outfielders.length > 0 ? outfielders : opponentPlayers);
 
     return { location, interceptorId };
   }
@@ -4910,6 +4921,9 @@ export class MatchSimulationVariantBService {
 
   private getRandomPlayerId(teamPlayers: Player[]): string {
     // teamPlayers contains only on-field starters.
+    if (teamPlayers.length === 0) {
+      return '';
+    }
     return teamPlayers[
       Math.floor(this.rng.random() * teamPlayers.length)
     ].id;
