@@ -67,34 +67,6 @@
             <span class="material-icons text-xl">newspaper</span>
             <span>News</span>
           </a>
-        </div>
-
-        <!-- Squad Section -->
-        <div class="space-y-1">
-          <div class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase px-3 mb-1.5">Squad</div>
-
-          @if (userTeamId()) {
-            <a
-              [routerLink]="['/team', userTeamId()]"
-              routerLinkActive="active-nav"
-              [routerLinkActiveOptions]="{exact: true}"
-              class="nav-link"
-            >
-              <span class="indicator"></span>
-              <span class="material-icons text-xl">sports_soccer</span>
-              <span>My Team</span>
-            </a>
-
-            <a
-              [routerLink]="['/team', userTeamId(), 'schedule']"
-              routerLinkActive="active-nav"
-              class="nav-link"
-            >
-              <span class="indicator"></span>
-              <span class="material-icons text-xl">date_range</span>
-              <span>Team Schedule</span>
-            </a>
-          }
 
           <a
             routerLink="/team-stats"
@@ -125,6 +97,34 @@
             <span class="material-icons text-xl">tune</span>
             <span>Player Attributes</span>
           </a>
+        </div>
+
+        <!-- Squad Section -->
+        <div class="space-y-1">
+          <div class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase px-3 mb-1.5">Squad</div>
+
+          @if (userTeamId()) {
+            <a
+              [routerLink]="['/team', userTeamId()]"
+              routerLinkActive="active-nav"
+              [routerLinkActiveOptions]="{exact: true}"
+              class="nav-link"
+            >
+              <span class="indicator"></span>
+              <span class="material-icons text-xl">sports_soccer</span>
+              <span>My Team</span>
+            </a>
+
+            <a
+              [routerLink]="['/team', userTeamId(), 'schedule']"
+              routerLinkActive="active-nav"
+              class="nav-link"
+            >
+              <span class="indicator"></span>
+              <span class="material-icons text-xl">date_range</span>
+              <span>Team Schedule</span>
+            </a>
+          }
         </div>
 
         <!-- Office Section -->
