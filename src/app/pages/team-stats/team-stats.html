@@ -66,6 +66,8 @@
               <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.shots }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.shotsOnTarget }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.passes }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.passesSuccessful }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ getPassCompletionRate(row) }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.tackles }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.interceptions }}</td>
               <td class="px-4 py-3 whitespace-nowrap text-center text-text-secondary stat-number tabular-nums">{{ row.saves }}</td>

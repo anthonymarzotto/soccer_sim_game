@@ -124,6 +124,7 @@ export interface PlayerCareerStats {
   tackles: number;
   interceptions: number;
   passes: number;
+  passesSuccessful: number;
   saves: number;
   cleanSheets: number;
   minutesPlayed: number;

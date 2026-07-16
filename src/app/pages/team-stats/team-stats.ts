@@ -6,7 +6,7 @@ import { GameService } from '../../services/game.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { Team } from '../../models/types';
 
-type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating';
+type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'passesSuccessful' | 'passCompletionRate' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating';
 type SortableValue = string | number;
 
 interface TeamStatsRow {
@@ -27,6 +27,7 @@ interface TeamStatsRow {
   shots: number;
   shotsOnTarget: number;
   passes: number;
+  passesSuccessful: number;
   tackles: number;
   interceptions: number;
   saves: number;
@@ -105,6 +106,7 @@ export class TeamStatsComponent {
         shots: 0,
         shotsOnTarget: 0,
         passes: 0,
+        passesSuccessful: 0,
         tackles: 0,
         interceptions: 0,
         saves: 0,
@@ -124,6 +126,7 @@ export class TeamStatsComponent {
           row.shots += playerStats.shots || 0;
           row.shotsOnTarget += playerStats.shotsOnTarget || 0;
           row.passes += playerStats.passes || 0;
+          row.passesSuccessful += playerStats.passesSuccessful || 0;
           row.tackles += playerStats.tackles || 0;
           row.interceptions += playerStats.interceptions || 0;
           row.saves += playerStats.saves || 0;
@@ -156,9 +159,14 @@ export class TeamStatsComponent {
         } else if (column === 'averageRating') {
           aVal = this.calculateAverageRating(a);
           bVal = this.calculateAverageRating(b);
+        } else if (column === 'passCompletionRate') {
+          const aRate = a.passes > 0 ? a.passesSuccessful / a.passes : 0;
+          const bRate = b.passes > 0 ? b.passesSuccessful / b.passes : 0;
+          aVal = aRate;
+          bVal = bRate;
         } else {
-          aVal = a[column] as number;
-          bVal = b[column] as number;
+          aVal = a[column as keyof TeamStatsRow] as number;
+          bVal = b[column as keyof TeamStatsRow] as number;
         }
 
         if (typeof aVal === 'string') {
@@ -187,7 +195,9 @@ export class TeamStatsComponent {
     { key: 'points', label: 'Pts', tooltip: 'Points', sortable: true, cls: 'text-accent font-bold text-base' },
     { key: 'shots', label: 'Shots', tooltip: 'Total Shots', sortable: true },
     { key: 'shotsOnTarget', label: 'SoT', tooltip: 'Shots on Target', sortable: true },
-    { key: 'passes', label: 'Passes', tooltip: 'Total Passes', sortable: true },
+    { key: 'passes', label: 'P (Att)', tooltip: 'Total Passes Attempted', sortable: true },
+    { key: 'passesSuccessful', label: 'P (Comp)', tooltip: 'Total Passes Completed', sortable: true },
+    { key: 'passCompletionRate', label: 'P%', tooltip: 'Pass Completion Percentage', sortable: true },
     { key: 'tackles', label: 'Tackles', tooltip: 'Total Tackles', sortable: true },
     { key: 'interceptions', label: 'Ints', tooltip: 'Total Interceptions', sortable: true },
     { key: 'saves', label: 'Saves', tooltip: 'Total Saves', sortable: true },
@@ -218,6 +228,12 @@ export class TeamStatsComponent {
     if (row.totalMatchRatingCount === 0) return '0.00';
     // Format to 2 decimal places manually, formatAverageMatchRating takes player stats
     return (row.totalMatchRating / row.totalMatchRatingCount).toFixed(2);
+  }
+
+  getPassCompletionRate(row: TeamStatsRow): string {
+    if (row.passes === 0) return '0%';
+    const rate = Math.round((row.passesSuccessful / row.passes) * 100);
+    return `${rate}%`;
   }
 
   isUserTeam(row: TeamStatsRow): boolean {

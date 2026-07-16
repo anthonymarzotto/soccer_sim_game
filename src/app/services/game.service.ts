@@ -2773,6 +2773,7 @@ export class GameService {
       tackles: 0,
       interceptions: 0,
       passes: 0,
+      passesSuccessful: 0,
       saves: 0,
       cleanSheets: 0,
       minutesPlayed: 0,
@@ -2797,6 +2798,7 @@ export class GameService {
       aggregated.tackles += season.tackles;
       aggregated.interceptions += season.interceptions;
       aggregated.passes += season.passes;
+      aggregated.passesSuccessful += (season.passesSuccessful ?? 0);
       aggregated.saves += season.saves;
       aggregated.cleanSheets += season.cleanSheets;
       aggregated.minutesPlayed += season.minutesPlayed;
@@ -3056,7 +3058,7 @@ export class GameService {
 
   private updatePlayerStatsForEvent(
     stats: PlayerCareerStats,
-    event: { type: EventType },
+    event: { type: EventType; success?: boolean },
     playerId: string,
     primaryPlayerId: string,
     player: Player,
@@ -3078,6 +3080,9 @@ export class GameService {
         break;
       case EventType.PASS:
         stats.passes++;
+        if (event.success) {
+          stats.passesSuccessful = (stats.passesSuccessful ?? 0) + 1;
+        }
         break;
       case EventType.FOUL:
         if (playerId === primaryPlayerId) {

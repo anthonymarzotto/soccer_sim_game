@@ -885,7 +885,9 @@
                       <th class="text-right py-3 px-4 font-semibold">SoT</th>
                       <th class="text-right py-3 px-4 font-semibold">Tackles</th>
                       <th class="text-right py-3 px-4 font-semibold">Interceptions</th>
-                      <th class="text-right py-3 px-4 font-semibold">Passes</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Passes Attempted">P (Att)</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Passes Completed">P (Comp)</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Pass Completion Percentage">P%</th>
                     } @else if (statsView === 'discipline') {
                       <th class="text-right py-3 px-4 font-semibold">Fouls</th>
                       <th class="text-right py-3 px-4 font-semibold">Suffered</th>
@@ -933,6 +935,8 @@
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.tackles || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.interceptions || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.passes || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.passesSuccessful || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-secondary font-mono">{{ s.passes > 0 ? ((s.passesSuccessful || 0) / s.passes * 100 | number:'1.0-0') : 0 }}%</td>
                       } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.fouls || 0 }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ s.foulsSuffered || 0 }}</td>
@@ -980,6 +984,8 @@
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.tackles }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.interceptions }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.passes }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.passesSuccessful }}</td>
+                        <td class="py-3 px-4 text-right text-text-secondary font-mono">{{ totals.passes > 0 ? (totals.passesSuccessful / totals.passes * 100 | number:'1.0-0') : 0 }}%</td>
                       } @else if (statsView === 'discipline') {
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.fouls }}</td>
                         <td class="py-3 px-4 text-right text-orange-400 font-mono">{{ totals.foulsSuffered }}</td>

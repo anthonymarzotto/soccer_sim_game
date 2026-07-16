@@ -29,6 +29,7 @@
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots">SH</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots on Target">SOG</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Passes Attempted">P</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Passes Completed">PC</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Pass Completion Percentage">P%</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Tackles">T</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Interceptions">INT</th>
@@ -80,6 +81,7 @@
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.shots === 0">{{ log.playerStats.shots }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.shotsOnTarget === 0">{{ log.playerStats.shotsOnTarget }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.passes === 0">{{ log.playerStats.passes }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.passesSuccessful === 0">{{ log.playerStats.passesSuccessful }}</td>
                   <td class="px-4 py-3 text-center font-mono text-text-muted">
                     {{ log.playerStats.passes > 0 ? ((log.playerStats.passesSuccessful / log.playerStats.passes) * 100 | number:'1.0-0') : 0 }}%
                   </td>

@@ -12,7 +12,7 @@ type NumericPlayerCareerStatColumn = Exclude<{
   [K in keyof PlayerCareerStats]: Exclude<PlayerCareerStats[K], undefined> extends number ? K : never;
 }[keyof PlayerCareerStats], 'seasonYear' | 'totalMatchRating' | undefined>;
 
-type SortColumn = 'name' | 'team' | 'position' | NumericPlayerCareerStatColumn | 'averageRating' | 'starsFirst' | 'starsSecond' | 'starsThird';
+type SortColumn = 'name' | 'team' | 'position' | NumericPlayerCareerStatColumn | 'averageRating' | 'starsFirst' | 'starsSecond' | 'starsThird' | 'passCompletionRate';
 type SortableValue = string | number;
 
 interface PlayerStatsRow {
@@ -151,9 +151,14 @@ export class PlayerStatsComponent {
         } else if (column === 'starsThird') {
           aVal = a.stats.starNominations.third;
           bVal = b.stats.starNominations.third;
+        } else if (column === 'passCompletionRate') {
+          const aRate = a.stats.passes > 0 ? (a.stats.passesSuccessful ?? 0) / a.stats.passes : 0;
+          const bRate = b.stats.passes > 0 ? (b.stats.passesSuccessful ?? 0) / b.stats.passes : 0;
+          aVal = aRate;
+          bVal = bRate;
         } else {
-          aVal = a.stats[column] ?? 0;
-          bVal = b.stats[column] ?? 0;
+          aVal = a.stats[column as NumericPlayerCareerStatColumn] ?? 0;
+          bVal = b.stats[column as NumericPlayerCareerStatColumn] ?? 0;
         }
 
         if (typeof aVal === 'string') {
@@ -200,7 +205,9 @@ export class PlayerStatsComponent {
     { key: 'offsides', label: 'Offsides', sortable: true },
     { key: 'shots', label: 'Shots', sortable: true },
     { key: 'shotsOnTarget', label: 'SoT', sortable: true },
-    { key: 'passes', label: 'Passes', sortable: true },
+    { key: 'passes', label: 'P (Att)', sortable: true },
+    { key: 'passesSuccessful', label: 'P (Comp)', sortable: true },
+    { key: 'passCompletionRate', label: 'P%', sortable: true },
     { key: 'tackles', label: 'Tackles', sortable: true },
     { key: 'interceptions', label: 'Interceptions', sortable: true },
     { key: 'saves', label: 'Saves', sortable: true },
@@ -280,7 +287,13 @@ export class PlayerStatsComponent {
     if (column === 'starsFirst') return row.stats.starNominations.first;
     if (column === 'starsSecond') return row.stats.starNominations.second;
     if (column === 'starsThird') return row.stats.starNominations.third;
-    return row.stats[column] ?? 0;
+    if (column === 'passCompletionRate') {
+      const passes = row.stats.passes || 0;
+      const successful = row.stats.passesSuccessful || 0;
+      const rate = passes > 0 ? Math.round((successful / passes) * 100) : 0;
+      return `${rate}%`;
+    }
+    return row.stats[column as NumericPlayerCareerStatColumn] ?? 0;
   }
 
   isUserTeamPlayer(row: PlayerStatsRow): boolean {

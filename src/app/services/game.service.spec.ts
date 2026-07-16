@@ -2964,6 +2964,7 @@ describe('GameService player suspensions', () => {
         tackles: 0,
         interceptions: 0,
         passes: 0,
+        passesSuccessful: 0,
         saves: 0,
         cleanSheets: 0,
         minutesPlayed: 0,

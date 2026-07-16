@@ -42,6 +42,7 @@ describe('LeagueAssemblyService', () => {
                 tackles: 2,
                 interceptions: 3,
                 passes: 140,
+                passesSuccessful: 110,
                 saves: 38,
                 cleanSheets: 4,
                 minutesPlayed: 900,
