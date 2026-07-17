@@ -19,6 +19,11 @@ const DESIGN_DOCS: DesignDoc[] = [
     description: 'Where each seasonal stat enters Variant B and match setup'
   },
   {
+    label: 'Simulation Event Calculations',
+    path: '/design-docs/simulation-event-calculations.html',
+    description: 'Detailed attribute formulas and weights per simulation event'
+  },
+  {
     label: 'Variant B Tuning Variables',
     path: '/design-docs/tuning-variables.html',
     description: 'Configuration metrics for Variant B simulation engine'

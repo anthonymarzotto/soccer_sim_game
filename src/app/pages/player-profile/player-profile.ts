@@ -13,7 +13,7 @@ import { formatAverageMatchRating, formatGamesPlayed } from '../../models/player
 import { getCurrentPlayerSeasonAttributes, getActiveInjury, getActiveSuspension } from '../../models/season-history';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
-import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
+import { calculateMarketValue, calculatePlayerWageCost, POSITION_OVR_CONFIG } from '../../models/player-progression';
 
 import { FormsModule } from '@angular/forms';
 
@@ -39,6 +39,11 @@ export class PlayerProfileComponent {
   getPositionGroup = getPositionGroup;
   badgeStyle = this.settingsService.badgeStyle;
   isDev = isDevMode();
+
+  isKeyStat(statKey: string): boolean {
+    const p = this.player();
+    return !!p && statKey in (POSITION_OVR_CONFIG[p.position]?.core || {});
+  }
 
   playerId = toSignal(this.route.paramMap.pipe(map(params => params.get('id'))), { initialValue: null });
   transferWindowPhase = this.gameService.transferWindowPhase;
@@ -350,8 +355,7 @@ export class PlayerProfileComponent {
       { label: 'Flair', value: attrs.flair.value },
       { label: 'Vision', value: attrs.vision.value },
       { label: 'Determination', value: attrs.determination.value },
-      { label: 'Composure', value: attrs.composure.value },
-      { label: 'Aggression', value: attrs.aggressiveness.value }
+      { label: 'Composure', value: attrs.composure.value }
     ];
   });
 
@@ -386,8 +390,7 @@ export class PlayerProfileComponent {
 
     return [
       { label: 'Handling', value: attrs.handling.value },
-      { label: 'Reflexes', value: attrs.reflexes.value },
-      { label: 'Cmd. of Area', value: attrs.commandOfArea.value }
+      { label: 'Reflexes', value: attrs.reflexes.value }
     ];
   });
 

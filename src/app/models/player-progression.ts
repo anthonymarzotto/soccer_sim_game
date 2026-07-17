@@ -2,6 +2,7 @@ import { Player, Position, StatKey } from './types';
 import { Phase, getPositionGroup } from './enums';
 import { computeAge, seasonAnchorDate } from './player-age';
 import { getCurrentPlayerSeasonAttributes } from './season-history';
+import { STAT_DEFINITIONS } from './stat-definitions';
 
 export function derivePhase(age: number, player: Player): Phase {
   const p = player.progression;
@@ -73,6 +74,81 @@ export function getStatKeysForCategory(category: string): StatKey[] {
   }
 }
 
+export const POSITION_OVR_CONFIG: Record<Position, { core: Partial<Record<StatKey, number>> }> = {
+  [Position.GK]: {
+    core: {
+      handling: 50,
+      reflexes: 50
+    }
+  },
+  [Position.CB]: {
+    core: {
+      tackling: 35,
+      strength: 25,
+      heading: 20,
+      determination: 10,
+      speed: 10
+    }
+  },
+  [Position.FB]: {
+    core: {
+      speed: 30,
+      tackling: 25,
+      endurance: 20,
+      shortPassing: 15,
+      determination: 10
+    }
+  },
+  [Position.CDM]: {
+    core: {
+      tackling: 30,
+      vision: 20,
+      shortPassing: 20,
+      strength: 15,
+      longPassing: 15
+    }
+  },
+  [Position.CM]: {
+    core: {
+      shortPassing: 25,
+      vision: 20,
+      tackling: 15,
+      longPassing: 15,
+      endurance: 15,
+      determination: 10
+    }
+  },
+  [Position.CAM]: {
+    core: {
+      vision: 30,
+      shortPassing: 30,
+      shooting: 20,
+      flair: 10,
+      speed: 10
+    }
+  },
+  [Position.WNG]: {
+    core: {
+      speed: 35,
+      flair: 25,
+      longPassing: 15,
+      shortPassing: 15,
+      shooting: 10
+    }
+  },
+  [Position.ST]: {
+    core: {
+      shooting: 40,
+      speed: 20,
+      heading: 15,
+      strength: 15,
+      flair: 10
+    }
+  }
+};
+
+export const CORE_BLEND_FACTOR = 0.85;
+
 // Accepts either a raw dictionary of values (from generator) or PlayerSeasonAttributes (from rollover)
 export function calculateOverall(
   attrs: unknown,
@@ -86,15 +162,31 @@ export function calculateOverall(
     return typeof v === 'number' ? v : 0;
   };
 
-  const outfieldSum = val('speed') + val('strength') + val('flair') + val('vision') + val('determination') +
-    val('tackling') + val('shooting') + val('heading') + val('longPassing') + val('shortPassing');
+  const config = POSITION_OVR_CONFIG[position];
+  if (!config) return 0;
 
-  if (position === Position.GK) {
-    const gkSum = val('handling') * 2 + val('reflexes') * 2 + val('commandOfArea');
-    return Math.floor((outfieldSum + gkSum) / 15);
-  }
+  // 1. Calculate Core Sum
+  let coreSum = 0;
+  const coreEntries = Object.entries(config.core) as [StatKey, number][];
+  coreEntries.forEach(([key, weight]) => {
+    coreSum += val(key) * (weight / 100);
+  });
 
-  return Math.floor(outfieldSum / 10);
+  // 2. Determine non-hidden stats pool for this position
+  const isGk = position === Position.GK;
+  const pool = (Object.keys(STAT_DEFINITIONS) as StatKey[]).filter(key => {
+    const def = STAT_DEFINITIONS[key];
+    return !def.hidden && def.type !== 'misc' && (isGk || def.type !== 'goalkeeping');
+  });
+
+  // Tertiary stats: any stat in the pool that is NOT in core
+  const tertiaryKeys = pool.filter(key => !(key in config.core));
+  
+  const tertiarySum = tertiaryKeys.reduce((acc, k) => acc + val(k), 0) / (tertiaryKeys.length || 1);
+
+  // 3. Blend Core and Tertiary
+  const overall = CORE_BLEND_FACTOR * coreSum + (1.0 - CORE_BLEND_FACTOR) * tertiarySum;
+  return Math.floor(overall);
 }
 
 export function getCareerArcMultiplier(player: Player, age: number): number {

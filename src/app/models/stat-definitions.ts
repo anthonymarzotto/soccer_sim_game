@@ -75,7 +75,7 @@ export const STAT_DEFINITIONS: Record<StatKey, StatDefinition> = {
   commandOfArea: {
     type: 'goalkeeping',
     description: 'Organizing free-kick walls, intercepting crosses, and commanding the penalty area.',
-    hidden: false
+    hidden: true
   },
   clutch: {
     type: 'mental',
@@ -100,7 +100,7 @@ export const STAT_DEFINITIONS: Record<StatKey, StatDefinition> = {
   aggressiveness: {
     type: 'mental',
     description: 'How hard the player tackles and contests duels.',
-    hidden: false
+    hidden: true
   },
   fitness: {
     type: 'physical',

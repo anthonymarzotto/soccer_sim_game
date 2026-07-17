@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulation Event Calculations — Attribute Mapping</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #09090b;
+      color: #f4f4f5;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+    }
+
+    /* Sidebar Navigation */
+    aside {
+      width: 280px;
+      background: #18181b;
+      border-right: 1px solid #27272a;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 2rem 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    aside h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #71717a;
+      margin: 0;
+    }
+
+    aside nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    aside nav a {
+      color: #a1a1aa;
+      text-decoration: none;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    aside nav a:hover {
+      background: #27272a;
+      color: #f4f4f5;
+    }
+
+    aside nav a.active {
+      background: #3f3f46;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    /* Main Content */
+    main {
+      margin-left: 280px;
+      flex-grow: 1;
+      max-width: 1100px;
+      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.2; }
+
+    h1 { font-size: 1.75rem; color: #f4f4f5; font-weight: 700; }
+    h2 { font-size: 1.25rem; font-weight: 600; color: #e4e4e7; border-bottom: 1px solid #27272a; padding-bottom: 0.5rem; margin-top: 1rem; }
+    h3 { font-size: 0.95rem; font-weight: 600; color: #38bdf8; }
+
+    p { margin: 0; color: #a1a1aa; }
+
+    .panel {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-margin-top: 2rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .panel:hover {
+      border-color: #3f3f46;
+    }
+
+    /* Header styling */
+    .header-panel {
+      background: linear-gradient(135deg, #1e1b4b 0%, #18181b 100%);
+      border: 1px solid #312e81;
+    }
+
+    .header-panel p {
+      color: #cbd5e1;
+    }
+
+    /* Math formula formatting */
+    .formula-box {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 16px;
+      font-family: 'Fira Code', ui-monospace, monospace;
+      font-size: 0.85rem;
+      color: #a5f3fc;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+
+    .formula-box .comment {
+      color: #71717a;
+    }
+
+    /* Attribute Badge List */
+    .attr-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .attr-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .attr-badge .name {
+      font-weight: 600;
+      color: #38bdf8;
+    }
+
+    .attr-badge .tag {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      font-weight: bold;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .tag.shown { background: #064e3b; color: #34d399; }
+    .tag.hidden { background: #7c2d12; color: #f97316; }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #71717a;
+      background: #09090b;
+      border-bottom: 1px solid #27272a;
+      font-weight: 600;
+    }
+
+    tbody td {
+      padding: 12px 16px;
+      vertical-align: middle;
+      border-bottom: 1px solid #27272a;
+      font-size: 0.875rem;
+      color: #a1a1aa;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #222227; }
+
+    .code-ref {
+      font-family: ui-monospace, monospace;
+      color: #a78bfa;
+      font-size: 0.8rem;
+    }
+
+    /* Core rules block */
+    .rule-note {
+      border-left: 3px solid #0284c7;
+      background: #0c4a6e;
+      color: #e0f2fe;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.85rem;
+    }
+
+    .rule-note code {
+      background: #0369a1;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <div>
+      <h2 style="margin-bottom: 1rem;">Simulation Spec</h2>
+      <nav>
+        <a href="#overview" class="active">Overview & Compression</a>
+        <a href="#carry">1. Carry (Dribbling)</a>
+        <a href="#pass">2. Pass Resolution</a>
+        <a href="#defending">3. Tackle & Interception</a>
+        <a href="#shooting">4. Open Play Shooting</a>
+        <a href="#setpieces">5. Set Pieces (Corners & FK)</a>
+        <a href="#penalties">6. Penalty Shootouts</a>
+        <a href="#injuries">7. Injury Rolls</a>
+        <a href="#matrix">Attribute Impact Matrix</a>
+      </nav>
+    </div>
+  </aside>
+
+  <main>
+    <section id="overview" class="panel header-panel">
+      <h1>Simulation Event Calculations</h1>
+      <p>
+        This design document provides a detailed breakdown of how player attributes shape match events in the
+        <strong>Variant B match simulation engine</strong>. It details the mathematical formulas, attribute weights,
+        and display statuses of stats involved in each gameplay check.
+      </p>
+
+      <div class="rule-note">
+        <strong>Important Gameplay Rule: Skill Compression</strong><br>
+        During match resolution, all player attributes accessed via <code>getPlayerStat()</code>—except 
+        <code>overall</code>, <code>endurance</code>, and <code>injuryRate</code>—are dynamically compressed toward a baseline of 70:
+        <code style="display: block; margin-top: 6px; font-size: 0.8rem;">effective_value = 70 + (raw_value - 70) * skillCompressionFactor; // Default factor is 0.60</code>
+        This compresses extreme attribute spreads to preserve parity while maintaining individual profiles. The calculations listed below operate on these <strong>effective values</strong>.
+      </div>
+    </section>
+
+    <!-- CARRY -->
+    <section id="carry" class="panel">
+      <h2>1. Carry (Dribbling / Ball Progression)</h2>
+      <p>
+        Triggered when a player moves forward carrying the ball. Success keeps possession and advances the attacking depth;
+        failure triggers a turnover winner check.
+      </p>
+      
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">speed</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">flair</span><span class="tag shown">Shown</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+successChance = baseCarrySuccessChance; <span class="comment">// Derived from carry type and defensive pressure</span>
+successChance += (getPlayerStat(carrier, 'speed') - 70) * 0.002;
+successChance += (getPlayerStat(carrier, 'flair') - 70) * 0.0015;
+
+<span class="comment">// Clamped to prevent complete certainty</span>
+finalChance = clamp(successChance, 0.30, 0.86);
+      </div>
+    </section>
+
+    <!-- PASS RESOLUTION -->
+    <section id="pass" class="panel">
+      <h2>2. Pass Resolution</h2>
+      <p>
+        Determines the success rate when an attacker attempts to pass the ball. If a pass fails, the defender list is evaluated for interception.
+      </p>
+
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">shortPassing</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">longPassing</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">vision</span><span class="tag shown">Shown</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+<span class="comment">// 1. Base pass quality rating</span>
+baseQuality = (getPlayerStat(passer, 'shortPassing') + getPlayerStat(passer, 'longPassing')) / 2 + 16.0;
+
+<span class="comment">// 2. Pass success chance calculation (subject to defensive pressure and style modifiers)</span>
+passSuccessChance = baseQuality * pressureModifier * styleModifier;
+finalChance = clamp(passSuccessChance, 0.20, 0.95);
+
+<span class="comment">// 3. Vision check (used to calculate pass-intercept safety/risk)</span>
+visionScore = getPlayerStat(passer, 'vision');
+      </div>
+    </section>
+
+    <!-- DEFENDING -->
+    <section id="defending" class="panel">
+      <h2>3. Tackle & Interception Attribution (Turnover Winners)</h2>
+      <p>
+        When a carry or pass fails, the simulation determines which defending player should be credited with the tackle or interception.
+        Each candidate defender receives an attribution score based on proximity and key attributes.
+      </p>
+
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">tackling</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">strength</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">determination</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">speed</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">vision</span><span class="tag shown">Shown</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+<span class="comment">// Tackle Event Winner Attribution:</span>
+tackleScore = proximityScore + getPlayerStat(defender, 'tackling') 
+              + getPlayerStat(defender, 'strength') * 0.5 
+              + getPlayerStat(defender, 'determination') * 0.35 
+              + getPlayerStat(defender, 'speed') * 0.2;
+
+<span class="comment">// Interception Event Winner Attribution:</span>
+interceptionScore = proximityScore + getPlayerStat(defender, 'vision') 
+                    + getPlayerStat(defender, 'tackling') * 0.5 
+                    + getPlayerStat(defender, 'determination') * 0.35 
+                    + getPlayerStat(defender, 'speed') * 0.2;
+      </div>
+    </section>
+
+    <!-- SHOOTING -->
+    <section id="shooting" class="panel">
+      <h2>4. Open Play Shooting</h2>
+      <p>
+        Shots from open play pass through two distinct gates: hitting the target, and beating the goalkeeper.
+      </p>
+
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">shooting</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">handling</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">reflexes</span><span class="tag shown">Shown</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+<span class="comment">// 1. Hitting the Target Gate</span>
+onTargetChance = baseChance + (getPlayerStat(shooter, 'shooting') - 70) * activeTuning.onTargetSkillScale;
+
+<span class="comment">// 2. Beating the Goalkeeper Gate (if Shot is On-Target)</span>
+keeperSkill = (getPlayerStat(gk, 'handling') + getPlayerStat(gk, 'reflexes')) / 2;
+goalChance = baseChance + (getPlayerStat(shooter, 'shooting') - keeperSkill) * activeTuning.goalChanceSkillScale;
+      </div>
+    </section>
+
+    <!-- SET PIECES -->
+    <section id="setpieces" class="panel">
+      <h2>5. Set Pieces (Corner Kicks & Indirect Free Kicks)</h2>
+      <p>
+        Set pieces involve a delivery quality check from the taker, followed by an aerial duel between an attacker and a marker.
+      </p>
+
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">longPassing</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">flair</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">heading</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">strength</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">handling</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">reflexes</span><span class="tag shown">Shown</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+<span class="comment">// 1. Taker Delivery Score</span>
+deliveryScore = (getPlayerStat(taker, 'longPassing') + getPlayerStat(taker, 'flair')) / 2 + random(0, 20);
+
+<span class="comment">// 2. Duel Calculations</span>
+attackerDuel = getPlayerStat(attacker, 'heading') + getPlayerStat(attacker, 'strength') + deliveryScore * 0.15 + random(0, 30);
+defenderDuel = getPlayerStat(defender, 'heading') + getPlayerStat(defender, 'strength') + random(0, 30);
+
+<span class="comment">// 3. Goal Chance on Attacker Duel Win</span>
+keeperSkill = (getPlayerStat(gk, 'reflexes') + getPlayerStat(gk, 'handling')) / 2;
+cornerGoalChance = cornerGoalChanceBase + (getPlayerStat(attacker, 'heading') - keeperSkill) * 0.002;
+indirectFkGoalChance = indirectFkGoalChanceBase + (getPlayerStat(attacker, 'heading') - keeperSkill) * 0.003;
+      </div>
+    </section>
+
+    <!-- PENALTIES -->
+    <section id="penalties" class="panel">
+      <h2>6. Penalty Shootouts</h2>
+      <p>
+        Resolves individual penalty kicks. Attacker shooting and composure are matched against goalkeeper reflexes.
+      </p>
+
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">composure</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">shooting</span><span class="tag shown">Shown</span></div>
+        <div class="attr-badge"><span class="name">reflexes</span><span class="tag shown">Shown</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+<span class="comment">// 1. Penalty Taker Selection Metric (highest score is selected)</span>
+takerScore = getPlayerStat(player, 'composure') + getPlayerStat(player, 'shooting');
+
+<span class="comment">// 2. Shootout Shot Resolution</span>
+shooterScore = (getPlayerStat(shooter, 'shooting') + getPlayerStat(shooter, 'composure')) / 2;
+gkScore = getPlayerStat(gk, 'reflexes');
+
+<span class="comment">// ShooterScore is directly compared against gkScore along with random rolls</span>
+      </div>
+    </section>
+
+    <!-- INJURIES -->
+    <section id="injuries" class="panel">
+      <h2>7. Injury Rolls</h2>
+      <p>
+        Evaluates active players after certain events (fouls, tackles, etc.) to check if they incur an injury.
+      </p>
+
+      <div class="attr-row">
+        <span>Attributes used:</span>
+        <div class="attr-badge"><span class="name">injuryRate</span><span class="tag hidden">Hidden</span></div>
+      </div>
+
+      <div class="formula-box">
+<span class="comment">// src/app/services/match.simulation.variant-b.service.ts</span>
+<span class="comment">// injuryRate is NOT compressed during this check</span>
+injuryRate = attrs.injuryRate.value; 
+
+finalChance = baseChance * (injuryRate / 50) * siteModifier;
+<span class="comment">// baseChance: ~0.0104 (contact) / ~0.0017 (non-contact)</span>
+<span class="comment">// siteModifier: 1.5x (foul victim), 1.25x (tackle participant), 1.0x (others)</span>
+      </div>
+    </section>
+
+    <!-- MATRIX -->
+    <section id="matrix" class="panel">
+      <h2>Attribute Impact Matrix</h2>
+      <p>This grid traces which simulation actions are directly influenced by each player attribute.</p>
+      
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>Visibility</th>
+              <th>Sim Calculations Influenced</th>
+              <th>Code Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">speed</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Carry Success Chance, Tackle Winner Attribution, Interception Winner Attribution</td>
+              <td class="code-ref">getPlayerStat(p, 'speed')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">strength</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Tackle Winner Attribution, Set-Piece Aerial Duels</td>
+              <td class="code-ref">getPlayerStat(p, 'strength')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">endurance</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>In-Match Fatigue Accrual Rate (updates fatigue level per tick)</td>
+              <td class="code-ref">attrs.endurance.value</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">flair</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Carry Success Chance, Corner & FK Delivery Quality</td>
+              <td class="code-ref">getPlayerStat(p, 'flair')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">vision</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Pass Intercept Safety Risk, Interception Winner Attribution</td>
+              <td class="code-ref">getPlayerStat(p, 'vision')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">determination</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Tackle Winner Attribution, Interception Winner Attribution</td>
+              <td class="code-ref">getPlayerStat(p, 'determination')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">tackling</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Tackle Winner Attribution, Interception Winner Attribution</td>
+              <td class="code-ref">getPlayerStat(p, 'tackling')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">shooting</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Shot-on-Target Gate, Goal Gate, Penalty Taker Score, Penalty Conversion</td>
+              <td class="code-ref">getPlayerStat(p, 'shooting')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">heading</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Set-Piece Aerial Duels, Set-Piece Goal Chance Scale</td>
+              <td class="code-ref">getPlayerStat(p, 'heading')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">longPassing</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Pass Quality base, Corner & FK Delivery Quality</td>
+              <td class="code-ref">getPlayerStat(p, 'longPassing')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">shortPassing</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Pass Quality base, Pass Intercept Safety Risk</td>
+              <td class="code-ref">getPlayerStat(p, 'shortPassing')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">handling</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Goal-Chance Goalkeeper Defense, Set-Piece Goalkeeper Defense</td>
+              <td class="code-ref">getPlayerStat(p, 'handling')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">reflexes</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Goal-Chance Goalkeeper Defense, Set-Piece Goalkeeper Defense, Penalty GK Defense</td>
+              <td class="code-ref">getPlayerStat(p, 'reflexes')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">composure</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Penalty Taker Score, Penalty Conversion</td>
+              <td class="code-ref">getPlayerStat(p, 'composure')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">injuryRate</td>
+              <td><span class="tag hidden">Hidden</span></td>
+              <td>In-Match Injury Chance Roll</td>
+              <td class="code-ref">attrs.injuryRate.value</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #f4f4f5;">overall</td>
+              <td><span class="tag shown">Shown</span></td>
+              <td>Quality proxy for Auto-Starter Dress, Sub Sort, Tactics Thresholds</td>
+              <td class="code-ref">getPlayerStat(p, 'overall')</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">commandOfArea</td>
+              <td style="color: #8a8a93;">Shown</td>
+              <td style="color: #8a8a93;">Unused in simulation (only contributes to initial baked GK overall)</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">aggressiveness</td>
+              <td style="color: #8a8a93;">Hidden</td>
+              <td style="color: #8a8a93;">Unused in simulation</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">clutch</td>
+              <td style="color: #8a8a93;">Hidden</td>
+              <td style="color: #8a8a93;">Unused in simulation</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">morale</td>
+              <td style="color: #8a8a93;">Hidden</td>
+              <td style="color: #8a8a93;">Unused in simulation</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">consistency</td>
+              <td style="color: #8a8a93;">Hidden</td>
+              <td style="color: #8a8a93;">Unused in simulation</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">luck</td>
+              <td style="color: #8a8a93;">Hidden</td>
+              <td style="color: #8a8a93;">Unused in simulation</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 600; color: #8a8a93; font-style: italic;">fitness</td>
+              <td style="color: #8a8a93;">Shown</td>
+              <td style="color: #8a8a93;">Unused in match play (used weekly for team fatigue recovery)</td>
+              <td class="code-ref" style="color: #8a8a93;">None</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Highlight active link in sidebar navigation during scroll
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('aside nav a');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (pageYOffset >= (sectionTop - sectionHeight / 3)) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href').substring(1) === current) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
