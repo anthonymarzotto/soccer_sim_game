@@ -1697,12 +1697,14 @@ export class MatchSimulationVariantBService {
       : opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
 
     const turnoverWinnerId =
+      predeterminedWinnerId ??
       this.selectTurnoverWinner(
         EventType.INTERCEPTION,
         currentLocation,
         currentTeam,
         eligibleOpponentPlayers,
-      )?.id ?? this.getRandomPlayerId(eligibleOpponentPlayers);
+      )?.winner?.id ??
+      this.getRandomPlayerId(eligibleOpponentPlayers);
 
     this.createEvent(
       state,
@@ -1713,7 +1715,6 @@ export class MatchSimulationVariantBService {
       false, // success = false
       config,
       additionalData,
-      predeterminedWinnerId,
     );
 
     return turnoverWinnerId;
