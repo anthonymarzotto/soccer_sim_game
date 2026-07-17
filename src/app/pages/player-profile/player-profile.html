@@ -249,7 +249,11 @@
           </div>
           @if (mentalView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('flair')"
+                   [class.border-l-transparent]="!isKeyStat('flair')"
+                   [class.bg-sky-500/5]="isKeyStat('flair')"
+                   [class.bg-transparent]="!isKeyStat('flair')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('flair')">Flair</span>
                 <div class="flex items-center gap-2">
                   @let diffFlair = getStatDiff('flair');
@@ -257,7 +261,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.flair?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('vision')"
+                   [class.border-l-transparent]="!isKeyStat('vision')"
+                   [class.bg-sky-500/5]="isKeyStat('vision')"
+                   [class.bg-transparent]="!isKeyStat('vision')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('vision')">Vision</span>
                 <div class="flex items-center gap-2">
                   @let diffVision = getStatDiff('vision');
@@ -265,7 +273,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.vision?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('determination')"
+                   [class.border-l-transparent]="!isKeyStat('determination')"
+                   [class.bg-sky-500/5]="isKeyStat('determination')"
+                   [class.bg-transparent]="!isKeyStat('determination')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('determination')">Determination</span>
                 <div class="flex items-center gap-2">
                   @let diffDet = getStatDiff('determination');
@@ -273,7 +285,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.determination?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('composure')"
+                   [class.border-l-transparent]="!isKeyStat('composure')"
+                   [class.bg-sky-500/5]="isKeyStat('composure')"
+                   [class.bg-transparent]="!isKeyStat('composure')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('composure')">Composure</span>
                 <div class="flex items-center gap-2">
                   @let diffComp = getStatDiff('composure');
@@ -281,14 +297,7 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.composure?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
-                <span class="text-text-muted text-sm" [title]="getStatDescription('aggressiveness')">Aggression</span>
-                <div class="flex items-center gap-2">
-                  @let diffAgg = getStatDiff('aggressiveness');
-                  @if (diffAgg) { <span class="text-xs font-mono" [class.text-accent]="diffAgg > 0" [class.text-danger]="diffAgg < 0">{{ diffAgg > 0 ? '+' : '' }}{{ diffAgg }}</span> }
-                  <span class="font-mono text-sm font-semibold">{{ attrs?.aggressiveness?.value }}</span>
-                </div>
-              </div>
+
 
               <!-- Dev-only Hidden Stats -->
               @if (isDev) {
@@ -326,6 +335,18 @@
                     @let diffConsistency = getStatDiff('consistency');
                     @if (diffConsistency) { <span class="text-xs font-mono" [class.text-accent]="diffConsistency > 0" [class.text-danger]="diffConsistency < 0">{{ diffConsistency > 0 ? '+' : '' }}{{ diffConsistency }}</span> }
                     <span class="font-mono text-sm font-semibold">{{ attrs?.consistency?.value }}</span>
+                  </div>
+                </div>
+                <!-- Aggressiveness -->
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('aggressiveness')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Aggression <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffAgg = getStatDiff('aggressiveness');
+                    @if (diffAgg) { <span class="text-xs font-mono" [class.text-accent]="diffAgg > 0" [class.text-danger]="diffAgg < 0">{{ diffAgg > 0 ? '+' : '' }}{{ diffAgg }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.aggressiveness?.value }}</span>
                   </div>
                 </div>
               }
@@ -412,7 +433,11 @@
           </div>
           @if (physicalView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('speed')"
+                   [class.border-l-transparent]="!isKeyStat('speed')"
+                   [class.bg-sky-500/5]="isKeyStat('speed')"
+                   [class.bg-transparent]="!isKeyStat('speed')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('speed')">Speed</span>
                 <div class="flex items-center gap-2">
                   @let diffSpeed = getStatDiff('speed');
@@ -420,7 +445,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.speed?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('strength')"
+                   [class.border-l-transparent]="!isKeyStat('strength')"
+                   [class.bg-sky-500/5]="isKeyStat('strength')"
+                   [class.bg-transparent]="!isKeyStat('strength')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('strength')">Strength</span>
                 <div class="flex items-center gap-2">
                   @let diffStrength = getStatDiff('strength');
@@ -428,7 +457,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.strength?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('endurance')"
+                   [class.border-l-transparent]="!isKeyStat('endurance')"
+                   [class.bg-sky-500/5]="isKeyStat('endurance')"
+                   [class.bg-transparent]="!isKeyStat('endurance')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('endurance')">Endurance</span>
                 <div class="flex items-center gap-2">
                   @let diffEndurance = getStatDiff('endurance');
@@ -436,7 +469,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.endurance?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('fitness')"
+                   [class.border-l-transparent]="!isKeyStat('fitness')"
+                   [class.bg-sky-500/5]="isKeyStat('fitness')"
+                   [class.bg-transparent]="!isKeyStat('fitness')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('fitness')">Fitness</span>
                 <div class="flex items-center gap-2">
                   @let diffFitness = getStatDiff('fitness');
@@ -566,7 +603,11 @@
           </div>
           @if (technicalView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('tackling')"
+                   [class.border-l-transparent]="!isKeyStat('tackling')"
+                   [class.bg-sky-500/5]="isKeyStat('tackling')"
+                   [class.bg-transparent]="!isKeyStat('tackling')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('tackling')">Tackling</span>
                 <div class="flex items-center gap-2">
                   @let diffTackling = getStatDiff('tackling');
@@ -574,7 +615,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.tackling?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('shooting')"
+                   [class.border-l-transparent]="!isKeyStat('shooting')"
+                   [class.bg-sky-500/5]="isKeyStat('shooting')"
+                   [class.bg-transparent]="!isKeyStat('shooting')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('shooting')">Shooting</span>
                 <div class="flex items-center gap-2">
                   @let diffShooting = getStatDiff('shooting');
@@ -582,7 +627,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.shooting?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('heading')"
+                   [class.border-l-transparent]="!isKeyStat('heading')"
+                   [class.bg-sky-500/5]="isKeyStat('heading')"
+                   [class.bg-transparent]="!isKeyStat('heading')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('heading')">Heading</span>
                 <div class="flex items-center gap-2">
                   @let diffHeading = getStatDiff('heading');
@@ -590,7 +639,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.heading?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('longPassing')"
+                   [class.border-l-transparent]="!isKeyStat('longPassing')"
+                   [class.bg-sky-500/5]="isKeyStat('longPassing')"
+                   [class.bg-transparent]="!isKeyStat('longPassing')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('longPassing')">Long Passing</span>
                 <div class="flex items-center gap-2">
                   @let diffLongP = getStatDiff('longPassing');
@@ -598,7 +651,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.longPassing?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('shortPassing')"
+                   [class.border-l-transparent]="!isKeyStat('shortPassing')"
+                   [class.bg-sky-500/5]="isKeyStat('shortPassing')"
+                   [class.bg-transparent]="!isKeyStat('shortPassing')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('shortPassing')">Short Passing</span>
                 <div class="flex items-center gap-2">
                   @let diffShortP = getStatDiff('shortPassing');
@@ -689,7 +746,11 @@
           </div>
           @if (goalkeeperView() === 'list') {
             <div class="divide-y divide-zinc-800/60">
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('handling')"
+                   [class.border-l-transparent]="!isKeyStat('handling')"
+                   [class.bg-sky-500/5]="isKeyStat('handling')"
+                   [class.bg-transparent]="!isKeyStat('handling')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('handling')">Handling</span>
                 <div class="flex items-center gap-2">
                   @let diffHandling = getStatDiff('handling');
@@ -697,7 +758,11 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.handling?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
+              <div class="flex justify-between items-center py-2.5 pl-3 border-l-2"
+                   [class.border-l-sky-500]="isKeyStat('reflexes')"
+                   [class.border-l-transparent]="!isKeyStat('reflexes')"
+                   [class.bg-sky-500/5]="isKeyStat('reflexes')"
+                   [class.bg-transparent]="!isKeyStat('reflexes')">
                 <span class="text-text-muted text-sm" [title]="getStatDescription('reflexes')">Reflexes</span>
                 <div class="flex items-center gap-2">
                   @let diffReflexes = getStatDiff('reflexes');
@@ -705,14 +770,19 @@
                   <span class="font-mono text-sm font-semibold">{{ attrs?.reflexes?.value }}</span>
                 </div>
               </div>
-              <div class="flex justify-between items-center py-2.5">
-                <span class="text-text-muted text-sm" [title]="getStatDescription('commandOfArea')">Cmd. of Area</span>
-                <div class="flex items-center gap-2">
-                  @let diffCmd = getStatDiff('commandOfArea');
-                  @if (diffCmd) { <span class="text-xs font-mono" [class.text-accent]="diffCmd > 0" [class.text-danger]="diffCmd < 0">{{ diffCmd > 0 ? '+' : '' }}{{ diffCmd }}</span> }
-                  <span class="font-mono text-sm font-semibold">{{ attrs?.commandOfArea?.value }}</span>
+              @if (isDev) {
+                <div class="flex justify-between items-center py-2.5 text-amber-500/95 border-t border-dashed border-zinc-800/60 mt-1">
+                  <span class="text-sm flex items-center gap-1.5" [title]="getStatDescription('commandOfArea')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Command of Area <span class="text-[10px] font-bold tracking-wider uppercase opacity-75">(Hidden)</span></span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    @let diffCmd = getStatDiff('commandOfArea');
+                    @if (diffCmd) { <span class="text-xs font-mono" [class.text-accent]="diffCmd > 0" [class.text-danger]="diffCmd < 0">{{ diffCmd > 0 ? '+' : '' }}{{ diffCmd }}</span> }
+                    <span class="font-mono text-sm font-semibold">{{ attrs?.commandOfArea?.value }}</span>
+                  </div>
                 </div>
-              </div>
+              }
             </div>
           } @else {
             @let gkData = goalkeepingChartData();

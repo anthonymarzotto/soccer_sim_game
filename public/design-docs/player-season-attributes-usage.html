@@ -510,16 +510,18 @@
 
     <section class="panel">
       <div class="panel-header">
-        <h2>Indirect via <code>overall</code></h2>
-        <p>This attribute is not read directly by setup or simulation, but was rolled into the generated <code>overall</code> value, so it still influences anything keyed off team strength or quality.</p>
+        <h2>Player Overall (OVR) Calculation</h2>
+        <p>Overall rating (OVR) is dynamically calculated using a config-driven blended formula:</p>
+        <p class="description-subtext"><strong>OVR = 85% &times; Core + 15% &times; Tertiary</strong></p>
       </div>
 
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div><span class="stat-name">commandOfArea</span> <span class="pill viaoverall">via overall</span></div>
-          <div class="stat-meta">goalkeeping</div>
-          <p>No live read. Contributes to goalkeeper <code>overall</code> with extra weight. No aerial-claim or box-control check uses it directly.</p>
-        </div>
+      <div class="text-content">
+        <ul>
+          <li><strong>Core Attributes (85% total weight):</strong> A position-specific set of attributes, with custom-defined relative percentages mapping to their simulation frequency and tactical importance.</li>
+          <li><strong>Tertiary Attributes (15% total weight):</strong> All other non-hidden attributes available to that position share the remaining 15% weight equally, ensuring overall competence affects the final rating.</li>
+          <li><strong>Goalkeeping vs. Outfield separation:</strong> Outfield players exclude <code>handling</code> and <code>reflexes</code> from both core and tertiary calculations.</li>
+          <li><strong>Hidden Attributes:</strong> Excluded from all OVR calculations (0% weight).</li>
+        </ul>
       </div>
     </section>
 
@@ -530,6 +532,7 @@
       </div>
 
       <div class="stat-grid">
+        <div class="stat-card"><div><span class="stat-name">commandOfArea</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden goalkeeping</div></div>
         <div class="stat-card"><div><span class="stat-name">clutch</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>
         <div class="stat-card"><div><span class="stat-name">morale</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental — distinct from <code>Player.mood</code></div></div>
         <div class="stat-card"><div><span class="stat-name">consistency</span> <span class="pill unused">unused</span></div><div class="stat-meta">hidden mental</div></div>

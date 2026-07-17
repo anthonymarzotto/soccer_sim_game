@@ -89,6 +89,16 @@ When implementing functions that clear, reset, or delete primary state (e.g., `c
 - **Schema Discipline**: Bumping persistence contracts requires incrementing version in `package.json` and syncing `src/app/generated/data-schema-version.ts`.
 - **Simulation Flow Sync**: If structurally editing `match.simulation.variant-b.service.ts` (e.g. action types, gates, tick loops), immediately update the Mermaid diagram in `public/design-docs/simulation-flow.html`.
 
+## 7. Player OVR Calculation & Calibration
+
+- **Config-Driven OVR**: Player OVR ratings (`calculateOverall`) are determined dynamically using `POSITION_OVR_CONFIG` in `src/app/models/player-progression.ts`.
+- **Core Blend Factor**: OVR is calculated as $85\% \times \text{Core} + 15\% \times \text{Tertiary}$. The core weights inside the config must always sum to exactly 100 for each position.
+- **UI Highlighting**: The player profile UI dynamically queries `POSITION_OVR_CONFIG` to highlight core attributes as "Key Stats".
+- **Calibration Tooling**: If the simulation engine is calibrated or new stats are added, run the diagnostic test to re-calculate positional event rates per 90 minutes:
+  ```powershell
+  npx ng test --watch=false --include src/app/services/analyze-position-events.spec.ts
+  ```
+
 <!-- START SEMBLE INTEGRATION FOR SUB-AGENTS -->
 ## Code Search
 

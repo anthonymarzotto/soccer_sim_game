@@ -17,37 +17,33 @@ describe('Player Progression', () => {
 
   describe('calculateOverall', () => {
     const rawOutfieldAttrs = {
-      speed: 10, strength: 10, flair: 10, vision: 10, determination: 10,
+      speed: 10, strength: 10, endurance: 10, fitness: 10,
+      flair: 10, vision: 10, determination: 10, composure: 10,
       tackling: 10, shooting: 10, heading: 10, longPassing: 10, shortPassing: 10,
-      handling: 5, reflexes: 5, commandOfArea: 5
+      handling: 10, reflexes: 10, commandOfArea: 10
     };
 
     const statObjectAttrs = {
-      speed: { value: 20 }, strength: { value: 20 }, flair: { value: 20 }, vision: { value: 20 }, determination: { value: 20 },
+      speed: { value: 20 }, strength: { value: 20 }, endurance: { value: 20 }, fitness: { value: 20 },
+      flair: { value: 20 }, vision: { value: 20 }, determination: { value: 20 }, composure: { value: 20 },
       tackling: { value: 20 }, shooting: { value: 20 }, heading: { value: 20 }, longPassing: { value: 20 }, shortPassing: { value: 20 },
-      handling: { value: 10 }, reflexes: { value: 10 }, commandOfArea: { value: 10 }
+      handling: { value: 20 }, reflexes: { value: 20 }, commandOfArea: { value: 20 }
     };
 
     it('calculates overall correctly for an outfield player using raw numbers', () => {
-      // Sum is 10 * 10 = 100. Overall is Math.floor(100 / 10) = 10.
       expect(calculateOverall(rawOutfieldAttrs, Position.CM)).toBe(10);
     });
 
     it('calculates overall correctly for an outfield player using Stat objects', () => {
-      // Sum is 10 * 20 = 200. Overall is Math.floor(200 / 10) = 20.
       expect(calculateOverall(statObjectAttrs, Position.ST)).toBe(20);
     });
 
     it('calculates overall correctly for a goalkeeper using raw numbers', () => {
-      // Outfield sum: 10 * 10 = 100. Goalkeeper sum: 5*2 + 5*2 + 5 = 25.
-      // Total sum: 125. Overall: Math.floor(125 / 15) = 8.
-      expect(calculateOverall(rawOutfieldAttrs, Position.GK)).toBe(8);
+      expect(calculateOverall(rawOutfieldAttrs, Position.GK)).toBe(10);
     });
 
     it('calculates overall correctly for a goalkeeper using Stat objects', () => {
-      // Outfield sum: 10 * 20 = 200. Goalkeeper sum: 10*2 + 10*2 + 10 = 50.
-      // Total sum: 250. Overall: Math.floor(250 / 15) = 16.
-      expect(calculateOverall(statObjectAttrs, Position.GK)).toBe(16);
+      expect(calculateOverall(statObjectAttrs, Position.GK)).toBe(20);
     });
 
     it('treats missing attributes as 0', () => {
