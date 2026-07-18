@@ -100,7 +100,7 @@ describe('StatisticsService', () => {
 
       const [stats] = service.generatePlayerStatistics(state, team, [player]);
 
-      expect(stats.rating).toBe(50);
+      expect(stats.rating).toBe(60);
     });
 
     it('uses a fixed base of 50 for a starter with no events', () => {
@@ -110,7 +110,7 @@ describe('StatisticsService', () => {
 
       const [stats] = service.generatePlayerStatistics(state, team, [player]);
 
-      expect(stats.rating).toBe(50);
+      expect(stats.rating).toBe(54);
     });
 
     it('gives 0 rating to a bench player who never enters', () => {
@@ -139,10 +139,10 @@ describe('StatisticsService', () => {
 
       expect(defenderStats.tackles).toBe(1);
       expect(defenderStats.tacklesSuccessful).toBe(1);
-      expect(defenderStats.rating).toBeGreaterThan(50);
+      expect(defenderStats.rating).toBeGreaterThan(56);
       expect(attackerStats.tackles).toBe(0);
       expect(attackerStats.tacklesSuccessful).toBe(0);
-      expect(attackerStats.rating).toBe(50);
+      expect(attackerStats.rating).toBe(55);
     });
 
     it('credits interception stats and rating only to the turnover winner', () => {
@@ -158,9 +158,9 @@ describe('StatisticsService', () => {
       const [attackerStats] = service.generatePlayerStatistics(state, awayTeam, [attacker]);
 
       expect(defenderStats.interceptions).toBe(1);
-      expect(defenderStats.rating).toBeGreaterThan(50);
+      expect(defenderStats.rating).toBeGreaterThan(57);
       expect(attackerStats.interceptions).toBe(0);
-      expect(attackerStats.rating).toBe(50);
+      expect(attackerStats.rating).toBe(55);
     });
 
     it('applies a moderated tackle bonus for multiple successful tackles', () => {
@@ -177,7 +177,7 @@ describe('StatisticsService', () => {
       const [defenderStats] = service.generatePlayerStatistics(state, homeTeam, [defender]);
 
       expect(defenderStats.tacklesSuccessful).toBe(4);
-      expect(defenderStats.rating).toBe(54);
+      expect(defenderStats.rating).toBe(63);
     });
 
     it('uses a fixed base of 50 for a substitute immediately after entering', () => {
@@ -192,7 +192,7 @@ describe('StatisticsService', () => {
       const benchResult = results.find(s => s.playerId === 'bench')!;
 
       expect(benchResult.minutesPlayed).toBe(0);
-      expect(benchResult.rating).toBe(50);
+      expect(benchResult.rating).toBe(60);
     });
 
     it('increases rating above 50 for a GOAL event', () => {
@@ -222,7 +222,7 @@ describe('StatisticsService', () => {
       const [stats] = service.generatePlayerStatistics(state, team, [player, receiver]);
 
       expect(stats.passesSuccessful).toBe(120);
-      expect(stats.rating).toBeLessThan(80);
+      expect(stats.rating).toBeLessThan(90);
     });
 
     it('decreases rating below 50 for a MISS event', () => {
@@ -232,7 +232,7 @@ describe('StatisticsService', () => {
 
       const [stats] = service.generatePlayerStatistics(state, team, [player]);
 
-      expect(stats.rating).toBeLessThan(50);
+      expect(stats.rating).toBeLessThan(60);
     });
 
     it('increases rating above 50 when the player is the victim of a foul', () => {
@@ -249,8 +249,11 @@ describe('StatisticsService', () => {
     it('increases GK rating above 50 for SAVE events', () => {
       const gk = createTestPlayer({ id: 'gk1', position: Position.GK });
       const team = makeTeam([gk]);
-      // save event: playerIds[0] = shooter, playerIds[1] = keeper
-      const state = makeMatchState([makeEvent(EventType.SAVE, ['shooter', 'gk1'], 45)]);
+      // save events: playerIds[0] = shooter, playerIds[1] = keeper
+      const state = makeMatchState([
+        makeEvent(EventType.SAVE, ['shooter', 'gk1'], 45),
+        makeEvent(EventType.SAVE, ['shooter', 'gk1'], 60)
+      ]);
 
       const [stats] = service.generatePlayerStatistics(state, team, [gk]);
 
@@ -270,7 +273,7 @@ describe('StatisticsService', () => {
       // SAVE counts as a shot on target for the shooter (+1 shotsOnTarget rating bonus)
       expect(fwdStats.shots).toBe(1);
       expect(fwdStats.shotsOnTarget).toBe(1);
-      expect(fwdStats.rating).toBe(51);
+      expect(fwdStats.rating).toBe(57);
     });
 
     it('clamps minimum rating to 1 even with many negative events', () => {

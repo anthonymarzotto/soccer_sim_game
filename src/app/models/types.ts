@@ -335,6 +335,10 @@ export interface PlayerStatistics {
   aerialDuelsLost?: number;
   cornerGoals?: number;
   indirectFreeKickGoals?: number;
+  clutchActionsCount?: number;
+  clutchRatingBonus?: number;
+  goalsConceded?: number;
+  passingTurnovers?: number;
 }
 
 export interface League {

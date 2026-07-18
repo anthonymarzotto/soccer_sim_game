@@ -1343,7 +1343,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   formatRatingDelta(points: number): string {
-    return (points / 10).toFixed(1);
+    const val = points / 10;
+    if (val >= 0) {
+      return `+${val.toFixed(1)}`;
+    }
+    return val.toFixed(1);
   }
 
   showLiveRatingTooltip(event: MouseEvent, playerId: string, side: TeamSide): void {

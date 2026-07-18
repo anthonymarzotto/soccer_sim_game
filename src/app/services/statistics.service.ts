@@ -22,22 +22,104 @@ export interface PlayerRatingBreakdown {
   providedIn: 'root'
 })
 export class StatisticsService {
-  private static readonly MAX_SUCCESSFUL_PASS_BONUS = 6;
-  static readonly RATING_WEIGHTS = {
-    goal: 10,
-    assist: 5,
-    save: 4,
-    interception: 2,
-    shotOnTarget: 1,
-    corner: 0.5,
-    freeKick: 0.5,
-    penalty: 3,
-    foulSuffered: 0.5,
-    tackle: 1,
-    miss: 1,
-    foul: 2,
-    yellowCard: 5,
-    redCard: 15,
+  // Positional expectations per 90 minutes
+  private static readonly EXPECTED_RATES = {
+    [Position.GK]: {
+      goals: 0,
+      assists: 0,
+      saves: 4.3,
+      tacklesSuccessful: 0,
+      interceptions: 0.16,
+      shotsOnTarget: 0,
+      misses: 0,
+      fouls: 0,
+      passesSuccessful: 5.3,
+      passingTurnovers: 3.2
+    },
+    [Position.CB]: {
+      goals: 0.05,
+      assists: 0.02,
+      saves: 0,
+      tacklesSuccessful: 1.8,
+      interceptions: 0.9,
+      shotsOnTarget: 0.2,
+      misses: 0.2,
+      fouls: 0.7,
+      passesSuccessful: 6.8,
+      passingTurnovers: 2.9
+    },
+    [Position.FB]: {
+      goals: 0.04,
+      assists: 0.01,
+      saves: 0,
+      tacklesSuccessful: 0.5,
+      interceptions: 0.25,
+      shotsOnTarget: 0.2,
+      misses: 0.2,
+      fouls: 0.5,
+      passesSuccessful: 3.7,
+      passingTurnovers: 1.8
+    },
+    [Position.CDM]: {
+      goals: 0.15,
+      assists: 0.10,
+      saves: 0,
+      tacklesSuccessful: 1.5,
+      interceptions: 0.8,
+      shotsOnTarget: 0.2,
+      misses: 0.2,
+      fouls: 1.0,
+      passesSuccessful: 6.4,
+      passingTurnovers: 1.3
+    },
+    [Position.CM]: {
+      goals: 0.1,
+      assists: 0.12,
+      saves: 0,
+      tacklesSuccessful: 2.4,
+      interceptions: 0.4,
+      shotsOnTarget: 0.8,
+      misses: 0.6,
+      fouls: 0.4,
+      passesSuccessful: 8.5,
+      passingTurnovers: 2.3
+    },
+    [Position.CAM]: {
+      goals: 0.0,
+      assists: 0.12,
+      saves: 0,
+      tacklesSuccessful: 1.6,
+      interceptions: 1.2,
+      shotsOnTarget: 0.8,
+      misses: 0.6,
+      fouls: 0.4,
+      passesSuccessful: 8.3,
+      passingTurnovers: 2.5
+    },
+    [Position.WNG]: {
+      goals: 0.1,
+      assists: 0.05,
+      saves: 0,
+      tacklesSuccessful: 0.5,
+      interceptions: 0.1,
+      shotsOnTarget: 0.8,
+      misses: 0.6,
+      fouls: 0.15,
+      passesSuccessful: 2.3,
+      passingTurnovers: 1.2
+    },
+    [Position.ST]: {
+      goals: 0.4,
+      assists: 0.1,
+      saves: 0,
+      tacklesSuccessful: 0.2,
+      interceptions: 0.1,
+      shotsOnTarget: 1.5,
+      misses: 1.0,
+      fouls: 0.2,
+      passesSuccessful: 3.3,
+      passingTurnovers: 2.1
+    }
   } as const;
   
   generateMatchStatistics(matchState: MatchState, homeTeam: Team, awayTeam: Team): MatchStatistics {
@@ -145,10 +227,29 @@ export class StatisticsService {
         aerialDuelsLost: matchState.events.filter(e => e.additionalData?.aerialLoser === player.id).length,
         cornerGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isCorner && e.playerIds[0] === player.id).length,
         indirectFreeKickGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isFreeKick && !e.additionalData?.freeKickDirect && e.playerIds[0] === player.id).length,
-        rating: !hasEnteredMatch
-          ? 0
-          : this.calculatePlayerRating(player, playerEvents, primaryPlayerEvents, assistsByPlayer.get(player.id) ?? 0)
+        rating: 0
       };
+
+      if (!hasEnteredMatch) {
+        stats.rating = 0;
+        stats.clutchActionsCount = 0;
+        stats.clutchRatingBonus = 0;
+        stats.goalsConceded = 0;
+        stats.passingTurnovers = 0;
+      } else {
+        const ratingResult = this.calculatePlayerRating(
+          player,
+          stats,
+          matchState,
+          teamPlayerIds,
+          isStarter
+        );
+        stats.rating = ratingResult.rating;
+        stats.clutchActionsCount = ratingResult.clutchCount;
+        stats.clutchRatingBonus = ratingResult.clutchBonus;
+        stats.goalsConceded = ratingResult.goalsConceded;
+        stats.passingTurnovers = ratingResult.passingTurnovers;
+      }
 
       playerStats.push(stats);
     });
@@ -330,79 +431,368 @@ export class StatisticsService {
     return assistsByPlayer;
   }
 
-  private calculatePlayerRating(player: Player, events: PlayByPlayEvent[], primaryPlayerEvents: PlayByPlayEvent[], assists: number): number {
-    let rating = 50; // fixed base — event-driven, no ability anchor
 
-    // Positive contributions
-    const goals = events.filter(e => e.type === EventType.GOAL).length;
-    const successfulPasses = events.filter(e => e.type === EventType.PASS && e.success && e.playerIds[0] === player.id).length;
-    const tackles = player.position === Position.GK ? 0 : primaryPlayerEvents.filter(e => e.type === EventType.TACKLE && e.success).length;
-    const saves = player.position === Position.GK
-      ? events.filter(e => e.type === EventType.SAVE && e.playerIds[1] === player.id).length
-      : 0;
-    const interceptions = primaryPlayerEvents.filter(e => e.type === EventType.INTERCEPTION).length;
-    const shotsOnTarget = events.filter(e => (e.type === EventType.GOAL || e.type === EventType.SAVE) && e.playerIds[0] === player.id).length;
-    const corners = events.filter(e => e.type === EventType.CORNER && e.playerIds[0] === player.id).length;
-    const freeKicks = events.filter(e => e.type === EventType.FREE_KICK && e.playerIds[0] === player.id).length;
-    const penalties = events.filter(e => e.type === EventType.PENALTY && e.playerIds[0] === player.id).length;
-    const successfulPassBonus = this.getSuccessfulPassBonus(successfulPasses);
+  private calculateClutchAndDefenseInfo(
+    player: Player,
+    stats: PlayerStatistics,
+    events: PlayByPlayEvent[],
+    currentMinute: number,
+    isStarter: boolean,
+    teamPlayerIds: Set<string>
+  ): {
+    goalsConceded: number;
+    passingTurnovers: number;
+    clutchCount: number;
+    clutchBonus: number;
+  } {
+    let enteredMin = isStarter ? 0 : -1;
+    let exitedMin = -1;
 
-    // Negative contributions
-    const misses = primaryPlayerEvents.filter(e => e.type === EventType.MISS).length;
-    const fouls = primaryPlayerEvents.filter(e => e.type === EventType.FOUL).length;
-    const yellowCards = primaryPlayerEvents.filter(e => e.type === EventType.YELLOW_CARD).length;
-    const redCards = primaryPlayerEvents.filter(e => e.type === EventType.RED_CARD).length;
+    events.forEach(e => {
+      if (e.type === EventType.SUBSTITUTION) {
+        if (e.playerIds[0] === player.id) {
+          exitedMin = e.time;
+        } else if (e.playerIds[1] === player.id) {
+          enteredMin = e.time;
+        }
+      }
+    });
 
-    // Victim contributions
-    const foulsSuffered = events.filter(e => e.type === EventType.FOUL && e.playerIds[1] === player.id).length;
+    const startMin = enteredMin !== -1 ? enteredMin : (isStarter ? 0 : 999);
+    const endMin = exitedMin !== -1 ? exitedMin : currentMinute;
 
-    const W = StatisticsService.RATING_WEIGHTS;
-    rating += (goals * W.goal) + (assists * W.assist) + successfulPassBonus + (tackles * W.tackle);
-    rating += (saves * W.save) + (interceptions * W.interception) + (shotsOnTarget * W.shotOnTarget) + (corners * W.corner) + (freeKicks * W.freeKick) + (penalties * W.penalty);
-    rating += (foulsSuffered * W.foulSuffered);
-    rating -= (misses * W.miss) + (fouls * W.foul) + (yellowCards * W.yellowCard) + (redCards * W.redCard);
+    let goalsConceded = 0;
+    let passingTurnovers = 0;
+    let clutchCount = 0;
+    let clutchBonus = 0;
 
-    return Math.max(1, Math.min(100, Math.round(rating)));
+    let ourScore = 0;
+    let oppScore = 0;
+
+    for (const e of events) {
+
+      if (e.type === EventType.GOAL) {
+        const scorerId = e.playerIds[0];
+        if (teamPlayerIds.has(scorerId)) {
+          ourScore++;
+        } else {
+          oppScore++;
+          if (e.time >= startMin && e.time <= endMin) {
+            goalsConceded++;
+          }
+        }
+      }
+
+      if (
+        e.type === EventType.PASS &&
+        !e.success &&
+        e.playerIds[0] === player.id &&
+        e.time >= startMin &&
+        e.time <= endMin
+      ) {
+        if (e.additionalData?.passFailure === 'RECOVERY' || e.additionalData?.passFailure === 'OVERHIT') {
+          passingTurnovers++;
+        }
+      }
+
+      const isActor = e.playerIds[0] === player.id;
+      const isGKRecipient = e.playerIds[1] === player.id;
+
+      if (e.time >= startMin && e.time <= endMin) {
+        if (e.type === EventType.GOAL && isActor) {
+          const ourScoreBefore = ourScore - 1;
+          const oppScoreBefore = oppScore;
+
+          if (ourScoreBefore === oppScoreBefore) {
+            if (e.time >= 80) {
+              clutchCount++;
+              clutchBonus += 8;
+            } else {
+              clutchCount++;
+              clutchBonus += 3;
+            }
+          } else if (ourScoreBefore === oppScoreBefore - 1) {
+            if (e.time >= 80) {
+              clutchCount++;
+              clutchBonus += 6;
+            } else {
+              clutchCount++;
+              clutchBonus += 2;
+            }
+          } else if (ourScoreBefore >= oppScoreBefore + 3 || ourScoreBefore <= oppScoreBefore - 3) {
+            clutchBonus -= 4;
+          }
+        }
+
+        if (e.type === EventType.SAVE && isGKRecipient && player.position === Position.GK) {
+          if (ourScore === oppScore || ourScore === oppScore + 1) {
+            if (e.time >= 80) {
+              clutchCount++;
+              clutchBonus += 4;
+            } else {
+              clutchCount++;
+              clutchBonus += 1;
+            }
+          }
+          if (e.additionalData?.isPenalty) {
+            clutchCount++;
+            clutchBonus += 5;
+          }
+        }
+
+        if ((e.type === EventType.TACKLE || e.type === EventType.INTERCEPTION) && isActor) {
+          const isBoxIntervention = e.location.y <= 18 || e.location.y >= 82;
+          if (isBoxIntervention) {
+            clutchCount++;
+            clutchBonus += 1.5;
+          }
+
+          if ((ourScore === oppScore || ourScore === oppScore + 1) && e.time >= 80) {
+            clutchCount++;
+            clutchBonus += 2.0;
+          }
+        }
+      }
+    }
+
+    return {
+      goalsConceded,
+      passingTurnovers,
+      clutchCount,
+      clutchBonus
+    };
+  }
+
+  private calculatePlayerRating(
+    player: Player,
+    stats: PlayerStatistics,
+    matchState: MatchState,
+    teamPlayerIds: Set<string>,
+    isStarter: boolean
+  ): { rating: number; clutchCount: number; clutchBonus: number; goalsConceded: number; passingTurnovers: number } {
+    const pos = player.position;
+    const rates = StatisticsService.EXPECTED_RATES[pos];
+    
+    let weights;
+    let group: 'GK' | 'DEF' | 'MID' | 'FWD';
+    if (pos === Position.GK) {
+      weights = { goal: 10, assist: 5, save: 4.0, tackle: 0, interception: 2, pass: 0.2, turnover: 1.0, conceded: 4.0 };
+      group = 'GK';
+    } else if (pos === Position.CB || pos === Position.FB) {
+      weights = { goal: 8, assist: 5, save: 0, tackle: 2.0, interception: 3.0, pass: 0.3, turnover: 1.0, conceded: 2.0 };
+      group = 'DEF';
+    } else if (pos === Position.ST) {
+      weights = { goal: 12, assist: 5, save: 0, tackle: 0.5, interception: 1.0, pass: 0.2, turnover: 1.0, conceded: 0 };
+      group = 'FWD';
+    } else {
+      weights = { goal: 10, assist: 6, save: 0, tackle: 1.5, interception: 2.0, pass: 0.3, turnover: 1.0, conceded: 0 };
+      group = 'MID';
+    }
+
+    const timeRatio = stats.minutesPlayed / 90;
+    const expected = (rate: number) => rate * timeRatio;
+
+    let rating = 60;
+
+    const context = this.calculateClutchAndDefenseInfo(
+      player,
+      stats,
+      matchState.events,
+      matchState.currentMinute,
+      isStarter,
+      teamPlayerIds
+    );
+
+    if (weights.goal > 0) {
+      const expGoals = expected(rates.goals);
+      rating += weights.goal * (stats.goals - expGoals);
+    }
+
+    if (weights.assist > 0) {
+      const expAssists = expected(rates.assists);
+      rating += weights.assist * (stats.assists - expAssists);
+    }
+
+    if (weights.save > 0) {
+      const expSaves = expected(rates.saves);
+      rating += weights.save * (stats.saves - expSaves);
+    }
+
+    if (weights.tackle > 0) {
+      const expTackles = expected(rates.tacklesSuccessful);
+      rating += weights.tackle * (stats.tacklesSuccessful - expTackles);
+    }
+
+    if (weights.interception > 0) {
+      const expInterceptions = expected(rates.interceptions);
+      rating += weights.interception * (stats.interceptions - expInterceptions);
+    }
+
+    if (rates.shotsOnTarget > 0) {
+      const expSOT = expected(rates.shotsOnTarget);
+      rating += (group === 'FWD' ? 2.0 : 1.0) * (stats.shotsOnTarget - expSOT);
+    }
+
+    if (rates.misses > 0) {
+      const expMisses = expected(rates.misses);
+      rating -= (group === 'FWD' ? 2.0 : 1.0) * (stats.misses - expMisses);
+    }
+
+    if (rates.fouls > 0) {
+      const expFouls = expected(rates.fouls);
+      rating -= 2.0 * (stats.fouls - expFouls);
+    }
+
+    const expPasses = expected(rates.passesSuccessful);
+    const passDev = stats.passesSuccessful - expPasses;
+    if (passDev > 0) {
+      rating += Math.min(15, weights.pass * passDev);
+    } else {
+      rating += weights.pass * passDev;
+    }
+
+    const expTurnovers = expected(rates.passingTurnovers);
+    rating -= weights.turnover * (context.passingTurnovers - expTurnovers);
+
+    if (weights.conceded > 0) {
+      rating -= weights.conceded * context.goalsConceded;
+    }
+
+    rating += context.clutchBonus;
+
+    rating -= stats.yellowCards * 5;
+    rating -= stats.redCards * 15;
+
+    if (stats.aerialDuelsWon !== undefined) {
+      rating += (stats.aerialDuelsWon * 0.5);
+    }
+    if (stats.aerialDuelsLost !== undefined) {
+      rating -= (stats.aerialDuelsLost * 0.5);
+    }
+
+    return {
+      rating: Math.max(1, Math.min(100, Math.round(rating))),
+      clutchCount: context.clutchCount,
+      clutchBonus: context.clutchBonus,
+      goalsConceded: context.goalsConceded,
+      passingTurnovers: context.passingTurnovers
+    };
   }
 
   computeRatingBreakdown(stats: PlayerStatistics): PlayerRatingBreakdown {
-    const passBonus = this.getSuccessfulPassBonus(stats.passesSuccessful);
-    const W = StatisticsService.RATING_WEIGHTS;
+    const pos = stats.position;
+    const rates = StatisticsService.EXPECTED_RATES[pos];
+    
+    let weights;
+    let group: 'GK' | 'DEF' | 'MID' | 'FWD';
+    if (pos === Position.GK) {
+      weights = { goal: 10, assist: 5, save: 4.0, tackle: 0, interception: 2, pass: 0.2, turnover: 1.0, conceded: 4.0 };
+      group = 'GK';
+    } else if (pos === Position.CB || pos === Position.FB) {
+      weights = { goal: 8, assist: 5, save: 0, tackle: 2.0, interception: 3.0, pass: 0.3, turnover: 1.0, conceded: 2.0 };
+      group = 'DEF';
+    } else if (pos === Position.ST) {
+      weights = { goal: 12, assist: 5, save: 0, tackle: 0.5, interception: 1.0, pass: 0.2, turnover: 1.0, conceded: 0 };
+      group = 'FWD';
+    } else {
+      weights = { goal: 10, assist: 6, save: 0, tackle: 1.5, interception: 2.0, pass: 0.3, turnover: 1.0, conceded: 0 };
+      group = 'MID';
+    }
 
-    const positiveItems: PlayerRatingBreakdownItem[] = [
-      { label: 'Goals', count: stats.goals, points: stats.goals * W.goal },
-      { label: 'Assists', count: stats.assists, points: stats.assists * W.assist },
-      { label: 'Passes', count: stats.passesSuccessful, points: passBonus },
-      { label: 'Tackles', count: stats.tacklesSuccessful, points: stats.tacklesSuccessful * W.tackle },
-      { label: 'Saves', count: stats.saves, points: stats.saves * W.save },
-      { label: 'Interceptions', count: stats.interceptions, points: stats.interceptions * W.interception },
-      { label: 'Shots On Target', count: stats.shotsOnTarget, points: stats.shotsOnTarget * W.shotOnTarget },
-      { label: 'Fouls Won', count: stats.foulsSuffered, points: stats.foulsSuffered * W.foulSuffered },
-    ];
-    const negativeItems: PlayerRatingBreakdownItem[] = [
-      { label: 'Misses', count: stats.misses, points: stats.misses * W.miss },
-      { label: 'Fouls', count: stats.fouls, points: stats.fouls * W.foul },
-      { label: 'Yellow Cards', count: stats.yellowCards, points: stats.yellowCards * W.yellowCard },
-      { label: 'Red Cards', count: stats.redCards, points: stats.redCards * W.redCard },
-    ];
+    const timeRatio = stats.minutesPlayed / 90;
+    const expected = (rate: number) => rate * timeRatio;
+
+    const positiveItems: PlayerRatingBreakdownItem[] = [];
+    const negativeItems: PlayerRatingBreakdownItem[] = [];
+
+    if (weights.goal > 0) {
+      const expGoals = expected(rates.goals);
+      const points = weights.goal * (stats.goals - expGoals);
+      positiveItems.push({ label: 'Goals (vs Expectation)', count: stats.goals, points: Math.round(points * 10) / 10 });
+    }
+
+    if (weights.assist > 0) {
+      const expAssists = expected(rates.assists);
+      const points = weights.assist * (stats.assists - expAssists);
+      positiveItems.push({ label: 'Assists (vs Expectation)', count: stats.assists, points: Math.round(points * 10) / 10 });
+    }
+
+    const expPasses = expected(rates.passesSuccessful);
+    let passPoints = weights.pass * (stats.passesSuccessful - expPasses);
+    if (passPoints > 15) {
+      passPoints = 15;
+    }
+    positiveItems.push({ label: 'Passing (vs Expectation)', count: stats.passesSuccessful, points: Math.round(passPoints * 10) / 10 });
+
+    if (weights.tackle > 0) {
+      const expTackles = expected(rates.tacklesSuccessful);
+      const points = weights.tackle * (stats.tacklesSuccessful - expTackles);
+      positiveItems.push({ label: 'Tackles (vs Expectation)', count: stats.tacklesSuccessful, points: Math.round(points * 10) / 10 });
+    }
+
+    if (weights.save > 0) {
+      const expSaves = expected(rates.saves);
+      const points = weights.save * (stats.saves - expSaves);
+      positiveItems.push({ label: 'Saves (vs Expectation)', count: stats.saves, points: Math.round(points * 10) / 10 });
+    }
+
+    if (weights.interception > 0) {
+      const expInter = expected(rates.interceptions);
+      const points = weights.interception * (stats.interceptions - expInter);
+      positiveItems.push({ label: 'Interceptions (vs Expectation)', count: stats.interceptions, points: Math.round(points * 10) / 10 });
+    }
+
+    if (rates.shotsOnTarget > 0) {
+      const expSot = expected(rates.shotsOnTarget);
+      const points = (group === 'FWD' ? 2.0 : 1.0) * (stats.shotsOnTarget - expSot);
+      positiveItems.push({ label: 'Shots On Target', count: stats.shotsOnTarget, points: Math.round(points * 10) / 10 });
+    }
+
+    if (stats.clutchRatingBonus || stats.clutchActionsCount) {
+      positiveItems.push({
+        label: 'Clutch Actions',
+        count: stats.clutchActionsCount ?? 0,
+        points: Math.round((stats.clutchRatingBonus ?? 0) * 10) / 10
+      });
+    }
+
+    if (rates.misses > 0) {
+      const expMisses = expected(rates.misses);
+      const points = (group === 'FWD' ? 2.0 : 1.0) * (stats.misses - expMisses);
+      negativeItems.push({ label: 'Missed Chances', count: stats.misses, points: Math.round(points * 10) / 10 });
+    }
+
+    if (rates.fouls > 0) {
+      const expFouls = expected(rates.fouls);
+      const points = 2.0 * (stats.fouls - expFouls);
+      negativeItems.push({ label: 'Fouls Committed', count: stats.fouls, points: Math.round(points * 10) / 10 });
+    }
+
+    if (stats.yellowCards > 0) {
+      negativeItems.push({ label: 'Yellow Cards', count: stats.yellowCards, points: stats.yellowCards * 5 });
+    }
+
+    if (stats.redCards > 0) {
+      negativeItems.push({ label: 'Red Cards', count: stats.redCards, points: stats.redCards * 15 });
+    }
+
+    if (weights.conceded > 0 && stats.goalsConceded) {
+      const gcPenalty = weights.conceded * stats.goalsConceded;
+      negativeItems.push({ label: 'Goals Conceded', count: stats.goalsConceded, points: Math.round(gcPenalty * 10) / 10 });
+    }
+
+    if (stats.passingTurnovers) {
+      const expTurnovers = expected(rates.passingTurnovers);
+      const turnoversPenalty = weights.turnover * (stats.passingTurnovers - expTurnovers);
+      negativeItems.push({ label: 'Passing Turnovers', count: stats.passingTurnovers, points: Math.round(turnoversPenalty * 10) / 10 });
+    }
 
     return {
       positiveItems,
       negativeItems,
       positiveTotal: positiveItems.reduce((sum, item) => sum + item.points, 0),
-      negativeTotal: negativeItems.reduce((sum, item) => sum + item.points, 0),
+      negativeTotal: negativeItems.reduce((sum, item) => sum + item.points, 0)
     };
-  }
-
-  getSuccessfulPassBonus(successfulPasses: number): number {
-    if (successfulPasses <= 0) {
-      return 0;
-    }
-
-    // Keep passing meaningful while preventing high-tempo possessions from saturating ratings too early.
-    const linearComponent = successfulPasses * 0.03;
-    const volumeComponent = Math.log10(successfulPasses + 1) * 1.6;
-    return Math.min(StatisticsService.MAX_SUCCESSFUL_PASS_BONUS, linearComponent + volumeComponent);
   }
 
   private hasEnteredMatch(

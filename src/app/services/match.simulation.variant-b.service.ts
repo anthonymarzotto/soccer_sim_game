@@ -2764,6 +2764,10 @@ export class MatchSimulationVariantBService {
     const starterOutfield = teamOnField.filter(
       (player) => player.position !== PositionEnum.GK,
     );
+    // filter out goalkeepers for incoming candidates to prevent them playing outfield.
+    const benchOutfield = teamBench.filter(
+      (player) => player.position !== PositionEnum.GK,
+    );
 
     let bestCandidate: {
       incoming: Player;
@@ -2772,7 +2776,7 @@ export class MatchSimulationVariantBService {
       shape: ActiveShapeSlot[];
     } | null = null;
 
-    for (const incoming of teamBench) {
+    for (const incoming of benchOutfield) {
       for (const outgoing of starterOutfield) {
         const simulatedActivePlayers = teamOnField.filter(
           (player) => player.id !== outgoing.id,
@@ -2978,7 +2982,24 @@ export class MatchSimulationVariantBService {
     outgoingPosition: PositionEnum,
   ): Player | null {
     const eligible = benchPlayers.filter(
-      (player) => isPlayerEligible(player),
+      (player) => {
+        if (!isPlayerEligible(player)) return false;
+
+        // If outgoing is not GK, incoming must not be GK
+        if (outgoingPosition !== PositionEnum.GK && player.position === PositionEnum.GK) {
+          return false;
+        }
+
+        // If outgoing is GK, incoming must be GK (unless none are available on the bench)
+        if (outgoingPosition === PositionEnum.GK && player.position !== PositionEnum.GK) {
+          const hasGk = benchPlayers.some(p => p.position === PositionEnum.GK && isPlayerEligible(p));
+          if (hasGk) {
+            return false;
+          }
+        }
+
+        return true;
+      }
     );
 
     if (eligible.length === 0) {

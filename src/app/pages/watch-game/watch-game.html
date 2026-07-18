@@ -396,13 +396,13 @@
         <div class="mb-1 rounded border border-emerald-800/70 row-user-highlight/35 p-1">
           <div class="mb-0.5 flex items-center justify-between text-emerald-300">
             <span class="font-semibold">Positive</span>
-            <span>+{{ formatRatingDelta(tooltip.breakdown.positiveTotal) }}</span>
+            <span>{{ formatRatingDelta(tooltip.breakdown.positiveTotal) }}</span>
           </div>
           <div class="space-y-0.5">
             @for (item of tooltip.breakdown.positiveItems; track item.label) {
               <div class="flex items-center justify-between text-text-secondary">
                 <span>{{ item.label }} ({{ item.count }})</span>
-                <span>+{{ formatRatingDelta(item.points) }}</span>
+                <span>{{ formatRatingDelta(item.points) }}</span>
               </div>
             }
           </div>
@@ -410,13 +410,13 @@
         <div class="rounded border border-red-900/70 bg-red-950/25 p-1">
           <div class="mb-0.5 flex items-center justify-between text-red-300">
             <span class="font-semibold">Negative</span>
-            <span>-{{ formatRatingDelta(tooltip.breakdown.negativeTotal) }}</span>
+            <span>{{ formatRatingDelta(-tooltip.breakdown.negativeTotal) }}</span>
           </div>
           <div class="space-y-0.5">
             @for (item of tooltip.breakdown.negativeItems; track item.label) {
               <div class="flex items-center justify-between text-text-secondary">
                 <span>{{ item.label }} ({{ item.count }})</span>
-                <span>-{{ formatRatingDelta(item.points) }}</span>
+                <span>{{ formatRatingDelta(-item.points) }}</span>
               </div>
             }
           </div>
