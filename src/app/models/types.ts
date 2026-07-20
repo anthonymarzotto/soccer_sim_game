@@ -134,6 +134,8 @@ export interface PlayerCareerStats {
   starNominations: { first: number; second: number; third: number };
   wage: number;
   marketValue?: number;
+  goalsConceded?: number;
+  clutchActions?: number;
   cornersTaken?: number;
   cornersWon?: number;
   freeKicksTaken?: number;

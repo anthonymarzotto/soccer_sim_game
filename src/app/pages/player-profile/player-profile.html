@@ -978,11 +978,13 @@
                       <th class="text-right py-3 px-4 font-semibold">Clean Sheets</th>
                       <th class="text-right py-3 px-4 font-semibold">PK Faced</th>
                       <th class="text-right py-3 px-4 font-semibold">PK Saved</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Goals Conceded">Conceded</th>
                     } @else if (statsView === 'ratings-finances') {
                       <th class="text-right py-3 px-4 font-semibold">Avg Rating</th>
                       <th class="text-right py-3 px-4 font-semibold">🥇</th>
                       <th class="text-right py-3 px-4 font-semibold">🥈</th>
                       <th class="text-right py-3 px-4 font-semibold">🥉</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Clutch Actions">Clutch</th>
                       <th class="text-right py-3 px-4 font-semibold">Wage</th>
                       <th class="text-right py-3 px-4 font-semibold">Market Value</th>
                     }
@@ -1027,11 +1029,13 @@
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.cleanSheets || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.penaltiesFaced ?? 0 }}</td>
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ s.penaltiesSaved ?? 0 }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.goalsConceded ?? 0 }}</td>
                       } @else if (statsView === 'ratings-finances') {
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ formatAverageRating(s) }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.first }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.second }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.starNominations.third }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.clutchActions ?? 0 }}</td>
                         <td class="py-3 px-4 text-right text-amber-400 font-mono">{{ s.wage | number:'1.1-1' }}</td>
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ getMarketValueForSeason(s) | currency:'USD':'symbol':'1.0-0' }}</td>
                       }
@@ -1076,12 +1080,14 @@
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.cleanSheets }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.penaltiesFaced }}</td>
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.penaltiesSaved }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.goalsConceded || 0 }}</td>
                       } @else if (statsView === 'ratings-finances') {
                         @let stars = totalStarNominations();
                         <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.first }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.second }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ stars.third }}</td>
+                        <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.clutchActions || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                         <td class="py-3 px-4 text-right text-text-muted font-mono">--</td>
                       }

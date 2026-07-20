@@ -40,7 +40,9 @@ describe('player-career-stats defaults', () => {
       aerialDuelsWon: 0,
       aerialDuelsLost: 0,
       cornerGoals: 0,
-      indirectFreeKickGoals: 0
+      indirectFreeKickGoals: 0,
+      goalsConceded: 0,
+      clutchActions: 0
     });
   });
 

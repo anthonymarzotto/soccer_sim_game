@@ -520,6 +520,8 @@ export class PlayerProfileComponent {
       interceptions: allStats.reduce((sum, s) => sum + (s?.interceptions || 0), 0),
       passes: allStats.reduce((sum, s) => sum + (s?.passes || 0), 0),
       passesSuccessful: allStats.reduce((sum, s) => sum + (s?.passesSuccessful || 0), 0),
+      goalsConceded: allStats.reduce((sum, s) => sum + (s?.goalsConceded || 0), 0),
+      clutchActions: allStats.reduce((sum, s) => sum + (s?.clutchActions || 0), 0),
       saves: allStats.reduce((sum, s) => sum + (s?.saves || 0), 0),
       fouls: allStats.reduce((sum, s) => sum + (s?.fouls || 0), 0),
       foulsSuffered: allStats.reduce((sum, s) => sum + (s?.foulsSuffered || 0), 0),

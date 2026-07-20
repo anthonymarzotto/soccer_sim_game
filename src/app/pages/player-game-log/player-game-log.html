@@ -34,11 +34,13 @@
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Tackles">T</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Interceptions">INT</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Saves">SV</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Goals Conceded">GC</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Fouls Committed">FL</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Yellow Cards">YC</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Red Cards">RC</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Penalties Scored">PKG</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Aerial Duels Won">AWD</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center" title="Clutch Actions">CLT</th>
               <th scope="col" class="px-4 py-3 w-16 text-center" title="Match Rating">RTG</th>
               @if (isDev) {
                 <th scope="col" class="px-4 py-3 w-20 text-center">Export</th>
@@ -88,11 +90,13 @@
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.tackles === 0">{{ log.playerStats.tackles }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.interceptions === 0">{{ log.playerStats.interceptions }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.saves === 0">{{ log.playerStats.saves }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="(log.playerStats.goalsConceded ?? 0) === 0">{{ log.playerStats.goalsConceded ?? 0 }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.fouls === 0">{{ log.playerStats.fouls }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-yellow-400]="log.playerStats.yellowCards > 0" [class.text-text-muted]="log.playerStats.yellowCards === 0">{{ log.playerStats.yellowCards }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-red-500]="log.playerStats.redCards > 0" [class.text-text-muted]="log.playerStats.redCards === 0">{{ log.playerStats.redCards }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="(log.playerStats.penaltiesScored ?? 0) > 0" [class.font-bold]="(log.playerStats.penaltiesScored ?? 0) > 0" [class.text-text-muted]="(log.playerStats.penaltiesScored ?? 0) === 0">{{ log.playerStats.penaltiesScored ?? 0 }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="(log.playerStats.aerialDuelsWon ?? 0) === 0">{{ log.playerStats.aerialDuelsWon ?? 0 }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="(log.playerStats.clutchActionsCount ?? 0) > 0" [class.font-bold]="(log.playerStats.clutchActionsCount ?? 0) > 0" [class.text-text-muted]="(log.playerStats.clutchActionsCount ?? 0) === 0">{{ log.playerStats.clutchActionsCount ?? 0 }}</td>
                   <td class="px-4 py-3 text-center font-mono font-bold"
                       [class.text-accent]="scaleMatchRating(log.playerStats.rating) >= 8"
                       [class.text-text-secondary]="scaleMatchRating(log.playerStats.rating) >= 6 && scaleMatchRating(log.playerStats.rating) < 8"
@@ -109,7 +113,7 @@
                     </td>
                   }
                 } @else {
-                  <td colspan="17" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
+                  <td colspan="19" class="px-4 py-3 text-center text-text-muted italic">Did not play</td>
                   @if (isDev) {
                     <td class="px-4 py-3 text-center">
                       <button (click)="exportMatchJson(log)"
@@ -124,7 +128,7 @@
             }
             @if (gameLog().length === 0) {
               <tr>
-                <td [attr.colspan]="isDev ? 21 : 20" class="px-4 py-8 text-center text-text-muted">
+                <td [attr.colspan]="isDev ? 23 : 22" class="px-4 py-8 text-center text-text-muted">
                   No games played in the current season yet.
                 </td>
               </tr>
