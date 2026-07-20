@@ -503,20 +503,20 @@ export class StatisticsService {
           const ourScoreBefore = ourScore - 1;
           const oppScoreBefore = oppScore;
 
+          const isLate = e.time >= 75 || e.additionalData?.isPenalty === true;
+
           if (ourScoreBefore === oppScoreBefore) {
-            if (e.time >= 80) {
+            if (isLate) {
               clutchCount++;
               clutchBonus += 8;
             } else {
-              clutchCount++;
               clutchBonus += 3;
             }
           } else if (ourScoreBefore === oppScoreBefore - 1) {
-            if (e.time >= 80) {
+            if (isLate) {
               clutchCount++;
               clutchBonus += 6;
             } else {
-              clutchCount++;
               clutchBonus += 2;
             }
           } else if (ourScoreBefore >= oppScoreBefore + 3 || ourScoreBefore <= oppScoreBefore - 3) {
@@ -525,31 +525,30 @@ export class StatisticsService {
         }
 
         if (e.type === EventType.SAVE && isGKRecipient && player.position === Position.GK) {
-          if (ourScore === oppScore || ourScore === oppScore + 1) {
-            if (e.time >= 80) {
-              clutchCount++;
-              clutchBonus += 4;
-            } else {
-              clutchCount++;
-              clutchBonus += 1;
-            }
-          }
           if (e.additionalData?.isPenalty) {
             clutchCount++;
             clutchBonus += 5;
+          } else if (ourScore === oppScore || ourScore === oppScore + 1) {
+            if (e.time >= 75) {
+              clutchCount++;
+              clutchBonus += 4;
+            } else {
+              clutchBonus += 1;
+            }
           }
         }
 
-        if ((e.type === EventType.TACKLE || e.type === EventType.INTERCEPTION) && isActor) {
+        if ((e.type === EventType.TACKLE || e.type === EventType.INTERCEPTION) && isActor && player.position !== Position.GK) {
+          const isLateClose = e.time >= 75 && (ourScore === oppScore || ourScore === oppScore + 1);
           const isBoxIntervention = e.location.y <= 18 || e.location.y >= 82;
-          if (isBoxIntervention) {
-            clutchCount++;
-            clutchBonus += 1.5;
-          }
 
-          if ((ourScore === oppScore || ourScore === oppScore + 1) && e.time >= 80) {
-            clutchCount++;
-            clutchBonus += 2.0;
+          if (isLateClose) {
+            if (isBoxIntervention) {
+              clutchCount++;
+              clutchBonus += 3.5;
+            } else {
+              clutchBonus += 2.0;
+            }
           }
         }
       }

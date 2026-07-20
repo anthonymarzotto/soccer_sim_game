@@ -13,14 +13,15 @@ function makeEvent(
   type: EventType,
   playerIds: string[],
   time: number,
-  success = true
+  success = true,
+  location = { x: 50, y: 50 }
 ): PlayByPlayEvent {
   return {
     id: `evt-${type}-${time}-${playerIds.join('-')}`,
     type,
     description: '',
     playerIds,
-    location: { x: 50, y: 50 },
+    location,
     time,
     success
   };
@@ -161,6 +162,20 @@ describe('StatisticsService', () => {
       expect(defenderStats.rating).toBeGreaterThan(57);
       expect(attackerStats.interceptions).toBe(0);
       expect(attackerStats.rating).toBe(55);
+    });
+
+    it('does not credit goalkeepers with clutch events for box tackle or interception events', () => {
+      const keeper = createTestPlayer({ id: 'home-gk', teamId: 'home', position: Position.GK });
+      const homeTeam = makeTeam([keeper], [], 'home');
+
+      const state = makeMatchState([
+        makeEvent(EventType.INTERCEPTION, ['home-gk', 'away-att'], 30, false, { x: 50, y: 10 })
+      ]);
+
+      const [keeperStats] = service.generatePlayerStatistics(state, homeTeam, [keeper]);
+
+      expect(keeperStats.clutchActionsCount).toBe(0);
+      expect(keeperStats.clutchRatingBonus).toBe(0);
     });
 
     it('applies a moderated tackle bonus for multiple successful tackles', () => {
