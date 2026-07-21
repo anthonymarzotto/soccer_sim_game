@@ -1,6 +1,6 @@
 {
   "name": "soccer-simulator",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "dataSchemaVersion": "Z",
   "scripts": {
     "check:data-schema-version": "node scripts/sync-data-schema-version.mjs --check",
