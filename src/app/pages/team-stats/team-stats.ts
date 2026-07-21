@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { GameService } from '../../services/game.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { Team } from '../../models/types';
+import { scaleMatchRating } from '../../models/player-career-stats';
 
 type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'passesSuccessful' | 'passCompletionRate' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating' | 'clutchActions';
 type SortableValue = string | number;
@@ -225,13 +226,14 @@ export class TeamStatsComponent {
 
   calculateAverageRating(row: TeamStatsRow): number {
     if (row.totalMatchRatingCount === 0) return 0;
-    return row.totalMatchRating / row.totalMatchRatingCount;
+    const rawAvg = row.totalMatchRating / row.totalMatchRatingCount;
+    return scaleMatchRating(rawAvg);
   }
 
   getFormattedAverageRating(row: TeamStatsRow): string {
     if (row.totalMatchRatingCount === 0) return '0.00';
-    // Format to 2 decimal places manually, formatAverageMatchRating takes player stats
-    return (row.totalMatchRating / row.totalMatchRatingCount).toFixed(2);
+    const rawAvg = row.totalMatchRating / row.totalMatchRatingCount;
+    return scaleMatchRating(rawAvg).toFixed(2);
   }
 
   getPassCompletionRate(row: TeamStatsRow): string {

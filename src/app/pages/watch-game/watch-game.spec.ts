@@ -581,7 +581,7 @@ describe('WatchGameComponent', () => {
       }
     });
 
-    expect(component.getLiveRating(homePlayer.id, TeamSide.HOME)).toBe('7.3');
+    expect(component.getLiveRating(homePlayer.id, TeamSide.HOME)).toBe('8.1');
     expect(component.getLiveRatingBreakdownData(homePlayer.id, TeamSide.HOME)?.currentRating).toBe(73);
     expect(component.getLiveStarRank(homePlayer.id)).toBe(1);
   });

@@ -111,7 +111,7 @@ describe('StatisticsService', () => {
 
       const [stats] = service.generatePlayerStatistics(state, team, [player]);
 
-      expect(stats.rating).toBe(54);
+      expect(stats.rating).toBe(50);
     });
 
     it('gives 0 rating to a bench player who never enters', () => {
@@ -143,7 +143,7 @@ describe('StatisticsService', () => {
       expect(defenderStats.rating).toBeGreaterThan(56);
       expect(attackerStats.tackles).toBe(0);
       expect(attackerStats.tacklesSuccessful).toBe(0);
-      expect(attackerStats.rating).toBe(55);
+      expect(attackerStats.rating).toBe(56);
     });
 
     it('credits interception stats and rating only to the turnover winner', () => {
@@ -161,7 +161,7 @@ describe('StatisticsService', () => {
       expect(defenderStats.interceptions).toBe(1);
       expect(defenderStats.rating).toBeGreaterThan(57);
       expect(attackerStats.interceptions).toBe(0);
-      expect(attackerStats.rating).toBe(55);
+      expect(attackerStats.rating).toBe(56);
     });
 
     it('does not credit goalkeepers with clutch events for box tackle or interception events', () => {
@@ -192,7 +192,7 @@ describe('StatisticsService', () => {
       const [defenderStats] = service.generatePlayerStatistics(state, homeTeam, [defender]);
 
       expect(defenderStats.tacklesSuccessful).toBe(4);
-      expect(defenderStats.rating).toBe(63);
+      expect(defenderStats.rating).toBe(65);
     });
 
     it('uses a fixed base of 50 for a substitute immediately after entering', () => {
@@ -288,7 +288,7 @@ describe('StatisticsService', () => {
       // SAVE counts as a shot on target for the shooter (+1 shotsOnTarget rating bonus)
       expect(fwdStats.shots).toBe(1);
       expect(fwdStats.shotsOnTarget).toBe(1);
-      expect(fwdStats.rating).toBe(57);
+      expect(fwdStats.rating).toBe(58);
     });
 
     it('clamps minimum rating to 1 even with many negative events', () => {

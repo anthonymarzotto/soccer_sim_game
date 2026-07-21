@@ -98,9 +98,11 @@
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="(log.playerStats.aerialDuelsWon ?? 0) === 0">{{ log.playerStats.aerialDuelsWon ?? 0 }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="(log.playerStats.clutchActionsCount ?? 0) > 0" [class.font-bold]="(log.playerStats.clutchActionsCount ?? 0) > 0" [class.text-text-muted]="(log.playerStats.clutchActionsCount ?? 0) === 0">{{ log.playerStats.clutchActionsCount ?? 0 }}</td>
                   <td class="px-4 py-3 text-center font-mono font-bold"
-                      [class.text-accent]="scaleMatchRating(log.playerStats.rating) >= 8"
-                      [class.text-text-secondary]="scaleMatchRating(log.playerStats.rating) >= 6 && scaleMatchRating(log.playerStats.rating) < 8"
-                      [class.text-red-400]="scaleMatchRating(log.playerStats.rating) < 6">
+                      [class.text-amber-400]="scaleMatchRating(log.playerStats.rating) >= 8.0"
+                      [class.text-emerald-400]="scaleMatchRating(log.playerStats.rating) >= 7.0 && scaleMatchRating(log.playerStats.rating) < 8.0"
+                      [class.text-text-primary]="scaleMatchRating(log.playerStats.rating) >= 6.0 && scaleMatchRating(log.playerStats.rating) < 7.0"
+                      [class.text-text-muted]="scaleMatchRating(log.playerStats.rating) >= 5.0 && scaleMatchRating(log.playerStats.rating) < 6.0"
+                      [class.text-red-400]="scaleMatchRating(log.playerStats.rating) < 5.0">
                     {{ scaleMatchRating(log.playerStats.rating) | number:'1.1-1' }}
                   </td>
                   @if (isDev) {

@@ -40,7 +40,7 @@ export class StatisticsService {
       goals: 0.05,
       assists: 0.02,
       saves: 0,
-      tacklesSuccessful: 1.8,
+      tacklesSuccessful: 1.3,
       interceptions: 0.9,
       shotsOnTarget: 0.2,
       misses: 0.2,
@@ -52,12 +52,12 @@ export class StatisticsService {
       goals: 0.04,
       assists: 0.01,
       saves: 0,
-      tacklesSuccessful: 0.5,
+      tacklesSuccessful: 0.4,
       interceptions: 0.25,
       shotsOnTarget: 0.2,
       misses: 0.2,
       fouls: 0.5,
-      passesSuccessful: 3.7,
+      passesSuccessful: 3.3,
       passingTurnovers: 1.8
     },
     [Position.CDM]: {
@@ -575,16 +575,16 @@ export class StatisticsService {
     let weights;
     let group: 'GK' | 'DEF' | 'MID' | 'FWD';
     if (pos === Position.GK) {
-      weights = { goal: 10, assist: 5, save: 4.0, tackle: 0, interception: 2, pass: 0.2, turnover: 1.0, conceded: 4.0 };
+      weights = { goal: 10, assist: 5, save: 3.0, tackle: 0, interception: 2, pass: 0.3, turnover: 1.0, conceded: 3.0 };
       group = 'GK';
     } else if (pos === Position.CB || pos === Position.FB) {
-      weights = { goal: 8, assist: 5, save: 0, tackle: 2.0, interception: 3.0, pass: 0.3, turnover: 1.0, conceded: 2.0 };
+      weights = { goal: 8, assist: 6, save: 0, tackle: 2.5, interception: 3.5, pass: 0.4, turnover: 1.0, conceded: 2.0 };
       group = 'DEF';
     } else if (pos === Position.ST) {
-      weights = { goal: 12, assist: 5, save: 0, tackle: 0.5, interception: 1.0, pass: 0.2, turnover: 1.0, conceded: 0 };
+      weights = { goal: 8.5, assist: 6, save: 0, tackle: 0.5, interception: 1.0, pass: 0.3, turnover: 1.0, conceded: 0 };
       group = 'FWD';
     } else {
-      weights = { goal: 10, assist: 6, save: 0, tackle: 1.5, interception: 2.0, pass: 0.3, turnover: 1.0, conceded: 0 };
+      weights = { goal: 9, assist: 7, save: 0, tackle: 2.5, interception: 3.5, pass: 0.5, turnover: 1.0, conceded: 0 };
       group = 'MID';
     }
 
@@ -685,16 +685,16 @@ export class StatisticsService {
     let weights;
     let group: 'GK' | 'DEF' | 'MID' | 'FWD';
     if (pos === Position.GK) {
-      weights = { goal: 10, assist: 5, save: 4.0, tackle: 0, interception: 2, pass: 0.2, turnover: 1.0, conceded: 4.0 };
+      weights = { goal: 10, assist: 5, save: 3.0, tackle: 0, interception: 2, pass: 0.3, turnover: 1.0, conceded: 3.0 };
       group = 'GK';
     } else if (pos === Position.CB || pos === Position.FB) {
-      weights = { goal: 8, assist: 5, save: 0, tackle: 2.0, interception: 3.0, pass: 0.3, turnover: 1.0, conceded: 2.0 };
+      weights = { goal: 8, assist: 6, save: 0, tackle: 2.5, interception: 3.5, pass: 0.4, turnover: 1.0, conceded: 2.0 };
       group = 'DEF';
     } else if (pos === Position.ST) {
-      weights = { goal: 12, assist: 5, save: 0, tackle: 0.5, interception: 1.0, pass: 0.2, turnover: 1.0, conceded: 0 };
+      weights = { goal: 8.5, assist: 6, save: 0, tackle: 0.5, interception: 1.0, pass: 0.3, turnover: 1.0, conceded: 0 };
       group = 'FWD';
     } else {
-      weights = { goal: 10, assist: 6, save: 0, tackle: 1.5, interception: 2.0, pass: 0.3, turnover: 1.0, conceded: 0 };
+      weights = { goal: 9, assist: 7, save: 0, tackle: 2.5, interception: 3.5, pass: 0.5, turnover: 1.0, conceded: 0 };
       group = 'MID';
     }
 
