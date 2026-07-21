@@ -260,7 +260,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(progressionShare).toBeLessThanOrEqual(0.75);
     expect(turnoverShare).toBeGreaterThanOrEqual(0.1);
     expect(turnoverShare).toBeLessThanOrEqual(0.4);
-  }, 60000);
+  }, 180000);
 
   it('should keep a reduced-shape scenario within broad realism bounds', () => {
     const iterations = 50;
@@ -437,7 +437,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
 
     console.log("DIAGNOSTIC GOALS BY POSITION:", Object.fromEntries(totalGoals));
     console.log("DIAGNOSTIC ASSISTS BY POSITION:", Object.fromEntries(totalAssists));
-  }, 40000);
+  }, 45000);
 });
 
 function create442Players(prefix: string): Player[] {

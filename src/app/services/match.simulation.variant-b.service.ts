@@ -93,6 +93,7 @@ const PASS_FAILURE_MODE = {
   TACKLED: "TACKLED",
   LANE_CUT_OUT: "LANE_CUT_OUT",
   OVERHIT: "OVERHIT",
+  RECOVERY: "RECOVERY",
 } as const;
 type PassFailureMode =
   (typeof PASS_FAILURE_MODE)[keyof typeof PASS_FAILURE_MODE];
@@ -162,6 +163,8 @@ const DEFAULT_VARIANT_B_TUNING: VariantBTuningConfig = {
   indirectFkGoalChanceBase: 0.035,
   indirectFkGoalChanceMax: 0.10,
   skillCompressionFactor: 0.60,
+  passTurnoverRecoveryChance: 0.70,
+  passOverhitRecoveryChance: 0.90,
 };
 
 @Injectable({
@@ -1588,6 +1591,8 @@ export class MatchSimulationVariantBService {
       return PASS_FAILURE_MODE.TACKLED;
     }
 
+    const isOverhitRecovery = this.rng.random() < (this.activeTuning.passOverhitRecoveryChance ?? 0.90);
+
     if (
       (passIntent === PASS_INTENT.THROUGH_BALL ||
         passIntent === PASS_INTENT.CROSS) &&
@@ -1597,11 +1602,7 @@ export class MatchSimulationVariantBService {
         return PASS_FAILURE_MODE.LANE_CUT_OUT;
       }
 
-      if (uncoveredChannel) {
-        return PASS_FAILURE_MODE.OVERHIT;
-      }
-
-      return PASS_FAILURE_MODE.OVERHIT;
+      return isOverhitRecovery ? PASS_FAILURE_MODE.RECOVERY : PASS_FAILURE_MODE.OVERHIT;
     }
 
     if (
@@ -1617,7 +1618,7 @@ export class MatchSimulationVariantBService {
       passDistance >= 26 &&
       passIntent !== PASS_INTENT.RECYCLE
     ) {
-      return PASS_FAILURE_MODE.OVERHIT;
+      return isOverhitRecovery ? PASS_FAILURE_MODE.RECOVERY : PASS_FAILURE_MODE.OVERHIT;
     }
 
     if (progression >= 10 || passDistance >= 24) {
@@ -1627,7 +1628,8 @@ export class MatchSimulationVariantBService {
     if (pressure >= 0.45 && attackingY > 35) {
       return PASS_FAILURE_MODE.TACKLED;
     }
-    return PASS_FAILURE_MODE.LANE_CUT_OUT;
+    const isTurnoverRecovery = this.rng.random() < (this.activeTuning.passTurnoverRecoveryChance ?? 0.70);
+    return isTurnoverRecovery ? PASS_FAILURE_MODE.RECOVERY : PASS_FAILURE_MODE.LANE_CUT_OUT;
   }
 
   private createPassFailureEvent(
@@ -1668,19 +1670,54 @@ export class MatchSimulationVariantBService {
       );
     }
 
-    return this.createTurnoverEvent(
+    if (mode === PASS_FAILURE_MODE.LANE_CUT_OUT) {
+      return this.createTurnoverEvent(
+        state,
+        EventType.INTERCEPTION,
+        currentLocation,
+        currentTeam,
+        opponentPlayers,
+        passerId,
+        minute,
+        true,
+        config,
+        { passFailure: mode, passIntent },
+      );
+    }
+
+    // Default, OVERHIT, or RECOVERY: log as incomplete PASS (success: false)
+    const defendingTeamSide =
+      currentTeam === TeamSide.HOME ? TeamSide.AWAY : TeamSide.HOME;
+    const isGKAllowed =
+      (defendingTeamSide === TeamSide.HOME && currentLocation.y <= 18) ||
+      (defendingTeamSide === TeamSide.AWAY && currentLocation.y >= 82);
+
+    const eligibleOpponentPlayers = isGKAllowed
+      ? opponentPlayers
+      : opponentPlayers.filter((p) => p.position !== PositionEnum.GK);
+
+    const turnoverWinnerId =
+      predeterminedWinnerId ??
+      this.selectTurnoverWinner(
+        EventType.INTERCEPTION,
+        currentLocation,
+        currentTeam,
+        eligibleOpponentPlayers,
+      )?.winner?.id ??
+      this.getRandomPlayerId(eligibleOpponentPlayers);
+
+    this.createEvent(
       state,
-      EventType.INTERCEPTION,
-      currentLocation,
-      currentTeam,
-      opponentPlayers,
-      passerId,
+      EventType.PASS,
+      [passerId, turnoverWinnerId],
+      { ...currentLocation },
       minute,
-      false,
+      false, // success = false
       config,
       additionalData,
-      predeterminedWinnerId,
     );
+
+    return turnoverWinnerId;
   }
 
   private handleGoal(
@@ -2727,6 +2764,10 @@ export class MatchSimulationVariantBService {
     const starterOutfield = teamOnField.filter(
       (player) => player.position !== PositionEnum.GK,
     );
+    // filter out goalkeepers for incoming candidates to prevent them playing outfield.
+    const benchOutfield = teamBench.filter(
+      (player) => player.position !== PositionEnum.GK,
+    );
 
     let bestCandidate: {
       incoming: Player;
@@ -2735,7 +2776,7 @@ export class MatchSimulationVariantBService {
       shape: ActiveShapeSlot[];
     } | null = null;
 
-    for (const incoming of teamBench) {
+    for (const incoming of benchOutfield) {
       for (const outgoing of starterOutfield) {
         const simulatedActivePlayers = teamOnField.filter(
           (player) => player.id !== outgoing.id,
@@ -2941,7 +2982,24 @@ export class MatchSimulationVariantBService {
     outgoingPosition: PositionEnum,
   ): Player | null {
     const eligible = benchPlayers.filter(
-      (player) => isPlayerEligible(player),
+      (player) => {
+        if (!isPlayerEligible(player)) return false;
+
+        // If outgoing is not GK, incoming must not be GK
+        if (outgoingPosition !== PositionEnum.GK && player.position === PositionEnum.GK) {
+          return false;
+        }
+
+        // If outgoing is GK, incoming must be GK (unless none are available on the bench)
+        if (outgoingPosition === PositionEnum.GK && player.position !== PositionEnum.GK) {
+          const hasGk = benchPlayers.some(p => p.position === PositionEnum.GK && isPlayerEligible(p));
+          if (hasGk) {
+            return false;
+          }
+        }
+
+        return true;
+      }
     );
 
     if (eligible.length === 0) {

@@ -11,6 +11,7 @@ import { rankThreeStars, MatchStarEntry } from '../../models/match-stars';
 import { Match, MatchEvent, MatchStatistics, Team, Player, PlayerStatistics, TeamLineupSnapshot } from '../../models/types';
 import { EventType, EventImportance, CommentaryStyle, TeamSide, Role } from '../../models/enums';
 import { PlayByPlayEvent, MatchState, Coordinates, PlayByPlayEventAdditionalData, VariantBMatchShapeSnapshot, VariantBShapeSlotSnapshot, MinuteFatigueSnapshot } from '../../models/simulation.types';
+import { scaleMatchRating } from '../../models/player-career-stats';
 
 interface CommentaryItem {
   id: string;
@@ -1290,7 +1291,7 @@ export class WatchGameComponent implements OnInit, OnDestroy {
     const stats = this.getDisplayedPlayerStats(side);
     const entry = stats.find(s => s.playerId === playerId);
     if (!entry || entry.rating === 0) return '--';
-    return (entry.rating / 10).toFixed(1);
+    return scaleMatchRating(entry.rating).toFixed(1);
   }
 
   getLiveRatingBreakdown(playerId: string, side: TeamSide): string {
@@ -1343,7 +1344,11 @@ export class WatchGameComponent implements OnInit, OnDestroy {
   }
 
   formatRatingDelta(points: number): string {
-    return (points / 10).toFixed(1);
+    const val = points / 10;
+    if (val >= 0) {
+      return `+${val.toFixed(1)}`;
+    }
+    return val.toFixed(1);
   }
 
   showLiveRatingTooltip(event: MouseEvent, playerId: string, side: TeamSide): void {

@@ -134,6 +134,8 @@ export interface PlayerCareerStats {
   starNominations: { first: number; second: number; third: number };
   wage: number;
   marketValue?: number;
+  goalsConceded?: number;
+  clutchActions?: number;
   cornersTaken?: number;
   cornersWon?: number;
   freeKicksTaken?: number;
@@ -335,6 +337,10 @@ export interface PlayerStatistics {
   aerialDuelsLost?: number;
   cornerGoals?: number;
   indirectFreeKickGoals?: number;
+  clutchActionsCount?: number;
+  clutchRatingBonus?: number;
+  goalsConceded?: number;
+  passingTurnovers?: number;
 }
 
 export interface League {

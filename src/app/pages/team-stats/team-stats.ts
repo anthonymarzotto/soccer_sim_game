@@ -5,8 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { GameService } from '../../services/game.service';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { Team } from '../../models/types';
+import { scaleMatchRating } from '../../models/player-career-stats';
 
-type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'passesSuccessful' | 'passCompletionRate' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating';
+type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'passesSuccessful' | 'passCompletionRate' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating' | 'clutchActions';
 type SortableValue = string | number;
 
 interface TeamStatsRow {
@@ -35,6 +36,7 @@ interface TeamStatsRow {
   fouls: number;
   yellowCards: number;
   redCards: number;
+  clutchActions: number;
 
   // Averages
   totalMatchRating: number;
@@ -114,6 +116,7 @@ export class TeamStatsComponent {
         fouls: 0,
         yellowCards: 0,
         redCards: 0,
+        clutchActions: 0,
 
         totalMatchRating: 0,
         totalMatchRatingCount: 0
@@ -134,6 +137,7 @@ export class TeamStatsComponent {
           row.fouls += playerStats.fouls || 0;
           row.yellowCards += playerStats.yellowCards || 0;
           row.redCards += playerStats.redCards || 0;
+          row.clutchActions += playerStats.clutchActions || 0;
 
           if (playerStats.totalMatchRating > 0 && playerStats.matchesPlayed > 0) {
             row.totalMatchRating += playerStats.totalMatchRating;
@@ -205,7 +209,8 @@ export class TeamStatsComponent {
     { key: 'fouls', label: 'Fouls', tooltip: 'Total Fouls Committed', sortable: true },
     { key: 'yellowCards', label: 'Yel', tooltip: 'Yellow Cards', sortable: true, cls: 'text-warning' },
     { key: 'redCards', label: 'Red', tooltip: 'Red Cards', sortable: true, cls: 'text-danger' },
-    { key: 'averageRating', label: 'Avg R', tooltip: 'Average Match Rating (Team-wide)', sortable: true, cls: 'text-warning' }
+    { key: 'averageRating', label: 'Avg R', tooltip: 'Average Match Rating (Team-wide)', sortable: true, cls: 'text-warning' },
+    { key: 'clutchActions', label: 'Clutch', tooltip: 'Total Clutch Actions (Goals/Saves/Blocks)', sortable: true }
   ];
 
   toggleSort(column: SortColumn) {
@@ -221,13 +226,14 @@ export class TeamStatsComponent {
 
   calculateAverageRating(row: TeamStatsRow): number {
     if (row.totalMatchRatingCount === 0) return 0;
-    return row.totalMatchRating / row.totalMatchRatingCount;
+    const rawAvg = row.totalMatchRating / row.totalMatchRatingCount;
+    return scaleMatchRating(rawAvg);
   }
 
   getFormattedAverageRating(row: TeamStatsRow): string {
     if (row.totalMatchRatingCount === 0) return '0.00';
-    // Format to 2 decimal places manually, formatAverageMatchRating takes player stats
-    return (row.totalMatchRating / row.totalMatchRatingCount).toFixed(2);
+    const rawAvg = row.totalMatchRating / row.totalMatchRatingCount;
+    return scaleMatchRating(rawAvg).toFixed(2);
   }
 
   getPassCompletionRate(row: TeamStatsRow): string {

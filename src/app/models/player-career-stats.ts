@@ -40,12 +40,18 @@ export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string,
     aerialDuelsLost: 0,
     cornerGoals: 0,
     indirectFreeKickGoals: 0,
+    goalsConceded: 0,
+    clutchActions: 0,
     ...(marketValue !== undefined ? { marketValue } : {})
   };
 }
 
 export function scaleMatchRating(rating: number): number {
-  return rating / 10;
+  if (rating <= 0) return 0;
+  const diff = rating - 50;
+  const scaled = 50 + diff * 1.35;
+  const clamped = Math.max(10, Math.min(99, Math.round(scaled)));
+  return clamped / 10;
 }
 
 export function calculateAverageMatchRating(stats: PlayerCareerRatingStats): number | null {
@@ -53,7 +59,8 @@ export function calculateAverageMatchRating(stats: PlayerCareerRatingStats): num
     return null;
   }
 
-  return stats.totalMatchRating / stats.matchesPlayed / 10;
+  const rawAvg = stats.totalMatchRating / stats.matchesPlayed;
+  return scaleMatchRating(rawAvg);
 }
 
 export function formatAverageMatchRating(stats: PlayerCareerRatingStats): string {

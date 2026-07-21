@@ -40,14 +40,17 @@ describe('player-career-stats defaults', () => {
       aerialDuelsWon: 0,
       aerialDuelsLost: 0,
       cornerGoals: 0,
-      indirectFreeKickGoals: 0
+      indirectFreeKickGoals: 0,
+      goalsConceded: 0,
+      clutchActions: 0
     });
   });
 
-  it('should scale match rating to 1-10 scale', () => {
-    expect(scaleMatchRating(75)).toBe(7.5);
+  it('should scale match rating with a 50-centered stretch curve to 1-10 display scale', () => {
+    expect(scaleMatchRating(75)).toBe(8.4);
+    expect(scaleMatchRating(50)).toBe(5.0);
     expect(scaleMatchRating(0)).toBe(0);
-    expect(scaleMatchRating(100)).toBe(10);
+    expect(scaleMatchRating(100)).toBe(9.9);
   });
 
   it('should calculate average match rating on the 1-10 display scale', () => {
@@ -55,8 +58,8 @@ describe('player-career-stats defaults', () => {
     stats.matchesPlayed = 4;
     stats.totalMatchRating = 278;
 
-    expect(calculateAverageMatchRating(stats)).toBe(6.95);
-    expect(formatAverageMatchRating(stats)).toBe('7.0');
+    expect(calculateAverageMatchRating(stats)).toBe(7.6);
+    expect(formatAverageMatchRating(stats)).toBe('7.6');
   });
 
   it('should return null and placeholder output when no matches were played', () => {

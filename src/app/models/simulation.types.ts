@@ -58,7 +58,7 @@ export type CardReason = 'SECOND_YELLOW' | 'DOGSO' | 'SERIOUS_FOUL' | 'SPITTING'
 
 export type PassIntentMetadata = 'RECYCLE' | 'PROGRESSION' | 'THROUGH_BALL' | 'CROSS';
 
-export type PassFailureMetadata = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
+export type PassFailureMetadata = 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT' | 'RECOVERY';
 
 export type CarryResultMetadata = 'DISPOSSESSED' | 'SCRAMBLE_RECOVERED' | 'SCRAMBLE_LOST';
 
@@ -186,6 +186,8 @@ export interface VariantBTuningConfig {
   indirectFkGoalChanceBase: number;
   indirectFkGoalChanceMax: number;
   skillCompressionFactor?: number;
+  passTurnoverRecoveryChance?: number;
+  passOverhitRecoveryChance?: number;
 }
 export interface PassScoreBreakdown {
   base: number;

@@ -3388,6 +3388,8 @@ export class GameService {
       if (!player) continue;
       const stats = getStats(player);
       stats.assists += ps.assists;
+      stats.goalsConceded = (stats.goalsConceded ?? 0) + (ps.goalsConceded ?? 0);
+      stats.clutchActions = (stats.clutchActions ?? 0) + (ps.clutchActionsCount ?? 0);
       if (ps.rating !== 0) {
         stats.totalMatchRating += ps.rating;
       }

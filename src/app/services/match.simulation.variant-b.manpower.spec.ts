@@ -4,7 +4,7 @@ import { FieldService } from './field.service';
 import { FormationLibraryService } from './formation-library.service';
 import { CommentaryService } from './commentary.service';
 import { MatchPhase, Position as PositionEnum, Role, TeamSide } from '../models/enums';
-import { MatchState, TeamFormation } from '../models/simulation.types';
+import { MatchState, TeamFormation, VariantBTuningConfig } from '../models/simulation.types';
 import { Player, Team } from '../models/types';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { createTestPlayer } from '../testing/test-player-fixtures';
@@ -20,6 +20,7 @@ interface MatchShapeState {
 }
 
 interface VariantBManpowerInternals {
+  activeTuning: VariantBTuningConfig;
   activeMatchShape: MatchShapeState | null;
   initializeMatchShape: (homeTeam: Team, awayTeam: Team) => MatchShapeState;
   rebalanceShapeAfterDismissal: (
@@ -58,7 +59,7 @@ interface VariantBManpowerInternals {
     pressure: number,
     passDistance: number,
     progression: number
-  ) => 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT';
+  ) => 'TACKLED' | 'LANE_CUT_OUT' | 'OVERHIT' | 'RECOVERY';
 }
 
 describe('Match Simulation Variant B Manpower Shape', () => {
@@ -343,16 +344,26 @@ describe('Match Simulation Variant B Manpower Shape', () => {
       })
     };
 
-    const failureMode = internals.determinePassFailureMode(
-      wideBallLocation,
-      TeamSide.HOME,
-      'CROSS',
-      0.38,
-      32,
-      10
-    );
+    const originalTuning = internals.activeTuning;
+    internals.activeTuning = {
+      ...originalTuning,
+      passOverhitRecoveryChance: 0.0
+    };
 
-    expect(failureMode).toBe('OVERHIT');
+    try {
+      const failureMode = internals.determinePassFailureMode(
+        wideBallLocation,
+        TeamSide.HOME,
+        'CROSS',
+        0.38,
+        32,
+        10
+      );
+
+      expect(failureMode).toBe('OVERHIT');
+    } finally {
+      internals.activeTuning = originalTuning;
+    }
   });
 });
 
