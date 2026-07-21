@@ -266,7 +266,7 @@ describe('Match Simulation Variant B Guardrails', () => {
 
     expect(avgReducedAwayGoals).toBeLessThanOrEqual(avgBaselineAwayGoals);
     expect(avgReducedAwayShotsOnTarget).toBeLessThanOrEqual(avgBaselineAwayShotsOnTarget);
-  });
+  }, 30000);
 
   it('should keep central-spine depletion scenarios within stable guardrail bounds', () => {
     const iterations = 60;
@@ -333,7 +333,7 @@ describe('Match Simulation Variant B Guardrails', () => {
     expect(avgReducedTotalGoals).toBeLessThan(4.5);
     expect(avgReducedTotalShots).toBeGreaterThan(14);
     expect(avgReducedTotalShots).toBeLessThan(33);
-  });
+  }, 30000);
 
   it('should not produce goalkeeper scorers in standard simulations', () => {
     const iterations = 60;

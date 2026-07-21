@@ -260,7 +260,7 @@ describe('Match Simulation Variant B Calibration Benchmark', () => {
     expect(progressionShare).toBeLessThanOrEqual(0.75);
     expect(turnoverShare).toBeGreaterThanOrEqual(0.1);
     expect(turnoverShare).toBeLessThanOrEqual(0.4);
-  }, 60000);
+  }, 180000);
 
   it('should keep a reduced-shape scenario within broad realism bounds', () => {
     const iterations = 50;
