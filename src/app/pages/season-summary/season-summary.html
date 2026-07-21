@@ -1,0 +1,356 @@
+<div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
+  <div class="max-w-7xl mx-auto space-y-8">
+
+    <!-- Header & Filters -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-6 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold font-display tracking-tight text-text-primary uppercase">Season Summary</h1>
+        <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">End of season dashboard</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label for="season-select" class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase">Season</label>
+          <select id="season-select" [(ngModel)]="selectedSeasonYear"
+            class="bg-canvas border border-border text-text-primary rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 w-32">
+            @for (year of availableSeasons(); track year) {
+              <option [ngValue]="year">{{ year }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label for="team-select" class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase">Team</label>
+          <select id="team-select" [(ngModel)]="selectedTeamId"
+            class="bg-canvas border border-border text-text-primary rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 w-48">
+            <option value="all">All Teams</option>
+            @for (team of teams(); track team.id) {
+              <option [value]="team.id">{{ team.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Top Players by OVR -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">trending_up</span> Top Players by OVR
+        </h2>
+        @if (topOvrPlayers().length > 0) {
+          <div class="space-y-3">
+            @for (p of topOvrPlayers(); track p.player.id) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
+                  <span class="text-xs text-text-muted">{{ p.team.name }}</span>
+                </div>
+                <span class="font-bold tabular-nums text-accent">{{ p.ovr }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No data available.</p>
+        }
+      </div>
+
+      <!-- Bottom Players by OVR -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">trending_down</span> Bottom Players by OVR
+        </h2>
+        @if (bottomOvrPlayers().length > 0) {
+          <div class="space-y-3">
+            @for (p of bottomOvrPlayers(); track p.player.id) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
+                  <span class="text-xs text-text-muted">{{ p.team.name }}</span>
+                </div>
+                <span class="font-bold tabular-nums text-danger">{{ p.ovr }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No data available.</p>
+        }
+      </div>
+
+      <!-- Streaks -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">stacked_line_chart</span> Longest Streaks
+        </h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="text-center p-3 rounded bg-canvas border border-border/50">
+            <div class="text-2xl font-bold tabular-nums text-accent">{{ streaks().win }}</div>
+            <div class="text-[10px] uppercase tracking-wider text-text-muted mt-1">Winning</div>
+          </div>
+          <div class="text-center p-3 rounded bg-canvas border border-border/50">
+            <div class="text-2xl font-bold tabular-nums text-emerald-400">{{ streaks().undefeated }}</div>
+            <div class="text-[10px] uppercase tracking-wider text-text-muted mt-1">Undefeated</div>
+          </div>
+          <div class="text-center p-3 rounded bg-canvas border border-border/50">
+            <div class="text-2xl font-bold tabular-nums text-warning">{{ streaks().winless }}</div>
+            <div class="text-[10px] uppercase tracking-wider text-text-muted mt-1">Winless</div>
+          </div>
+          <div class="text-center p-3 rounded bg-canvas border border-border/50">
+            <div class="text-2xl font-bold tabular-nums text-danger">{{ streaks().losing }}</div>
+            <div class="text-[10px] uppercase tracking-wider text-text-muted mt-1">Losing</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Match Scores -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">star</span> Best Match Ratings
+        </h2>
+        @if (bestMatchScores().length > 0) {
+          <div class="space-y-3">
+            @for (s of bestMatchScores(); track s.player.id + s.match.id) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', s.player.id]" class="font-medium hover:text-accent transition-colors">{{ s.player.name }}</a>
+                  <span class="text-xs text-text-muted truncate max-w-[150px]">W{{ s.match.week }} vs {{ s.teamName }}</span>
+                </div>
+                <span class="font-mono font-bold text-accent">{{ s.rating | number:'1.1-1' }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No matches played.</p>
+        }
+      </div>
+
+      <!-- Worst Match Scores -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">star_border</span> Worst Match Ratings
+        </h2>
+        @if (worstMatchScores().length > 0) {
+          <div class="space-y-3">
+            @for (s of worstMatchScores(); track s.player.id + s.match.id) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', s.player.id]" class="font-medium hover:text-accent transition-colors">{{ s.player.name }}</a>
+                  <span class="text-xs text-text-muted truncate max-w-[150px]">W{{ s.match.week }} vs {{ s.teamName }}</span>
+                </div>
+                <span class="font-mono font-bold text-danger">{{ s.rating | number:'1.1-1' }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No matches played.</p>
+        }
+      </div>
+
+      <!-- Stat Leaders -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm row-span-2">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">emoji_events</span> Stat Leaders
+        </h2>
+        <div class="space-y-6">
+
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Goals</h3>
+            @if (statLeaders().goals.length > 0) {
+              <div class="space-y-2">
+                @for (l of statLeaders().goals; track l.id) {
+                  <div class="flex justify-between text-sm">
+                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
+                    <span class="font-bold tabular-nums text-accent">{{ l.val }}</span>
+                  </div>
+                }
+              </div>
+            } @else { <p class="text-xs text-text-muted">None</p> }
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Assists</h3>
+            @if (statLeaders().assists.length > 0) {
+              <div class="space-y-2">
+                @for (l of statLeaders().assists; track l.id) {
+                  <div class="flex justify-between text-sm">
+                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
+                    <span class="font-bold tabular-nums text-blue-400">{{ l.val }}</span>
+                  </div>
+                }
+              </div>
+            } @else { <p class="text-xs text-text-muted">None</p> }
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Avg Rating</h3>
+            @if (statLeaders().rating.length > 0) {
+              <div class="space-y-2">
+                @for (l of statLeaders().rating; track l.id) {
+                  <div class="flex justify-between text-sm">
+                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
+                    <span class="font-mono font-bold text-warning">{{ l.val | number:'1.1-1' }}</span>
+                  </div>
+                }
+              </div>
+            } @else { <p class="text-xs text-text-muted">None</p> }
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Tackles</h3>
+            @if (statLeaders().tackles.length > 0) {
+              <div class="space-y-2">
+                @for (l of statLeaders().tackles; track l.id) {
+                  <div class="flex justify-between text-sm">
+                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
+                    <span class="font-bold tabular-nums">{{ l.val }}</span>
+                  </div>
+                }
+              </div>
+            } @else { <p class="text-xs text-text-muted">None</p> }
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Longest Injuries -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">local_hospital</span> Longest Injuries
+        </h2>
+        @if (longestInjuries().length > 0) {
+          <div class="space-y-3">
+            @for (inj of longestInjuries(); track inj.player.id + inj.record.sustainedInWeek) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', inj.player.id]" class="font-medium hover:text-accent transition-colors">{{ inj.player.name }}</a>
+                  <span class="text-xs text-text-muted">{{ inj.name }} (Wk {{ inj.record.sustainedInWeek }})</span>
+                </div>
+                <span class="font-bold tabular-nums text-danger">{{ inj.record.totalWeeks }}w</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No injuries recorded.</p>
+        }
+      </div>
+
+      <!-- Longest Suspensions -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">gavel</span> Longest Suspensions
+        </h2>
+        @if (longestSuspensions().length > 0) {
+          <div class="space-y-3">
+            @for (susp of longestSuspensions(); track susp.player.id + susp.reason) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', susp.player.id]" class="font-medium hover:text-accent transition-colors">{{ susp.player.name }}</a>
+                  <span class="text-xs text-text-muted">{{ formatSuspensionReason(susp.reason) }}</span>
+                </div>
+                <span class="font-bold tabular-nums text-danger">{{ susp.games }}g</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No suspensions recorded.</p>
+        }
+      </div>
+
+      <!-- Biggest Wins / Losses -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm lg:col-span-2">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">scoreboard</span> Biggest Results
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-3 border-b border-border/50 pb-1">Biggest Wins</h3>
+            @if (biggestWinsLosses().wins.length > 0) {
+              <div class="space-y-2.5">
+                @for (res of biggestWinsLosses().wins; track res.match.id) {
+                  <div class="flex items-center justify-between text-sm bg-canvas rounded px-3 py-2 border border-border/50">
+                    <span class="font-medium truncate mr-2" [class.text-accent]="selectedTeamId() !== 'all'">{{ res.team }}</span>
+                    <span class="font-bold tabular-nums shrink-0 mx-2 text-text-primary bg-panel px-2 py-0.5 rounded shadow-sm border border-border">
+                      {{ res.isHome ? res.match.homeScore + ' - ' + res.match.awayScore : res.match.awayScore + ' - ' + res.match.homeScore }}
+                    </span>
+                    <span class="text-text-muted truncate ml-2 text-right">{{ res.opponent }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="text-xs text-text-muted italic">No wins recorded.</p>
+            }
+          </div>
+
+          @if (selectedTeamId() !== 'all') {
+            <div>
+              <h3 class="text-xs font-bold text-text-secondary uppercase mb-3 border-b border-border/50 pb-1">Biggest Losses</h3>
+              @if (biggestWinsLosses().losses.length > 0) {
+                <div class="space-y-2.5">
+                  @for (res of biggestWinsLosses().losses; track res.match.id) {
+                    <div class="flex items-center justify-between text-sm bg-canvas rounded px-3 py-2 border border-border/50">
+                      <span class="font-medium truncate mr-2 text-text-muted">{{ res.team }}</span>
+                      <span class="font-bold tabular-nums shrink-0 mx-2 text-text-primary bg-panel px-2 py-0.5 rounded shadow-sm border border-border">
+                        {{ res.isHome ? res.match.homeScore + ' - ' + res.match.awayScore : res.match.awayScore + ' - ' + res.match.homeScore }}
+                      </span>
+                      <span class="font-medium text-text-primary truncate ml-2 text-right">{{ res.opponent }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-xs text-text-muted italic">No losses recorded.</p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Most Used Formations -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">schema</span> Most Used Formations
+        </h2>
+        @if (mostUsedFormations().length > 0) {
+          <div class="space-y-3">
+            @for (f of mostUsedFormations(); track f.name) {
+              <div class="flex items-center justify-between text-sm">
+                <span class="font-medium text-text-primary">{{ f.name }}</span>
+                <span class="text-text-muted tabular-nums">{{ f.count }} matches</span>
+              </div>
+              <div class="w-full bg-canvas h-1.5 rounded-full overflow-hidden mt-1">
+                <div class="bg-accent h-full rounded-full" [style.width.%]="(f.count / mostUsedFormations()[0].count) * 100"></div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No data available.</p>
+        }
+      </div>
+
+      <!-- Contracts Ending -->
+      <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
+          <span class="material-icons text-lg">history_edu</span> Expiring Contracts
+        </h2>
+        @if (contractsEnding().length > 0) {
+          <div class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+            @for (p of contractsEnding(); track p.player.id) {
+              <div class="flex items-center justify-between text-sm">
+                <div class="flex flex-col">
+                  <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
+                  <span class="text-[10px] text-text-muted">{{ p.team.name }}</span>
+                </div>
+                <span class="font-mono text-warning">{{ p.wage | number:'1.1-1' }} pts</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-xs text-text-muted italic">No contracts ending this season.</p>
+        }
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -20,6 +20,7 @@ import { ChangelogComponent } from './pages/changelog/changelog';
 import { DebugPlayerProfileComponent } from './pages/debug-player-profile/debug-player-profile';
 import { NewsComponent } from './pages/news/news';
 import { TransferMarketComponent } from './pages/transfer-market/transfer-market';
+import { SeasonSummaryComponent } from './pages/season-summary/season-summary';
 import { GameService } from './services/game.service';
 import { localhostGuardFn } from './services/localhost.guard';
 
@@ -45,6 +46,7 @@ export const routes: Routes = [
   { path: 'team', canActivate: [redirectToUserTeam], children: [] },
   { path: 'team/:id', component: TeamDetailsComponent },
   { path: 'team/:id/schedule', component: TeamScheduleComponent },
+  { path: 'dashboard', component: SeasonSummaryComponent },
   { path: 'player/:id', component: PlayerProfileComponent },
   { path: 'player/:id/game-log', component: PlayerGameLogComponent },
   { path: 'schedule', component: ScheduleComponent },
