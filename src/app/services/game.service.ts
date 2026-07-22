@@ -3206,6 +3206,14 @@ export class GameService {
         }
       }
 
+      if ((event.type === EventType.GOAL || event.type === EventType.SAVE || event.type === EventType.MISS) && event.additionalData?.xg !== undefined) {
+        const shooter = allPlayers.get(event.playerIds[0]);
+        if (shooter) {
+          const stats = getStats(shooter);
+          stats.expectedGoals = (stats.expectedGoals ?? 0) + event.additionalData.xg;
+        }
+      }
+
       if (event.type === EventType.GOAL) {
         const scorer = allPlayers.get(event.playerIds[0]);
         if (scorer) {

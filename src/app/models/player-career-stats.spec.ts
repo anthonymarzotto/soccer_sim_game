@@ -42,7 +42,8 @@ describe('player-career-stats defaults', () => {
       cornerGoals: 0,
       indirectFreeKickGoals: 0,
       goalsConceded: 0,
-      clutchActions: 0
+      clutchActions: 0,
+      expectedGoals: 0
     });
   });
 

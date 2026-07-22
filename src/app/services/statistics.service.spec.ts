@@ -643,4 +643,59 @@ describe('StatisticsService', () => {
       expect(nodeById.get('p3')).toEqual({ id: 'p3', name: 'p3', value: 0 });
     });
   });
+
+  describe('Expected Goals (xG) aggregation', () => {
+    it('aggregates xG correctly in match statistics and player statistics', () => {
+      const p1 = createTestPlayer({ id: 'p1', name: 'Shooter 1', position: Position.ST, teamId: 'team-1' });
+      const p2 = createTestPlayer({ id: 'p2', name: 'Shooter 2', position: Position.ST, teamId: 'team-2' });
+      const homeTeam = makeTeam([p1], [], 'team-1');
+      const awayTeam = makeTeam([p2], [], 'team-2');
+
+      const state = makeMatchState([
+        {
+          id: 'evt-1',
+          type: EventType.GOAL,
+          description: '',
+          playerIds: ['p1'],
+          location: { x: 50, y: 88 },
+          time: 12,
+          success: true,
+          additionalData: { xg: 0.75 }
+        },
+        {
+          id: 'evt-2',
+          type: EventType.SAVE,
+          description: '',
+          playerIds: ['p2'],
+          location: { x: 50, y: 12 },
+          time: 35,
+          success: true,
+          additionalData: { xg: 0.15 }
+        },
+        {
+          id: 'evt-3',
+          type: EventType.MISS,
+          description: '',
+          playerIds: ['p1'],
+          location: { x: 50, y: 88 },
+          time: 60,
+          success: false,
+          additionalData: { xg: 0.20 }
+        }
+      ]);
+
+      const matchStats = service.generateMatchStatistics(state, homeTeam, awayTeam);
+      expect(matchStats.xg).toBeDefined();
+      expect(matchStats.xg!.home).toBeCloseTo(0.95);
+      expect(matchStats.xg!.away).toBeCloseTo(0.15);
+
+      const p1Stats = service.generatePlayerStatistics(state, homeTeam, [p1]).find(p => p.playerId === 'p1');
+      expect(p1Stats).toBeDefined();
+      expect(p1Stats!.expectedGoals).toBeCloseTo(0.95);
+
+      const p2Stats = service.generatePlayerStatistics(state, awayTeam, [p2]).find(p => p.playerId === 'p2');
+      expect(p2Stats).toBeDefined();
+      expect(p2Stats!.expectedGoals).toBeCloseTo(0.15);
+    });
+  });
 });

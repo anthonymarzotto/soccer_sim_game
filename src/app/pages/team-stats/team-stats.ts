@@ -7,7 +7,7 @@ import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 import { Team } from '../../models/types';
 import { scaleMatchRating } from '../../models/player-career-stats';
 
-type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'passesSuccessful' | 'passCompletionRate' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating' | 'clutchActions';
+type SortColumn = 'name' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDifference' | 'points' | 'shots' | 'shotsOnTarget' | 'passes' | 'passesSuccessful' | 'passCompletionRate' | 'tackles' | 'interceptions' | 'saves' | 'cleanSheets' | 'fouls' | 'yellowCards' | 'redCards' | 'averageRating' | 'clutchActions' | 'expectedGoals';
 type SortableValue = string | number;
 
 interface TeamStatsRow {
@@ -37,6 +37,7 @@ interface TeamStatsRow {
   yellowCards: number;
   redCards: number;
   clutchActions: number;
+  expectedGoals: number;
 
   // Averages
   totalMatchRating: number;
@@ -117,6 +118,7 @@ export class TeamStatsComponent {
         yellowCards: 0,
         redCards: 0,
         clutchActions: 0,
+        expectedGoals: 0,
 
         totalMatchRating: 0,
         totalMatchRatingCount: 0
@@ -138,6 +140,7 @@ export class TeamStatsComponent {
           row.yellowCards += playerStats.yellowCards || 0;
           row.redCards += playerStats.redCards || 0;
           row.clutchActions += playerStats.clutchActions || 0;
+          row.expectedGoals += playerStats.expectedGoals || 0;
 
           if (playerStats.totalMatchRating > 0 && playerStats.matchesPlayed > 0) {
             row.totalMatchRating += playerStats.totalMatchRating;
@@ -197,6 +200,7 @@ export class TeamStatsComponent {
     { key: 'goalsAgainst', label: 'GA', tooltip: 'Goals Against', sortable: true },
     { key: 'goalDifference', label: 'GD', tooltip: 'Goal Difference', sortable: true },
     { key: 'points', label: 'Pts', tooltip: 'Points', sortable: true, cls: 'text-accent font-bold text-base' },
+    { key: 'expectedGoals', label: 'xG', tooltip: 'Expected Goals', sortable: true },
     { key: 'shots', label: 'Shots', tooltip: 'Total Shots', sortable: true },
     { key: 'shotsOnTarget', label: 'SoT', tooltip: 'Shots on Target', sortable: true },
     { key: 'passes', label: 'P (Att)', tooltip: 'Total Passes Attempted', sortable: true },
