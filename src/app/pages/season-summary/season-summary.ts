@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { FormationLibraryService } from '../../services/formation-library.service';
-import { Player, Team, Match } from '../../models/types';
-import { getPlayerSeasonAttributesForYear } from '../../models/season-history';
-import { scaleMatchRating } from '../../models/player-career-stats';
+import { Player, Team, Match, Position } from '../../models/types';
+import { calculateAverageMatchRating, scaleMatchRating } from '../../models/player-career-stats';
 import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
-
+import { getPositionGroup } from '../../models/enums';
+ 
 @Component({
   selector: 'app-season-summary',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,6 +18,8 @@ import { InjuryRecord, getInjuryDefinition } from '../../data/injuries';
 export class SeasonSummaryComponent {
   private gameService = inject(GameService);
   private formationLibrary = inject(FormationLibraryService);
+
+  getPositionGroup = getPositionGroup;
 
   // Filters
   selectedTeamId = signal<string>('');
@@ -97,26 +99,36 @@ export class SeasonSummaryComponent {
   });
 
   // Derived stats
-  topOvrPlayers = computed(() => {
+  topAvgScorePlayers = computed(() => {
     const season = this.selectedSeasonYear();
-    const players = this.playersForSeasonAndTeam().map(p => {
-      const attrs = getPlayerSeasonAttributesForYear(p.player, season);
-      const ovr = attrs ? attrs.overall.value : 0;
-      return { player: p.player, team: p.team, ovr };
-    }).filter(p => p.ovr > 0);
+    const players = this.playersForSeasonAndTeam()
+      .map(p => {
+        const stats = p.player.careerStats.find(s => s.seasonYear === season);
+        if (!stats || stats.matchesPlayed <= 0) return null;
+        const avgScore = calculateAverageMatchRating(stats);
+        if (avgScore === null) return null;
+        const rawAvg = stats.totalMatchRating / stats.matchesPlayed;
+        return { player: p.player, team: p.team, score: avgScore, rawAvg };
+      })
+      .filter((p): p is { player: Player; team: Team; score: number; rawAvg: number } => p !== null);
 
-    return players.sort((a, b) => b.ovr - a.ovr).slice(0, 5);
+    return players.sort((a, b) => b.rawAvg - a.rawAvg).slice(0, 5);
   });
 
-  bottomOvrPlayers = computed(() => {
+  bottomAvgScorePlayers = computed(() => {
     const season = this.selectedSeasonYear();
-    const players = this.playersForSeasonAndTeam().map(p => {
-      const attrs = getPlayerSeasonAttributesForYear(p.player, season);
-      const ovr = attrs ? attrs.overall.value : 0;
-      return { player: p.player, team: p.team, ovr };
-    }).filter(p => p.ovr > 0);
+    const players = this.playersForSeasonAndTeam()
+      .map(p => {
+        const stats = p.player.careerStats.find(s => s.seasonYear === season);
+        if (!stats || stats.matchesPlayed <= 0) return null;
+        const avgScore = calculateAverageMatchRating(stats);
+        if (avgScore === null) return null;
+        const rawAvg = stats.totalMatchRating / stats.matchesPlayed;
+        return { player: p.player, team: p.team, score: avgScore, rawAvg };
+      })
+      .filter((p): p is { player: Player; team: Team; score: number; rawAvg: number } => p !== null);
 
-    return players.sort((a, b) => a.ovr - b.ovr).slice(0, 5);
+    return players.sort((a, b) => a.rawAvg - b.rawAvg).slice(0, 5);
   });
 
   // Function to get player match stats
@@ -131,7 +143,7 @@ export class SeasonSummaryComponent {
   private getPlayerMatchScores(isBest: boolean) {
     const matches = this.playedMatchesForSeasonAndTeam();
     const teamId = this.selectedTeamId();
-    const scores: { player: { id: string, name: string }, teamName: string, rating: number, match: Match }[] = [];
+    const scores: { player: { id: string, name: string, position: Position }, opponentName: string, isHome: boolean, rating: number, match: Match }[] = [];
 
     const league = this.gameService.league();
     if (!league) return [];
@@ -139,30 +151,37 @@ export class SeasonSummaryComponent {
     for (const match of matches) {
       if (!match.matchReport) continue;
 
+      const homeTeam = league.teams.find(t => t.id === match.homeTeamId);
+      const awayTeam = league.teams.find(t => t.id === match.awayTeamId);
+
       if (teamId === 'all' || match.homeTeamId === teamId) {
-        const homeTeam = league.teams.find(t => t.id === match.homeTeamId);
-        if (homeTeam) {
+        if (homeTeam && awayTeam) {
           for (const stat of match.matchReport.homePlayerStats) {
-            scores.push({
-              player: { id: stat.playerId, name: stat.playerName },
-              teamName: homeTeam.name,
-              rating: scaleMatchRating(stat.rating),
-              match
-            });
+            if (stat.minutesPlayed && stat.minutesPlayed > 0) {
+              scores.push({
+                player: { id: stat.playerId, name: stat.playerName, position: stat.position },
+                opponentName: awayTeam.name,
+                isHome: true,
+                rating: scaleMatchRating(stat.rating),
+                match
+              });
+            }
           }
         }
       }
 
       if (teamId === 'all' || match.awayTeamId === teamId) {
-        const awayTeam = league.teams.find(t => t.id === match.awayTeamId);
-        if (awayTeam) {
+        if (homeTeam && awayTeam) {
           for (const stat of match.matchReport.awayPlayerStats) {
-            scores.push({
-              player: { id: stat.playerId, name: stat.playerName },
-              teamName: awayTeam.name,
-              rating: scaleMatchRating(stat.rating),
-              match
-            });
+            if (stat.minutesPlayed && stat.minutesPlayed > 0) {
+              scores.push({
+                player: { id: stat.playerId, name: stat.playerName, position: stat.position },
+                opponentName: homeTeam.name,
+                isHome: false,
+                rating: scaleMatchRating(stat.rating),
+                match
+              });
+            }
           }
         }
       }
@@ -185,12 +204,18 @@ export class SeasonSummaryComponent {
       })
       .filter((p): p is PlayerWithStats => p.stats !== undefined);
 
-    const getTop = (key: keyof PlayerWithStats['stats'], count = 3) => {
+    const getTop = (key: keyof PlayerWithStats['stats'], count = 3, excludeGk = false) => {
       return [...players]
-        .filter(p => (p.stats[key] as number) > 0)
-        .sort((a, b) => (b.stats[key] as number) - (a.stats[key] as number))
+        .filter(p => {
+          const val = p.stats[key];
+          if (excludeGk && p.player.position === Position.GK) {
+            return false;
+          }
+          return typeof val === 'number' && val > 0;
+        })
+        .sort((a, b) => ((b.stats[key] as number) || 0) - ((a.stats[key] as number) || 0))
         .slice(0, count)
-        .map(p => ({ name: p.player.name, team: p.team.name, val: p.stats[key] as number, id: p.player.id }));
+        .map(p => ({ name: p.player.name, team: p.team.name, val: p.stats[key] as number, id: p.player.id, position: p.player.position }));
     };
 
     return {
@@ -198,13 +223,7 @@ export class SeasonSummaryComponent {
       assists: getTop('assists'),
       tackles: getTop('tackles'),
       interceptions: getTop('interceptions'),
-      passes: getTop('passesSuccessful'),
-      saves: getTop('saves'),
-      rating: [...players]
-        .filter(p => p.stats!.matchesPlayed > 0)
-        .sort((a, b) => (b.stats!.totalMatchRating / b.stats!.matchesPlayed) - (a.stats!.totalMatchRating / a.stats!.matchesPlayed))
-        .slice(0, 3)
-        .map(p => ({ name: p.player.name, team: p.team.name, val: scaleMatchRating(p.stats!.totalMatchRating / p.stats!.matchesPlayed), id: p.player.id }))
+      clutchActions: getTop('clutchActions', 3, true)
     };
   });
 
@@ -285,23 +304,57 @@ export class SeasonSummaryComponent {
   mostUsedFormations = computed(() => {
     const matches = this.playedMatchesForSeasonAndTeam();
     const teamId = this.selectedTeamId();
-    const counts = new Map<string, number>();
+
+    interface FormationRecord {
+      count: number;
+      points: number;
+      goalsFor: number;
+      goalsAgainst: number;
+    }
+    const records = new Map<string, FormationRecord>();
+
+    const addRecord = (formationId: string, gf: number, ga: number) => {
+      let pts = 0;
+      if (gf > ga) pts = 3;
+      else if (gf === ga) pts = 1;
+
+      const current = records.get(formationId) || { count: 0, points: 0, goalsFor: 0, goalsAgainst: 0 };
+      records.set(formationId, {
+        count: current.count + 1,
+        points: current.points + pts,
+        goalsFor: current.goalsFor + gf,
+        goalsAgainst: current.goalsAgainst + ga
+      });
+    };
 
     for (const match of matches) {
+      if (match.homeScore === undefined || match.awayScore === undefined) continue;
+
       if (teamId === 'all' || match.homeTeamId === teamId) {
         const f = match.homeLineup?.selectedFormationId;
-        if (f) counts.set(f, (counts.get(f) || 0) + 1);
+        if (f) {
+          addRecord(f, match.homeScore, match.awayScore);
+        }
       }
       if (teamId === 'all' || match.awayTeamId === teamId) {
         const f = match.awayLineup?.selectedFormationId;
-        if (f) counts.set(f, (counts.get(f) || 0) + 1);
+        if (f) {
+          addRecord(f, match.awayScore, match.homeScore);
+        }
       }
     }
 
-    return Array.from(counts.entries())
-      .map(([id, count]) => {
+    return Array.from(records.entries())
+      .map(([id, rec]) => {
         const form = this.formationLibrary.getFormationById(id);
-        return { name: form?.name ?? id, count };
+        return {
+          name: form?.shortCode ?? form?.name ?? id,
+          count: rec.count,
+          points: rec.points,
+          goalsFor: rec.goalsFor,
+          goalsAgainst: rec.goalsAgainst,
+          goalDiff: rec.goalsFor - rec.goalsAgainst
+        };
       })
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);

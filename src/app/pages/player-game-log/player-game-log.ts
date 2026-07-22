@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, isDevMode } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, effect } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -30,11 +30,31 @@ export class PlayerGameLogComponent {
   isDev = isDevMode();
 
   playerId = toSignal(this.route.paramMap.pipe(map(params => params.get('id'))), { initialValue: null });
+  highlightMatchId = toSignal(
+    this.route.queryParamMap.pipe(map(params => params.get('highlightMatchId') || params.get('matchId'))),
+    { initialValue: null }
+  );
 
   player = computed(() => {
     const id = this.playerId();
     if (!id) return undefined;
     return this.gameService.getPlayer(id);
+  });
+
+  selectedSeason = computed(() => {
+    const qpSeason = this.route.snapshot.queryParamMap.get('season');
+    if (qpSeason && !isNaN(Number(qpSeason))) {
+      return Number(qpSeason);
+    }
+    const targetMatchId = this.highlightMatchId();
+    const l = this.gameService.league();
+    if (targetMatchId && l) {
+      const targetMatch = l.schedule.find(m => m.id === targetMatchId);
+      if (targetMatch && targetMatch.seasonYear) {
+        return targetMatch.seasonYear;
+      }
+    }
+    return l?.currentSeasonYear ?? new Date().getFullYear();
   });
 
   gameLog = computed(() => {
@@ -45,11 +65,12 @@ export class PlayerGameLogComponent {
     if (!l) return [];
 
     const teamId = p.teamId;
+    const season = this.selectedSeason();
 
-    // Filter matches for the current season, played, and involving the player's team
+    // Filter matches for the season, played, and involving the player's team
     const teamMatches = l.schedule.filter(m =>
       m.played &&
-      (m.seasonYear ?? l.currentSeasonYear) === l.currentSeasonYear &&
+      (m.seasonYear ?? l.currentSeasonYear) === season &&
       (m.homeTeamId === teamId || m.awayTeamId === teamId)
     );
 
@@ -87,6 +108,20 @@ export class PlayerGameLogComponent {
       };
     });
   });
+
+  constructor() {
+    effect(() => {
+      const targetId = this.highlightMatchId();
+      if (targetId) {
+        setTimeout(() => {
+          const el = document.getElementById('match-' + targetId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    });
+  }
 
   exportMatchJson(log: GameLogEntry) {
     const p = this.player();

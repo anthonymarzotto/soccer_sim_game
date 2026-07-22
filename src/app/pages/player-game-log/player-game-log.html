@@ -14,42 +14,46 @@
     </div>
 
     <!-- Stats Table -->
-    <div class="bg-panel border border-border rounded-2xl overflow-hidden shadow-xl">
+    <div class="bg-panel border border-border rounded-2xl shadow-xl">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
-          <thead class="text-xs text-text-muted uppercase bg-panel/50 border-b border-border">
+        <table class="w-full text-sm text-left border-collapse">
+          <thead class="text-xs text-text-muted uppercase bg-panel sticky top-0 z-10">
             <tr>
-              <th scope="col" class="px-4 py-3 w-16" title="Week of the Match">Week</th>
-              <th scope="col" class="px-4 py-3 w-48" title="Opponent Team">Opponent</th>
-              <th scope="col" class="px-4 py-3 w-20 text-center" title="Match Result">Result</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Minutes Played">MIN</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Goals">G</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Assists">A</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Offsides">OFF</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots">SH</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Shots on Target">SOG</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Passes Attempted">P</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Passes Completed">PC</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Pass Completion Percentage">P%</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Tackles">T</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Interceptions">INT</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Saves">SV</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Goals Conceded">GC</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Fouls Committed">FL</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Yellow Cards">YC</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Red Cards">RC</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Penalties Scored">PKG</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Aerial Duels Won">AWD</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Clutch Actions">CLT</th>
-              <th scope="col" class="px-4 py-3 w-16 text-center" title="Match Rating">RTG</th>
+              <th scope="col" class="px-4 py-3 w-16 bg-panel border-b border-border sticky top-0 z-10" title="Week of the Match">Week</th>
+              <th scope="col" class="px-4 py-3 w-48 bg-panel border-b border-border sticky top-0 z-10" title="Opponent Team">Opponent</th>
+              <th scope="col" class="px-4 py-3 w-20 text-center bg-panel border-b border-border sticky top-0 z-10" title="Match Result">Result</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Minutes Played">MIN</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Goals">G</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Assists">A</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Offsides">OFF</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Shots">SH</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Shots on Target">SOG</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Passes Attempted">P</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Passes Completed">PC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Pass Completion Percentage">P%</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Tackles">T</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Interceptions">INT</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Saves">SV</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Goals Conceded">GC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Fouls Committed">FL</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Yellow Cards">YC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Red Cards">RC</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Penalties Scored">PKG</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Aerial Duels Won">AWD</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Clutch Actions">CLT</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Match Rating">RTG</th>
               @if (isDev) {
-                <th scope="col" class="px-4 py-3 w-20 text-center">Export</th>
+                <th scope="col" class="px-4 py-3 w-20 text-center bg-panel border-b border-border sticky top-0 z-10">Export</th>
               }
             </tr>
           </thead>
           <tbody class="divide-y divide-border/60">
             @for (log of gameLog(); track log.match.id) {
-              <tr class="hover:bg-canvas/30 transition-colors group">
+              <tr [id]="'match-' + log.match.id"
+                  [class.bg-accent/20]="highlightMatchId() === log.match.id"
+                  [class.border-l-4]="highlightMatchId() === log.match.id"
+                  [class.border-l-accent]="highlightMatchId() === log.match.id"
+                  class="hover:bg-canvas/30 transition-colors group">
                 <td class="px-4 py-3 font-mono text-text-muted">{{ log.match.week }}</td>
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">

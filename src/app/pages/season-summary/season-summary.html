@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-canvas text-text-primary p-6 md:p-12">
-  <div class="max-w-7xl mx-auto space-y-8">
+  <div class="max-w-7xl space-y-8">
 
     <!-- Header & Filters -->
     <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-6 gap-4">
@@ -8,24 +8,26 @@
         <p class="text-text-muted mt-1 font-semibold text-xs tracking-wider uppercase">End of season dashboard</p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-4">
-        <div class="flex flex-col gap-1.5">
-          <label for="season-select" class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase">Season</label>
-          <select id="season-select" [(ngModel)]="selectedSeasonYear"
-            class="bg-canvas border border-border text-text-primary rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 w-32">
-            @for (year of availableSeasons(); track year) {
-              <option [ngValue]="year">{{ year }}</option>
+      <div class="flex flex-wrap items-center gap-3 shrink-0">
+        <!-- Team Selector -->
+        <div class="flex items-center gap-3 bg-panel border border-border rounded-lg p-1.5">
+          <label for="team-select" class="text-[10px] font-bold font-display text-text-muted uppercase tracking-wider px-2">Team</label>
+          <select id="team-select" [(ngModel)]="selectedTeamId"
+            class="bg-canvas border border-border text-text-primary text-xs font-bold rounded px-2.5 py-1.5 cursor-pointer hover:border-border-hover transition-colors">
+            <option value="all" class="bg-panel text-text-primary text-base font-normal">All Teams</option>
+            @for (team of teams(); track team.id) {
+              <option [value]="team.id" class="bg-panel text-text-primary text-base font-normal">{{ team.name }}</option>
             }
           </select>
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <label for="team-select" class="text-[10px] font-bold tracking-wider text-text-muted font-display uppercase">Team</label>
-          <select id="team-select" [(ngModel)]="selectedTeamId"
-            class="bg-canvas border border-border text-text-primary rounded-lg px-3 py-1.5 text-sm cursor-pointer hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 w-48">
-            <option value="all">All Teams</option>
-            @for (team of teams(); track team.id) {
-              <option [value]="team.id">{{ team.name }}</option>
+        <!-- Season Selector -->
+        <div class="flex items-center gap-3 bg-panel border border-border rounded-lg p-1.5">
+          <label for="season-select" class="text-[10px] font-bold font-display text-text-muted uppercase tracking-wider px-2">Season</label>
+          <select id="season-select" [(ngModel)]="selectedSeasonYear"
+            class="bg-canvas border border-border text-text-primary text-xs font-bold rounded px-2.5 py-1.5 cursor-pointer hover:border-border-hover transition-colors">
+            @for (year of availableSeasons(); track year) {
+              <option [ngValue]="year" class="bg-panel text-text-primary text-base font-normal">{{ year }}</option>
             }
           </select>
         </div>
@@ -35,20 +37,37 @@
     <!-- Dashboard Content -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-      <!-- Top Players by OVR -->
+      <!-- Top Players by Rating -->
       <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
         <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
-          <span class="material-icons text-lg">trending_up</span> Top Players by OVR
+          <span class="material-icons text-lg">trending_up</span> Top Players by Rating
         </h2>
-        @if (topOvrPlayers().length > 0) {
+        @if (topAvgScorePlayers().length > 0) {
           <div class="space-y-3">
-            @for (p of topOvrPlayers(); track p.player.id) {
+            @for (p of topAvgScorePlayers(); track p.player.id) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
-                  <span class="text-xs text-text-muted">{{ p.team.name }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(p.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(p.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(p.player.position) === 'FWD'">
+                    {{ p.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
+                    <span class="text-xs text-text-muted">{{ p.team.name }}</span>
+                  </div>
                 </div>
-                <span class="font-bold tabular-nums text-accent">{{ p.ovr }}</span>
+                <span class="font-mono font-bold tabular-nums text-accent">{{ p.score | number:'1.1-1' }}</span>
               </div>
             }
           </div>
@@ -57,20 +76,37 @@
         }
       </div>
 
-      <!-- Bottom Players by OVR -->
+      <!-- Bottom Players by Rating -->
       <div class="bg-panel border border-border rounded-xl p-5 shadow-sm">
         <h2 class="text-sm font-bold tracking-wider text-text-muted uppercase mb-4 flex items-center gap-2">
-          <span class="material-icons text-lg">trending_down</span> Bottom Players by OVR
+          <span class="material-icons text-lg">trending_down</span> Bottom Players by Rating
         </h2>
-        @if (bottomOvrPlayers().length > 0) {
+        @if (bottomAvgScorePlayers().length > 0) {
           <div class="space-y-3">
-            @for (p of bottomOvrPlayers(); track p.player.id) {
+            @for (p of bottomAvgScorePlayers(); track p.player.id) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
-                  <span class="text-xs text-text-muted">{{ p.team.name }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(p.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(p.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(p.player.position) === 'FWD'">
+                    {{ p.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
+                    <span class="text-xs text-text-muted">{{ p.team.name }}</span>
+                  </div>
                 </div>
-                <span class="font-bold tabular-nums text-danger">{{ p.ovr }}</span>
+                <span class="font-mono font-bold tabular-nums text-danger">{{ p.score | number:'1.1-1' }}</span>
               </div>
             }
           </div>
@@ -113,11 +149,28 @@
           <div class="space-y-3">
             @for (s of bestMatchScores(); track s.player.id + s.match.id) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', s.player.id]" class="font-medium hover:text-accent transition-colors">{{ s.player.name }}</a>
-                  <span class="text-xs text-text-muted truncate max-w-[150px]">W{{ s.match.week }} vs {{ s.teamName }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(s.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(s.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(s.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(s.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(s.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(s.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(s.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(s.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(s.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(s.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(s.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(s.player.position) === 'FWD'">
+                    {{ s.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', s.player.id]" class="font-medium hover:text-accent transition-colors">{{ s.player.name }}</a>
+                    <a [routerLink]="['/player', s.player.id, 'game-log']" [queryParams]="{ highlightMatchId: s.match.id }" class="text-xs text-text-muted hover:text-accent transition-colors truncate max-w-[150px]">W{{ s.match.week }} {{ s.isHome ? 'vs' : 'at' }} {{ s.opponentName }}</a>
+                  </div>
                 </div>
-                <span class="font-mono font-bold text-accent">{{ s.rating | number:'1.1-1' }}</span>
+                <a [routerLink]="['/player', s.player.id, 'game-log']" [queryParams]="{ highlightMatchId: s.match.id }" class="font-mono font-bold text-accent hover:underline transition-colors">{{ s.rating | number:'1.1-1' }}</a>
               </div>
             }
           </div>
@@ -135,11 +188,28 @@
           <div class="space-y-3">
             @for (s of worstMatchScores(); track s.player.id + s.match.id) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', s.player.id]" class="font-medium hover:text-accent transition-colors">{{ s.player.name }}</a>
-                  <span class="text-xs text-text-muted truncate max-w-[150px]">W{{ s.match.week }} vs {{ s.teamName }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(s.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(s.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(s.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(s.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(s.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(s.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(s.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(s.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(s.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(s.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(s.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(s.player.position) === 'FWD'">
+                    {{ s.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', s.player.id]" class="font-medium hover:text-accent transition-colors">{{ s.player.name }}</a>
+                    <a [routerLink]="['/player', s.player.id, 'game-log']" [queryParams]="{ highlightMatchId: s.match.id }" class="text-xs text-text-muted hover:text-accent transition-colors truncate max-w-[150px]">W{{ s.match.week }} {{ s.isHome ? 'vs' : 'at' }} {{ s.opponentName }}</a>
+                  </div>
                 </div>
-                <span class="font-mono font-bold text-danger">{{ s.rating | number:'1.1-1' }}</span>
+                <a [routerLink]="['/player', s.player.id, 'game-log']" [queryParams]="{ highlightMatchId: s.match.id }" class="font-mono font-bold text-danger hover:underline transition-colors">{{ s.rating | number:'1.1-1' }}</a>
               </div>
             }
           </div>
@@ -160,9 +230,26 @@
             @if (statLeaders().goals.length > 0) {
               <div class="space-y-2">
                 @for (l of statLeaders().goals; track l.id) {
-                  <div class="flex justify-between text-sm">
-                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
-                    <span class="font-bold tabular-nums text-accent">{{ l.val }}</span>
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 truncate pr-2">
+                      <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                        [class.bg-yellow-500/20]="getPositionGroup(l.position) === 'GK'"
+                        [class.text-yellow-400]="getPositionGroup(l.position) === 'GK'"
+                        [class.border-yellow-500/30]="getPositionGroup(l.position) === 'GK'"
+                        [class.bg-blue-500/20]="getPositionGroup(l.position) === 'DEF'"
+                        [class.text-blue-400]="getPositionGroup(l.position) === 'DEF'"
+                        [class.border-blue-500/30]="getPositionGroup(l.position) === 'DEF'"
+                        [class.bg-accent/20]="getPositionGroup(l.position) === 'MID'"
+                        [class.text-accent]="getPositionGroup(l.position) === 'MID'"
+                        [class.border-accent/30]="getPositionGroup(l.position) === 'MID'"
+                        [class.bg-red-500/20]="getPositionGroup(l.position) === 'FWD'"
+                        [class.text-danger]="getPositionGroup(l.position) === 'FWD'"
+                        [class.border-red-500/30]="getPositionGroup(l.position) === 'FWD'">
+                        {{ l.position }}
+                      </span>
+                      <span class="truncate"><a [routerLink]="['/player', l.id]" class="font-medium hover:text-accent transition-colors">{{ l.name }}</a><span class="text-[10px] text-text-muted ml-1">({{ l.team }})</span></span>
+                    </div>
+                    <span class="font-bold tabular-nums text-accent shrink-0">{{ l.val }}</span>
                   </div>
                 }
               </div>
@@ -174,23 +261,26 @@
             @if (statLeaders().assists.length > 0) {
               <div class="space-y-2">
                 @for (l of statLeaders().assists; track l.id) {
-                  <div class="flex justify-between text-sm">
-                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
-                    <span class="font-bold tabular-nums text-blue-400">{{ l.val }}</span>
-                  </div>
-                }
-              </div>
-            } @else { <p class="text-xs text-text-muted">None</p> }
-          </div>
-
-          <div>
-            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Avg Rating</h3>
-            @if (statLeaders().rating.length > 0) {
-              <div class="space-y-2">
-                @for (l of statLeaders().rating; track l.id) {
-                  <div class="flex justify-between text-sm">
-                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
-                    <span class="font-mono font-bold text-warning">{{ l.val | number:'1.1-1' }}</span>
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 truncate pr-2">
+                      <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                        [class.bg-yellow-500/20]="getPositionGroup(l.position) === 'GK'"
+                        [class.text-yellow-400]="getPositionGroup(l.position) === 'GK'"
+                        [class.border-yellow-500/30]="getPositionGroup(l.position) === 'GK'"
+                        [class.bg-blue-500/20]="getPositionGroup(l.position) === 'DEF'"
+                        [class.text-blue-400]="getPositionGroup(l.position) === 'DEF'"
+                        [class.border-blue-500/30]="getPositionGroup(l.position) === 'DEF'"
+                        [class.bg-accent/20]="getPositionGroup(l.position) === 'MID'"
+                        [class.text-accent]="getPositionGroup(l.position) === 'MID'"
+                        [class.border-accent/30]="getPositionGroup(l.position) === 'MID'"
+                        [class.bg-red-500/20]="getPositionGroup(l.position) === 'FWD'"
+                        [class.text-danger]="getPositionGroup(l.position) === 'FWD'"
+                        [class.border-red-500/30]="getPositionGroup(l.position) === 'FWD'">
+                        {{ l.position }}
+                      </span>
+                      <span class="truncate"><a [routerLink]="['/player', l.id]" class="font-medium hover:text-accent transition-colors">{{ l.name }}</a><span class="text-[10px] text-text-muted ml-1">({{ l.team }})</span></span>
+                    </div>
+                    <span class="font-bold tabular-nums text-blue-400 shrink-0">{{ l.val }}</span>
                   </div>
                 }
               </div>
@@ -202,9 +292,88 @@
             @if (statLeaders().tackles.length > 0) {
               <div class="space-y-2">
                 @for (l of statLeaders().tackles; track l.id) {
-                  <div class="flex justify-between text-sm">
-                    <span><a [routerLink]="['/player', l.id]" class="hover:text-accent">{{ l.name }}</a> <span class="text-[10px] text-text-muted">({{ l.team }})</span></span>
-                    <span class="font-bold tabular-nums">{{ l.val }}</span>
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 truncate pr-2">
+                      <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                        [class.bg-yellow-500/20]="getPositionGroup(l.position) === 'GK'"
+                        [class.text-yellow-400]="getPositionGroup(l.position) === 'GK'"
+                        [class.border-yellow-500/30]="getPositionGroup(l.position) === 'GK'"
+                        [class.bg-blue-500/20]="getPositionGroup(l.position) === 'DEF'"
+                        [class.text-blue-400]="getPositionGroup(l.position) === 'DEF'"
+                        [class.border-blue-500/30]="getPositionGroup(l.position) === 'DEF'"
+                        [class.bg-accent/20]="getPositionGroup(l.position) === 'MID'"
+                        [class.text-accent]="getPositionGroup(l.position) === 'MID'"
+                        [class.border-accent/30]="getPositionGroup(l.position) === 'MID'"
+                        [class.bg-red-500/20]="getPositionGroup(l.position) === 'FWD'"
+                        [class.text-danger]="getPositionGroup(l.position) === 'FWD'"
+                        [class.border-red-500/30]="getPositionGroup(l.position) === 'FWD'">
+                        {{ l.position }}
+                      </span>
+                      <span class="truncate"><a [routerLink]="['/player', l.id]" class="font-medium hover:text-accent transition-colors">{{ l.name }}</a><span class="text-[10px] text-text-muted ml-1">({{ l.team }})</span></span>
+                    </div>
+                    <span class="font-bold tabular-nums shrink-0">{{ l.val }}</span>
+                  </div>
+                }
+              </div>
+            } @else { <p class="text-xs text-text-muted">None</p> }
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Interceptions</h3>
+            @if (statLeaders().interceptions.length > 0) {
+              <div class="space-y-2">
+                @for (l of statLeaders().interceptions; track l.id) {
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 truncate pr-2">
+                      <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                        [class.bg-yellow-500/20]="getPositionGroup(l.position) === 'GK'"
+                        [class.text-yellow-400]="getPositionGroup(l.position) === 'GK'"
+                        [class.border-yellow-500/30]="getPositionGroup(l.position) === 'GK'"
+                        [class.bg-blue-500/20]="getPositionGroup(l.position) === 'DEF'"
+                        [class.text-blue-400]="getPositionGroup(l.position) === 'DEF'"
+                        [class.border-blue-500/30]="getPositionGroup(l.position) === 'DEF'"
+                        [class.bg-accent/20]="getPositionGroup(l.position) === 'MID'"
+                        [class.text-accent]="getPositionGroup(l.position) === 'MID'"
+                        [class.border-accent/30]="getPositionGroup(l.position) === 'MID'"
+                        [class.bg-red-500/20]="getPositionGroup(l.position) === 'FWD'"
+                        [class.text-danger]="getPositionGroup(l.position) === 'FWD'"
+                        [class.border-red-500/30]="getPositionGroup(l.position) === 'FWD'">
+                        {{ l.position }}
+                      </span>
+                      <span class="truncate"><a [routerLink]="['/player', l.id]" class="font-medium hover:text-accent transition-colors">{{ l.name }}</a><span class="text-[10px] text-text-muted ml-1">({{ l.team }})</span></span>
+                    </div>
+                    <span class="font-bold tabular-nums text-purple-400 shrink-0">{{ l.val }}</span>
+                  </div>
+                }
+              </div>
+            } @else { <p class="text-xs text-text-muted">None</p> }
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-text-secondary uppercase mb-2 border-b border-border/50 pb-1">Clutch Actions</h3>
+            @if (statLeaders().clutchActions.length > 0) {
+              <div class="space-y-2">
+                @for (l of statLeaders().clutchActions; track l.id) {
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 truncate pr-2">
+                      <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                        [class.bg-yellow-500/20]="getPositionGroup(l.position) === 'GK'"
+                        [class.text-yellow-400]="getPositionGroup(l.position) === 'GK'"
+                        [class.border-yellow-500/30]="getPositionGroup(l.position) === 'GK'"
+                        [class.bg-blue-500/20]="getPositionGroup(l.position) === 'DEF'"
+                        [class.text-blue-400]="getPositionGroup(l.position) === 'DEF'"
+                        [class.border-blue-500/30]="getPositionGroup(l.position) === 'DEF'"
+                        [class.bg-accent/20]="getPositionGroup(l.position) === 'MID'"
+                        [class.text-accent]="getPositionGroup(l.position) === 'MID'"
+                        [class.border-accent/30]="getPositionGroup(l.position) === 'MID'"
+                        [class.bg-red-500/20]="getPositionGroup(l.position) === 'FWD'"
+                        [class.text-danger]="getPositionGroup(l.position) === 'FWD'"
+                        [class.border-red-500/30]="getPositionGroup(l.position) === 'FWD'">
+                        {{ l.position }}
+                      </span>
+                      <span class="truncate"><a [routerLink]="['/player', l.id]" class="font-medium hover:text-accent transition-colors">{{ l.name }}</a><span class="text-[10px] text-text-muted ml-1">({{ l.team }})</span></span>
+                    </div>
+                    <span class="font-bold tabular-nums text-warning shrink-0">{{ l.val }}</span>
                   </div>
                 }
               </div>
@@ -223,9 +392,26 @@
           <div class="space-y-3">
             @for (inj of longestInjuries(); track inj.player.id + inj.record.sustainedInWeek) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', inj.player.id]" class="font-medium hover:text-accent transition-colors">{{ inj.player.name }}</a>
-                  <span class="text-xs text-text-muted">{{ inj.name }} (Wk {{ inj.record.sustainedInWeek }})</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(inj.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(inj.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(inj.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(inj.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(inj.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(inj.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(inj.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(inj.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(inj.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(inj.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(inj.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(inj.player.position) === 'FWD'">
+                    {{ inj.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', inj.player.id]" class="font-medium hover:text-accent transition-colors">{{ inj.player.name }}</a>
+                    <span class="text-xs text-text-muted">{{ inj.name }} (Wk {{ inj.record.sustainedInWeek }})</span>
+                  </div>
                 </div>
                 <span class="font-bold tabular-nums text-danger">{{ inj.record.totalWeeks }}w</span>
               </div>
@@ -245,9 +431,26 @@
           <div class="space-y-3">
             @for (susp of longestSuspensions(); track susp.player.id + susp.reason) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', susp.player.id]" class="font-medium hover:text-accent transition-colors">{{ susp.player.name }}</a>
-                  <span class="text-xs text-text-muted">{{ formatSuspensionReason(susp.reason) }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(susp.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(susp.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(susp.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(susp.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(susp.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(susp.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(susp.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(susp.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(susp.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(susp.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(susp.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(susp.player.position) === 'FWD'">
+                    {{ susp.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', susp.player.id]" class="font-medium hover:text-accent transition-colors">{{ susp.player.name }}</a>
+                    <span class="text-xs text-text-muted">{{ formatSuspensionReason(susp.reason) }}</span>
+                  </div>
                 </div>
                 <span class="font-bold tabular-nums text-danger">{{ susp.games }}g</span>
               </div>
@@ -270,12 +473,12 @@
             @if (biggestWinsLosses().wins.length > 0) {
               <div class="space-y-2.5">
                 @for (res of biggestWinsLosses().wins; track res.match.id) {
-                  <div class="flex items-center justify-between text-sm bg-canvas rounded px-3 py-2 border border-border/50">
-                    <span class="font-medium truncate mr-2" [class.text-accent]="selectedTeamId() !== 'all'">{{ res.team }}</span>
-                    <span class="font-bold tabular-nums shrink-0 mx-2 text-text-primary bg-panel px-2 py-0.5 rounded shadow-sm border border-border">
+                  <div class="grid grid-cols-[1fr_auto_1fr] items-center text-sm bg-canvas rounded px-3 py-2 border border-border/50 gap-2">
+                    <span class="font-medium truncate min-w-0" [class.text-accent]="selectedTeamId() !== 'all'">{{ res.team }}</span>
+                    <span class="font-bold tabular-nums text-text-primary bg-panel px-2.5 py-0.5 rounded shadow-sm border border-border justify-self-center shrink-0">
                       {{ res.isHome ? res.match.homeScore + ' - ' + res.match.awayScore : res.match.awayScore + ' - ' + res.match.homeScore }}
                     </span>
-                    <span class="text-text-muted truncate ml-2 text-right">{{ res.opponent }}</span>
+                    <span class="text-text-muted truncate text-right min-w-0">{{ res.opponent }}</span>
                   </div>
                 }
               </div>
@@ -290,12 +493,12 @@
               @if (biggestWinsLosses().losses.length > 0) {
                 <div class="space-y-2.5">
                   @for (res of biggestWinsLosses().losses; track res.match.id) {
-                    <div class="flex items-center justify-between text-sm bg-canvas rounded px-3 py-2 border border-border/50">
-                      <span class="font-medium truncate mr-2 text-text-muted">{{ res.team }}</span>
-                      <span class="font-bold tabular-nums shrink-0 mx-2 text-text-primary bg-panel px-2 py-0.5 rounded shadow-sm border border-border">
+                    <div class="grid grid-cols-[1fr_auto_1fr] items-center text-sm bg-canvas rounded px-3 py-2 border border-border/50 gap-2">
+                      <span class="font-medium truncate text-text-muted min-w-0">{{ res.team }}</span>
+                      <span class="font-bold tabular-nums text-text-primary bg-panel px-2.5 py-0.5 rounded shadow-sm border border-border justify-self-center shrink-0">
                         {{ res.isHome ? res.match.homeScore + ' - ' + res.match.awayScore : res.match.awayScore + ' - ' + res.match.homeScore }}
                       </span>
-                      <span class="font-medium text-text-primary truncate ml-2 text-right">{{ res.opponent }}</span>
+                      <span class="font-medium text-text-primary truncate text-right min-w-0">{{ res.opponent }}</span>
                     </div>
                   }
                 </div>
@@ -313,14 +516,22 @@
           <span class="material-icons text-lg">schema</span> Most Used Formations
         </h2>
         @if (mostUsedFormations().length > 0) {
-          <div class="space-y-3">
+          <div class="space-y-4">
             @for (f of mostUsedFormations(); track f.name) {
-              <div class="flex items-center justify-between text-sm">
-                <span class="font-medium text-text-primary">{{ f.name }}</span>
-                <span class="text-text-muted tabular-nums">{{ f.count }} matches</span>
-              </div>
-              <div class="w-full bg-canvas h-1.5 rounded-full overflow-hidden mt-1">
-                <div class="bg-accent h-full rounded-full" [style.width.%]="(f.count / mostUsedFormations()[0].count) * 100"></div>
+              <div class="flex flex-col">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="font-bold text-text-primary">{{ f.name }}</span>
+                  <span class="text-xs text-text-muted tabular-nums">{{ f.count }} matches</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-text-secondary mt-0.5 font-mono">
+                  <span>{{ f.points }} pts &nbsp;·&nbsp; {{ f.goalsFor }} GF / {{ f.goalsAgainst }} GA</span>
+                  <span class="font-bold" [class.text-accent]="f.goalDiff > 0" [class.text-danger]="f.goalDiff < 0" [class.text-text-muted]="f.goalDiff === 0">
+                    {{ f.goalDiff > 0 ? '+' : '' }}{{ f.goalDiff }} GD
+                  </span>
+                </div>
+                <div class="w-full bg-canvas h-1.5 rounded-full overflow-hidden mt-1.5">
+                  <div class="bg-accent h-full rounded-full" [style.width.%]="(f.count / mostUsedFormations()[0].count) * 100"></div>
+                </div>
               </div>
             }
           </div>
@@ -338,9 +549,26 @@
           <div class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
             @for (p of contractsEnding(); track p.player.id) {
               <div class="flex items-center justify-between text-sm">
-                <div class="flex flex-col">
-                  <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
-                  <span class="text-[10px] text-text-muted">{{ p.team.name }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0"
+                    [class.bg-yellow-500/20]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.text-yellow-400]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.border-yellow-500/30]="getPositionGroup(p.player.position) === 'GK'"
+                    [class.bg-blue-500/20]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.text-blue-400]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.border-blue-500/30]="getPositionGroup(p.player.position) === 'DEF'"
+                    [class.bg-accent/20]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.text-accent]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.border-accent/30]="getPositionGroup(p.player.position) === 'MID'"
+                    [class.bg-red-500/20]="getPositionGroup(p.player.position) === 'FWD'"
+                    [class.text-danger]="getPositionGroup(p.player.position) === 'FWD'"
+                    [class.border-red-500/30]="getPositionGroup(p.player.position) === 'FWD'">
+                    {{ p.player.position }}
+                  </span>
+                  <div class="flex flex-col">
+                    <a [routerLink]="['/player', p.player.id]" class="font-medium hover:text-accent transition-colors">{{ p.player.name }}</a>
+                    <span class="text-[10px] text-text-muted">{{ p.team.name }}</span>
+                  </div>
                 </div>
                 <span class="font-mono text-warning">{{ p.wage | number:'1.1-1' }} pts</span>
               </div>
