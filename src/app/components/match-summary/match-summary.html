@@ -137,6 +137,10 @@
               <span class="text-text-muted font-semibold">Shots on Target</span>
               <span class="font-bold text-text-primary tabular-nums">{{ match().matchStats!.shotsOnTarget.home }} - {{ match().matchStats!.shotsOnTarget.away }}</span>
             </div>
+            <div class="flex justify-between mt-1">
+              <span class="text-text-muted font-semibold">Expected Goals (xG)</span>
+              <span class="font-bold text-text-primary tabular-nums">{{ match().matchStats!.xg?.home?.toFixed(2) ?? '0.00' }} - {{ match().matchStats!.xg?.away?.toFixed(2) ?? '0.00' }}</span>
+            </div>
           </div>
           <div>
             <div class="flex justify-between">

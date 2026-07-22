@@ -19,6 +19,7 @@ interface VariantMetrics {
   events: number;
   tackles: number;
   interceptions: number;
+  xg: number;
 }
 
 interface SimulationRunRow {
@@ -32,6 +33,7 @@ interface SimulationSummary {
   avgGoals: number;
   avgShots: number;
   avgShotsOnTarget: number;
+  avgXg: number;
   homeWins: number;
   draws: number;
   awayWins: number;
@@ -569,6 +571,7 @@ interface FormationOption {
                   <p class="text-sm text-text-secondary">Avg Goals: {{ summaryB()!.avgGoals.toFixed(2) }}</p>
                   <p class="text-sm text-text-secondary">Avg Shots: {{ summaryB()!.avgShots.toFixed(2) }}</p>
                   <p class="text-sm text-text-secondary">Avg SOT: {{ summaryB()!.avgShotsOnTarget.toFixed(2) }}</p>
+                  <p class="text-sm text-text-secondary">Avg xG: {{ summaryB()!.avgXg.toFixed(2) }}</p>
                   <p class="text-sm text-text-secondary">Avg Tackles: {{ summaryB()!.avgTackles.toFixed(2) }}</p>
                   <p class="text-sm text-text-secondary">Avg Interceptions: {{ summaryB()!.avgInterceptions.toFixed(2) }}</p>
                   <p class="text-sm text-text-muted">W-D-L: {{ summaryB()!.homeWins }}-{{ summaryB()!.draws }}-{{ summaryB()!.awayWins }}</p>
@@ -588,6 +591,7 @@ interface FormationOption {
                         <th class="px-3 py-2">B Goals</th>
                         <th class="px-3 py-2">Shots</th>
                         <th class="px-3 py-2">SOT</th>
+                        <th class="px-3 py-2">xG</th>
                         <th class="px-3 py-2">Tackles</th>
                         <th class="px-3 py-2">Intercepts</th>
                         <th class="px-3 py-2">Events</th>
@@ -602,6 +606,7 @@ interface FormationOption {
                           <td class="px-3 py-2">{{ row.variantB.totalGoals }}</td>
                           <td class="px-3 py-2">{{ row.variantB.totalShots }}</td>
                           <td class="px-3 py-2">{{ row.variantB.shotsOnTarget }}</td>
+                          <td class="px-3 py-2">{{ row.variantB.xg.toFixed(2) }}</td>
                           <td class="px-3 py-2">{{ row.variantB.tackles }}</td>
                           <td class="px-3 py-2">{{ row.variantB.interceptions }}</td>
                           <td class="px-3 py-2">{{ row.variantB.events }}</td>
@@ -690,6 +695,7 @@ export class SimulationDebugComponent {
         acc.goals += row.variantB.totalGoals;
         acc.shots += row.variantB.totalShots;
         acc.shotsOnTarget += row.variantB.shotsOnTarget;
+        acc.xg += row.variantB.xg;
         acc.tackles += row.variantB.tackles;
         acc.interceptions += row.variantB.interceptions;
         if (row.variantB.homeScore > row.variantB.awayScore) acc.homeWins++;
@@ -697,7 +703,7 @@ export class SimulationDebugComponent {
         else acc.draws++;
         return acc;
       },
-      { goals: 0, shots: 0, shotsOnTarget: 0, homeWins: 0, awayWins: 0, draws: 0, tackles: 0, interceptions: 0 }
+      { goals: 0, shots: 0, shotsOnTarget: 0, homeWins: 0, awayWins: 0, draws: 0, tackles: 0, interceptions: 0, xg: 0 }
     );
 
     return {
@@ -705,6 +711,7 @@ export class SimulationDebugComponent {
       avgGoals: totals.goals / rows.length,
       avgShots: totals.shots / rows.length,
       avgShotsOnTarget: totals.shotsOnTarget / rows.length,
+      avgXg: totals.xg / rows.length,
       homeWins: totals.homeWins,
       draws: totals.draws,
       awayWins: totals.awayWins,
@@ -1010,6 +1017,7 @@ export class SimulationDebugComponent {
   private toMetrics(state: MatchState): VariantMetrics {
     const tackles = state.events.filter(e => e.type === EventType.TACKLE).length;
     const interceptions = state.events.filter(e => e.type === EventType.INTERCEPTION).length;
+    const xg = state.events.filter(e => e.additionalData?.xg !== undefined).reduce((sum, e) => sum + (e.additionalData?.xg ?? 0), 0);
     return {
       homeScore: state.homeScore,
       awayScore: state.awayScore,
@@ -1018,7 +1026,8 @@ export class SimulationDebugComponent {
       shotsOnTarget: state.homeShotsOnTarget + state.awayShotsOnTarget,
       events: state.events.length,
       tackles,
-      interceptions
+      interceptions,
+      xg
     };
   }
 

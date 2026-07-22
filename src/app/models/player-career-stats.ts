@@ -42,6 +42,7 @@ export function createEmptyPlayerCareerStats(seasonYear: number, teamId: string,
     indirectFreeKickGoals: 0,
     goalsConceded: 0,
     clutchActions: 0,
+    expectedGoals: 0,
     ...(marketValue !== undefined ? { marketValue } : {})
   };
 }

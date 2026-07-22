@@ -168,6 +168,10 @@ export class StatisticsService {
       saves: {
         home: this.calculateSaves(homeEvents),
         away: this.calculateSaves(awayEvents)
+      },
+      xg: {
+        home: matchState.events.filter(e => e.additionalData?.xg !== undefined && homeTeam.playerIds.includes(e.playerIds[0])).reduce((sum, e) => sum + (e.additionalData?.xg ?? 0), 0),
+        away: matchState.events.filter(e => e.additionalData?.xg !== undefined && awayTeam.playerIds.includes(e.playerIds[0])).reduce((sum, e) => sum + (e.additionalData?.xg ?? 0), 0)
       }
     };
   }
@@ -227,6 +231,7 @@ export class StatisticsService {
         aerialDuelsLost: matchState.events.filter(e => e.additionalData?.aerialLoser === player.id).length,
         cornerGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isCorner && e.playerIds[0] === player.id).length,
         indirectFreeKickGoals: matchState.events.filter(e => e.type === EventType.GOAL && e.additionalData?.isFreeKick && !e.additionalData?.freeKickDirect && e.playerIds[0] === player.id).length,
+        expectedGoals: primaryPlayerEvents.filter(e => e.additionalData?.xg !== undefined).reduce((sum, e) => sum + (e.additionalData?.xg ?? 0), 0),
         rating: 0
       };
 
@@ -236,6 +241,7 @@ export class StatisticsService {
         stats.clutchRatingBonus = 0;
         stats.goalsConceded = 0;
         stats.passingTurnovers = 0;
+        stats.expectedGoals = 0;
       } else {
         const ratingResult = this.calculatePlayerRating(
           player,

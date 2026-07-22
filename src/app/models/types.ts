@@ -148,6 +148,7 @@ export interface PlayerCareerStats {
   aerialDuelsLost?: number;
   cornerGoals?: number;
   indirectFreeKickGoals?: number;
+  expectedGoals?: number;
 }
 
 /**
@@ -254,6 +255,7 @@ export interface MatchStatistics {
   passes: { home: number; away: number };
   tackles: { home: number; away: number };
   saves: { home: number; away: number };
+  xg?: { home: number; away: number };
 }
 
 export interface MatchReport {
@@ -341,6 +343,7 @@ export interface PlayerStatistics {
   clutchRatingBonus?: number;
   goalsConceded?: number;
   passingTurnovers?: number;
+  expectedGoals?: number;
 }
 
 export interface League {

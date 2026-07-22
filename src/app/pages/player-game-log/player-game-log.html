@@ -24,6 +24,7 @@
               <th scope="col" class="px-4 py-3 w-20 text-center bg-panel border-b border-border sticky top-0 z-10" title="Match Result">Result</th>
               <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Minutes Played">MIN</th>
               <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Goals">G</th>
+              <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Expected Goals">xG</th>
               <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Assists">A</th>
               <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Offsides">OFF</th>
               <th scope="col" class="px-4 py-3 w-16 text-center bg-panel border-b border-border sticky top-0 z-10" title="Shots">SH</th>
@@ -82,6 +83,7 @@
                 @if (log.playerStats && log.playerStats.minutesPlayed > 0) {
                   <td class="px-4 py-3 text-center font-mono">{{ log.playerStats.minutesPlayed }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="log.playerStats.goals > 0" [class.font-bold]="log.playerStats.goals > 0" [class.text-text-muted]="log.playerStats.goals === 0">{{ log.playerStats.goals }}</td>
+                  <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="(log.playerStats.expectedGoals || 0) === 0">{{ log.playerStats.expectedGoals?.toFixed(2) ?? '0.00' }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="log.playerStats.assists > 0" [class.font-bold]="log.playerStats.assists > 0" [class.text-text-muted]="log.playerStats.assists === 0">{{ log.playerStats.assists }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-primary]="log.playerStats.offsides > 0" [class.font-bold]="log.playerStats.offsides > 0" [class.text-text-muted]="log.playerStats.offsides === 0">{{ log.playerStats.offsides }}</td>
                   <td class="px-4 py-3 text-center font-mono" [class.text-text-muted]="log.playerStats.shots === 0">{{ log.playerStats.shots }}</td>

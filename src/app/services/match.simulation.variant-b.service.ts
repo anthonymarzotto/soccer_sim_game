@@ -3221,6 +3221,42 @@ export class MatchSimulationVariantBService {
     );
     const onTarget = this.rng.random() < onTargetChance;
 
+    // Calculate xG for the shot: the probability of it being on target AND scored.
+    // The goalChance represents the probability of scoring GIVEN that it is on target.
+    // However, goalChance is calculated after onTarget is checked, so we need to know what it is.
+    // Let's compute goalChance here so we have it for xG calculation.
+    const keeperSkill = goalkeeper
+      ? (this.getPlayerStat(goalkeeper, 'handling') + this.getPlayerStat(goalkeeper, 'reflexes')) / 2
+      : 70;
+    let goalChance =
+      this.activeTuning.goalChanceBase +
+      (this.getPlayerStat(shooter, 'shooting') - keeperSkill) *
+      this.activeTuning.goalChanceSkillVsKeeperScale;
+
+    if (attackingY >= 85) {
+      goalChance += 0.2;
+    } else if (attackingY >= 75) {
+      goalChance += 0.12;
+    } else {
+      goalChance += 0.02;
+    }
+
+    goalChance -=
+      (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
+    goalChance -= pressure * 0.05;
+    goalChance += chainQuality * 0.015;
+    goalChance += shotShapeModifier.goalChanceBonus;
+    if (isHomeInPossession) {
+      goalChance += this.activeTuning.homeAdvantageGoalBonus;
+    }
+    goalChance = this.clampChance(
+      goalChance,
+      this.activeTuning.goalChanceMin,
+      this.activeTuning.goalChanceMax,
+    );
+
+    const shotXg = onTargetChance * goalChance;
+
     if (!onTarget) {
       this.createEvent(
         state,
@@ -3230,6 +3266,7 @@ export class MatchSimulationVariantBService {
         minute,
         false,
         config,
+        { xg: shotXg },
       );
       // Non-contact injury roll on the shooter.
       const shooterTeamPlayers = isHomeInPossession
@@ -3268,36 +3305,6 @@ export class MatchSimulationVariantBService {
       state.awayShotsOnTarget++;
     }
 
-    const keeperSkill = goalkeeper
-      ? (this.getPlayerStat(goalkeeper, 'handling') + this.getPlayerStat(goalkeeper, 'reflexes')) / 2
-      : 70;
-    let goalChance =
-      this.activeTuning.goalChanceBase +
-      (this.getPlayerStat(shooter, 'shooting') - keeperSkill) *
-      this.activeTuning.goalChanceSkillVsKeeperScale;
-
-    if (attackingY >= 85) {
-      goalChance += 0.2;
-    } else if (attackingY >= 75) {
-      goalChance += 0.12;
-    } else {
-      goalChance += 0.02;
-    }
-
-    goalChance -=
-      (lateralDistance / 50) * this.activeTuning.goalChanceWidePenalty;
-    goalChance -= pressure * 0.05;
-    goalChance += chainQuality * 0.015;
-    goalChance += shotShapeModifier.goalChanceBonus;
-    if (isHomeInPossession) {
-      goalChance += this.activeTuning.homeAdvantageGoalBonus;
-    }
-    goalChance = this.clampChance(
-      goalChance,
-      this.activeTuning.goalChanceMin,
-      this.activeTuning.goalChanceMax,
-    );
-
     if (this.rng.random() < goalChance) {
       this.handleGoal(
         state,
@@ -3309,6 +3316,7 @@ export class MatchSimulationVariantBService {
         rosters.homePlayers,
         rosters.awayPlayers,
         tactics,
+        { xg: shotXg },
       );
       return;
     }
@@ -3321,6 +3329,7 @@ export class MatchSimulationVariantBService {
       minute,
       true,
       config,
+      { xg: shotXg },
     );
 
     // Contact injury roll on the goalkeeper (point-blank save physical contact).
@@ -3453,17 +3462,18 @@ export class MatchSimulationVariantBService {
     const attackerWins = attackerScore > defenderScore;
 
     if (attackerWins) {
-      const additionalData = {
-        isCorner: true,
-        aerialWinner: attackingTarget.id,
-        aerialLoser: defenderMarker.id
-      };
-
       const gk = onFieldDefenders.find(p => p.position === PositionEnum.GK) ?? onFieldDefenders[0] ?? defenders[0];
       const keeperSkill = (this.getPlayerStat(gk, 'reflexes') + this.getPlayerStat(gk, 'handling')) / 2;
 
       let goalChance = this.activeTuning.cornerGoalChanceBase + (this.getPlayerStat(attackingTarget, 'heading') - keeperSkill) * 0.002;
       goalChance = this.clampChance(goalChance, 0.02, this.activeTuning.cornerGoalChanceMax);
+
+      const additionalData = {
+        isCorner: true,
+        aerialWinner: attackingTarget.id,
+        aerialLoser: defenderMarker.id,
+        xg: goalChance
+      };
 
       if (attackingTeamSide === TeamSide.HOME) {
         state.homeShots++;
@@ -3607,7 +3617,7 @@ export class MatchSimulationVariantBService {
     const relativeY = attackingTeamSide === TeamSide.HOME ? state.ballPossession.location.y : 100 - state.ballPossession.location.y;
     const directShot = relativeY >= 85 ? this.rng.random() < 0.70 : this.rng.random() < 0.30;
 
-    const additionalData = {
+    const additionalData: { isFreeKick: boolean; freeKickDirect: boolean; xg?: number } = {
       isFreeKick: true,
       freeKickDirect: directShot
     };
@@ -3623,7 +3633,13 @@ export class MatchSimulationVariantBService {
       }
 
       const shotOnTargetChance = 0.30 + (this.getPlayerStat(taker, 'shooting') - keeperSkill) * 0.002;
-      const onTarget = this.rng.random() < this.clampChance(shotOnTargetChance, 0.10, 0.50);
+      const clampedShotOnTargetChance = this.clampChance(shotOnTargetChance, 0.10, 0.50);
+      const onTarget = this.rng.random() < clampedShotOnTargetChance;
+
+      let goalChance = 0.12 + (this.getPlayerStat(taker, 'shooting') - keeperSkill) * 0.002;
+      goalChance = this.clampChance(goalChance, 0.03, 0.30);
+      const fkXg = clampedShotOnTargetChance * goalChance;
+      additionalData.xg = fkXg;
 
       if (!onTarget) {
         this.createEvent(
@@ -3647,9 +3663,6 @@ export class MatchSimulationVariantBService {
         } else {
           state.awayShotsOnTarget++;
         }
-
-        let goalChance = 0.12 + (this.getPlayerStat(taker, 'shooting') - keeperSkill) * 0.002;
-        goalChance = this.clampChance(goalChance, 0.03, 0.30);
 
         if (this.rng.random() < goalChance) {
           if (attackingTeamSide === TeamSide.HOME) {
@@ -3727,7 +3740,7 @@ export class MatchSimulationVariantBService {
 
       const attackerWins = attackerScore > defenderScore;
 
-      const aerialData = {
+      const aerialData: { isFreeKick: boolean; freeKickDirect: boolean; aerialWinner: string; aerialLoser: string; xg?: number } = {
         isFreeKick: true,
         freeKickDirect: false,
         aerialWinner: attackerWins ? attackingTarget.id : defenderMarker.id,
@@ -3746,6 +3759,7 @@ export class MatchSimulationVariantBService {
 
         let goalChance = this.activeTuning.indirectFkGoalChanceBase + (this.getPlayerStat(attackingTarget, 'heading') - keeperSkill) * 0.003;
         goalChance = this.clampChance(goalChance, 0.03, this.activeTuning.indirectFkGoalChanceMax);
+        aerialData.xg = goalChance;
 
         if (this.rng.random() < goalChance) {
           if (attackingTeamSide === TeamSide.HOME) {
@@ -3875,7 +3889,7 @@ export class MatchSimulationVariantBService {
     penaltySuccessChance = this.clampChance(penaltySuccessChance, 0.55, 0.88);
 
     const goalScored = this.rng.random() < penaltySuccessChance;
-    const additionalData = { isPenalty: true };
+    const additionalData = { isPenalty: true, xg: penaltySuccessChance };
 
     if (goalScored) {
       if (attackingTeamSide === TeamSide.HOME) {

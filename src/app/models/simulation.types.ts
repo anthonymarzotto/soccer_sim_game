@@ -92,6 +92,7 @@ export interface PlayByPlayEventAdditionalData {
   scrambleDecisions?: ScrambleCandidateDecision[];
   tackleDecisions?: TackleCandidateDecision[];
   interceptionDecisions?: TackleCandidateDecision[];
+  xg?: number;
 }
 
 export interface ScrambleCandidateDecision {

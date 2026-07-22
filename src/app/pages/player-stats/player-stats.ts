@@ -201,6 +201,7 @@ export class PlayerStatsComponent {
     { key: 'position', label: 'Position', sortable: true },
     { key: 'matchesPlayed', label: 'MP', sortable: true },
     { key: 'goals', label: 'Goals', sortable: true },
+    { key: 'expectedGoals', label: 'xG', sortable: true },
     { key: 'assists', label: 'Assists', sortable: true },
     { key: 'offsides', label: 'Offsides', sortable: true },
     { key: 'shots', label: 'Shots', sortable: true },
@@ -282,6 +283,9 @@ export class PlayerStatsComponent {
     if (column === 'position') return row.player.position;
     if (column === 'matchesPlayed') {
       return formatGamesPlayed(row.stats);
+    }
+    if (column === 'expectedGoals') {
+      return (row.stats.expectedGoals ?? 0).toFixed(2);
     }
     if (column === 'averageRating') {
       return formatAverageMatchRating(row.stats);

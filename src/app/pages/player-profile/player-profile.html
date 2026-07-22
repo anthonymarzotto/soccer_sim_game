@@ -948,8 +948,9 @@
                     <th class="w-16 whitespace-nowrap text-right py-3 px-4 font-semibold">Games</th>
                     <th class="w-24 whitespace-nowrap text-right py-3 px-4 font-semibold">Minutes</th>
                     @if (statsView === 'general') {
-                      <th class="text-right py-3 px-4 font-semibold">Goals</th>
-                      <th class="text-right py-3 px-4 font-semibold">Assists</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Goals">G</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Expected Goals">xG</th>
+                      <th class="text-right py-3 px-4 font-semibold" title="Assists">A</th>
                       <th class="text-right py-3 px-4 font-semibold">Offsides</th>
                       <th class="text-right py-3 px-4 font-semibold">Shots</th>
                       <th class="text-right py-3 px-4 font-semibold">SoT</th>
@@ -1000,6 +1001,7 @@
                       <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ s.minutesPlayed || 0 }}</td>
                       @if (statsView === 'general') {
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ s.goals || 0 }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ s.expectedGoals?.toFixed(2) ?? '0.00' }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ s.assists || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.offsides || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ s.shots || 0 }}</td>
@@ -1051,6 +1053,7 @@
                       <td class="w-24 whitespace-nowrap py-3 px-4 text-right text-text-primary font-mono">{{ totals.minutesPlayed }}</td>
                       @if (statsView === 'general') {
                         <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.goals }}</td>
+                        <td class="py-3 px-4 text-right text-accent font-mono">{{ totals.expectedGoals?.toFixed(2) ?? '0.00' }}</td>
                         <td class="py-3 px-4 text-right text-blue-400 font-mono">{{ totals.assists }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.offsides || 0 }}</td>
                         <td class="py-3 px-4 text-right text-text-primary font-mono">{{ totals.shots }}</td>
