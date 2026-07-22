@@ -1,6 +1,6 @@
 {
   "name": "soccer-simulator",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "dataSchemaVersion": "Z",
   "scripts": {
     "check:data-schema-version": "node scripts/sync-data-schema-version.mjs --check",
@@ -18,7 +18,9 @@
     "watch": "ng build --watch --configuration development",
     "version:data": "node -e \"console.log(require('./package.json').dataSchemaVersion)\"",
     "pretest": "npm run sync:data-schema-version",
+    "pretest:changed": "npm run sync:data-schema-version",
     "test": "ng test",
+    "test:changed": "node scripts/test-changed.mjs",
     "test:simulation-ab": "ng test --watch=false --include src/app/services/match.simulation.ab.spec.ts",
     "test:simulation-calibration": "ng test --watch=false --include src/app/services/match.simulation.variant-b.calibration.spec.ts",
     "prelint": "npm run sync:data-schema-version",

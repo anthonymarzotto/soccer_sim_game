@@ -105,6 +105,16 @@
 
           @if (userTeamId()) {
             <a
+              routerLink="/dashboard"
+              routerLinkActive="active-nav"
+              class="nav-link"
+            >
+              <span class="indicator"></span>
+              <span class="material-icons text-xl">dashboard</span>
+              <span>Dashboard</span>
+            </a>
+
+            <a
               [routerLink]="['/team', userTeamId()]"
               routerLinkActive="active-nav"
               [routerLinkActiveOptions]="{exact: true}"
