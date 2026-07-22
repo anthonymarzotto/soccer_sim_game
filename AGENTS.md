@@ -66,7 +66,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Running Unit Tests
 
-To run all unit tests non-interactively (without watch mode):
+To run unit tests quickly for only modified/changed files (recommended during active development):
+- On Windows PowerShell:
+  ```powershell
+  npm.cmd run test:changed
+  ```
+- On other platforms/shells:
+  ```bash
+  npm run test:changed
+  ```
+
+To run all unit tests in the codebase non-interactively (without watch mode):
 - On Windows PowerShell (to bypass script execution policies blocking `npm.ps1`):
   ```powershell
   npm.cmd run test -- --watch=false
