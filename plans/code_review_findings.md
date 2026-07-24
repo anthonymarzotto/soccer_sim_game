@@ -22,10 +22,11 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 
 ## 🟡 Medium Severity
 
-### 3. `calculatePlayerRating` Uses `stats.minutesPlayed / 90` as Time Ratio, but Base is 60
+### 3. ~~`calculatePlayerRating` Uses `stats.minutesPlayed / 90` as Time Ratio, but Base is 60~~ [REJECTED]
 * **Location:** [statistics.service.ts L597–600](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L597-L600)
 * **Why it matters:** A player who plays 45 minutes produces `timeRatio = 0.5`. For a GK with `EXPECTED_RATES.GK.saves = 4.3`, `expected(4.3) = 2.15`. If the GK makes 2 saves (meeting expectation at half-time), the save contribution is `3.0 * (2 - 2.15) = -0.45`, so the GK is **penalised for meeting positional expectation at half-time**, since the model assumes they played 90 minutes worth of events. The base was raised from 50 to 60, but the expected-rate scaling was not recalibrated for common sub-90 playing times. A 45-min sub who does nothing gets 60, but a 45-min GK who makes 2 saves gets ~59.5. The test at [statistics.service.spec.ts L207](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.spec.ts#L207) confirms a bench player gets 60, but there's no test for a sub-entered GK performing at expectation.
 * **Suggested direction:** Consider whether the base should remain at 60 for zero-minute players (squad list filler), or whether the expected rate normalisation should key off `minutesPlayed` more carefully for starters. An alternative: only apply the expected-rate penalty if `minutesPlayed > threshold` (e.g., 30 min).
+* **Status:** Rejected / Invalid. 60 is the baseline rating score (representing a 6.0/10 average performance) while 90 represents regulation match duration in minutes. Scaling expected per-90 benchmark stats by `minutesPlayed / 90` is standard football analytics rate normalization.
 
 ### 4. `RECOVERY` Pass-Failure Mode Silently Counted as a Turnover in Rating
 * **Location:** [statistics.service.ts L499](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L499) and [match.simulation.variant-b.service.ts L1602](file:///C:/Repos/soccer_sim_game/src/app/services/match.simulation.variant-b.service.ts#L1602)
