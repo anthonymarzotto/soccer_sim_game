@@ -698,4 +698,28 @@ describe('StatisticsService', () => {
       expect(p2Stats!.expectedGoals).toBeCloseTo(0.15);
     });
   });
+
+  describe('Clutch events running score evaluation', () => {
+    it('evaluates clutch events against pre-event scores rather than post-event scores', () => {
+      const p1 = createTestPlayer({ id: 'p1', name: 'Scorer', position: Position.ST, teamId: 'team-1' });
+      const team1 = makeTeam([p1], [], 'team-1');
+
+      // Timeline:
+      // Team-1 is already winning 3-0.
+      // At min 80, p1 scores to make it 4-0.
+      // - Score before Goal: 3-0 (ourScoreBefore = 3, oppScoreBefore = 0).
+      // - Since ourScoreBefore >= oppScoreBefore + 3, this is garbage time.
+      // - It should receive a blowout penalty (-4) to clutch rating bonus.
+      const state = makeMatchState([
+        { id: 'g-pre-1', type: EventType.GOAL, description: '', playerIds: ['teammate'], location: { x: 50, y: 88 }, time: 10, success: true },
+        { id: 'g-pre-2', type: EventType.GOAL, description: '', playerIds: ['teammate'], location: { x: 50, y: 88 }, time: 20, success: true },
+        { id: 'g-pre-3', type: EventType.GOAL, description: '', playerIds: ['teammate'], location: { x: 50, y: 88 }, time: 30, success: true },
+        { id: 'g-clutch', type: EventType.GOAL, description: '', playerIds: ['p1'], location: { x: 50, y: 88 }, time: 80, success: true }
+      ]);
+
+      const [p1Stats] = service.generatePlayerStatistics(state, team1, [p1]);
+      expect(p1Stats.clutchRatingBonus).toBe(-4); // blowout penalty
+      expect(p1Stats.clutchActionsCount).toBe(0);
+    });
+  });
 });

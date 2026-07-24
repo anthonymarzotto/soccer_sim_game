@@ -477,18 +477,6 @@ export class StatisticsService {
 
     for (const e of events) {
 
-      if (e.type === EventType.GOAL) {
-        const scorerId = e.playerIds[0];
-        if (teamPlayerIds.has(scorerId)) {
-          ourScore++;
-        } else {
-          oppScore++;
-          if (e.time >= startMin && e.time <= endMin) {
-            goalsConceded++;
-          }
-        }
-      }
-
       if (
         e.type === EventType.PASS &&
         !e.success &&
@@ -506,26 +494,23 @@ export class StatisticsService {
 
       if (e.time >= startMin && e.time <= endMin) {
         if (e.type === EventType.GOAL && isActor) {
-          const ourScoreBefore = ourScore - 1;
-          const oppScoreBefore = oppScore;
-
           const isLate = e.time >= 75 || e.additionalData?.isPenalty === true;
 
-          if (ourScoreBefore === oppScoreBefore) {
+          if (ourScore === oppScore) {
             if (isLate) {
               clutchCount++;
               clutchBonus += 8;
             } else {
               clutchBonus += 3;
             }
-          } else if (ourScoreBefore === oppScoreBefore - 1) {
+          } else if (ourScore === oppScore - 1) {
             if (isLate) {
               clutchCount++;
               clutchBonus += 6;
             } else {
               clutchBonus += 2;
             }
-          } else if (ourScoreBefore >= oppScoreBefore + 3 || ourScoreBefore <= oppScoreBefore - 3) {
+          } else if (ourScore >= oppScore + 3 || ourScore <= oppScore - 3) {
             clutchBonus -= 4;
           }
         }
@@ -555,6 +540,18 @@ export class StatisticsService {
             } else {
               clutchBonus += 2.0;
             }
+          }
+        }
+      }
+
+      if (e.type === EventType.GOAL) {
+        const scorerId = e.playerIds[0];
+        if (teamPlayerIds.has(scorerId)) {
+          ourScore++;
+        } else {
+          oppScore++;
+          if (e.time >= startMin && e.time <= endMin) {
+            goalsConceded++;
           }
         }
       }

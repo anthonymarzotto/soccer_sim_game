@@ -6,10 +6,11 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 
 ## 🔴 High Severity
 
-### 1. Stale Score State in Clutch Context Causes Wrong Clutch Bonus
+### 1. ~~Stale Score State in Clutch Context Causes Wrong Clutch Bonus~~ [FIXED]
 * **Location:** [statistics.service.ts L507–531](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L507-L531) (`calculateClutchAndDefenseInfo`)
 * **Why it matters:** The outer `for` loop tracks `ourScore`/`oppScore` cumulatively as goals are processed. When a `GOAL` event is reached and `isActor` is true, the code derives `ourScoreBefore = ourScore - 1`. However, `ourScore` is only incremented **inside the same `if (e.type === EventType.GOAL)` block** — before the clutch-bonus block runs. This works correctly for goals but the clutch-bonus check for **saves** (L537) uses `ourScore`/`oppScore` post-increment. That means if the player scores a goal and later in the same event iteration a save check fires, `ourScore` already reflects the scored goal. The result is clutch bonuses calculated against incorrect running totals for events that appear close together in the event stream. More critically, if the match has already produced `ourScore > oppScore + 1` by the time an early goal event is processed, a goal in a garbage-time situation could still match `ourScoreBefore === oppScoreBefore`, producing an undeserved clutch bonus.
 * **Suggested direction:** Decouple the running-score tracking from the clutch-bonus evaluation. Make a first pass to build a `scoreAtTime: Map<number, {home, away}>` lookup, then use that to read context for each event.
+* **Status:** Resolved by shifting score increments to the end of the event loop iteration and evaluating clutch criteria using the pre-event score directly. Added unit test verification.
 
 ### 2. `computeRatingBreakdown` Duplicates Weights/Group Logic Diverged from `calculatePlayerRating`
 * **Location:** [statistics.service.ts L687–750](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L687-L750) vs. [L571–685](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L571-L685)
