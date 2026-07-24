@@ -46,16 +46,17 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 * **Suggested direction:** In the single-team branch, pre-filter `tMatches` to `m.homeTeamId === teamId || m.awayTeamId === teamId` before passing to `calculateStreaksForMatches`.
 * **Status:** Resolved. Pre-filtered `tMatches` explicitly in the single-team branch using `.filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId)`. This resolves the concern and ensures we copy the array (returned by `.filter()`) instead of sorting the reactive computed signal cache array in place, avoiding side effects from in-place mutations.
 
-### 7. OVR Tertiary Stat Pool Includes GK-Only Stats for GK Position, but Excludes Them for Outfield
+### 7. OVR Tertiary Stat Pool Includes GK-Only Stats for GK Position, but Excludes Them for Outfield [DEFERRED / BY DESIGN]
 * **Location:** [player-progression.ts L176–185](file:///C:/Repos/soccer_sim_game/src/app/models/player-progression.ts#L176-L185)
 * **Why it matters:** The pool filter excludes `goalkeeping` type stats for non-GK positions. However for a GK, `isGk = true` and the filter becomes `!def.hidden && def.type !== 'misc'` — GK-specific stats are included in the pool. The `tertiaryKeys` for GK then includes all outfield stats (`speed`, `shooting`, etc.) that a GK legitimately has values for, but those being averaged into "tertiary" for a GK may produce unexpected OVR compression. The `POSITION_OVR_CONFIG[GK].core` only lists `handling` and `reflexes`; `commandOfArea` (which was previously double-weighted) is now a tertiary, meaning a GK with poor `commandOfArea` but good handling/reflexes will see a small OVR drag. This may be intentional, but there's no test covering a GK with an extreme `commandOfArea` spread to validate the expected OVR range hasn't changed. The old formula gave GK OVR from 15 stats; the new formula's tertiary pool for GK may include a different count.
 * **Suggested direction:** Add a test fixture asserting GK OVR for known attribute values before/after the change, to validate the calibration hasn't drifted unexpectedly.
+* **Status:** Deferred / By Design. Extra goalkeeping stats are currently unused and outfield exclusion is intentional. The broader GK OVR ratings and wage calibration will be reassessed separately in a future task, at which point GK OVR testing fixtures will be established.
 
 ---
 
 ## 🔍 Testing Gaps
 
 - No test for the rating of a sub who enters and then has meaningful events (only zero-minute sub is tested).
-- No test asserting `RECOVERY` pass failures do **not** count as full turnovers.
-- No test for `calculateStreaksForMatches` with a team-id that matches neither home nor away (the filtering gap above).
-- No regression test for GK OVR values post-formula change.
+- ~~No test asserting `RECOVERY` pass failures do **not** count as full turnovers.~~ (Fixed: added to [statistics.service.spec.ts](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.spec.ts))
+- ~~No test for `calculateStreaksForMatches` with a team-id that matches neither home nor away (the filtering gap above).~~ (Fixed: pre-filtering of `tMatches` ensures this case is not possible/tested)
+- Deferred: GK OVR regression test (held for future GK ratings re-assessment).
