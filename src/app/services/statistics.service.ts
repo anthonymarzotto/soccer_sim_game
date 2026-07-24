@@ -498,7 +498,10 @@ export class StatisticsService {
         e.time <= endMin
       ) {
         if (e.additionalData?.passFailure === 'RECOVERY' || e.additionalData?.passFailure === 'OVERHIT') {
-          passingTurnovers++;
+          const recipientId = e.playerIds[1];
+          if (recipientId && !teamPlayerIds.has(recipientId)) {
+            passingTurnovers++;
+          }
         }
       }
 

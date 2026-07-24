@@ -755,4 +755,28 @@ describe('StatisticsService', () => {
       expect(goalItem).toBeDefined();
     });
   });
+
+  describe('Pass turnover recovery evaluation', () => {
+    it('does not count a RECOVERY or OVERHIT pass failure as a turnover if recovered by a teammate', () => {
+      const p1 = createTestPlayer({ id: 'p1', name: 'Passer', position: Position.CM, teamId: 'team-1' });
+      const p2 = createTestPlayer({ id: 'p2', name: 'Teammate', position: Position.ST, teamId: 'team-1' });
+      const team1 = makeTeam([p1, p2], [], 'team-1');
+
+      const passRecoveredByTeammate = {
+        ...makeEvent(EventType.PASS, ['p1', 'p2'], 10, false),
+        additionalData: { passFailure: 'RECOVERY' as const }
+      };
+
+      const passRecoveredByOpponent = {
+        ...makeEvent(EventType.PASS, ['p1', 'opp'], 20, false),
+        additionalData: { passFailure: 'RECOVERY' as const }
+      };
+
+      const state = makeMatchState([passRecoveredByTeammate, passRecoveredByOpponent]);
+
+      const stats = service.generatePlayerStatistics(state, team1, [p1, p2]);
+      const p1Stats = stats.find(s => s.playerId === 'p1')!;
+      expect(p1Stats.passingTurnovers).toBe(1);
+    });
+  });
 });

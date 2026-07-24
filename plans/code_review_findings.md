@@ -28,10 +28,11 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 * **Suggested direction:** Consider whether the base should remain at 60 for zero-minute players (squad list filler), or whether the expected rate normalisation should key off `minutesPlayed` more carefully for starters. An alternative: only apply the expected-rate penalty if `minutesPlayed > threshold` (e.g., 30 min).
 * **Status:** Rejected / Invalid. 60 is the baseline rating score (representing a 6.0/10 average performance) while 90 represents regulation match duration in minutes. Scaling expected per-90 benchmark stats by `minutesPlayed / 90` is standard football analytics rate normalization.
 
-### 4. `RECOVERY` Pass-Failure Mode Silently Counted as a Turnover in Rating
+### 4. ~~`RECOVERY` Pass-Failure Mode Silently Counted as a Turnover in Rating~~ [FIXED]
 * **Location:** [statistics.service.ts L499](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L499) and [match.simulation.variant-b.service.ts L1602](file:///C:/Repos/soccer_sim_game/src/app/services/match.simulation.variant-b.service.ts#L1602)
 * **Why it matters:** `RECOVERY` was introduced in the sim to represent a **recovered/partially-saved** pass — semantically, possession was retained. Despite this, the stats service counts both `RECOVERY` **and** `OVERHIT` as `passingTurnovers++`. A player who benefits from a "recovery" (possession not lost) still gets penalised in their rating as though they lost the ball. This is internally inconsistent with the design intent of the new mode, and will systematically deflate ratings for players who attempt long passes in recoverable situations.
 * **Suggested direction:** Either exclude `RECOVERY` from `passingTurnovers` entirely, or model it as a reduced penalty (e.g., `passingTurnovers += 0.5`), consistent with the intent that a recovery is not a full turnover.
+* **Status:** Resolved. RECOVERY and OVERHIT events are only counted as turnovers if the scramble recipient (`e.playerIds[1]`) is an opponent (i.e. not on the passer's team). If a teammate wins the scramble, it is not counted as a turnover. Added unit test verification.
 
 ### 5. `biggestWinsLosses` (`teamId === 'all'`) Silently Suppresses Losses
 * **Location:** [season-summary.ts L257](file:///C:/Repos/soccer_sim_game/src/app/pages/season-summary/season-summary.ts#L257)
