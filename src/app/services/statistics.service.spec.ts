@@ -210,6 +210,24 @@ describe('StatisticsService', () => {
       expect(benchResult.rating).toBe(60);
     });
 
+    it('correctly calculates the rating of a substitute who enters and has events', () => {
+      const starter = createTestPlayer({ id: 'starter', position: Position.CM, teamId: 'team-1' });
+      const bench = createTestPlayer({ id: 'bench', position: Position.ST, role: Role.BENCH, teamId: 'team-1' });
+      const team = makeTeam([starter], [bench], 'team-1');
+
+      const subEvent = makeEvent(EventType.SUBSTITUTION, ['starter', 'bench'], 60);
+      const goalEvent = makeEvent(EventType.GOAL, ['bench'], 75);
+
+      const state = makeMatchState([subEvent, goalEvent], 90);
+
+      const results = service.generatePlayerStatistics(state, team, [starter, bench]);
+      const benchStats = results.find(s => s.playerId === 'bench')!;
+
+      expect(benchStats.minutesPlayed).toBe(30);
+      expect(benchStats.goals).toBe(1);
+      expect(benchStats.rating).toBeGreaterThan(60);
+    });
+
     it('increases rating above 50 for a GOAL event', () => {
       const player = createTestPlayer({ id: 'p1', position: Position.ST });
       const team = makeTeam([player]);

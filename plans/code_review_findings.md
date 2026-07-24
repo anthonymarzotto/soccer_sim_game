@@ -56,7 +56,7 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 
 ## 🔍 Testing Gaps
 
-- No test for the rating of a sub who enters and then has meaningful events (only zero-minute sub is tested).
+- ~~No test for the rating of a sub who enters and then has meaningful events (only zero-minute sub is tested).~~ (Fixed: added to [statistics.service.spec.ts](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.spec.ts))
 - ~~No test asserting `RECOVERY` pass failures do **not** count as full turnovers.~~ (Fixed: added to [statistics.service.spec.ts](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.spec.ts))
 - ~~No test for `calculateStreaksForMatches` with a team-id that matches neither home nor away (the filtering gap above).~~ (Fixed: pre-filtering of `tMatches` ensures this case is not possible/tested)
 - Deferred: GK OVR regression test (held for future GK ratings re-assessment).
