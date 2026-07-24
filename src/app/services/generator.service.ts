@@ -51,9 +51,9 @@ export class GeneratorService {
     const tierConfig = [
       { tier: 1, count: 3, budget: 2500000, cap: 56 },
       { tier: 2, count: 4, budget: 1400000, cap: 42 },
-      { tier: 3, count: 6, budget: 700000, cap: 29 },
-      { tier: 4, count: 5, budget: 350000, cap: 21 },
-      { tier: 5, count: 2, budget: 150000, cap: 17 }
+      { tier: 3, count: 6, budget: 700000, cap: 33 },
+      { tier: 4, count: 5, budget: 350000, cap: 25 },
+      { tier: 5, count: 2, budget: 150000, cap: 22 }
     ];
 
     let teamIndex = 0;
