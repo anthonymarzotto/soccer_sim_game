@@ -445,7 +445,9 @@ export class SeasonSummaryComponent {
       }
       return { win: maxWin, undefeated: maxUndefeated, winless: maxWinless, losing: maxLosing };
     } else {
-      const tMatches = matches.sort((a, b) => a.week - b.week);
+      const tMatches = matches
+        .filter(m => m.homeTeamId === teamId || m.awayTeamId === teamId)
+        .sort((a, b) => a.week - b.week);
       return this.calculateStreaksForMatches(tMatches, teamId);
     }
   });
