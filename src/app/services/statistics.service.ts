@@ -18,6 +18,19 @@ export interface PlayerRatingBreakdown {
   negativeTotal: number;
 }
 
+export interface RatingWeights {
+  goal: number;
+  assist: number;
+  save: number;
+  tackle: number;
+  interception: number;
+  pass: number;
+  turnover: number;
+  conceded: number;
+}
+
+export type PositionGroup = 'GK' | 'DEF' | 'MID' | 'FWD';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -565,6 +578,31 @@ export class StatisticsService {
     };
   }
 
+  private getRatingWeightsAndGroup(pos: Position): { weights: RatingWeights; group: PositionGroup } {
+    if (pos === Position.GK) {
+      return {
+        weights: { goal: 10, assist: 5, save: 3.0, tackle: 0, interception: 2, pass: 0.3, turnover: 1.0, conceded: 3.0 },
+        group: 'GK'
+      };
+    }
+    if (pos === Position.CB || pos === Position.FB) {
+      return {
+        weights: { goal: 8, assist: 6, save: 0, tackle: 2.5, interception: 3.5, pass: 0.4, turnover: 1.0, conceded: 2.0 },
+        group: 'DEF'
+      };
+    }
+    if (pos === Position.ST) {
+      return {
+        weights: { goal: 8.5, assist: 6, save: 0, tackle: 0.5, interception: 1.0, pass: 0.3, turnover: 1.0, conceded: 0 },
+        group: 'FWD'
+      };
+    }
+    return {
+      weights: { goal: 9, assist: 7, save: 0, tackle: 2.5, interception: 3.5, pass: 0.5, turnover: 1.0, conceded: 0 },
+      group: 'MID'
+    };
+  }
+
   private calculatePlayerRating(
     player: Player,
     stats: PlayerStatistics,
@@ -574,22 +612,7 @@ export class StatisticsService {
   ): { rating: number; clutchCount: number; clutchBonus: number; goalsConceded: number; passingTurnovers: number } {
     const pos = player.position;
     const rates = StatisticsService.EXPECTED_RATES[pos];
-    
-    let weights;
-    let group: 'GK' | 'DEF' | 'MID' | 'FWD';
-    if (pos === Position.GK) {
-      weights = { goal: 10, assist: 5, save: 3.0, tackle: 0, interception: 2, pass: 0.3, turnover: 1.0, conceded: 3.0 };
-      group = 'GK';
-    } else if (pos === Position.CB || pos === Position.FB) {
-      weights = { goal: 8, assist: 6, save: 0, tackle: 2.5, interception: 3.5, pass: 0.4, turnover: 1.0, conceded: 2.0 };
-      group = 'DEF';
-    } else if (pos === Position.ST) {
-      weights = { goal: 8.5, assist: 6, save: 0, tackle: 0.5, interception: 1.0, pass: 0.3, turnover: 1.0, conceded: 0 };
-      group = 'FWD';
-    } else {
-      weights = { goal: 9, assist: 7, save: 0, tackle: 2.5, interception: 3.5, pass: 0.5, turnover: 1.0, conceded: 0 };
-      group = 'MID';
-    }
+    const { weights, group } = this.getRatingWeightsAndGroup(pos);
 
     const timeRatio = stats.minutesPlayed / 90;
     const expected = (rate: number) => rate * timeRatio;
@@ -684,22 +707,7 @@ export class StatisticsService {
   computeRatingBreakdown(stats: PlayerStatistics): PlayerRatingBreakdown {
     const pos = stats.position;
     const rates = StatisticsService.EXPECTED_RATES[pos];
-    
-    let weights;
-    let group: 'GK' | 'DEF' | 'MID' | 'FWD';
-    if (pos === Position.GK) {
-      weights = { goal: 10, assist: 5, save: 3.0, tackle: 0, interception: 2, pass: 0.3, turnover: 1.0, conceded: 3.0 };
-      group = 'GK';
-    } else if (pos === Position.CB || pos === Position.FB) {
-      weights = { goal: 8, assist: 6, save: 0, tackle: 2.5, interception: 3.5, pass: 0.4, turnover: 1.0, conceded: 2.0 };
-      group = 'DEF';
-    } else if (pos === Position.ST) {
-      weights = { goal: 8.5, assist: 6, save: 0, tackle: 0.5, interception: 1.0, pass: 0.3, turnover: 1.0, conceded: 0 };
-      group = 'FWD';
-    } else {
-      weights = { goal: 9, assist: 7, save: 0, tackle: 2.5, interception: 3.5, pass: 0.5, turnover: 1.0, conceded: 0 };
-      group = 'MID';
-    }
+    const { weights, group } = this.getRatingWeightsAndGroup(pos);
 
     const timeRatio = stats.minutesPlayed / 90;
     const expected = (rate: number) => rate * timeRatio;

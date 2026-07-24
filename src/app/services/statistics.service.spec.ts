@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { StatisticsService } from './statistics.service';
 import { EventType, MatchPhase, Position, Role } from '../models/enums';
 import { PlayByPlayEvent, MatchState } from '../models/simulation.types';
-import { Player, Team } from '../models/types';
+import { Player, Team, PlayerStatistics } from '../models/types';
 import { createTestPlayer } from '../testing/test-player-fixtures';
 
 // ---------------------------------------------------------------------------
@@ -720,6 +720,39 @@ describe('StatisticsService', () => {
       const [p1Stats] = service.generatePlayerStatistics(state, team1, [p1]);
       expect(p1Stats.clutchRatingBonus).toBe(-4); // blowout penalty
       expect(p1Stats.clutchActionsCount).toBe(0);
+    });
+  });
+
+  describe('computeRatingBreakdown consistency', () => {
+    it('computes breakdown items using positional weights matching rating expectations', () => {
+      const playerStats: PlayerStatistics = {
+        playerId: 'p1',
+        playerName: 'Test Player',
+        minutesPlayed: 90,
+        position: Position.ST,
+        goals: 1,
+        assists: 1,
+        shots: 3,
+        shotsOnTarget: 2,
+        misses: 1,
+        passes: 20,
+        passesSuccessful: 15,
+        offsides: 0,
+        tackles: 1,
+        tacklesSuccessful: 1,
+        interceptions: 0,
+        fouls: 0,
+        foulsSuffered: 0,
+        yellowCards: 0,
+        redCards: 0,
+        saves: 0,
+        rating: 70
+      };
+
+      const breakdown = service.computeRatingBreakdown(playerStats);
+      expect(breakdown.positiveItems.length).toBeGreaterThan(0);
+      const goalItem = breakdown.positiveItems.find(i => i.label.includes('Goals'));
+      expect(goalItem).toBeDefined();
     });
   });
 });

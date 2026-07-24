@@ -12,10 +12,11 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 * **Suggested direction:** Decouple the running-score tracking from the clutch-bonus evaluation. Make a first pass to build a `scoreAtTime: Map<number, {home, away}>` lookup, then use that to read context for each event.
 * **Status:** Resolved by shifting score increments to the end of the event loop iteration and evaluating clutch criteria using the pre-event score directly. Added unit test verification.
 
-### 2. `computeRatingBreakdown` Duplicates Weights/Group Logic Diverged from `calculatePlayerRating`
+### 2. ~~`computeRatingBreakdown` Duplicates Weights/Group Logic Diverged from `calculatePlayerRating`~~ [FIXED]
 * **Location:** [statistics.service.ts L687–750](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L687-L750) vs. [L571–685](file:///C:/Repos/soccer_sim_game/src/app/services/statistics.service.ts#L571-L685)
 * **Why it matters:** Both `calculatePlayerRating` and `computeRatingBreakdown` contain identical inline `if/else` chains to derive `weights` and `group`. They are **separate copies** — any future calibration change to one requires a matching change to the other. There is no enforcement of this invariant. The breakdown shown in the UI will silently drift from the actual rating calculation. Given this codebase actively tunes weights, this is a maintenance time-bomb that will produce misleading "rating breakdown" UI.
 * **Suggested direction:** Extract the weight/group lookup into a single private helper (or a static constant keyed by `Position`) and call it from both methods.
+* **Status:** Resolved by extracting private helper method `getRatingWeightsAndGroup(pos: Position)` in `StatisticsService` and using it in both methods.
 
 ---
 
