@@ -34,10 +34,11 @@ Review scope covers changes in recent commits up to `afa3e15` (season summary da
 * **Suggested direction:** Either exclude `RECOVERY` from `passingTurnovers` entirely, or model it as a reduced penalty (e.g., `passingTurnovers += 0.5`), consistent with the intent that a recovery is not a full turnover.
 * **Status:** Resolved. RECOVERY and OVERHIT events are only counted as turnovers if the scramble recipient (`e.playerIds[1]`) is an opponent (i.e. not on the passer's team). If a teammate wins the scramble, it is not counted as a turnover. Added unit test verification.
 
-### 5. `biggestWinsLosses` (`teamId === 'all'`) Silently Suppresses Losses
-* **Location:** [season-summary.ts L257](file:///C:/Repos/soccer_sim_game/src/app/pages/season-summary/season-summary.ts#L257)
+### 5. ~~`biggestWinsLosses` (`teamId === 'all'`) Silently Suppresses Losses~~ [FIXED]
+* **Location:** [season-summary.ts L257](file:///C:/Repos/soccer_sim_game/src/app/pages/season-summary/season-summary.ts#L257) (now L378)
 * **Why it matters:** When `teamId === 'all'`, the comment acknowledges losses are skipped and returns `losses: []`. But the UI presumably renders a "biggest losses" section — it will silently be empty, with no indication to the user that data was suppressed. The comment says "or we can just show them" but didn't, making this a latent display bug if the template ever shows the losses list for `all`.
 * **Suggested direction:** Either populate losses symmetrically for the `all` case (using each match's losing side), or conditionally hide the losses panel in the template when `teamId === 'all'`. The current half-way implementation risks a silent empty state.
+* **Status:** Resolved. The UI already has conditional checks to hide the "Biggest Losses" column in the template. The layout container was updated to dynamically collapse to a single column (`grid-cols-1`) when "All Teams" is selected, letting the wins list span the full width cleanly without leaving asymmetric blank space.
 
 ### 6. `streaks` in `all` Mode Iterates All Teams × All Matches for Each Team (O(T×M))
 * **Location:** [season-summary.ts L295–310](file:///C:/Repos/soccer_sim_game/src/app/pages/season-summary/season-summary.ts#L295-L310)
