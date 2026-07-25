@@ -58,11 +58,11 @@ Based on a **20-Season Simulation Audit** (over 7,600 simulated match weeks and 
   - Maximum Roster: 30 players
 - **Goal**: Prevent wealthy top-tier teams from hoarding 40+ players and keep all team rosters balanced.
 
-### 5. Goalkeeper OVR Formula & Valuation Recalibration
+### 5. Goalkeeper OVR Formula & Valuation Recalibration [DONE]
 - **Location**: `src/app/models/player-progression.ts` (`POSITION_OVR_CONFIG` & `calculateMarketValue` / `calculatePlayerMarketWageCost`)
 - **Change**:
-  - Expand GK core config in `POSITION_OVR_CONFIG` to include `commandOfArea` and `shortPassing` (or adjust core weights).
-  - Apply a GK positional multiplier/scaling factor to align baseline GK OVR distribution (~60–65) with outfield positions.
+  - Expand GK core config in `POSITION_OVR_CONFIG` to include `shortPassing` and `longPassing` (using handling: 40%, reflexes: 40%, shortPassing: 10%, longPassing: 10%).
+  - Apply GK positional multipliers/scaling factors (wage multiplier: 0.80, value multiplier: 0.70) to align GK values/wages with outfield positions.
 - **Goal**: Normalize goalkeeper market values ($1.5M–$2.5M) and wage costs (~1.0–1.3 pts) to prevent GKs from consuming disproportionate squad payrolls.
 
 ### 6. Dynamic Wage Cap Indexing
