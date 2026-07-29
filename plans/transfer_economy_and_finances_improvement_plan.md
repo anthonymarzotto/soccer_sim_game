@@ -22,37 +22,43 @@ The primary goal of this revised plan is to transition the transfer market from 
 
 ## Phased Action Plan
 
-### Phase 1: Roster Size Controls & Displacement (The Cascade Foundation)
-*Goal: Establish the mechanics needed to trigger and sustain the cascading transfer loop.*
+### Phase 1: Roster Size Controls, Displacement & Free Agency (The Cascade Foundation)
+*Goal: Establish the core mechanics needed to trigger and sustain the cascading transfer loop.*
 
-#### 1. Hard Squad Size Limits
-* **Location**: `src/app/services/game.service.ts` & `src/app/services/generator.service.ts`
-* **Change**: Enforce strict squad size bounds:
-  * Minimum Roster: 18 players
-  * Maximum Roster: 30 players
-* **Goal**: Prevent wealthy top-tier teams from hoarding 40+ players and keep all team rosters balanced.
+#### Phase 1A: Roster Caps, "One-In, One-Out" & Free Agent Pools
+1. **Hard Squad Size Limits**
+   * **Location**: `src/app/services/game.service.ts` & `src/app/services/generator.service.ts`
+   * **Change**: Enforce strict roster size bounds: 18 players minimum, 30 players maximum.
+   * **Goal**: Prevent wealthy teams from hoarding players while ensuring cash-strapped teams maintain a safe matchday roster.
+2. **Free Agent Pool Data Representation**
+   * **Location**: `src/app/models/types.ts` & `src/app/services/game.service.ts`
+   * **Change**: Support unassigned players in the database by setting `player.teamId = 'free_agents'` (or `''`).
+   * **Goal**: Provide a repository for released players so they can be picked up by other teams rather than deleted.
+3. **"One-In, One-Out" Displacement Release**
+   * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass` / `executeTransfer`)
+   * **Change**: If a team at the 30-player cap wants to buy a player, they can only bid if the player is a direct starter quality improvement (`playerOvr > starterOvr`). Upon signing, the team must immediately release their lowest-OVR reserve player at that position (or overall) to the Free Agent pool.
+   * **Goal**: Allow top teams to sign elite stars without exceeding the roster cap, while trickling decent backup players down to the free market.
 
-#### 2. Displaced Player Auto-Listing
-* **Location**: `src/app/services/game.service.ts` (`executeTransfer`)
-* **Change**: When a CPU team signs a player who is immediately placed into the starting lineup (e.g., due to OVR ranking), the team must automatically transfer-list the player who was displaced from the starting XI to reserve status.
-* **Goal**: Fuel the trickle-down loop by forcing top teams to put high-quality backups back onto the market.
-
-#### 3. Intelligent CPU Listing (High-Wage/Value Focus)
-* **Location**: `src/app/services/game.service.ts` (`runCpuAutoListingForTeam`)
-* **Change**: When a CPU team exceeds its wage cap, modify the listing priority to put their **highest-wage earners / highest-value players** first (instead of their lowest-OVR reserve benchwarmers).
-* **Goal**: Put players up for sale that top-tier clubs actually have the budget and interest to purchase.
+#### Phase 1B: Intelligent CPU Listings & Free Agent Signings
+1. **Displaced Player Auto-Listing**
+   * **Location**: `src/app/services/game.service.ts` (`executeTransfer`)
+   * **Change**: When a team signs a player who is placed into the starting lineup (but the team is still under the 30-player cap), they must automatically transfer-list the player who was displaced from the starting XI.
+   * **Goal**: Move high-quality backups onto the transfer market rather than letting them rot on the bench.
+2. **Intelligent CPU Listing (High-Wage/Value Focus)**
+   * **Location**: `src/app/services/game.service.ts` (`runCpuAutoListingForTeam`)
+   * **Change**: When a CPU team exceeds its wage cap, modify the auto-listing logic to list their **highest-wage earners / highest-value players** first (instead of their lowest-OVR reserve benchwarmers).
+   * **Goal**: Put players up for sale that top-tier clubs actually want to buy.
+3. **Free Agent Signings**
+   * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass`)
+   * **Change**: Enable CPU teams to search the Free Agent pool and sign players for a $0 transfer fee (they only negotiate the wage).
+   * **Goal**: Allow cash-strapped teams to sign depth players for free, restoring roster sizes to the 18-player minimum.
 
 ---
 
-### Phase 2: Roster Releases & Market Sinks (The Liquidity Valves)
+### Phase 2: World Market Sinks (The Liquidity Valves)
 *Goal: Ensure there is always a way to dump wages, even if no team in the active league is buying.*
 
-#### 1. Proactive Contract Releases & Free Agency
-* **Location**: `src/app/services/game.service.ts` (`startNewSeason`)
-* **Change**: Replace the automatic contract renewal logic. If a player's contract is expiring and renewing them would exceed the wage cap or drive the transfer budget below zero, the CPU team can choose to **release** the player. Released players enter a global "Free Agent" pool.
-* **Goal**: Allow cash-strapped teams to drop wages without relying on a transfer sale, while creating a cheap talent pool for other clubs.
-
-#### 2. The "World Market" Buyer (Shadow Market)
+#### 1. The "World Market" Buyer (Shadow Market)
 * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass` / `advanceWeek`)
 * **Change**: If a player is listed on the transfer list for more than 3 weeks without receiving a bid, roll a weekly chance (e.g., 5-10%) for them to be purchased by an "external club" (abroad). The player is deleted from the active league, their wage is cleared, and the seller team receives the transfer fee.
 * **Goal**: Prevent market freezes by injecting cash and draining redundant players out of the closed 20-team ecosystem.
