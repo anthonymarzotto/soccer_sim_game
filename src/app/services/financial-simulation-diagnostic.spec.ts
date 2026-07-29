@@ -12,7 +12,7 @@ import { PersistenceService } from './persistence.service';
 import { NormalizedDbService } from './normalized-db.service';
 import { League, Team, Player } from '../models/types';
 import { vi } from 'vitest';
-import { Position } from '../models/enums';
+import { Position, Role } from '../models/enums';
 import { calculateMarketValue } from '../models/player-progression';
 import * as fs from 'fs';
 
@@ -546,4 +546,111 @@ describe('Financial Simulation Diagnostic', () => {
     reports.forEach(r => console.log(r));
     console.log('====================================================================================================\n');
   }, 600000);
+
+  it('should enforce Phase 1A roster bounds, one-in one-out releases, and prospect protection', async () => {
+    await gameService.ensureHydrated();
+    gameService.generateNewLeague();
+
+    const league = gameService.league()!;
+    expect(league).toBeDefined();
+
+    // Verify initial squad sizes are all between 18 and 30
+    league.teams.forEach(team => {
+      expect(team.players.length).toBeGreaterThanOrEqual(18);
+      expect(team.players.length).toBeLessThanOrEqual(30);
+    });
+
+    // Artificially inflate one team to 30 players to force a cap test
+    const targetTeam = league.teams[0];
+    const initialSize = targetTeam.players.length;
+    if (initialSize < 30) {
+      const pCountNeeded = 30 - initialSize;
+      const generator = TestBed.inject(GeneratorService);
+      const newPlayers = [...targetTeam.players];
+      for (let i = 0; i < pCountNeeded; i++) {
+        const dummyPlayer = generator.generatePlayer(
+          targetTeam.id,
+          Position.CM,
+          Role.RESERVE,
+          1.0,
+          league.currentSeasonYear,
+          25 // age 25 (not a prospect)
+        );
+        newPlayers.push(dummyPlayer);
+      }
+      targetTeam.players = newPlayers;
+      targetTeam.playerIds = newPlayers.map(p => p.id);
+      const snapshot = targetTeam.seasonSnapshots?.find(s => s.seasonYear === league.currentSeasonYear);
+      if (snapshot) {
+        snapshot.playerIds = newPlayers.map(p => p.id);
+      }
+    }
+    expect(targetTeam.players.length).toBe(30);
+
+    // Track original player IDs on targetTeam to detect who gets released
+    const originalPlayerIds = new Set(targetTeam.players.map(p => p.id));
+
+    // Force a transfer where targetTeam buys a player
+    // Create a high-OVR candidate player on another team
+    const sellerTeam = league.teams[1];
+    const candidatePlayer = sellerTeam.players.find(p => p.role === Role.RESERVE);
+    expect(candidatePlayer).toBeDefined();
+    
+    // Make candidatePlayer a starter quality improvement for targetTeam
+    // Set its OVR very high
+    const currentYear = league.currentSeasonYear;
+    const attrs = candidatePlayer!.seasonAttributes.find(a => a.seasonYear === currentYear) 
+      || candidatePlayer!.seasonAttributes[0];
+    attrs.overall.value = 99; // Superstar OVR
+
+    // Force execute transfer
+    const fee = 100000;
+    const offerId = 'test_offer_123';
+    
+    // Execute transfer
+    gameService['executeTransfer'](
+      targetTeam.id,
+      sellerTeam.id,
+      candidatePlayer!.id,
+      fee,
+      offerId,
+      { refreshCpuTeamListings: false }
+    );
+
+    // Verify targetTeam size is still 30 (not 31) because one-in-one-out kicked in!
+    const updatedTargetTeam = gameService.getTeam(targetTeam.id)!;
+    expect(updatedTargetTeam.players.length).toBe(30);
+
+    // Verify the newly bought player is in the squad
+    const hasBoughtPlayer = updatedTargetTeam.players.some(p => p.id === candidatePlayer!.id);
+    expect(hasBoughtPlayer).toBe(true);
+
+    // Verify one player was released and exists in freeAgents pool
+    const postLeague = gameService.league()!;
+    const freeAgents = postLeague.freeAgents ?? [];
+    expect(freeAgents.length).toBe(1);
+
+    const releasedPlayer = freeAgents[0];
+    expect(releasedPlayer.teamId).toBe('free_agents');
+    expect(releasedPlayer.role).toBe(Role.RESERVE);
+    
+    // Verify the released player was from targetTeam
+    expect(originalPlayerIds.has(releasedPlayer.id)).toBe(true);
+
+    // Verify prospect protection: the released player is not a prospect (age > 22)
+    const bday = new Date(releasedPlayer.personal.birthday);
+    const age = currentYear - bday.getFullYear();
+    expect(age).toBeGreaterThan(22);
+
+    // Test Dexie database save and load rehydration of free agents
+    const persistence = TestBed.inject(PersistenceService);
+    await persistence.saveLeague(postLeague);
+
+    const reloadedLeague = await persistence.loadLeague();
+    expect(reloadedLeague).toBeDefined();
+    expect(reloadedLeague!.freeAgents).toBeDefined();
+    expect(reloadedLeague!.freeAgents!.length).toBe(1);
+    expect(reloadedLeague!.freeAgents![0].id).toBe(releasedPlayer.id);
+    expect(reloadedLeague!.freeAgents![0].teamId).toBe('free_agents');
+  });
 });

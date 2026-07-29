@@ -136,7 +136,7 @@ export class NormalizedDbService {
     });
   }
 
-  async saveTransfer(buyer: Team, seller: Team, transferredPlayer: Player, seasonYear: number, metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>): Promise<void> {
+  async saveTransfer(buyer: Team, seller: Team, transferredPlayer: Player, seasonYear: number, metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>, releasedPlayer?: Player | null): Promise<void> {
     const persistedBuyer = this.leagueAssembly.toPersistedTeams([buyer], seasonYear)[0];
     const persistedSeller = this.leagueAssembly.toPersistedTeams([seller], seasonYear)[0];
     const buyerPlayers = buyer.players;
@@ -153,6 +153,9 @@ export class NormalizedDbService {
         }
         if (sellerPlayers.length > 0) {
           await db.players.bulkPut(this.toPersistedPlayers(sellerPlayers, seasonYear));
+        }
+        if (releasedPlayer) {
+          await db.players.bulkPut(this.toPersistedPlayers([releasedPlayer], seasonYear));
         }
 
         await db.leagueMetadata.put(nextRecord as PersistedLeagueMetadataRecord);

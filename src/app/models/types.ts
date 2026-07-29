@@ -355,6 +355,7 @@ export interface League {
   transferListings: string[];
   transferOffers: TransferOffer[];
   evaluatedCpuOfferPlayerIds?: string[];
+  freeAgents?: Player[];
 }
 
 export interface PlayerTransfer {

@@ -76,7 +76,7 @@ export class GameService {
   private static readonly CPU_TRANSFER_MAX_BUYS_SUMMER = 2;
   private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
   private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
-  private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 15;
+  private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 18;
   private static readonly POSITION_SELL_FLOOR: Readonly<Record<PositionGroup, number>> = {
     GK: 1,
     DEF: 3,
@@ -1157,7 +1157,44 @@ export class GameService {
       ]
     };
 
-    const updatedBuyerPlayers = [...buyer.players, updatedPlayer];
+    let finalBuyerPlayers = [...buyer.players, updatedPlayer];
+    let releasedPlayer: Player | null = null;
+
+    if (buyer.players.length >= 30) {
+      // Find eligible reserve players to release (protecting young prospects under age 22)
+      const reservePool = finalBuyerPlayers.filter(p => {
+        if (p.role === Role.STARTER) return false;
+        if (p.id === playerId) return false;
+
+        const bday = new Date(p.personal.birthday);
+        const age = currentSeasonYear - bday.getFullYear();
+        if (age <= 22) return false;
+
+        return true;
+      });
+
+      // Fallback if no reserves > 22 exist
+      const poolToRelease = reservePool.length > 0
+        ? reservePool
+        : finalBuyerPlayers.filter(p => p.role !== Role.STARTER && p.id !== playerId);
+
+      if (poolToRelease.length > 0) {
+        poolToRelease.sort((a, b) => {
+          const ovrA = this.getCurrentSeasonPlayerAttributes(a).overall.value;
+          const ovrB = this.getCurrentSeasonPlayerAttributes(b).overall.value;
+          return ovrA - ovrB;
+        });
+
+        releasedPlayer = {
+          ...poolToRelease[0],
+          teamId: 'free_agents',
+          role: Role.RESERVE
+        };
+        finalBuyerPlayers = finalBuyerPlayers.filter(p => p.id !== releasedPlayer!.id);
+      }
+    }
+
+    const updatedBuyerPlayers = finalBuyerPlayers;
     const updatedSellerPlayers = seller.players.filter(p => p.id !== playerId);
 
     const updatedSellerAssignments = { ...seller.formationAssignments };
@@ -1176,6 +1213,15 @@ export class GameService {
         wagePointsUsed: 0
       }
     };
+
+    if (releasedPlayer) {
+      for (const [slotId, slotPlayerId] of Object.entries(buyerWithNewPlayers.formationAssignments)) {
+        if (slotPlayerId === releasedPlayer.id) {
+          delete buyerWithNewPlayers.formationAssignments[slotId];
+        }
+      }
+    }
+
     const sellerWithNewPlayers = {
       ...seller,
       players: updatedSellerPlayers,
@@ -1235,11 +1281,17 @@ export class GameService {
       return t;
     });
 
+    const currentFreeAgents = league.freeAgents ?? [];
+    const updatedFreeAgents = releasedPlayer
+      ? [...currentFreeAgents, releasedPlayer]
+      : currentFreeAgents;
+
     let finalLeague: League = {
       ...league,
       teams: updatedTeams,
       transferListings,
-      transferOffers: updatedOffers
+      transferOffers: updatedOffers,
+      freeAgents: updatedFreeAgents
     };
 
     this.leagueState.set(finalLeague);
@@ -1261,7 +1313,7 @@ export class GameService {
       userTeamId: finalLeague.userTeamId,
       transferListings: finalLeague.transferListings,
       transferOffers: finalLeague.transferOffers
-    });
+    }, releasedPlayer);
   }
 
   private runCpuToCpuTransferPass() {
@@ -1494,6 +1546,22 @@ export class GameService {
           const isDepthNecessity = w.depth < w.requiredStarters;
           const isDirectQualityImprovement = playerOvr > lowestOvr;
           const isProspectImprovement = (age <= 21) && (playerValue > avgValue);
+
+          // Roster cap filter
+          const isAtRosterCap = buyerTeam.players.length >= 30;
+          if (isAtRosterCap) {
+            const startersAtPos = buyerTeam.players.filter(p => p.position === player.position && p.role === Role.STARTER);
+            const starterOvr = startersAtPos.length > 0
+              ? Math.max(...startersAtPos.map(p => this.getCurrentSeasonPlayerAttributes(p).overall.value))
+              : 50;
+
+            const isStarterQualityImprovement = playerOvr > starterOvr;
+            const isSuperstarProspect = (age <= 21) && (playerValue > Math.max(avgValue * 1.5, 1500000));
+
+            if (!isStarterQualityImprovement && !isSuperstarProspect) {
+              continue;
+            }
+          }
 
           if (isDepthNecessity || isDirectQualityImprovement || isProspectImprovement) {
             validCandidates.push({ player, askingPrice, overall: playerOvr });
