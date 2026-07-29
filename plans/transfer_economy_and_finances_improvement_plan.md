@@ -34,10 +34,11 @@ The primary goal of this revised plan is to transition the transfer market from 
    * **Location**: `src/app/models/types.ts` & `src/app/services/game.service.ts`
    * **Change**: Support unassigned players in the database by setting `player.teamId = 'free_agents'` (or `''`).
    * **Goal**: Provide a repository for released players so they can be picked up by other teams rather than deleted.
-3. **"One-In, One-Out" Displacement Release**
+3. **"One-In, One-Out" Displacement Release (with Prospect Protection)**
    * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass` / `executeTransfer`)
-   * **Change**: If a team at the 30-player cap wants to buy a player, they can only bid if the player is a direct starter quality improvement (`playerOvr > starterOvr`). Upon signing, the team must immediately release their lowest-OVR reserve player at that position (or overall) to the Free Agent pool.
-   * **Goal**: Allow top teams to sign elite stars without exceeding the roster cap, while trickling decent backup players down to the free market.
+   * **Change**: If a team at the 30-player cap wants to buy a player, they can only bid if the player is a direct starter quality improvement (`playerOvr > starterOvr`) **OR** a high-value young prospect (`age <= 21` and market value in top 20% of age bracket).
+   * **Release Gate**: Upon signing, the team must immediately release their lowest-OVR reserve player **who is not a prospect** (must be `age > 22`) to the Free Agent pool.
+   * **Goal**: Allow top teams to sign elite stars and future prospects without exceeding the roster cap, while trickling older bench players (deadwood) down to the free market.
 
 #### Phase 1B: Intelligent CPU Listings & Free Agent Signings
 1. **Displaced Player Auto-Listing**
@@ -82,3 +83,11 @@ The primary goal of this revised plan is to transition the transfer market from 
 * **Location**: `src/app/services/game.service.ts` (`startNewSeason`)
 * **Change**: Index team `wagePointsCap` over long-term seasons, adjusting them dynamically based on tier placement, annual league revenue, or long-term league growth (+1–2% per season).
 * **Goal**: Prevent fixed wage caps from causing league-wide wage stagnation after 10+ seasons of player progression.
+
+---
+
+## Verifiable Goals & Testing Criteria
+1. **Roster Size Bounds**: Verify that no team has a squad size < 18 or > 30 after season transitions.
+2. **"One-In, One-Out" Verification**: Write a diagnostic test checking that teams at 30 players who buy a player immediately release another player, maintaining their squad size at exactly 30.
+3. **Prospect Protection Checks**: Verify in the test telemetry that no player age 21 or under with a market value above average is released to Free Agency by a team at the 30-player cap.
+4. **Free Agent Flow Telemetry**: Track how many players are released to Free Agency and how many are subsequently signed for free by lower-tier teams, printing this to the diagnostic markdown report.
