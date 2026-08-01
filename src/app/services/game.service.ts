@@ -77,6 +77,7 @@ export class GameService {
   private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
   private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
   private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 18;
+  private static readonly CPU_TRANSFER_MAX_ROSTER_SIZE = 30;
   private static readonly POSITION_SELL_FLOOR: Readonly<Record<PositionGroup, number>> = {
     GK: 1,
     DEF: 3,
@@ -1160,7 +1161,7 @@ export class GameService {
     let finalBuyerPlayers = [...buyer.players, updatedPlayer];
     let releasedPlayer: Player | null = null;
 
-    if (buyer.players.length >= 30) {
+    if (buyer.players.length >= GameService.CPU_TRANSFER_MAX_ROSTER_SIZE) {
       // Find eligible reserve players to release (protecting young prospects under age 22)
       const reservePool = finalBuyerPlayers.filter(p => {
         if (p.role === Role.STARTER) return false;
@@ -1548,7 +1549,7 @@ export class GameService {
           const isProspectImprovement = (age <= 21) && (playerValue > avgValue);
 
           // Roster cap filter
-          const isAtRosterCap = buyerTeam.players.length >= 30;
+          const isAtRosterCap = buyerTeam.players.length >= GameService.CPU_TRANSFER_MAX_ROSTER_SIZE;
           if (isAtRosterCap) {
             const startersAtPos = buyerTeam.players.filter(p => p.position === player.position && p.role === Role.STARTER);
             const starterOvr = startersAtPos.length > 0
