@@ -25,16 +25,16 @@ The primary goal of this revised plan is to transition the transfer market from 
 ### Phase 1: Roster Size Controls, Displacement & Free Agency (The Cascade Foundation)
 *Goal: Establish the core mechanics needed to trigger and sustain the cascading transfer loop.*
 
-#### Phase 1A: Roster Caps, "One-In, One-Out" & Free Agent Pools
-1. **Hard Squad Size Limits**
+#### Phase 1A: Roster Caps, "One-In, One-Out" & Free Agent Pools [DONE]
+1. **Hard Squad Size Limits [DONE]**
    * **Location**: `src/app/services/game.service.ts` & `src/app/services/generator.service.ts`
    * **Change**: Enforce strict roster size bounds: 18 players minimum, 30 players maximum.
    * **Goal**: Prevent wealthy teams from hoarding players while ensuring cash-strapped teams maintain a safe matchday roster.
-2. **Free Agent Pool Data Representation**
+2. **Free Agent Pool Data Representation [DONE]**
    * **Location**: `src/app/models/types.ts` & `src/app/services/game.service.ts`
    * **Change**: Support unassigned players in the database by setting `player.teamId = 'free_agents'` (or `''`).
    * **Goal**: Provide a repository for released players so they can be picked up by other teams rather than deleted.
-3. **"One-In, One-Out" Displacement Release (with Prospect Protection)**
+3. **"One-In, One-Out" Displacement Release (with Prospect Protection) [DONE]**
    * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass` / `executeTransfer`)
    * **Change**: If a team at the 30-player cap wants to buy a player, they can only bid if the player is a direct starter quality improvement (`playerOvr > starterOvr`) **OR** a high-value young prospect (`age <= 21` and market value in top 20% of age bracket).
    * **Release Gate**: Upon signing, the team must immediately release their lowest-OVR reserve player **who is not a prospect** (must be `age > 22`) to the Free Agent pool.
