@@ -40,19 +40,19 @@ The primary goal of this revised plan is to transition the transfer market from 
    * **Release Gate**: Upon signing, the team must immediately release their lowest-OVR reserve player **who is not a prospect** (must be `age > 22`) to the Free Agent pool.
    * **Goal**: Allow top teams to sign elite stars and future prospects without exceeding the roster cap, while trickling older bench players (deadwood) down to the free market.
 
-#### Phase 1B: Intelligent CPU Listings & Free Agent Signings
-1. **Displaced Player Auto-Listing**
-   * **Location**: `src/app/services/game.service.ts` (`executeTransfer`)
-   * **Change**: When a team signs a player who is placed into the starting lineup (but the team is still under the 30-player cap), they must automatically transfer-list the player who was displaced from the starting XI.
+#### Phase 1B: Intelligent CPU Listings & Free Agent Signings [DONE]
+1. **Displaced Position Backup Auto-Listing [DONE]**
+   * **Location**: `src/app/services/game.service.ts` (`executeTransfer` & `executeFreeAgentSigning`)
+   * **Change**: When a CPU team signs a player who earns a starting XI spot at position `pos`, the team automatically transfer-lists the lowest OVR non-prospect backup (`age > 21`) at `pos`.
    * **Goal**: Move high-quality backups onto the transfer market rather than letting them rot on the bench.
-2. **Intelligent CPU Listing (High-Wage/Value Focus)**
+2. **Intelligent CPU Listing (High-Wage/Value Focus) [DONE]**
    * **Location**: `src/app/services/game.service.ts` (`runCpuAutoListingForTeam`)
-   * **Change**: When a CPU team exceeds its wage cap, modify the auto-listing logic to list their **highest-wage earners / highest-value players** first (instead of their lowest-OVR reserve benchwarmers).
-   * **Goal**: Put players up for sale that top-tier clubs actually want to buy.
-3. **Free Agent Signings**
-   * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass`)
-   * **Change**: Enable CPU teams to search the Free Agent pool and sign players for a $0 transfer fee (they only negotiate the wage).
-   * **Goal**: Allow cash-strapped teams to sign depth players for free, restoring roster sizes to the 18-player minimum.
+   * **Change**: When a CPU team exceeds its wage cap (`capExceeded`), candidate players are sorted by **highest wage cost descending** (and market value descending) to list high earners first. Young prospects (`age <= 21`) remain protected from deadwood auto-listing.
+   * **Goal**: Put players up for sale that top-tier clubs actually want to buy, triggering upward transfer cascades.
+3. **Unified Candidate Pool & Free Agent Signings [DONE]**
+   * **Location**: `src/app/services/game.service.ts` (`runCpuToCpuTransferPass`, `executeFreeAgentSigning`), `src/app/services/normalized-db.service.ts` (`saveFreeAgentSigning`), `src/app/pages/transfer-market/transfer-market.ts`
+   * **Change**: CPU teams evaluate `league.freeAgents` ($0 transfer fee) alongside `transferListings` in a single candidate pass sorted strictly by **OVR rating descending**. Persists free agent contracts (1–4 seasons) via IndexedDB (`saveFreeAgentSigning`). Free agents are displayed on the Transfer Market UI (`/transfer-market`) with a synthetic "Free Agent" team badge ($0 fee) and full filterability/sorting.
+   * **Goal**: Allow cash-strapped teams to sign depth players for free while ensuring clubs with budget prefer higher-OVR listed players.
 
 ---
 

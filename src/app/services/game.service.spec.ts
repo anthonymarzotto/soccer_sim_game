@@ -2798,7 +2798,7 @@ describe('GameService transfer listings and CPU heuristics', () => {
 
     const fwd1 = makePlayer('fwd1', 'team-cpu', Position.ST, Role.STARTER, 25, 85);
     const fwd2 = makePlayer('fwd2', 'team-cpu', Position.ST, Role.STARTER, 25, 85);
-    const fwd3 = makePlayer('fwd3', 'team-cpu', Position.ST, Role.RESERVE, 20, 80); // valuable youth, surplus -> list
+    const fwd3 = makePlayer('fwd3', 'team-cpu', Position.ST, Role.RESERVE, 34, 80); // declining, surplus -> list
 
     const team = makeTeam('team-cpu', [gk1, gk2, def1, def2, def3, def4, def5, mid1, mid2, mid3Declining, fwd1, fwd2, fwd3]);
 
@@ -2806,7 +2806,7 @@ describe('GameService transfer listings and CPU heuristics', () => {
     await service.ensureHydrated();
 
     const listings = service.runCpuAutoListingForLeague(service.league()!);
-    // gk2 (declining surplus), def4 (declining surplus), fwd3 (valuable youth surplus) should be listed.
+    // gk2 (declining surplus), def4 (declining surplus), fwd3 (declining surplus) should be listed.
     // gk1, def1-3 (not surplus), def5 (not declining/wage/youth), mid3Declining (no surplus) should NOT be listed.
     expect(listings).toContain('gk2');
     expect(listings).toContain('def4');

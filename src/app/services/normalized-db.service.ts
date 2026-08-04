@@ -163,6 +163,29 @@ export class NormalizedDbService {
     });
   }
 
+  async saveFreeAgentSigning(
+    buyer: Team,
+    signedPlayer: Player,
+    seasonYear: number,
+    metadata: Pick<League, 'currentWeek' | 'currentSeasonYear' | 'userTeamId' | 'transferListings' | 'transferOffers' | 'evaluatedCpuOfferPlayerIds'>
+  ): Promise<void> {
+    const persistedBuyer = this.leagueAssembly.toPersistedTeams([buyer], seasonYear)[0];
+    const buyerPlayers = buyer.players;
+    const nextRecord = this.leagueAssembly.toLeagueMetadata(metadata);
+
+    await this.appDb.withDb(async db => {
+      await db.transaction('rw', db.teams, db.players, db.leagueMetadata, async () => {
+        await db.teams.put(persistedBuyer);
+
+        if (buyerPlayers.length > 0) {
+          await db.players.bulkPut(this.toPersistedPlayers(buyerPlayers, seasonYear));
+        }
+
+        await db.leagueMetadata.put(nextRecord as PersistedLeagueMetadataRecord);
+      });
+    });
+  }
+
   async loadPlayers(): Promise<PersistedPlayerRecord[]> {
     return this.appDb.getAllFromTable<PersistedPlayerRecord>(TABLE_PLAYERS);
   }

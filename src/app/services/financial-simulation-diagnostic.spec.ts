@@ -34,11 +34,26 @@ describe('Financial Simulation Diagnostic', () => {
     year: number;
     week: number;
   }
+  interface FreeAgentSigningRecord {
+    buyerId: string;
+    buyerName: string;
+    buyerTier: number;
+    playerId: string;
+    playerName: string;
+    playerOvr: number;
+    playerAge: number;
+    wageCost: number;
+    year: number;
+    week: number;
+  }
   let capturedTransfers: TransferRecord[] = [];
+  let capturedFreeAgentSignings: FreeAgentSigningRecord[] = [];
+  const itDiagnostic = process.env['RUN_FINANCIAL_DIAGNOSTIC'] === 'true' ? it : it.skip;
 
   beforeEach(() => {
     mockDbLeague = null;
     capturedTransfers = [];
+    capturedFreeAgentSignings = [];
 
     const persistenceSpy = {
       loadLeague: vi.fn().mockImplementation(async () => mockDbLeague),
@@ -71,6 +86,21 @@ describe('Financial Simulation Diagnostic', () => {
           week: meta.currentWeek
         };
         capturedTransfers.push(transferRecord);
+      }),
+      saveFreeAgentSigning: vi.fn().mockImplementation(async (buyer: Team, player: Player, year: number, meta: { currentWeek: number }) => {
+        const faRecord = {
+          buyerId: buyer.id,
+          buyerName: buyer.name,
+          buyerTier: buyer.finances.tier,
+          playerId: player.id,
+          playerName: player.name,
+          playerOvr: player.seasonAttributes?.find(a => a.seasonYear === year)?.overall?.value ?? 0,
+          playerAge: player.personal.birthday ? (year - new Date(player.personal.birthday).getFullYear()) : 0,
+          wageCost: player.contract?.agreedWageCost ?? 0,
+          year,
+          week: meta.currentWeek
+        };
+        capturedFreeAgentSignings.push(faRecord);
       })
     };
 
@@ -170,7 +200,7 @@ describe('Financial Simulation Diagnostic', () => {
     };
   }
 
-  it('should run a 10-season simulation to analyze lower-tier debt spiral', async () => {
+  itDiagnostic('should run a 10-season simulation to analyze lower-tier debt spiral', async () => {
     await gameService.ensureHydrated();
     gameService.generateNewLeague();
 
@@ -459,6 +489,27 @@ describe('Financial Simulation Diagnostic', () => {
       });
       md += '\n';
     });
+
+    md += '## Free Agency & Unattached Players Analysis\n\n';
+    md += `Over 10 seasons, a total of **${capturedFreeAgentSignings.length} free agents** were signed by CPU clubs ($0 transfer fee).\n\n`;
+    md += '| Buyer Tier | Free Agent Signings Count | Avg Signed Player OVR | Avg Signed Player Age | Avg Agreed Wage |\n';
+    md += '|------------|---------------------------|-----------------------|-----------------------|-----------------|\n';
+    [1, 2, 3, 4, 5].forEach(t => {
+      const tierSignings = capturedFreeAgentSignings.filter(s => s.buyerTier === t);
+      const count = tierSignings.length;
+      const avgOvr = count > 0 ? (tierSignings.reduce((sum, s) => sum + s.playerOvr, 0) / count).toFixed(1) : 'N/A';
+      const avgAge = count > 0 ? (tierSignings.reduce((sum, s) => sum + s.playerAge, 0) / count).toFixed(1) : 'N/A';
+      const avgWage = count > 0 ? (tierSignings.reduce((sum, s) => sum + s.wageCost, 0) / count).toFixed(2) : 'N/A';
+      md += `| Tier ${t} | ${count} | ${avgOvr} | ${avgAge} | ${avgWage} pts |\n`;
+    });
+    md += '\n';
+
+    const endFreeAgents = gameService.league()?.freeAgents ?? [];
+    const endFaCount = endFreeAgents.length;
+    const endFaAvgOvr = endFaCount > 0
+      ? (endFreeAgents.reduce((sum, p) => sum + (p.seasonAttributes[0]?.overall?.value ?? 50), 0) / endFaCount).toFixed(1)
+      : '0';
+    md += `**Remaining Unattached Free Agents in Pool (End of Season 10)**: **${endFaCount} players** (Avg OVR: **${endFaAvgOvr}**).\n\n`;
 
     md += '## Transfer Flow Matrix (Total Transfers Over 10 Seasons)\n\n';
     md += 'This matrix shows where players are moving. Rows represent the seller tier, columns represent the buyer tier.\n\n';

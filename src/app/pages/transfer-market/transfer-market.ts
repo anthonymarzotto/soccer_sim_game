@@ -129,6 +129,36 @@ export class TransferMarketComponent {
       });
     }
 
+    const freeAgents = league.freeAgents ?? [];
+    const freeAgentTeam: Team = {
+      id: 'free_agents',
+      name: 'Free Agent',
+      players: [],
+      playerIds: [],
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: {},
+      finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 }
+    };
+
+    for (const player of freeAgents) {
+      const attrs = getCurrentPlayerSeasonAttributes(player, year);
+      const overall = attrs?.overall?.value ?? 50;
+      const age = computeAge(player.personal.birthday, seasonAnchorDate(year));
+      const value = calculateMarketValue(player, year);
+      const wage = calculatePlayerWageCost(player, year);
+      const contract = player.contract ? Math.max(0, player.contract.expiresAfterSeason - year + 1) : 0;
+
+      rows.push({
+        player,
+        team: freeAgentTeam,
+        overall,
+        age,
+        value,
+        wage,
+        contract,
+      });
+    }
+
     return rows;
   });
 
