@@ -6,7 +6,7 @@ import { GameService } from '../../services/game.service';
 import { Player, Team } from '../../models/types';
 import { Position, getPositionGroup } from '../../models/enums';
 import { calculateMarketValue, calculatePlayerWageCost } from '../../models/player-progression';
-import { getCurrentPlayerSeasonAttributes } from '../../models/season-history';
+import { getCurrentPlayerSeasonAttributes, createEmptyTeamStats } from '../../models/season-history';
 import { computeAge, seasonAnchorDate } from '../../models/player-age';
 import { TeamBadgeComponent } from '../../components/team-badge/team-badge';
 
@@ -21,6 +21,8 @@ interface TransferRow {
   value: number;
   wage: number;
   contract: number;
+  status: 'contracted' | 'free_agent' | 'world' | 'retired';
+  statusLabel: string;
 }
 
 @Component({
@@ -42,6 +44,7 @@ export class TransferMarketComponent {
   weeksRemainingInWindow = this.gameService.weeksRemainingInWindow;
 
   // Filter and sort state
+  selectedStatus = signal<string>('');
   selectedTeam = signal<string>('');
   selectedPosition = signal<string>('');
   searchQuery = signal<string>('');
@@ -126,6 +129,8 @@ export class TransferMarketComponent {
         value,
         wage,
         contract,
+        status: 'contracted',
+        statusLabel: 'Listed'
       });
     }
 
@@ -137,6 +142,7 @@ export class TransferMarketComponent {
       playerIds: [],
       selectedFormationId: 'formation_4_4_2',
       formationAssignments: {},
+      stats: createEmptyTeamStats(),
       finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 }
     };
 
@@ -156,6 +162,41 @@ export class TransferMarketComponent {
         value,
         wage,
         contract,
+        status: 'free_agent',
+        statusLabel: 'Free Agent'
+      });
+    }
+
+    const worldPlayers = league.worldPlayers ?? [];
+    const worldTeam: Team = {
+      id: 'world',
+      name: 'World Market',
+      players: [],
+      playerIds: [],
+      selectedFormationId: 'formation_4_4_2',
+      formationAssignments: {},
+      stats: createEmptyTeamStats(),
+      finances: { tier: 1, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 }
+    };
+
+    for (const player of worldPlayers) {
+      const attrs = getCurrentPlayerSeasonAttributes(player, year);
+      const overall = attrs?.overall?.value ?? 50;
+      const age = computeAge(player.personal.birthday, seasonAnchorDate(year));
+      const value = calculateMarketValue(player, year);
+      const wage = calculatePlayerWageCost(player, year);
+      const contract = player.contract ? Math.max(0, player.contract.expiresAfterSeason - year + 1) : 0;
+
+      rows.push({
+        player,
+        team: worldTeam,
+        overall,
+        age,
+        value,
+        wage,
+        contract,
+        status: 'world',
+        statusLabel: 'World Market'
       });
     }
 
@@ -164,6 +205,7 @@ export class TransferMarketComponent {
 
   filteredAndSortedPlayers = computed(() => {
     const rows = this.allListedPlayers();
+    const statusFilter = this.selectedStatus();
     const teamFilter = this.selectedTeam();
     const positionFilter = this.selectedPosition();
     const query = this.searchQuery().toLowerCase();
@@ -171,6 +213,9 @@ export class TransferMarketComponent {
     // 1. Filter
     const maxVal = this.maxMarketValue();
     const filtered = rows.filter(row => {
+      if (statusFilter === 'listed' && row.status !== 'contracted') return false;
+      if (statusFilter === 'free_agent' && row.status !== 'free_agent') return false;
+      if (statusFilter === 'world' && row.status !== 'world') return false;
       if (teamFilter && row.player.teamId !== teamFilter) return false;
       if (positionFilter && getPositionGroup(row.player.position) !== positionFilter) return false;
       if (query && !row.player.name.toLowerCase().includes(query)) return false;

@@ -14,44 +14,54 @@ describe('TransferService', () => {
   });
 
   describe('getTransferWindowPhase', () => {
-    it('should return summer for weeks 1, 2, and 3', () => {
+    it('should return summer for weeks 52 and 1 through 6', () => {
+      expect(service.getTransferWindowPhase(52)).toBe('summer');
       expect(service.getTransferWindowPhase(1)).toBe('summer');
-      expect(service.getTransferWindowPhase(2)).toBe('summer');
       expect(service.getTransferWindowPhase(3)).toBe('summer');
+      expect(service.getTransferWindowPhase(6)).toBe('summer');
     });
 
-    it('should return winter for weeks 20, 21, and 22', () => {
-      expect(service.getTransferWindowPhase(20)).toBe('winter');
-      expect(service.getTransferWindowPhase(21)).toBe('winter');
-      expect(service.getTransferWindowPhase(22)).toBe('winter');
+    it('should return winter for weeks 26 through 29', () => {
+      expect(service.getTransferWindowPhase(26)).toBe('winter');
+      expect(service.getTransferWindowPhase(27)).toBe('winter');
+      expect(service.getTransferWindowPhase(29)).toBe('winter');
     });
 
-    it('should return closed for other weeks', () => {
-      expect(service.getTransferWindowPhase(4)).toBe('closed');
-      expect(service.getTransferWindowPhase(10)).toBe('closed');
-      expect(service.getTransferWindowPhase(19)).toBe('closed');
-      expect(service.getTransferWindowPhase(23)).toBe('closed');
+    it('should return post_season for weeks 49 and 50', () => {
+      expect(service.getTransferWindowPhase(49)).toBe('post_season');
+      expect(service.getTransferWindowPhase(50)).toBe('post_season');
+    });
+
+    it('should return closed for fixture and rollover weeks', () => {
+      expect(service.getTransferWindowPhase(7)).toBe('closed');
+      expect(service.getTransferWindowPhase(25)).toBe('closed');
       expect(service.getTransferWindowPhase(30)).toBe('closed');
+      expect(service.getTransferWindowPhase(48)).toBe('closed');
+      expect(service.getTransferWindowPhase(51)).toBe('closed');
     });
   });
 
   describe('getWeeksRemainingInWindow', () => {
-    it('should return correct countdown during summer window (weeks 1-3)', () => {
-      expect(service.getWeeksRemainingInWindow(1)).toBe(3);
-      expect(service.getWeeksRemainingInWindow(2)).toBe(2);
-      expect(service.getWeeksRemainingInWindow(3)).toBe(1);
+    it('should return correct countdown during summer window (weeks 52, 1-6)', () => {
+      expect(service.getWeeksRemainingInWindow(52)).toBe(7);
+      expect(service.getWeeksRemainingInWindow(1)).toBe(6);
+      expect(service.getWeeksRemainingInWindow(6)).toBe(1);
     });
 
-    it('should return correct countdown during winter window (weeks 20-22)', () => {
-      expect(service.getWeeksRemainingInWindow(20)).toBe(3);
-      expect(service.getWeeksRemainingInWindow(21)).toBe(2);
-      expect(service.getWeeksRemainingInWindow(22)).toBe(1);
+    it('should return correct countdown during winter window (weeks 26-29)', () => {
+      expect(service.getWeeksRemainingInWindow(26)).toBe(4);
+      expect(service.getWeeksRemainingInWindow(29)).toBe(1);
+    });
+
+    it('should return correct countdown during post_season window (weeks 49-50)', () => {
+      expect(service.getWeeksRemainingInWindow(49)).toBe(2);
+      expect(service.getWeeksRemainingInWindow(50)).toBe(1);
     });
 
     it('should return 0 when transfer window is closed', () => {
-      expect(service.getWeeksRemainingInWindow(4)).toBe(0);
-      expect(service.getWeeksRemainingInWindow(10)).toBe(0);
-      expect(service.getWeeksRemainingInWindow(23)).toBe(0);
+      expect(service.getWeeksRemainingInWindow(7)).toBe(0);
+      expect(service.getWeeksRemainingInWindow(25)).toBe(0);
+      expect(service.getWeeksRemainingInWindow(51)).toBe(0);
     });
   });
 });

@@ -88,10 +88,13 @@ export interface PlayerContract {
   expiresAfterSeason: number; // The season year when the contract expires (e.g. 2027)
 }
 
+export type PlayerStatus = 'contracted' | 'free_agent' | 'world' | 'retired';
+
 export interface Player {
   id: string;
   name: string;
   teamId: string;
+  status?: PlayerStatus;
   position: Position;
   role: Role;
   personal: PlayerPersonal;
@@ -356,6 +359,7 @@ export interface League {
   transferOffers: TransferOffer[];
   evaluatedCpuOfferPlayerIds?: string[];
   freeAgents?: Player[];
+  worldPlayers?: Player[];
 }
 
 export interface PlayerTransfer {
@@ -394,5 +398,5 @@ export interface SeasonTransitionLog {
   dismissedTeamIds: string[];  // teams whose events have been dismissed from team-details
 }
 
-export type TransferWindowPhase = 'summer' | 'winter' | 'closed';
+export type TransferWindowPhase = 'summer' | 'winter' | 'post_season' | 'closed';
 

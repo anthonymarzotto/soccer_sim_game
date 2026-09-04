@@ -45,6 +45,7 @@ export class PlayerAttributesComponent {
   currentSeasonYear = computed(() => this.gameService.league()?.currentSeasonYear ?? new Date().getFullYear());
 
   // Filter and sort state
+  selectedStatus = signal<string>('');
   selectedYear = signal<number>(0);
   selectedTeam = signal<string>('');
   selectedPosition = signal<string>('');
@@ -100,47 +101,57 @@ export class PlayerAttributesComponent {
 
     const year = this.selectedYear();
     const effectiveYear = year || this.currentSeasonYear();
+    const statusFilter = this.selectedStatus();
     const teamFilter = this.selectedTeam();
     const positionFilter = this.selectedPosition();
     const query = this.searchQuery().toLowerCase();
 
     const rows: PlayerAttributesRow[] = [];
 
+    const processPlayer = (player: Player, teamName: string, teamId: string, playerStatus: string) => {
+      if (statusFilter === 'contracted' && playerStatus !== 'contracted') return;
+      if (statusFilter === 'free_agent' && playerStatus !== 'free_agent') return;
+      if (statusFilter === 'world' && playerStatus !== 'world') return;
+      if (teamFilter && teamId !== teamFilter) return;
+      if (positionFilter && player.position !== positionFilter) return;
+      if (query && !player.name.toLowerCase().includes(query)) return;
+
+      let attributes: PlayerSeasonAttributes;
+      try {
+        attributes = getCurrentPlayerSeasonAttributes(player, effectiveYear);
+      } catch {
+        return;
+      }
+
+      const birthday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
+      const age = computeAge(birthday, seasonAnchorDate(effectiveYear));
+      const overall = attributes.overall.value;
+      const marketValue = calculateMarketValue(player, effectiveYear);
+      const wageCost = calculatePlayerWageCost(player, effectiveYear);
+
+      rows.push({
+        player,
+        seasonYear: effectiveYear,
+        overall,
+        age,
+        marketValue,
+        wageCost,
+        attributes
+      });
+    };
+
     league.teams.forEach(team => {
       team.players.forEach(player => {
-        // Apply team filter
-        if (teamFilter && team.id !== teamFilter) return;
-
-        // Apply position filter
-        if (positionFilter && player.position !== positionFilter) return;
-
-        // Apply search query
-        if (query && !player.name.toLowerCase().includes(query)) return;
-
-        // Get attributes for the selected year
-        let attributes: PlayerSeasonAttributes;
-        try {
-          attributes = getCurrentPlayerSeasonAttributes(player, effectiveYear);
-        } catch {
-          return;
-        }
-
-        const birthday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
-        const age = computeAge(birthday, seasonAnchorDate(effectiveYear));
-        const overall = attributes.overall.value;
-        const marketValue = calculateMarketValue(player, effectiveYear);
-        const wageCost = calculatePlayerWageCost(player, effectiveYear);
-
-        rows.push({
-          player,
-          seasonYear: effectiveYear,
-          overall,
-          age,
-          marketValue,
-          wageCost,
-          attributes
-        });
+        processPlayer(player, team.name, team.id, player.status || 'contracted');
       });
+    });
+
+    (league.freeAgents ?? []).forEach(player => {
+      processPlayer(player, 'Free Agent', 'free_agents', 'free_agent');
+    });
+
+    (league.worldPlayers ?? []).forEach(player => {
+      processPlayer(player, 'World Market', 'world', 'world');
     });
 
     // Apply sorting

@@ -2109,7 +2109,7 @@ describe('GameService simulation engine', () => {
     };
 
     const scheduleList = [];
-    for (let w = 18; w <= 22; w++) {
+    for (let w = 24; w <= 28; w++) {
       scheduleList.push({ id: `m${w}`, week: w, seasonYear: 2026, homeTeamId: 'home', awayTeamId: 'away', played: false });
     }
 
@@ -2126,7 +2126,7 @@ describe('GameService simulation engine', () => {
                 { id: 'away', name: 'Away', stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] }, seasonSnapshots: [{ seasonYear: 2026, playerIds: [], stats: { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, last5: [] } }], players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, finances: { tier: 3, transferBudget: 7000000, wagePointsCap: 65, wagePointsUsed: 50 } }
               ],
               schedule: scheduleList,
-              currentWeek: 18,
+              currentWeek: 24,
               currentSeasonYear: 2026
             }),
             saveTeam: vi.fn().mockResolvedValue(undefined),
@@ -2149,8 +2149,8 @@ describe('GameService simulation engine', () => {
 
     service.simulateToWinterTransferWindow();
 
-    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(2); // simulates week 18 and 19
-    expect(service.league()?.currentWeek).toBe(20);
+    expect(variantBSpy.simulateMatch).toHaveBeenCalledTimes(2); // simulates week 24 and 25
+    expect(service.league()?.currentWeek).toBe(26);
   });
 
   it('should block single-match simulation while a week simulation is active', () => {
@@ -2892,14 +2892,14 @@ describe('GameService transfer listings and CPU heuristics', () => {
     ]);
 
     // Summer window is weeks 1-3. Let's start at week 3.
-    const { service } = setupTransferTest(3, ['player-cpu'], 'team-user', [teamCpu]);
+    const { service } = setupTransferTest(6, ['player-cpu'], 'team-user', [teamCpu]);
     await service.ensureHydrated();
 
     expect(service.league()?.transferListings).toContain('player-cpu');
 
-    // Advance to week 4 (window closes)
+    // Advance to week 7 (window closes)
     service.advanceWeek();
-    expect(service.league()?.currentWeek).toBe(4);
+    expect(service.league()?.currentWeek).toBe(7);
     expect(service.league()?.transferListings).toEqual([]); // cleared!
 
     // If we start at week 1 (window open) and advance to week 2, it re-evaluates

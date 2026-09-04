@@ -22,10 +22,10 @@ describe('Financial Simulation Diagnostic', () => {
   interface TransferRecord {
     buyerId: string;
     buyerName: string;
-    buyerTier: number;
+    buyerTier: string;
     sellerId: string;
     sellerName: string;
-    sellerTier: number;
+    sellerTier: string;
     playerId: string;
     playerName: string;
     playerOvr: number;
@@ -69,14 +69,16 @@ describe('Financial Simulation Diagnostic', () => {
     };
 
     const normalizedDbSpy = {
-      saveTransfer: vi.fn().mockImplementation(async (buyer: Team, seller: Team, player: Player, year: number, meta: { currentWeek: number }) => {
+      saveTransfer: vi.fn().mockImplementation(async (buyer: Partial<Team> & { id: string; name?: string; finances?: { tier: number } }, seller: Partial<Team> & { id: string; name?: string; finances?: { tier: number } }, player: Player, year: number, meta: { currentWeek: number }) => {
+        const buyerTierStr = buyer.id === 'world' ? 'World Market' : (buyer.finances?.tier ? `Tier ${buyer.finances.tier}` : 'World Market');
+        const sellerTierStr = seller.id === 'free_agents' ? 'Free Agent' : (seller.finances?.tier ? `Tier ${seller.finances.tier}` : 'Free Agent');
         const transferRecord = {
           buyerId: buyer.id,
-          buyerName: buyer.name,
-          buyerTier: buyer.finances.tier,
+          buyerName: buyer.name ?? buyer.id,
+          buyerTier: buyerTierStr,
           sellerId: seller.id,
-          sellerName: seller.name,
-          sellerTier: seller.finances.tier,
+          sellerName: seller.name ?? seller.id,
+          sellerTier: sellerTierStr,
           playerId: player.id,
           playerName: player.name,
           playerOvr: player.seasonAttributes?.find(a => a.seasonYear === year)?.overall?.value ?? 0,
@@ -101,6 +103,23 @@ describe('Financial Simulation Diagnostic', () => {
           week: meta.currentWeek
         };
         capturedFreeAgentSignings.push(faRecord);
+
+        // Also track FA signing in capturedTransfers for matrix
+        capturedTransfers.push({
+          buyerId: buyer.id,
+          buyerName: buyer.name,
+          buyerTier: `Tier ${buyer.finances.tier}`,
+          sellerId: 'free_agents',
+          sellerName: 'Free Agent',
+          sellerTier: 'Free Agent',
+          playerId: player.id,
+          playerName: player.name,
+          playerOvr: faRecord.playerOvr,
+          playerAge: faRecord.playerAge,
+          fee: 0,
+          year,
+          week: meta.currentWeek
+        });
       })
     };
 
@@ -254,6 +273,8 @@ describe('Financial Simulation Diagnostic', () => {
       seasonNum: number;
       tiers: Record<number, TelemetryTierStats>;
       lowerTierDetails: LowerTierDetailTeam[];
+      freeAgentsCount?: number;
+      worldPlayersCount?: number;
     }
 
     const seasonTelemetries: SeasonTelemetry[] = [];
@@ -339,8 +360,10 @@ describe('Financial Simulation Diagnostic', () => {
 
       const seasonTransfers = capturedTransfers.filter(t => t.year === currentYear);
       seasonTransfers.forEach(t => {
-        if (tierStats[t.buyerTier]) tierStats[t.buyerTier].numBought++;
-        if (tierStats[t.sellerTier]) tierStats[t.sellerTier].numSold++;
+        const buyerTierNum = parseInt(t.buyerTier.replace('Tier ', ''), 10);
+        const sellerTierNum = parseInt(t.sellerTier.replace('Tier ', ''), 10);
+        if (!isNaN(buyerTierNum) && tierStats[buyerTierNum]) tierStats[buyerTierNum].numBought++;
+        if (!isNaN(sellerTierNum) && tierStats[sellerTierNum]) tierStats[sellerTierNum].numSold++;
       });
 
       const transitionLog = gameService.seasonTransitionLog();
@@ -419,7 +442,9 @@ describe('Financial Simulation Diagnostic', () => {
         seasonYear: currentYear,
         seasonNum,
         tiers: compiledTiers,
-        lowerTierDetails
+        lowerTierDetails,
+        freeAgentsCount: (currentLeague.freeAgents ?? []).length,
+        worldPlayersCount: (currentLeague.worldPlayers ?? []).length
       });
     };
 
@@ -441,10 +466,13 @@ describe('Financial Simulation Diagnostic', () => {
 
     collectTelemetry(11, currentYearStart + 10);
 
+    const buyersList = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Tier 5', 'World Market'];
+    const sellersList = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Tier 5', 'Free Agent'];
+
     const transferMatrix: Record<string, Record<string, number>> = {};
-    [1, 2, 3, 4, 5].forEach(b => {
+    buyersList.forEach(b => {
       transferMatrix[b] = {};
-      [1, 2, 3, 4, 5].forEach(s => {
+      sellersList.forEach(s => {
         transferMatrix[b][s] = 0;
       });
     });
@@ -471,10 +499,33 @@ describe('Financial Simulation Diagnostic', () => {
     const avgBudgetS1_T1 = s1.tiers[1].avgBudget;
     const avgBudgetS10_T1 = s10.tiers[1].avgBudget;
 
+    const lowerTierSellers = capturedTransfers.filter(t => t.sellerTier === 'Tier 3' || t.sellerTier === 'Tier 4' || t.sellerTier === 'Tier 5').length;
+    const lowerTierBuyers = capturedTransfers.filter(t => t.buyerTier === 'Tier 3' || t.buyerTier === 'Tier 4' || t.buyerTier === 'Tier 5').length;
+
     md += `1. **Polarization of Wealth**: Tier 5 average budget went from **$${(avgBudgetS1_T5 / 1000000).toFixed(2)}M** in Season 1 to **$${(avgBudgetS10_T5 / 1000000).toFixed(2)}M** in Season 10. In contrast, Tier 1 average budget went from **$${(avgBudgetS1_T1 / 1000000).toFixed(2)}M** to **$${(avgBudgetS10_T1 / 1000000).toFixed(2)}M**.\n`;
     md += `2. **Wage Cap Headroom Collapse**: Lower-tier teams (Tiers 3-5) see their wage cap space diminish. In Season 10, average wage cap utilization for Tier 5 is **${s10.tiers[5].avgUtilization.toFixed(1)}%**, and Tier 4 is **${s10.tiers[4].avgUtilization.toFixed(1)}%**.\n`;
     md += `3. **Luxury Tax Burden**: Over 10 seasons, lower-tier teams paid a combined total of **$${(seasonTelemetries.reduce((sum, s) => sum + s.tiers[3].totalTax + s.tiers[4].totalTax + s.tiers[5].totalTax, 0) / 1000).toFixed(0)}k** in luxury taxes.\n`;
-    md += `4. **Transfer Market Illiquidity**: Lower-tier teams are unable to sell players. Out of ${capturedTransfers.length} total transfers simulated, only ${capturedTransfers.filter(t => t.sellerTier >= 3).length} involved a seller from Tiers 3-5, while ${capturedTransfers.filter(t => t.buyerTier >= 3).length} involved a buyer from Tiers 3-5.\n\n`;
+    md += `4. **Transfer Market Illiquidity**: Lower-tier teams completed ${lowerTierSellers} sales and ${lowerTierBuyers} purchases out of ${capturedTransfers.length} total transfers simulated.\n\n`;
+
+    const endWorldPlayers = gameService.league()?.worldPlayers ?? [];
+    const endWorldCount = endWorldPlayers.length;
+    const endWorldAvgOvr = endWorldCount > 0
+      ? (endWorldPlayers.reduce((sum, p) => sum + (p.seasonAttributes[0]?.overall?.value ?? 50), 0) / endWorldCount).toFixed(1)
+      : '0';
+    md += `**Active Foreign Players in World Pool (End of Season 10)**: **${endWorldCount} players** (Avg OVR: **${endWorldAvgOvr}**).\n\n`;
+
+    md += '## Transfer Flow Matrix (Total Transfers Over 10 Seasons)\n\n';
+    md += 'This matrix shows player movements across domestic club tiers, Free Agency, and the World Market. Rows represent the seller, columns represent the buyer.\n\n';
+    md += '| Seller \\\\ Buyer | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 | World Market |\n';
+    md += '|----------------|--------|--------|--------|--------|--------|--------------|\n';
+    sellersList.forEach(s => {
+      md += `| **${s}** `;
+      buyersList.forEach(b => {
+        md += `| ${transferMatrix[b][s]} `;
+      });
+      md += '|\n';
+    });
+    md += '\n';
 
     md += '## Season-by-Season Metrics by Tier\n\n';
     
@@ -504,20 +555,21 @@ describe('Financial Simulation Diagnostic', () => {
     });
     md += '\n';
 
-    const endFreeAgents = gameService.league()?.freeAgents ?? [];
-    const endFaCount = endFreeAgents.length;
-    const endFaAvgOvr = endFaCount > 0
-      ? (endFreeAgents.reduce((sum, p) => sum + (p.seasonAttributes[0]?.overall?.value ?? 50), 0) / endFaCount).toFixed(1)
-      : '0';
-    md += `**Remaining Unattached Free Agents in Pool (End of Season 10)**: **${endFaCount} players** (Avg OVR: **${endFaAvgOvr}**).\n\n`;
+    md += '## Free Agency & World Market Pool Dynamics Per Season\n\n';
+    md += '| Season | Free Agent Pool Size | World Market Pool Size |\n';
+    md += '|--------|----------------------|------------------------|\n';
+    seasonTelemetries.forEach(s => {
+      md += `| Season ${s.seasonNum} | ${s.freeAgentsCount ?? 0} players | ${s.worldPlayersCount ?? 0} players |\n`;
+    });
+    md += '\n';
 
     md += '## Transfer Flow Matrix (Total Transfers Over 10 Seasons)\n\n';
-    md += 'This matrix shows where players are moving. Rows represent the seller tier, columns represent the buyer tier.\n\n';
-    md += '| Seller \\\\ Buyer | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 |\n';
-    md += '|----------------|--------|--------|--------|--------|--------|\n';
-    [1, 2, 3, 4, 5].forEach(s => {
-      md += `| **Tier ${s}** `;
-      [1, 2, 3, 4, 5].forEach(b => {
+    md += 'This matrix shows player movements across domestic club tiers, Free Agency, and the World Market. Rows represent the seller, columns represent the buyer.\n\n';
+    md += '| Seller \\\\ Buyer | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Tier 5 | World Market |\n';
+    md += '|----------------|--------|--------|--------|--------|--------|--------------|\n';
+    sellersList.forEach(s => {
+      md += `| **${s}** `;
+      buyersList.forEach(b => {
         md += `| ${transferMatrix[b][s]} `;
       });
       md += '|\n';

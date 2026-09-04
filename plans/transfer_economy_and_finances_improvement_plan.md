@@ -56,7 +56,7 @@ The primary goal of this revised plan is to transition the transfer market from 
 
 ---
 
-### Phase 2: World Market Sinks (The Liquidity Valves)
+### Phase 2: World Market Sinks (The Liquidity Valves) [DONE]
 *Goal: Ensure there is always a way to dump wages, even if no team in the active league is buying.*
 
 #### 1. The "World Market" Buyer (Shadow Market)

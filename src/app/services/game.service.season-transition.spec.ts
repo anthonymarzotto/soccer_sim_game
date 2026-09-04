@@ -199,8 +199,9 @@ describe('GameService — season transition log', () => {
     expect(eventTeamIds).toContain('team-1');
     expect(eventTeamIds).toContain('team-2');
 
-    // Every event should be a retirement
-    expect(savedLog.events.every((e: { category: string }) => e.category === 'retirement')).toBe(true);
+    // Retirement events should be recorded for both retirees
+    const retirementEvents = savedLog.events.filter((e: { category: string }) => e.category === 'retirement');
+    expect(retirementEvents.length).toBeGreaterThanOrEqual(2);
   });
 
   it('startNewSeason — awards prize money based on rank and adds to transferBudget', async () => {

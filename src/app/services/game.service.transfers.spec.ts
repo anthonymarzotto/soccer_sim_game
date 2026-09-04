@@ -479,8 +479,8 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const userTeam = makeTeam('user_team', []);
       const cpuTeam = makeTeam('cpu_team', []);
       const league = makeLeague([userTeam, cpuTeam], 'user_team', [offer]);
-      // Week 3 is last week of summer transfer window, week 4 is closed.
-      league.currentWeek = 3;
+      // Week 6 is last week of summer transfer window, week 7 is closed.
+      league.currentWeek = 6;
 
       const { service } = setup({ league });
       await service.ensureHydrated();
@@ -644,7 +644,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM })
       ]);
       const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
-      league.currentWeek = 4; // Transfer window closed
+      league.currentWeek = 10; // Transfer window closed (weeks 7-25)
       league.transferListings = ['seller_p1'];
 
       // Mock RNG to make sure activity check would pass (random < 0.4, e.g. 0.1)
@@ -729,7 +729,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
 
       const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
-      league.currentWeek = 20; // Winter window open (max buys = 1)
+      league.currentWeek = 26; // Winter window open (max buys = 1)
       league.transferListings = ['seller_p1', 'seller_p2', 'seller_p3'];
 
       // Mock RNG: activity check (random < 0.4, e.g. 0.1)
