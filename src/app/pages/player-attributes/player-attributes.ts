@@ -109,9 +109,7 @@ export class PlayerAttributesComponent {
     const rows: PlayerAttributesRow[] = [];
 
     const processPlayer = (player: Player, teamName: string, teamId: string, playerStatus: string) => {
-      if (statusFilter === 'contracted' && playerStatus !== 'contracted') return;
-      if (statusFilter === 'free_agent' && playerStatus !== 'free_agent') return;
-      if (statusFilter === 'world' && playerStatus !== 'world') return;
+      if (statusFilter && playerStatus !== statusFilter) return;
       if (teamFilter && teamId !== teamFilter) return;
       if (positionFilter && player.position !== positionFilter) return;
       if (query && !player.name.toLowerCase().includes(query)) return;

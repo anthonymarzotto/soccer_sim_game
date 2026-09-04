@@ -81,16 +81,6 @@ export class TransferService {
         description: 'Pre-season training and summer transfer window. Regular season matches kick off in Week 7.',
         nextMatchWeek: REGULAR_SEASON_START
       };
-    } else if (week >= REGULAR_SEASON_START && week <= REGULAR_SEASON_1_END) {
-      const matchdayRound = week - (REGULAR_SEASON_START - 1);
-      return {
-        week,
-        phase: 'regular_season_1',
-        phaseLabel: 'Regular Season',
-        hasMatches: true,
-        matchdayRound,
-        description: `Regular season matchday ${matchdayRound} of 38.`
-      };
     } else if (week >= WINTER_WINDOW_START && week <= WINTER_WINDOW_END) {
       return {
         week,
@@ -100,11 +90,14 @@ export class TransferService {
         description: 'Mid-season break and winter transfer window. League fixtures resume in Week 30.',
         nextMatchWeek: REGULAR_SEASON_2_START
       };
-    } else if (week >= REGULAR_SEASON_2_START && week <= REGULAR_SEASON_2_END) {
-      const matchdayRound = (REGULAR_SEASON_1_END - REGULAR_SEASON_START + 1) + (week - (REGULAR_SEASON_2_START - 1));
+    } else if ((week >= REGULAR_SEASON_START && week <= REGULAR_SEASON_1_END) || (week >= REGULAR_SEASON_2_START && week <= REGULAR_SEASON_2_END)) {
+      const isFirstHalf = week <= REGULAR_SEASON_1_END;
+      const matchdayRound = isFirstHalf
+        ? week - (REGULAR_SEASON_START - 1)
+        : (REGULAR_SEASON_1_END - REGULAR_SEASON_START + 1) + (week - (REGULAR_SEASON_2_START - 1));
       return {
         week,
-        phase: 'regular_season_2',
+        phase: isFirstHalf ? 'regular_season_1' : 'regular_season_2',
         phaseLabel: 'Regular Season',
         hasMatches: true,
         matchdayRound,

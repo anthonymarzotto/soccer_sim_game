@@ -980,77 +980,47 @@ export class GameService {
 
     const askingPrice = this.calculateAskingPrice(player, league.currentSeasonYear);
 
-    if (fee < askingPrice) {
-      const offerId = this.generateOfferId();
-      const newOffer: TransferOffer = {
-        id: offerId,
+    const recordOffer = (status: TransferOffer['status']) => {
+      const offer: TransferOffer = {
+        id: this.generateOfferId(),
         buyerTeamId: buyerId,
         sellerTeamId: sellerId,
-        playerId: playerId,
-        fee: fee,
+        playerId,
+        fee,
         week: league.currentWeek,
-        status: 'rejected'
+        status
       };
-      
       const updatedLeague: League = {
         ...league,
-        transferOffers: [...(league.transferOffers ?? []), newOffer]
+        transferOffers: [...(league.transferOffers ?? []), offer]
       };
       this.leagueState.set(updatedLeague);
-      this.persistLeagueMetadata(updatedLeague);
-      
+      return offer;
+    };
+
+    const rejectOffer = (message: string) => {
+      const offer = recordOffer('rejected');
+      this.persistLeagueMetadata(this.leagueState()!);
+      return { success: false, message, offer };
+    };
+
+    if (fee < askingPrice) {
       const isListed = (league.transferListings ?? []).includes(player.id);
       const rejectMessage = isListed
         ? 'Offer rejected. The club requires a higher fee for this listed player.'
         : 'Offer rejected. The club is not looking to sell this player and demands a substantial premium.';
-
-      return { success: false, message: rejectMessage, offer: newOffer };
+      return rejectOffer(rejectMessage);
     }
 
     const sellerPlayers = seller.players ?? [];
     const playersAtPosition = sellerPlayers.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
-    
     const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
 
     if (playersAtPosition.length <= minLimit) {
-      const offerId = this.generateOfferId();
-      const newOffer: TransferOffer = {
-        id: offerId,
-        buyerTeamId: buyerId,
-        sellerTeamId: sellerId,
-        playerId: playerId,
-        fee: fee,
-        week: league.currentWeek,
-        status: 'rejected'
-      };
-      
-      const updatedLeague: League = {
-        ...league,
-        transferOffers: [...(league.transferOffers ?? []), newOffer]
-      };
-      this.leagueState.set(updatedLeague);
-      this.persistLeagueMetadata(updatedLeague);
-
-      return { success: false, message: 'Offer rejected. The club cannot sell this player because they do not have enough depth at this position.', offer: newOffer };
+      return rejectOffer('Offer rejected. The club cannot sell this player because they do not have enough depth at this position.');
     }
 
-    const offerId = this.generateOfferId();
-    const newOffer: TransferOffer = {
-      id: offerId,
-      buyerTeamId: buyerId,
-      sellerTeamId: sellerId,
-      playerId: playerId,
-      fee: fee,
-      week: league.currentWeek,
-      status: 'accepted'
-    };
-
-    const tempLeague: League = {
-      ...league,
-      transferOffers: [...(league.transferOffers ?? []), newOffer]
-    };
-    this.leagueState.set(tempLeague);
-
+    const newOffer = recordOffer('accepted');
     this.executeTransfer(buyerId, sellerId, playerId, fee, newOffer.id);
     return { success: true, message: 'Offer accepted! Player has been transferred to your team.', offer: newOffer };
   }
@@ -4375,11 +4345,7 @@ export class GameService {
     });
 
     // Phase 2: Process world market players & free agents progression/expiry/retirement sweep
-    const nextWorldPlayers: Player[] = [];
-    const returnedFreeAgents: Player[] = [];
-
-    const currentWorld = league.worldPlayers ?? [];
-    for (const player of currentWorld) {
+    const advanceAndFilterRetired = (player: Player): { player: Player; nextAttributes: PlayerSeasonAttributes[] } | null => {
       const hasSeededAttributes = (player.seasonAttributes ?? []).some(a => a.seasonYear === nextSeasonYear);
       const seededSeasonAttributes = hasSeededAttributes ? null : this.generateNextSeasonAttributes(player, nextSeasonYear);
       const nextAttributes = hasSeededAttributes
@@ -4391,7 +4357,6 @@ export class GameService {
       const attrs = nextAttributes.find(a => a.seasonYear === nextSeasonYear) || nextAttributes[nextAttributes.length - 1];
       const ovr = attrs?.overall?.value ?? 50;
 
-      // Retirement check: age >= 35 or ovr < 60
       if (age >= 35 || ovr < 60) {
         transitionLog.events.push({
           category: 'retirement',
@@ -4401,10 +4366,19 @@ export class GameService {
           playerIds: [player.id],
           isUserTeam: false
         });
-        continue; // Pruned from world pool without replacement
+        return null;
       }
+      return { player, nextAttributes };
+    };
 
-      // Check contract expiry
+    const nextWorldPlayers: Player[] = [];
+    const returnedFreeAgents: Player[] = [];
+
+    for (const raw of (league.worldPlayers ?? [])) {
+      const advanced = advanceAndFilterRetired(raw);
+      if (!advanced) continue;
+      const { player, nextAttributes } = advanced;
+
       if (player.contract && player.contract.expiresAfterSeason < nextSeasonYear) {
         returnedFreeAgents.push({
           ...player,
@@ -4426,39 +4400,17 @@ export class GameService {
       }
     }
 
-    // Process free agents retirement sweep
     const activeFreeAgents: Player[] = [];
-    for (const player of (league.freeAgents ?? [])) {
-      const hasSeededAttributes = (player.seasonAttributes ?? []).some(a => a.seasonYear === nextSeasonYear);
-      const seededSeasonAttributes = hasSeededAttributes ? null : this.generateNextSeasonAttributes(player, nextSeasonYear);
-      const nextAttributes = hasSeededAttributes
-        ? (player.seasonAttributes ?? [])
-        : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes!]);
-
-      const bday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
-      const age = computeAge(bday, seasonAnchorDate(nextSeasonYear));
-      const attrs = nextAttributes.find(a => a.seasonYear === nextSeasonYear) || nextAttributes[nextAttributes.length - 1];
-      const ovr = attrs?.overall?.value ?? 50;
-
-      if (age >= 35 || ovr < 60) {
-        transitionLog.events.push({
-          category: 'retirement',
-          headline: `${player.name} Retires`,
-          detail: `${player.name} (${age}) has announced their retirement.`,
-          teamId: '',
-          playerIds: [player.id],
-          isUserTeam: false
-        });
-        continue; // Pruned from free agent pool without replacement
-      }
-
+    for (const raw of (league.freeAgents ?? [])) {
+      const advanced = advanceAndFilterRetired(raw);
+      if (!advanced) continue;
       activeFreeAgents.push({
-        ...player,
+        ...advanced.player,
         status: 'free_agent',
         teamId: 'free_agents',
         mood: 100,
         fatigue: 0,
-        seasonAttributes: nextAttributes
+        seasonAttributes: advanced.nextAttributes
       });
     }
 

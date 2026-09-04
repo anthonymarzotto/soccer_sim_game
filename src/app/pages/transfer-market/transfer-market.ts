@@ -134,70 +134,22 @@ export class TransferMarketComponent {
       });
     }
 
-    const freeAgents = league.freeAgents ?? [];
-    const freeAgentTeam: Team = {
-      id: 'free_agents',
-      name: 'Free Agent',
-      players: [],
-      playerIds: [],
-      selectedFormationId: 'formation_4_4_2',
-      formationAssignments: {},
-      stats: createEmptyTeamStats(),
-      finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 }
-    };
+    const unassignedPools: Array<[Player[], Team, 'free_agent' | 'world', string]> = [
+      [league.freeAgents ?? [], { id: 'free_agents', name: 'Free Agent', players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, stats: createEmptyTeamStats(), finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 } }, 'free_agent', 'Free Agent'],
+      [league.worldPlayers ?? [], { id: 'world', name: 'World Market', players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, stats: createEmptyTeamStats(), finances: { tier: 1, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 } }, 'world', 'World Market']
+    ];
 
-    for (const player of freeAgents) {
-      const attrs = getCurrentPlayerSeasonAttributes(player, year);
-      const overall = attrs?.overall?.value ?? 50;
-      const age = computeAge(player.personal.birthday, seasonAnchorDate(year));
-      const value = calculateMarketValue(player, year);
-      const wage = calculatePlayerWageCost(player, year);
-      const contract = player.contract ? Math.max(0, player.contract.expiresAfterSeason - year + 1) : 0;
+    for (const [pool, team, status, statusLabel] of unassignedPools) {
+      for (const player of pool) {
+        const attrs = getCurrentPlayerSeasonAttributes(player, year);
+        const overall = attrs?.overall?.value ?? 50;
+        const age = computeAge(player.personal.birthday, seasonAnchorDate(year));
+        const value = calculateMarketValue(player, year);
+        const wage = calculatePlayerWageCost(player, year);
+        const contract = player.contract ? Math.max(0, player.contract.expiresAfterSeason - year + 1) : 0;
 
-      rows.push({
-        player,
-        team: freeAgentTeam,
-        overall,
-        age,
-        value,
-        wage,
-        contract,
-        status: 'free_agent',
-        statusLabel: 'Free Agent'
-      });
-    }
-
-    const worldPlayers = league.worldPlayers ?? [];
-    const worldTeam: Team = {
-      id: 'world',
-      name: 'World Market',
-      players: [],
-      playerIds: [],
-      selectedFormationId: 'formation_4_4_2',
-      formationAssignments: {},
-      stats: createEmptyTeamStats(),
-      finances: { tier: 1, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 }
-    };
-
-    for (const player of worldPlayers) {
-      const attrs = getCurrentPlayerSeasonAttributes(player, year);
-      const overall = attrs?.overall?.value ?? 50;
-      const age = computeAge(player.personal.birthday, seasonAnchorDate(year));
-      const value = calculateMarketValue(player, year);
-      const wage = calculatePlayerWageCost(player, year);
-      const contract = player.contract ? Math.max(0, player.contract.expiresAfterSeason - year + 1) : 0;
-
-      rows.push({
-        player,
-        team: worldTeam,
-        overall,
-        age,
-        value,
-        wage,
-        contract,
-        status: 'world',
-        statusLabel: 'World Market'
-      });
+        rows.push({ player, team, overall, age, value, wage, contract, status, statusLabel });
+      }
     }
 
     return rows;
