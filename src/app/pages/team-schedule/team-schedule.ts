@@ -61,6 +61,9 @@ export class TeamScheduleComponent {
     return this.selectedSeason() === this.activeSeason();
   });
 
+  currentWeek = computed(() => this.gameService.league()?.currentWeek ?? 1);
+  isPreSeason = computed(() => this.isCurrentSeason() && this.currentWeek() < 7);
+
   isSeasonComplete = computed(() => {
     const l = this.gameService.league();
     if (!l) return false;

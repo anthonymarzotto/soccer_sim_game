@@ -70,8 +70,8 @@ describe('ScheduleStateService', () => {
     await service.ensureHydrated();
     TestBed.flushEffects();
 
-    // For 10 teams, max weeks is (10 - 1) * 2 = 18.
-    expect(service.selectedWeek()).toBe(18);
+    // For 52-week calendar, max weeks is clamped to 52.
+    expect(service.selectedWeek()).toBe(52);
   });
 
   it('should persist selected week changes after hydration', async () => {

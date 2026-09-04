@@ -113,6 +113,30 @@
     <!-- Matches Timeline Content -->
     <div class="space-y-6">
 
+      <!-- Pre-Season Active Notice Banner -->
+      @if (isPreSeason()) {
+        <div class="p-4 rounded-xl border border-accent/30 bg-accent/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
+              <span class="material-icons text-xl">fitness_center</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold font-display uppercase tracking-wider text-text-primary">
+                Pre-Season Active (Week {{ currentWeek() }} of 6)
+              </div>
+              <p class="text-xs text-text-muted mt-0.5">
+                Training and transfer window are underway. Your first regular season match is scheduled for <strong class="text-text-primary font-semibold">Week 7</strong>.
+              </p>
+            </div>
+          </div>
+
+          <a routerLink="/transfer-market" class="shrink-0 px-3.5 py-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-lg text-accent text-xs font-bold transition-colors inline-flex items-center gap-1.5">
+            <span>Transfer Market</span>
+            <span class="material-icons text-xs">arrow_forward</span>
+          </a>
+        </div>
+      }
+
       <!-- ================= PENDING MATCHES SECTION ================= -->
       @if (pendingMatches().length > 0) {
         <div class="space-y-4">

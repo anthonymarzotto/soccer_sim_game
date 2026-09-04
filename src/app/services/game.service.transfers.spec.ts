@@ -81,6 +81,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
     const normalizedDbSpy = {
       saveTransfer: vi.fn().mockResolvedValue(undefined),
+      saveFreeAgentSigning: vi.fn().mockResolvedValue(undefined),
       saveLeague: vi.fn().mockResolvedValue(undefined),
       saveLeagueMetadata: vi.fn().mockResolvedValue(undefined)
     };
@@ -478,8 +479,8 @@ describe('GameService — Transfer Offer Sub-System', () => {
       const userTeam = makeTeam('user_team', []);
       const cpuTeam = makeTeam('cpu_team', []);
       const league = makeLeague([userTeam, cpuTeam], 'user_team', [offer]);
-      // Week 3 is last week of summer transfer window, week 4 is closed.
-      league.currentWeek = 3;
+      // Week 6 is last week of summer transfer window, week 7 is closed.
+      league.currentWeek = 6;
 
       const { service } = setup({ league });
       await service.ensureHydrated();
@@ -643,7 +644,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM })
       ]);
       const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
-      league.currentWeek = 4; // Transfer window closed
+      league.currentWeek = 10; // Transfer window closed (weeks 7-25)
       league.transferListings = ['seller_p1'];
 
       // Mock RNG to make sure activity check would pass (random < 0.4, e.g. 0.1)
@@ -673,8 +674,8 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
 
-      // Ensure seller team has > 15 players overall for the safety roster limit
-      for (let i = 5; i <= 17; i++) {
+      // Ensure seller team has > 18 players overall for the safety roster limit
+      for (let i = 5; i <= 20; i++) {
         sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
@@ -728,7 +729,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
       sellerTeam.seasonSnapshots![0].playerIds = sellerTeam.playerIds;
 
       const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
-      league.currentWeek = 20; // Winter window open (max buys = 1)
+      league.currentWeek = 26; // Winter window open (max buys = 1)
       league.transferListings = ['seller_p1', 'seller_p2', 'seller_p3'];
 
       // Mock RNG: activity check (random < 0.4, e.g. 0.1)
@@ -792,7 +793,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
         createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
-      for (let i = 5; i <= 18; i++) {
+      for (let i = 5; i <= 20; i++) {
         sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
@@ -826,7 +827,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'seller_p3', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 }),
         createTestPlayer({ id: 'seller_p4', teamId: 'cpu_seller', position: Position.CM, defaultStat: 75 })
       ]);
-      for (let i = 5; i <= 17; i++) {
+      for (let i = 5; i <= 20; i++) {
         sellerTeam.players.push(createTestPlayer({ id: `seller_p${i}`, teamId: 'cpu_seller', position: Position.CB }));
       }
       sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
@@ -866,7 +867,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'hub_def2', teamId: 'cpu_hub', position: Position.CB, defaultStat: 69 }),
         createTestPlayer({ id: 'hub_def3', teamId: 'cpu_hub', position: Position.CB, defaultStat: 68 }),
       ], 100000);
-      for (let i = 8; i <= 17; i++) {
+      for (let i = 8; i <= 20; i++) {
         hubTeam.players.push(createTestPlayer({ id: `hub_fill${i}`, teamId: 'cpu_hub', position: Position.ST, defaultStat: 60 }));
       }
       hubTeam.playerIds = hubTeam.players.map(p => p.id);
@@ -879,7 +880,7 @@ describe('GameService — Transfer Offer Sub-System', () => {
         createTestPlayer({ id: 'def3', teamId: 'cpu_def_seller', position: Position.CB, defaultStat: 70 }),
         createTestPlayer({ id: 'def4', teamId: 'cpu_def_seller', position: Position.CB, defaultStat: 70 }),
       ]);
-      for (let i = 5; i <= 17; i++) {
+      for (let i = 5; i <= 20; i++) {
         defSeller.players.push(createTestPlayer({ id: `def_fill${i}`, teamId: 'cpu_def_seller', position: Position.CM, defaultStat: 65 }));
       }
       defSeller.playerIds = defSeller.players.map(p => p.id);
@@ -947,6 +948,115 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
       const listings = service.runCpuAutoListingForLeague(service.league()!);
       expect(listings).not.toContain('hot_potato');
+    });
+
+    it('should auto-list the lowest OVR non-prospect backup at position when CPU signs a starter at that position', async () => {
+      const userTeam = makeTeam('user_team', []);
+      const newStarterST = createTestPlayer({ id: 'seller_st', teamId: 'cpu_seller', position: Position.ST, defaultStat: 90 });
+      const sellerST2 = createTestPlayer({ id: 'seller_st2', teamId: 'cpu_seller', position: Position.ST, defaultStat: 75 });
+      const sellerST3 = createTestPlayer({ id: 'seller_st3', teamId: 'cpu_seller', position: Position.ST, defaultStat: 75 });
+      const sellerTeam = makeTeam('cpu_seller', [newStarterST, sellerST2, sellerST3]);
+      for (let i = 4; i <= 20; i++) {
+        sellerTeam.players.push(createTestPlayer({ id: `seller_fill${i}`, teamId: 'cpu_seller', position: Position.CB }));
+      }
+      sellerTeam.playerIds = sellerTeam.players.map(p => p.id);
+
+      const gk = createTestPlayer({ id: 'buyer_gk', teamId: 'cpu_buyer', position: Position.GK, defaultStat: 80 });
+      const def1 = createTestPlayer({ id: 'buyer_cb1', teamId: 'cpu_buyer', position: Position.CB, defaultStat: 80 });
+      const def2 = createTestPlayer({ id: 'buyer_cb2', teamId: 'cpu_buyer', position: Position.CB, defaultStat: 80 });
+      const def3 = createTestPlayer({ id: 'buyer_fb1', teamId: 'cpu_buyer', position: Position.FB, defaultStat: 80 });
+      const def4 = createTestPlayer({ id: 'buyer_fb2', teamId: 'cpu_buyer', position: Position.FB, defaultStat: 80 });
+
+      const mid1 = createTestPlayer({ id: 'buyer_cm1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 });
+      const mid2 = createTestPlayer({ id: 'buyer_cm2', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 80 });
+      const mid3 = createTestPlayer({ id: 'buyer_wng1', teamId: 'cpu_buyer', position: Position.WNG, defaultStat: 80 });
+      const mid4 = createTestPlayer({ id: 'buyer_wng2', teamId: 'cpu_buyer', position: Position.WNG, defaultStat: 80 });
+
+      const oldStarterST = createTestPlayer({ id: 'old_starter', teamId: 'cpu_buyer', position: Position.ST, defaultStat: 75, age: 26 });
+      const backupST = createTestPlayer({ id: 'backup_st', teamId: 'cpu_buyer', position: Position.ST, defaultStat: 65, age: 25 });
+      const prospectST = createTestPlayer({ id: 'prospect_st', teamId: 'cpu_buyer', position: Position.ST, defaultStat: 60, age: 19 });
+
+      const buyerTeam = makeTeam('cpu_buyer', [
+        gk, def1, def2, def3, def4, mid1, mid2, mid3, mid4,
+        oldStarterST, backupST, prospectST
+      ], 100000000, 200);
+      buyerTeam.selectedFormationId = 'formation_4_4_2';
+
+      for (let i = 13; i <= 20; i++) {
+        buyerTeam.players.push(createTestPlayer({ id: `buyer_fill${i}`, teamId: 'cpu_buyer', position: Position.CB, defaultStat: 80 }));
+      }
+      buyerTeam.playerIds = buyerTeam.players.map(p => p.id);
+
+      const league = makeLeague([userTeam, buyerTeam, sellerTeam], 'user_team');
+      league.currentWeek = 1;
+      league.transferListings = ['seller_st'];
+
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      await (service as unknown as Record<string, (...args: unknown[]) => Promise<void>>)['executeTransfer'](
+        'cpu_buyer',
+        'cpu_seller',
+        'seller_st',
+        10000000,
+        'offer_1',
+        { refreshCpuTeamListings: true }
+      );
+
+      const listings = service.league()?.transferListings ?? [];
+      // Lowest OVR non-prospect backup ST (backup_st) should be auto-listed
+      expect(listings).toContain('backup_st');
+      expect(listings).not.toContain('prospect_st');
+    });
+
+    it('should prioritize highest wage/value players when auto-listing for a team exceeding wage cap', async () => {
+      const pLowWage = createTestPlayer({ id: 'cheap_wage', teamId: 'cpu_team', position: Position.CM, defaultStat: 70 });
+      pLowWage.contract = { agreedWageCost: 1.0, expiresAfterSeason: 2026 };
+
+      const pHighWage = createTestPlayer({ id: 'expensive_wage', teamId: 'cpu_team', position: Position.CM, defaultStat: 85 });
+      pHighWage.contract = { agreedWageCost: 10.0, expiresAfterSeason: 2026 };
+
+      const cpuTeam = makeTeam('cpu_team', [pLowWage, pHighWage], 1000000, 10, 20); // wagePointsCap = 10, wagePointsUsed = 20 (capExceeded)
+      for (let i = 3; i <= 20; i++) {
+        const fill = createTestPlayer({ id: `fill_${i}`, teamId: 'cpu_team', position: Position.CB });
+        fill.contract = { agreedWageCost: 1.0, expiresAfterSeason: 2026 };
+        cpuTeam.players.push(fill);
+      }
+      cpuTeam.playerIds = cpuTeam.players.map(p => p.id);
+
+      const userTeam = makeTeam('user_team', []);
+      const league = makeLeague([userTeam, cpuTeam], 'user_team');
+
+      const { service } = setup({ league });
+      await service.ensureHydrated();
+
+      const listings = service.runCpuAutoListingForLeague(service.league()!);
+      expect(listings[0]).toBe('expensive_wage');
+    });
+
+    it('should allow CPU team to sign a free agent from unified pool for $0 transfer fee when depth is needed', async () => {
+      const userTeam = makeTeam('user_team', []);
+      const buyerTeam = makeTeam('cpu_buyer', [
+        createTestPlayer({ id: 'buyer_p1', teamId: 'cpu_buyer', position: Position.CM, defaultStat: 70 })
+      ], 1000); // Very low budget ($1,000)
+
+      const freeAgent = createTestPlayer({ id: 'fa_star', teamId: 'free_agents', position: Position.CM, defaultStat: 80 });
+      freeAgent.contract = { agreedWageCost: 1.0, expiresAfterSeason: 2025 };
+
+      const league = makeLeague([userTeam, buyerTeam], 'user_team');
+      league.currentWeek = 1;
+      league.freeAgents = [freeAgent];
+
+      const { service } = setup({ league, rngRandomValue: 0.1 });
+      await service.ensureHydrated();
+
+      service.simulateCurrentWeek();
+
+      const updatedFA = service.league()?.freeAgents ?? [];
+      expect(updatedFA.find(p => p.id === 'fa_star')).toBeUndefined();
+
+      const signedPlayer = service.getPlayer('fa_star');
+      expect(signedPlayer?.teamId).toBe('cpu_buyer');
     });
 
     it('should clamp the peer overall interpolation factor t to [0, 1] in calculateAskingPrice', async () => {
@@ -1044,10 +1154,10 @@ describe('GameService — Transfer Offer Sub-System', () => {
 
       const listings = service.runCpuAutoListingForLeague(service.league()!);
       expect(listings.length).toBeGreaterThan(0);
-      const firstListedIndex = listings.indexOf('p4');
-      const secondListedIndex = listings.indexOf('p3');
-      if (firstListedIndex !== -1 && secondListedIndex !== -1) {
-        expect(firstListedIndex).toBeLessThan(secondListedIndex);
+      const highestWageListedIndex = listings.indexOf('p1');
+      const lowerWageListedIndex = listings.indexOf('p4');
+      if (highestWageListedIndex !== -1 && lowerWageListedIndex !== -1) {
+        expect(highestWageListedIndex).toBeLessThan(lowerWageListedIndex);
       }
     });
   });

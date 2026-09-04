@@ -42,6 +42,17 @@
         </div>
 
         <div class="filter-group">
+          <label for="status-filter" class="filter-label">Status</label>
+          <select id="status-filter" class="filter-control" [ngModel]="selectedStatus()"
+            (ngModelChange)="selectedStatus.set($event); pageIndex.set(0)">
+            <option value="">All Statuses</option>
+            <option value="contracted">Club Roster</option>
+            <option value="free_agent">Free Agent</option>
+            <option value="world">World Market</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
           <label for="player-search" class="filter-label">Search</label>
           <input id="player-search" class="filter-control" type="text" placeholder="Player name..."
             [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event); pageIndex.set(0)" />

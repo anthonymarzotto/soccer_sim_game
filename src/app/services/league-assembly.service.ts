@@ -162,7 +162,11 @@ export class LeagueAssemblyService {
   }
 
   flattenLeague(league: League): PersistedLeagueSnapshot {
-    const players = this.extractPlayers(league.teams, league.currentSeasonYear);
+    const activePlayers = this.extractPlayers(league.teams, league.currentSeasonYear).map(p => ({ ...p, status: 'contracted' as const }));
+    const freeAgents = (league.freeAgents ?? []).map(p => ({ ...this.serializePlayer(p, league.currentSeasonYear), status: 'free_agent' as const, teamId: 'free_agents' }));
+    const worldPlayers = (league.worldPlayers ?? []).map(p => ({ ...this.serializePlayer(p, league.currentSeasonYear), status: 'world' as const, teamId: '' }));
+    const players = [...activePlayers, ...freeAgents, ...worldPlayers];
+
     const teams = this.toPersistedTeams(league.teams, league.currentSeasonYear);
     const schedule = league.schedule.map(match => ({
       ...match,
@@ -192,9 +196,22 @@ export class LeagueAssemblyService {
 
     const hydratedPlayersNonNull = hydratedPlayers as Player[];
     const playersById = new Map(hydratedPlayersNonNull.map(player => [player.id, player]));
-    const playersByTeamId = new Map<string, Player[]>();
 
-    for (const player of hydratedPlayersNonNull) {
+    // Separate active team players, free agents, and world market players
+    const freeAgents = hydratedPlayersNonNull
+      .filter(p => p.status === 'free_agent' || p.teamId === 'free_agents')
+      .map(p => ({ ...p, status: 'free_agent' as const, teamId: 'free_agents' }));
+
+    const worldPlayers = hydratedPlayersNonNull
+      .filter(p => p.status === 'world')
+      .map(p => ({ ...p, status: 'world' as const, teamId: '' }));
+
+    const activePlayers = hydratedPlayersNonNull
+      .filter(p => p.status !== 'free_agent' && p.status !== 'world' && p.status !== 'retired' && p.teamId !== 'free_agents' && p.teamId !== '')
+      .map(p => ({ ...p, status: 'contracted' as const }));
+
+    const playersByTeamId = new Map<string, Player[]>();
+    for (const player of activePlayers) {
       const current = playersByTeamId.get(player.teamId) ?? [];
       current.push(player);
       playersByTeamId.set(player.teamId, current);
@@ -257,7 +274,9 @@ export class LeagueAssemblyService {
       userTeamId: snapshot.metadata?.userTeamId,
       transferListings: snapshot.metadata?.transferListings ?? [],
       transferOffers: snapshot.metadata?.transferOffers ?? [],
-      evaluatedCpuOfferPlayerIds: snapshot.metadata?.evaluatedCpuOfferPlayerIds ?? []
+      evaluatedCpuOfferPlayerIds: snapshot.metadata?.evaluatedCpuOfferPlayerIds ?? [],
+      freeAgents: freeAgents,
+      worldPlayers: worldPlayers
     };
   }
 

@@ -87,7 +87,21 @@
       }
       <!-- Filters Bar -->
       <div
-        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-panel/50 border border-border p-4 rounded">
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 bg-panel/50 border border-border p-4 rounded">
+        <!-- Category Status Filter -->
+        <div>
+          <label for="status-select"
+            class="text-xs font-bold font-display uppercase tracking-wider text-text-muted block mb-1.5">Market Category</label>
+          <select id="status-select" [ngModel]="selectedStatus()"
+            (ngModelChange)="selectedStatus.set($event); pageIndex.set(0)"
+            class="w-full bg-canvas border border-border rounded px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all font-medium">
+            <option value="">All Market Pools</option>
+            <option value="listed">Transfer Listed (Clubs)</option>
+            <option value="free_agent">Free Agents ($0 Fee)</option>
+            <option value="world">World Market (Foreign)</option>
+          </select>
+        </div>
+
         <!-- Search -->
         <div>
           <label for="search-input"
@@ -226,6 +240,18 @@
                     [class.text-danger]="getPositionGroup(row.player.position) === 'FWD'"
                     [class.border-danger/20]="getPositionGroup(row.player.position) === 'FWD'">
                     {{ row.player.position }}
+                  </span>
+                  <span class="px-2 py-0.5 rounded border text-[9px] font-bold font-display ml-1"
+                    [class.bg-accent/10]="row.status === 'contracted'"
+                    [class.text-accent]="row.status === 'contracted'"
+                    [class.border-accent/20]="row.status === 'contracted'"
+                    [class.bg-warning/10]="row.status === 'free_agent'"
+                    [class.text-warning]="row.status === 'free_agent'"
+                    [class.border-warning/20]="row.status === 'free_agent'"
+                    [class.bg-purple-500/10]="row.status === 'world'"
+                    [class.text-purple-400]="row.status === 'world'"
+                    [class.border-purple-500/20]="row.status === 'world'">
+                    {{ row.statusLabel }}
                   </span>
                 </td>
 
