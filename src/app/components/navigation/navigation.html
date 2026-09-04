@@ -12,21 +12,49 @@
 
   <!-- Season Controls -->
   @if (hasLeague()) {
-    <div class="px-4 py-3 border-b border-border space-y-3">
-      <app-season-controls></app-season-controls>
-      
-      @if (transferWindowPhase() !== 'closed') {
-        <div class="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider select-none border"
-             [class.bg-accent/10]="transferWindowPhase() === 'summer'"
-             [class.text-accent]="transferWindowPhase() === 'summer'"
-             [class.border-accent/30]="transferWindowPhase() === 'summer'"
-             [class.bg-warning/10]="transferWindowPhase() === 'winter'"
-             [class.text-warning]="transferWindowPhase() === 'winter'"
-             [class.border-warning/30]="transferWindowPhase() === 'winter'">
-          <span class="material-icons text-[14px]">payments</span>
-          <span>{{ transferWindowPhase() === 'summer' ? 'Summer' : 'Winter' }} Window</span>
+    <div class="px-4 py-3 border-b border-border space-y-2.5">
+      <!-- Calendar Phase & Schedule Context Card -->
+      @if (calendarWeekInfo(); as info) {
+        <div class="p-2.5 rounded-lg border bg-canvas/60 space-y-1.5 border-border shadow-xs">
+          <div class="flex items-center justify-between gap-1">
+            <div class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                    [class.bg-accent]="info.phase === 'regular_season_1' || info.phase === 'regular_season_2'"
+                    [class.bg-warning]="info.phase === 'pre_season' || info.phase === 'winter_break'"
+                    [class.bg-text-muted]="info.phase === 'post_season' || info.phase === 'off_season'"></span>
+              <span class="text-xs font-bold font-display uppercase tracking-wide text-text-primary">{{ info.phaseLabel }}</span>
+            </div>
+            <span class="text-[10px] font-mono text-text-muted font-bold">W{{ info.week }}/52</span>
+          </div>
+          
+          <div class="flex items-center justify-between gap-2 text-[11px]">
+            @if (info.hasMatches) {
+              <span class="text-text-muted font-medium">Matchday {{ info.matchdayRound }}/38</span>
+            } @else if (info.nextMatchWeek) {
+              <span class="text-warning text-[10px] font-semibold">1st Game: W{{ info.nextMatchWeek }}</span>
+            } @else {
+              <span class="text-text-muted text-[10px]">No Matches</span>
+            }
+
+            @if (transferWindowPhase() !== 'closed') {
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border shrink-0"
+                    [class.bg-accent/10]="transferWindowPhase() === 'summer'"
+                    [class.text-accent]="transferWindowPhase() === 'summer'"
+                    [class.border-accent/30]="transferWindowPhase() === 'summer'"
+                    [class.bg-warning/10]="transferWindowPhase() === 'winter'"
+                    [class.text-warning]="transferWindowPhase() === 'winter'"
+                    [class.border-warning/30]="transferWindowPhase() === 'winter'"
+                    [class.bg-canvas]="transferWindowPhase() === 'post_season'"
+                    [class.text-text-secondary]="transferWindowPhase() === 'post_season'"
+                    [class.border-border]="transferWindowPhase() === 'post_season'">
+                {{ transferWindowPhase() === 'summer' ? 'Summer' : transferWindowPhase() === 'winter' ? 'Winter' : 'Post' }} Mkt
+              </span>
+            }
+          </div>
         </div>
       }
+
+      <app-season-controls></app-season-controls>
     </div>
   }
 

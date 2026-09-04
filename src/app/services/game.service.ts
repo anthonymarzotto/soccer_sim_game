@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
 import { League, Match, Team, Player, PlayerContract, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer, SuspensionRecord } from '../models/types';
-import { TransferService, SUMMER_WINDOW_START, SUMMER_WINDOW_END, WINTER_WINDOW_START, WINTER_WINDOW_END } from './transfer.service';
+import { TransferService, SUMMER_WINDOW_START, SUMMER_WINDOW_END, REGULAR_SEASON_START, WINTER_WINDOW_START, WINTER_WINDOW_END, CalendarWeekInfo, TOTAL_CALENDAR_WEEKS } from './transfer.service';
 import { NormalizedDbService } from './normalized-db.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
@@ -105,6 +105,10 @@ export class GameService {
     const l = this.leagueState();
     return l ? this.transferService.getWeeksRemainingInWindow(l.currentWeek) : 0;
   });
+  public calendarWeekInfo = computed<CalendarWeekInfo | null>(() => {
+    const l = this.leagueState();
+    return l ? this.transferService.getCalendarWeekInfo(l.currentWeek) : null;
+  });
 
   public unreadSeasonTransitionLog = computed(() => {
     const log = this.seasonTransitionLogState();
@@ -115,7 +119,20 @@ export class GameService {
   public isAnySimulationInProgress = computed(() => this.isSimulatingMatchWeek() || this.isSimulatingSingleMatch());
   public isSeasonComplete = computed(() => {
     const league = this.leagueState();
-    return Boolean(league && league.schedule.length > 0 && league.schedule.every(match => match.played));
+    if (!league || league.schedule.length === 0) return false;
+    const currentSeasonMatches = league.schedule.filter(
+      m => (m.seasonYear ?? league.currentSeasonYear) === league.currentSeasonYear
+    );
+    if (currentSeasonMatches.length === 0) return false;
+    const allMatchesPlayed = currentSeasonMatches.every(match => match.played);
+    if (!allMatchesPlayed) return false;
+
+    // In a 52-week calendar with full league fixtures, season completes at week 52
+    const maxMatchWeek = Math.max(...currentSeasonMatches.map(m => m.week));
+    if (maxMatchWeek > 2) {
+      return league.currentWeek >= TOTAL_CALENDAR_WEEKS;
+    }
+    return true;
   });
 
   public hasLeague = computed(() => this.leagueState() !== null);
@@ -512,6 +529,7 @@ export class GameService {
 
     const league = this.leagueState();
     if (!league) return;
+    if (league.currentWeek >= TOTAL_CALENDAR_WEEKS) return;
 
     const previousPhase = this.transferService.getTransferWindowPhase(league.currentWeek);
     const nextWeek = league.currentWeek + 1;
@@ -2309,6 +2327,15 @@ export class GameService {
 
   simulateWeeks(weeksCount: number): void {
     this.simulateMultipleWeeks(weeksCount, false);
+  }
+
+  simulateToRegularSeason(): void {
+    const league = this.leagueState();
+    if (!league) return;
+    const remaining = REGULAR_SEASON_START - league.currentWeek;
+    if (remaining > 0) {
+      this.simulateMultipleWeeks(remaining, true);
+    }
   }
 
   simulateToWinterTransferWindow(): void {
