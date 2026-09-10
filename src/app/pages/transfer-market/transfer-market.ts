@@ -134,7 +134,7 @@ export class TransferMarketComponent {
       });
     }
 
-    const unassignedPools: Array<[Player[], Team, 'free_agent' | 'world', string]> = [
+    const unassignedPools: [Player[], Team, 'free_agent' | 'world', string][] = [
       [league.freeAgents ?? [], { id: 'free_agents', name: 'Free Agent', players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, stats: createEmptyTeamStats(), finances: { tier: 5, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 } }, 'free_agent', 'Free Agent'],
       [league.worldPlayers ?? [], { id: 'world', name: 'World Market', players: [], playerIds: [], selectedFormationId: 'formation_4_4_2', formationAssignments: {}, stats: createEmptyTeamStats(), finances: { tier: 1, transferBudget: 0, wagePointsCap: 0, wagePointsUsed: 0 } }, 'world', 'World Market']
     ];
