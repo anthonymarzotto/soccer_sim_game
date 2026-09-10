@@ -128,15 +128,15 @@ describe('GeneratorService', () => {
             break;
           case 3:
             expect(f.transferBudget).toBe(700000);
-            expect(f.wagePointsCap).toBe(29);
+            expect(f.wagePointsCap).toBe(33);
             break;
           case 4:
             expect(f.transferBudget).toBe(350000);
-            expect(f.wagePointsCap).toBe(21);
+            expect(f.wagePointsCap).toBe(25);
             break;
           case 5:
             expect(f.transferBudget).toBe(150000);
-            expect(f.wagePointsCap).toBe(17);
+            expect(f.wagePointsCap).toBe(22);
             break;
         }
       });

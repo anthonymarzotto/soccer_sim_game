@@ -29,6 +29,7 @@ export class NavigationComponent {
   appTitle = APP_TITLE;
   hasLeague = this.gameService.hasLeague;
   transferWindowPhase = this.gameService.transferWindowPhase;
+  calendarWeekInfo = this.gameService.calendarWeekInfo;
   isLocalhost = computed(() => this.localhostService.isLocalhost());
   displayedVersion = computed(() => `${APP_VERSION}.${resolveSchemaVersion(this.settingsService.currentDataSchemaVersion)}`);
   hasSettingsVersionMismatch = this.settingsService.hasPersistedSettingsVersionMismatch;

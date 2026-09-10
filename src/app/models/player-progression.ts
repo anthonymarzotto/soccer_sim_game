@@ -77,8 +77,10 @@ export function getStatKeysForCategory(category: string): StatKey[] {
 export const POSITION_OVR_CONFIG: Record<Position, { core: Partial<Record<StatKey, number>> }> = {
   [Position.GK]: {
     core: {
-      handling: 50,
-      reflexes: 50
+      handling: 40,
+      reflexes: 40,
+      shortPassing: 10,
+      longPassing: 10
     }
   },
   [Position.CB]: {
@@ -263,7 +265,7 @@ export function calculateMarketValue(player: Player, seasonYear: number): number
       positionMultiplier = 0.9;
       break;
     case 'GK':
-      positionMultiplier = 0.85;
+      positionMultiplier = 0.70;
       break;
     case 'MID':
     default:
@@ -324,7 +326,7 @@ export function calculatePlayerMarketWageCost(player: Player, seasonYear: number
       positionMultiplier = 0.9;
       break;
     case 'GK':
-      positionMultiplier = 0.85;
+      positionMultiplier = 0.80;
       break;
     case 'MID':
     default:

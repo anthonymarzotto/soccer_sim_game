@@ -2,6 +2,7 @@ import { Injectable, effect, inject, signal } from '@angular/core';
 import { GameService } from './game.service';
 import { PersistenceService } from './persistence.service';
 import { League } from '../models/types';
+import { TOTAL_CALENDAR_WEEKS } from './transfer.service';
 
 @Injectable({
   providedIn: 'root'
@@ -121,7 +122,7 @@ export class ScheduleStateService {
   }
 
   private clampWeek(week: number, league: League): number {
-    const maxWeeks = Math.max(1, (league.teams.length - 1) * 2);
+    const maxWeeks = Math.max(TOTAL_CALENDAR_WEEKS, (league.teams.length - 1) * 2);
     return Math.min(Math.max(week, 1), maxWeeks);
   }
 

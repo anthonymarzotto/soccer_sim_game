@@ -51,9 +51,9 @@ export class GeneratorService {
     const tierConfig = [
       { tier: 1, count: 3, budget: 2500000, cap: 56 },
       { tier: 2, count: 4, budget: 1400000, cap: 42 },
-      { tier: 3, count: 6, budget: 700000, cap: 29 },
-      { tier: 4, count: 5, budget: 350000, cap: 21 },
-      { tier: 5, count: 2, budget: 150000, cap: 17 }
+      { tier: 3, count: 6, budget: 700000, cap: 33 },
+      { tier: 4, count: 5, budget: 350000, cap: 25 },
+      { tier: 5, count: 2, budget: 150000, cap: 22 }
     ];
 
     let teamIndex = 0;
@@ -380,7 +380,10 @@ export class GeneratorService {
     // Round Robin scheduling algorithm
     const teamIds = teams.map(t => t.id);
 
-    for (let week = 1; week <= numWeeks / 2; week++) {
+    for (let round = 1; round <= numWeeks / 2; round++) {
+      const firstHalfWeek = 6 + round;    // Weeks 7–25
+      const secondHalfWeek = 29 + round;  // Weeks 30–48
+
       for (let i = 0; i < numTeams / 2; i++) {
         const home = teamIds[i];
         const away = teamIds[numTeams - 1 - i];
@@ -392,7 +395,7 @@ export class GeneratorService {
           awayTeamId: away,
           homeScore: undefined,
           awayScore: undefined,
-          week,
+          week: firstHalfWeek,
           played: false
         });
 
@@ -404,7 +407,7 @@ export class GeneratorService {
           awayTeamId: home,
           homeScore: undefined,
           awayScore: undefined,
-          week: week + (numWeeks / 2),
+          week: secondHalfWeek,
           played: false
         });
       }

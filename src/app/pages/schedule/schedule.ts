@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { GameService } from '../../services/game.service';
 import { ScheduleStateService } from '../../services/schedule-state.service';
 import { MatchSummaryComponent } from '../../components/match-summary/match-summary';
+import { TOTAL_CALENDAR_WEEKS, TransferService } from '../../services/transfer.service';
 
 @Component({
   selector: 'app-schedule',
@@ -13,6 +14,7 @@ import { MatchSummaryComponent } from '../../components/match-summary/match-summ
 export class ScheduleComponent {
   gameService = inject(GameService);
   scheduleStateService = inject(ScheduleStateService);
+  transferService = inject(TransferService);
   isSchemaMismatchBlocking = this.gameService.isMutatingWritesBlockedBySchemaMismatch;
 
   userTeamId = computed(() => this.gameService.league()?.userTeamId);
@@ -21,8 +23,18 @@ export class ScheduleComponent {
   maxWeeks = computed(() => {
     const l = this.gameService.league();
     if (!l) return 1;
-    return (l.teams.length - 1) * 2;
+    return TOTAL_CALENDAR_WEEKS;
   });
+
+  selectedWeekInfo = computed(() => {
+    return this.transferService.getCalendarWeekInfo(this.selectedWeek());
+  });
+
+  jumpToWeek(week: number): void {
+    if (week >= 1 && week <= this.maxWeeks()) {
+      this.selectedWeek.set(week);
+    }
+  }
 
   matches = computed(() => {
     return this.gameService.getMatchesForWeek(this.selectedWeek());

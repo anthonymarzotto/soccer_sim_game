@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject, isDevMode } from '@angular/core';
-import { League, Match, Team, Player, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer, SuspensionRecord } from '../models/types';
-import { TransferService, SUMMER_WINDOW_START, SUMMER_WINDOW_END, WINTER_WINDOW_START, WINTER_WINDOW_END } from './transfer.service';
+import { League, Match, Team, Player, PlayerContract, PlayerCareerStats, PlayerSeasonAttributes, Role, MatchEvent, MatchStatistics, MatchReport, PlayerStatistics, RecentMatchResult, StatKey, SeasonTransitionLog, SeasonTransitionEvent, TeamLineupSnapshot, TransferWindowPhase, TransferOffer, SuspensionRecord } from '../models/types';
+import { TransferService, SUMMER_WINDOW_START, SUMMER_WINDOW_END, REGULAR_SEASON_START, WINTER_WINDOW_START, WINTER_WINDOW_END, CalendarWeekInfo, TOTAL_CALENDAR_WEEKS } from './transfer.service';
 import { NormalizedDbService } from './normalized-db.service';
 import { createEmptyPlayerCareerStats } from '../models/player-career-stats';
 import { rankThreeStars } from '../models/match-stars';
@@ -76,7 +76,8 @@ export class GameService {
   private static readonly CPU_TRANSFER_MAX_BUYS_SUMMER = 2;
   private static readonly CPU_TRANSFER_MAX_BUYS_WINTER = 1;
   private static readonly CPU_TRANSFER_WEEKLY_ACTIVITY_CHANCE = 0.40;
-  private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 15;
+  private static readonly CPU_TRANSFER_MIN_ROSTER_SIZE = 18;
+  private static readonly CPU_TRANSFER_MAX_ROSTER_SIZE = 30;
   private static readonly POSITION_SELL_FLOOR: Readonly<Record<PositionGroup, number>> = {
     GK: 1,
     DEF: 3,
@@ -104,6 +105,10 @@ export class GameService {
     const l = this.leagueState();
     return l ? this.transferService.getWeeksRemainingInWindow(l.currentWeek) : 0;
   });
+  public calendarWeekInfo = computed<CalendarWeekInfo | null>(() => {
+    const l = this.leagueState();
+    return l ? this.transferService.getCalendarWeekInfo(l.currentWeek) : null;
+  });
 
   public unreadSeasonTransitionLog = computed(() => {
     const log = this.seasonTransitionLogState();
@@ -114,7 +119,20 @@ export class GameService {
   public isAnySimulationInProgress = computed(() => this.isSimulatingMatchWeek() || this.isSimulatingSingleMatch());
   public isSeasonComplete = computed(() => {
     const league = this.leagueState();
-    return Boolean(league && league.schedule.length > 0 && league.schedule.every(match => match.played));
+    if (!league || league.schedule.length === 0) return false;
+    const currentSeasonMatches = league.schedule.filter(
+      m => (m.seasonYear ?? league.currentSeasonYear) === league.currentSeasonYear
+    );
+    if (currentSeasonMatches.length === 0) return false;
+    const allMatchesPlayed = currentSeasonMatches.every(match => match.played);
+    if (!allMatchesPlayed) return false;
+
+    // In a 52-week calendar with full league fixtures, season completes at week 52
+    const maxMatchWeek = Math.max(...currentSeasonMatches.map(m => m.week));
+    if (maxMatchWeek > 2) {
+      return league.currentWeek >= TOTAL_CALENDAR_WEEKS;
+    }
+    return true;
   });
 
   public hasLeague = computed(() => this.leagueState() !== null);
@@ -144,19 +162,22 @@ export class GameService {
     return new Map((l?.teams ?? []).map(team => [team.id, team]));
   });
 
-  private playerByIdCache = new WeakMap<Team, Player[]>();
   private teamArrayToMapCache = new WeakMap<Team[], Map<string, Team>>();
 
   private playerById = computed(() => {
     const l = this.leagueState();
-    return new Map((l?.teams ?? []).flatMap(team => {
-      let players = this.playerByIdCache.get(team);
-      if (!players) {
-        players = resolveTeamPlayers(team);
-        this.playerByIdCache.set(team, players);
+    const map = new Map<string, Player>();
+    if (l) {
+      for (const team of l.teams) {
+        for (const player of resolveTeamPlayers(team)) {
+          map.set(player.id, player);
+        }
       }
-      return players.map(player => [player.id, player] as const);
-    }));
+      for (const freeAgent of l.freeAgents ?? []) {
+        map.set(freeAgent.id, freeAgent);
+      }
+    }
+    return map;
   });
 
   private withSyncedPlayerIds(team: Team): Team {
@@ -508,6 +529,7 @@ export class GameService {
 
     const league = this.leagueState();
     if (!league) return;
+    if (league.currentWeek >= TOTAL_CALENDAR_WEEKS) return;
 
     const previousPhase = this.transferService.getTransferWindowPhase(league.currentWeek);
     const nextWeek = league.currentWeek + 1;
@@ -630,11 +652,19 @@ export class GameService {
     }
 
     if (contractCandidates.length > 0) {
-      // Sort by overall ascending (lower overall first)
       contractCandidates.sort((a, b) => {
-        const ovrA = getCurrentPlayerSeasonAttributes(a, currentSeasonYear).overall.value;
-        const ovrB = getCurrentPlayerSeasonAttributes(b, currentSeasonYear).overall.value;
-        return ovrA - ovrB;
+        if (capExceeded) {
+          const wageA = calculatePlayerWageCost(a, currentSeasonYear);
+          const wageB = calculatePlayerWageCost(b, currentSeasonYear);
+          if (wageB !== wageA) return wageB - wageA;
+          const valA = calculateMarketValue(a, currentSeasonYear);
+          const valB = calculateMarketValue(b, currentSeasonYear);
+          return valB - valA;
+        } else {
+          const ovrA = getCurrentPlayerSeasonAttributes(a, currentSeasonYear).overall.value;
+          const ovrB = getCurrentPlayerSeasonAttributes(b, currentSeasonYear).overall.value;
+          return ovrA - ovrB;
+        }
       });
 
       for (const p of contractCandidates) {
@@ -643,6 +673,7 @@ export class GameService {
         }
       }
     }
+
     const gkList: Player[] = [];
     const defList: Player[] = [];
     const midList: Player[] = [];
@@ -730,12 +761,15 @@ export class GameService {
         }
 
         const age = computeAge(p.personal.birthday, seasonAnchorDate(currentSeasonYear));
+        if (age <= 21) {
+          continue; // Protect young prospects from deadwood surplus auto-listing
+        }
+
         const phase = derivePhase(age, p);
         const isDeclining = phase === Phase.Decline;
         const isWageInefficient = worstWageRatioIds.has(p.id);
-        const isValuableYouth = age <= 21 && topValueIds.has(p.id);
 
-        if (isDeclining || isWageInefficient || isValuableYouth) {
+        if (isDeclining || isWageInefficient) {
           const overall = getCurrentPlayerSeasonAttributes(p, currentSeasonYear).overall.value;
           posCandidates.push({ player: p, overall });
         }
@@ -946,77 +980,47 @@ export class GameService {
 
     const askingPrice = this.calculateAskingPrice(player, league.currentSeasonYear);
 
-    if (fee < askingPrice) {
-      const offerId = this.generateOfferId();
-      const newOffer: TransferOffer = {
-        id: offerId,
+    const recordOffer = (status: TransferOffer['status']) => {
+      const offer: TransferOffer = {
+        id: this.generateOfferId(),
         buyerTeamId: buyerId,
         sellerTeamId: sellerId,
-        playerId: playerId,
-        fee: fee,
+        playerId,
+        fee,
         week: league.currentWeek,
-        status: 'rejected'
+        status
       };
-      
       const updatedLeague: League = {
         ...league,
-        transferOffers: [...(league.transferOffers ?? []), newOffer]
+        transferOffers: [...(league.transferOffers ?? []), offer]
       };
       this.leagueState.set(updatedLeague);
-      this.persistLeagueMetadata(updatedLeague);
-      
+      return offer;
+    };
+
+    const rejectOffer = (message: string) => {
+      const offer = recordOffer('rejected');
+      this.persistLeagueMetadata(this.leagueState()!);
+      return { success: false, message, offer };
+    };
+
+    if (fee < askingPrice) {
       const isListed = (league.transferListings ?? []).includes(player.id);
       const rejectMessage = isListed
         ? 'Offer rejected. The club requires a higher fee for this listed player.'
         : 'Offer rejected. The club is not looking to sell this player and demands a substantial premium.';
-
-      return { success: false, message: rejectMessage, offer: newOffer };
+      return rejectOffer(rejectMessage);
     }
 
     const sellerPlayers = seller.players ?? [];
     const playersAtPosition = sellerPlayers.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
-    
     const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
 
     if (playersAtPosition.length <= minLimit) {
-      const offerId = this.generateOfferId();
-      const newOffer: TransferOffer = {
-        id: offerId,
-        buyerTeamId: buyerId,
-        sellerTeamId: sellerId,
-        playerId: playerId,
-        fee: fee,
-        week: league.currentWeek,
-        status: 'rejected'
-      };
-      
-      const updatedLeague: League = {
-        ...league,
-        transferOffers: [...(league.transferOffers ?? []), newOffer]
-      };
-      this.leagueState.set(updatedLeague);
-      this.persistLeagueMetadata(updatedLeague);
-
-      return { success: false, message: 'Offer rejected. The club cannot sell this player because they do not have enough depth at this position.', offer: newOffer };
+      return rejectOffer('Offer rejected. The club cannot sell this player because they do not have enough depth at this position.');
     }
 
-    const offerId = this.generateOfferId();
-    const newOffer: TransferOffer = {
-      id: offerId,
-      buyerTeamId: buyerId,
-      sellerTeamId: sellerId,
-      playerId: playerId,
-      fee: fee,
-      week: league.currentWeek,
-      status: 'accepted'
-    };
-
-    const tempLeague: League = {
-      ...league,
-      transferOffers: [...(league.transferOffers ?? []), newOffer]
-    };
-    this.leagueState.set(tempLeague);
-
+    const newOffer = recordOffer('accepted');
     this.executeTransfer(buyerId, sellerId, playerId, fee, newOffer.id);
     return { success: true, message: 'Offer accepted! Player has been transferred to your team.', offer: newOffer };
   }
@@ -1104,10 +1108,6 @@ export class GameService {
     if (!league) return currentListings;
 
     const userTeamId = league.userTeamId;
-    const listingsWithoutTeams = currentListings.filter(pid => {
-      const p = this.getPlayer(pid);
-      return p && p.teamId !== buyerId && p.teamId !== sellerId;
-    });
 
     const buyerTeam = this.getTeam(buyerId);
     const sellerTeam = this.getTeam(sellerId);
@@ -1117,7 +1117,18 @@ export class GameService {
     const newSellerListings = (sellerTeam && sellerTeam.id !== userTeamId)
       ? this.runCpuAutoListingForTeam(sellerTeam, currentSeasonYear) : [];
 
-    return [...listingsWithoutTeams, ...newBuyerListings, ...newSellerListings];
+    const merged = new Set([
+      ...currentListings,
+      ...newBuyerListings,
+      ...newSellerListings
+    ]);
+
+    return Array.from(merged).filter(pid => {
+      const p = this.getPlayer(pid);
+      if (!p) return false;
+      if (p.teamId === 'free_agents') return false;
+      return true;
+    });
   }
 
   private executeTransfer(
@@ -1157,8 +1168,47 @@ export class GameService {
       ]
     };
 
-    const updatedBuyerPlayers = [...buyer.players, updatedPlayer];
+    let finalBuyerPlayers = [...buyer.players, updatedPlayer];
+    let releasedPlayer: Player | null = null;
+
+    if (buyer.players.length >= GameService.CPU_TRANSFER_MAX_ROSTER_SIZE) {
+      // Find eligible reserve players to release (protecting young prospects under age 22)
+      const reservePool = finalBuyerPlayers.filter(p => {
+        if (p.role === Role.STARTER) return false;
+        if (p.id === playerId) return false;
+
+        const bday = new Date(p.personal.birthday);
+        const age = currentSeasonYear - bday.getFullYear();
+        if (age <= 22) return false;
+
+        return true;
+      });
+
+      // Fallback if no reserves > 22 exist
+      const poolToRelease = reservePool.length > 0
+        ? reservePool
+        : finalBuyerPlayers.filter(p => p.role !== Role.STARTER && p.id !== playerId);
+
+      if (poolToRelease.length > 0) {
+        poolToRelease.sort((a, b) => {
+          const ovrA = this.getCurrentSeasonPlayerAttributes(a).overall.value;
+          const ovrB = this.getCurrentSeasonPlayerAttributes(b).overall.value;
+          return ovrA - ovrB;
+        });
+
+        releasedPlayer = {
+          ...poolToRelease[0],
+          teamId: 'free_agents',
+          role: Role.RESERVE
+        };
+        finalBuyerPlayers = finalBuyerPlayers.filter(p => p.id !== releasedPlayer!.id);
+      }
+    }
+
+    const updatedBuyerPlayers = finalBuyerPlayers;
+    const updatedBuyerPlayerIds = updatedBuyerPlayers.map(p => p.id);
     const updatedSellerPlayers = seller.players.filter(p => p.id !== playerId);
+    const updatedSellerPlayerIds = updatedSellerPlayers.map(p => p.id);
 
     const updatedSellerAssignments = { ...seller.formationAssignments };
     for (const [slotId, slotPlayerId] of Object.entries(updatedSellerAssignments)) {
@@ -1170,15 +1220,26 @@ export class GameService {
     const buyerWithNewPlayers = {
       ...buyer,
       players: updatedBuyerPlayers,
+      playerIds: updatedBuyerPlayerIds,
       finances: {
         ...buyer.finances,
         transferBudget: buyer.finances.transferBudget - fee,
         wagePointsUsed: 0
       }
     };
+
+    if (releasedPlayer) {
+      for (const [slotId, slotPlayerId] of Object.entries(buyerWithNewPlayers.formationAssignments)) {
+        if (slotPlayerId === releasedPlayer.id) {
+          delete buyerWithNewPlayers.formationAssignments[slotId];
+        }
+      }
+    }
+
     const sellerWithNewPlayers = {
       ...seller,
       players: updatedSellerPlayers,
+      playerIds: updatedSellerPlayerIds,
       formationAssignments: updatedSellerAssignments,
       finances: {
         ...seller.finances,
@@ -1187,13 +1248,52 @@ export class GameService {
       }
     };
 
-    const normalizedBuyer = normalizeTeamRoster(buyerWithNewPlayers);
+    let normalizedBuyer = normalizeTeamRoster(buyerWithNewPlayers);
+
+    // Phase 1B: Displaced Position Backup Auto-Listing
+    let displacedPlayerId: string | null = null;
+    if (buyerId !== league.userTeamId && !releasedPlayer) {
+      const dressedBuyer = this.dressTeamLineup(normalizedBuyer, currentSeasonYear);
+      const newStarters = new Set(Object.values(dressedBuyer.formationAssignments).filter(id => id !== ''));
+      if (newStarters.has(playerId)) {
+        const pos = player.position;
+        const backupCandidatesAtPos = dressedBuyer.players.filter(p => {
+          if (p.position !== pos) return false;
+          if (p.role === Role.STARTER) return false;
+          if (p.id === playerId) return false;
+          const bday = p.personal.birthday instanceof Date ? p.personal.birthday : new Date(p.personal.birthday);
+          const age = computeAge(bday, seasonAnchorDate(currentSeasonYear));
+          if (age <= 21) return false;
+          return true;
+        });
+
+        const poolToList = backupCandidatesAtPos.length > 0
+          ? backupCandidatesAtPos
+          : dressedBuyer.players.filter(p => p.position === pos && p.role !== Role.STARTER && p.id !== playerId);
+
+        if (poolToList.length > 0) {
+          poolToList.sort((a, b) => {
+            const ovrA = this.getCurrentSeasonPlayerAttributes(a).overall.value;
+            const ovrB = this.getCurrentSeasonPlayerAttributes(b).overall.value;
+            if (ovrA !== ovrB) return ovrA - ovrB;
+            const valA = calculateMarketValue(a, currentSeasonYear);
+            const valB = calculateMarketValue(b, currentSeasonYear);
+            return valA - valB;
+          });
+          displacedPlayerId = poolToList[0].id;
+        }
+      }
+      normalizedBuyer = normalizeTeamRoster(dressedBuyer);
+    }
     normalizedBuyer.finances.wagePointsUsed = Math.round(calculateSquadTotalWageCost(normalizedBuyer.players, currentSeasonYear) * 100) / 100;
 
     const normalizedSeller = normalizeTeamRoster(sellerWithNewPlayers);
     normalizedSeller.finances.wagePointsUsed = Math.round(calculateSquadTotalWageCost(normalizedSeller.players, currentSeasonYear) * 100) / 100;
 
     const transferListings = (league.transferListings ?? []).filter(id => id !== playerId);
+    if (displacedPlayerId && !transferListings.includes(displacedPlayerId)) {
+      transferListings.push(displacedPlayerId);
+    }
 
     let updatedOffers = (league.transferOffers ?? []).map(offer => {
       if (offer.id === triggerOfferId) {
@@ -1235,22 +1335,31 @@ export class GameService {
       return t;
     });
 
+    const currentFreeAgents = league.freeAgents ?? [];
+    const updatedFreeAgents = releasedPlayer
+      ? [...currentFreeAgents, releasedPlayer]
+      : currentFreeAgents;
+
     let finalLeague: League = {
       ...league,
       teams: updatedTeams,
       transferListings,
-      transferOffers: updatedOffers
+      transferOffers: updatedOffers,
+      freeAgents: updatedFreeAgents
     };
 
     this.leagueState.set(finalLeague);
 
     if (options?.refreshCpuTeamListings) {
-      const refreshedListings = this.rebuildTransferListingsForTradeParties(
+      let refreshedListings = this.rebuildTransferListingsForTradeParties(
         buyerId,
         sellerId,
         currentSeasonYear,
         finalLeague.transferListings ?? []
       );
+      if (displacedPlayerId && !refreshedListings.includes(displacedPlayerId)) {
+        refreshedListings = [...refreshedListings, displacedPlayerId];
+      }
       finalLeague = { ...finalLeague, transferListings: refreshedListings };
       this.leagueState.set(finalLeague);
     }
@@ -1261,7 +1370,257 @@ export class GameService {
       userTeamId: finalLeague.userTeamId,
       transferListings: finalLeague.transferListings,
       transferOffers: finalLeague.transferOffers
+    }, releasedPlayer);
+  }
+
+  private executeFreeAgentSigning(
+    buyerId: string,
+    playerId: string
+  ) {
+    const league = this.leagueState();
+    if (!league) return;
+
+    const buyer = this.getTeam(buyerId);
+    const player = league.freeAgents?.find(p => p.id === playerId);
+
+    if (!buyer || !player) {
+      throw new Error('Buyer or free agent player not found');
+    }
+
+    const currentSeasonYear = league.currentSeasonYear;
+
+    const playerWithoutContract = { ...player, contract: undefined } as unknown as Player;
+    const newWage = calculatePlayerWageCost(playerWithoutContract, currentSeasonYear);
+    const duration = Math.floor(this.rng.random() * 4) + 1;
+    const newContract: PlayerContract = {
+      agreedWageCost: newWage,
+      expiresAfterSeason: currentSeasonYear + duration - 1
+    };
+
+    const updatedPlayer: Player = {
+      ...player,
+      teamId: buyerId,
+      role: Role.RESERVE,
+      contract: newContract,
+      transferHistory: [
+        ...(player.transferHistory ?? []),
+        {
+          sellerTeamId: 'free_agents',
+          buyerTeamId: buyerId,
+          fee: 0,
+          seasonYear: currentSeasonYear,
+          week: league.currentWeek
+        }
+      ]
+    };
+
+    const finalBuyerPlayers = [...buyer.players, updatedPlayer];
+    const finalBuyerPlayerIds = finalBuyerPlayers.map(p => p.id);
+
+    const buyerWithNewPlayers = {
+      ...buyer,
+      players: finalBuyerPlayers,
+      playerIds: finalBuyerPlayerIds,
+      finances: {
+        ...buyer.finances,
+        wagePointsUsed: 0
+      }
+    };
+
+    let normalizedBuyer = normalizeTeamRoster(buyerWithNewPlayers);
+
+    // Phase 1B: Displaced Position Backup Auto-Listing
+    let displacedPlayerId: string | null = null;
+    if (buyerId !== league.userTeamId) {
+      const dressedBuyer = this.dressTeamLineup(normalizedBuyer, currentSeasonYear);
+      const newStarters = new Set(Object.values(dressedBuyer.formationAssignments).filter(id => id !== ''));
+      if (newStarters.has(playerId)) {
+        const pos = player.position;
+        const backupCandidatesAtPos = dressedBuyer.players.filter(p => {
+          if (p.position !== pos) return false;
+          if (p.role === Role.STARTER) return false;
+          if (p.id === playerId) return false;
+          const bday = p.personal.birthday instanceof Date ? p.personal.birthday : new Date(p.personal.birthday);
+          const age = computeAge(bday, seasonAnchorDate(currentSeasonYear));
+          if (age <= 21) return false;
+          return true;
+        });
+
+        const poolToList = backupCandidatesAtPos.length > 0
+          ? backupCandidatesAtPos
+          : dressedBuyer.players.filter(p => p.position === pos && p.role !== Role.STARTER && p.id !== playerId);
+
+        if (poolToList.length > 0) {
+          poolToList.sort((a, b) => {
+            const ovrA = this.getCurrentSeasonPlayerAttributes(a).overall.value;
+            const ovrB = this.getCurrentSeasonPlayerAttributes(b).overall.value;
+            if (ovrA !== ovrB) return ovrA - ovrB;
+            const valA = calculateMarketValue(a, currentSeasonYear);
+            const valB = calculateMarketValue(b, currentSeasonYear);
+            return valA - valB;
+          });
+          displacedPlayerId = poolToList[0].id;
+        }
+      }
+      normalizedBuyer = normalizeTeamRoster(dressedBuyer);
+    }
+
+    normalizedBuyer.finances.wagePointsUsed = Math.round(
+      calculateSquadTotalWageCost(normalizedBuyer.players, currentSeasonYear) * 100
+    ) / 100;
+
+    let transferListings = league.transferListings ?? [];
+    if (displacedPlayerId && !transferListings.includes(displacedPlayerId)) {
+      transferListings = [...transferListings, displacedPlayerId];
+    }
+
+    const updatedTeams = league.teams.map(t => {
+      if (t.id === buyerId) return normalizedBuyer;
+      return t;
     });
+
+    const updatedFreeAgents = (league.freeAgents ?? []).filter(p => p.id !== playerId);
+
+    let finalLeague: League = {
+      ...league,
+      teams: updatedTeams,
+      transferListings,
+      freeAgents: updatedFreeAgents
+    };
+
+    this.leagueState.set(finalLeague);
+
+    const refreshedListings = this.rebuildTransferListingsForTradeParties(
+      buyerId,
+      '',
+      currentSeasonYear,
+      finalLeague.transferListings ?? []
+    );
+    finalLeague = { ...finalLeague, transferListings: refreshedListings };
+    this.leagueState.set(finalLeague);
+
+    void this.normalizedDb.saveFreeAgentSigning(
+      normalizedBuyer,
+      updatedPlayer,
+      currentSeasonYear,
+      {
+        currentWeek: finalLeague.currentWeek,
+        currentSeasonYear: finalLeague.currentSeasonYear,
+        userTeamId: finalLeague.userTeamId,
+        transferListings: finalLeague.transferListings,
+        transferOffers: finalLeague.transferOffers
+      }
+    );
+  }
+
+  private executeWorldMarketBuyout(
+    sellerId: string,
+    playerId: string,
+    fee: number
+  ) {
+    const league = this.leagueState();
+    if (!league) return;
+
+    const seller = this.getTeam(sellerId);
+    const player = this.getPlayer(playerId);
+    if (!seller || !player) return;
+
+    // Safety roster floor guard (18 players minimum)
+    if (seller.players.length <= GameService.CPU_TRANSFER_MIN_ROSTER_SIZE) {
+      return;
+    }
+
+    // Live position depth floor check
+    const sellerPlayersAtPosition = seller.players.filter(
+      p => getPositionGroup(p.position) === getPositionGroup(player.position)
+    );
+    const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
+    if (sellerPlayersAtPosition.length <= minLimit) {
+      return;
+    }
+
+    const currentSeasonYear = league.currentSeasonYear;
+    const duration = Math.floor(this.rng.random() * 3) + 1; // 1-3 seasons abroad
+
+    const updatedPlayer: Player = {
+      ...player,
+      status: 'world',
+      teamId: '',
+      contract: {
+        agreedWageCost: calculatePlayerWageCost(player, currentSeasonYear),
+        expiresAfterSeason: currentSeasonYear + duration - 1
+      },
+      transferHistory: [
+        ...(player.transferHistory ?? []),
+        {
+          sellerTeamId: sellerId,
+          buyerTeamId: 'world',
+          fee,
+          seasonYear: currentSeasonYear,
+          week: league.currentWeek
+        }
+      ]
+    };
+
+    const updatedSellerPlayers = seller.players.filter(p => p.id !== playerId);
+    const updatedSellerAssignments = { ...seller.formationAssignments };
+    for (const [slotId, slotPlayerId] of Object.entries(updatedSellerAssignments)) {
+      if (slotPlayerId === playerId) {
+        delete updatedSellerAssignments[slotId];
+      }
+    }
+
+    const sellerWithNewPlayers = normalizeTeamRoster({
+      ...seller,
+      players: updatedSellerPlayers,
+      playerIds: updatedSellerPlayers.map(p => p.id),
+      formationAssignments: updatedSellerAssignments,
+      finances: {
+        ...seller.finances,
+        transferBudget: seller.finances.transferBudget + Math.round(fee * 0.9),
+        wagePointsUsed: 0
+      }
+    });
+    sellerWithNewPlayers.finances.wagePointsUsed = Math.round(
+      calculateSquadTotalWageCost(sellerWithNewPlayers.players, currentSeasonYear) * 100
+    ) / 100;
+
+    const transferListings = (league.transferListings ?? []).filter(id => id !== playerId);
+    const currentWorldPlayers = league.worldPlayers ?? [];
+    const updatedWorldPlayers = [...currentWorldPlayers, updatedPlayer];
+
+    const updatedTeams = league.teams.map(t => (t.id === sellerId ? sellerWithNewPlayers : t));
+
+    const finalLeague: League = {
+      ...league,
+      teams: updatedTeams,
+      transferListings,
+      worldPlayers: updatedWorldPlayers
+    };
+
+    this.leagueState.set(finalLeague);
+
+    const dummyWorldBuyer = {
+      id: 'world',
+      name: 'World Market',
+      finances: { tier: 0 }
+    } as unknown as Team;
+
+    void this.normalizedDb.saveTransfer(
+      dummyWorldBuyer,
+      sellerWithNewPlayers,
+      updatedPlayer,
+      currentSeasonYear,
+      {
+        currentWeek: finalLeague.currentWeek,
+        currentSeasonYear: finalLeague.currentSeasonYear,
+        userTeamId: finalLeague.userTeamId,
+        transferListings: finalLeague.transferListings,
+        transferOffers: finalLeague.transferOffers
+      }
+    );
+
+    void this.persistenceService.saveLeague(finalLeague);
   }
 
   private runCpuToCpuTransferPass() {
@@ -1424,9 +1783,10 @@ export class GameService {
           continue; // No weakness at this position
         }
 
-        // Fetch candidate listed players
+        // Fetch candidate listed players and free agents
         const listings = this.leagueState()?.transferListings ?? [];
-        const candidates: Player[] = [];
+        const freeAgents = this.leagueState()?.freeAgents ?? [];
+        const candidates: { player: Player; isFreeAgent: boolean }[] = [];
 
         for (const pid of listings) {
           const player = this.getPlayer(pid);
@@ -1437,37 +1797,56 @@ export class GameService {
             player.teamId !== userTeamId &&
             isPlayerEligible(player)
           ) {
-            candidates.push(player);
+            candidates.push({ player, isFreeAgent: false });
+          }
+        }
+
+        for (const player of freeAgents) {
+          if (
+            player.position === w.position &&
+            isPlayerEligible(player)
+          ) {
+            candidates.push({ player, isFreeAgent: true });
           }
         }
 
         // Filter valid candidates
-        const validCandidates: { player: Player; askingPrice: number; overall: number }[] = [];
+        const validCandidates: { player: Player; askingPrice: number; overall: number; isFreeAgent: boolean }[] = [];
 
-        for (const player of candidates) {
-          const seller = this.getTeam(player.teamId);
-          if (!seller) continue;
-
-          // 1. Safety roster size floor
-          if (seller.players.length <= GameService.CPU_TRANSFER_MIN_ROSTER_SIZE) {
+        for (const { player, isFreeAgent } of candidates) {
+          const isAtRosterCap = buyerTeam.players.length >= GameService.CPU_TRANSFER_MAX_ROSTER_SIZE;
+          if (isAtRosterCap && isFreeAgent) {
             continue;
           }
 
-          // 2. Live position depth check
-          const sellerPlayersAtPosition = seller.players.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
-          const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
+          if (!isFreeAgent) {
+            const seller = this.getTeam(player.teamId);
+            if (!seller) continue;
 
-          if (sellerPlayersAtPosition.length <= minLimit) {
-            continue;
+            // 1. Safety roster size floor (for real squads >= 15 players)
+            if (seller.players.length >= 15 && seller.players.length <= GameService.CPU_TRANSFER_MIN_ROSTER_SIZE) {
+              continue;
+            }
+
+            // 2. Live position depth check (for real squads >= 15 players)
+            const sellerPlayersAtPosition = seller.players.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
+            const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
+
+            if (seller.players.length >= 15 && sellerPlayersAtPosition.length <= minLimit) {
+              continue;
+            }
           }
 
           // 3. Budget and wage headroom checks
-          const askingPrice = this.calculateAskingPrice(player, currentSeasonYear);
+          const askingPrice = isFreeAgent ? 0 : this.calculateAskingPrice(player, currentSeasonYear);
           if (buyerTeam.finances.transferBudget < askingPrice) {
             continue;
           }
 
-          const playerWage = calculatePlayerWageCost(player, currentSeasonYear);
+          const playerWage = isFreeAgent
+            ? calculatePlayerWageCost({ ...player, contract: undefined } as unknown as Player, currentSeasonYear)
+            : calculatePlayerWageCost(player, currentSeasonYear);
+
           const buyerWageHeadroom = buyerTeam.finances.wagePointsCap - buyerTeam.finances.wagePointsUsed;
           if (buyerWageHeadroom < playerWage) {
             continue;
@@ -1495,8 +1874,22 @@ export class GameService {
           const isDirectQualityImprovement = playerOvr > lowestOvr;
           const isProspectImprovement = (age <= 21) && (playerValue > avgValue);
 
+          if (isAtRosterCap) {
+            const startersAtPos = buyerTeam.players.filter(p => p.position === player.position && p.role === Role.STARTER);
+            const starterOvr = startersAtPos.length > 0
+              ? Math.max(...startersAtPos.map(p => this.getCurrentSeasonPlayerAttributes(p).overall.value))
+              : 50;
+
+            const isStarterQualityImprovement = playerOvr > starterOvr;
+            const isSuperstarProspect = (age <= 21) && (playerValue > Math.max(avgValue * 1.5, 1500000));
+
+            if (!isStarterQualityImprovement && !isSuperstarProspect) {
+              continue;
+            }
+          }
+
           if (isDepthNecessity || isDirectQualityImprovement || isProspectImprovement) {
-            validCandidates.push({ player, askingPrice, overall: playerOvr });
+            validCandidates.push({ player, askingPrice, overall: playerOvr, isFreeAgent });
           }
         }
 
@@ -1505,38 +1898,88 @@ export class GameService {
           validCandidates.sort((a, b) => b.overall - a.overall);
           const selectedCandidate = validCandidates[0];
 
-          const offerId = this.generateOfferId();
-          const newOffer: TransferOffer = {
-            id: offerId,
-            buyerTeamId: buyerTeam.id,
-            sellerTeamId: selectedCandidate.player.teamId,
-            playerId: selectedCandidate.player.id,
-            fee: selectedCandidate.askingPrice,
-            week: league.currentWeek,
-            status: 'accepted'
-          };
+          if (selectedCandidate.isFreeAgent) {
+            this.executeFreeAgentSigning(buyerTeam.id, selectedCandidate.player.id);
+          } else {
+            const offerId = this.generateOfferId();
+            const newOffer: TransferOffer = {
+              id: offerId,
+              buyerTeamId: buyerTeam.id,
+              sellerTeamId: selectedCandidate.player.teamId,
+              playerId: selectedCandidate.player.id,
+              fee: selectedCandidate.askingPrice,
+              week: league.currentWeek,
+              status: 'accepted'
+            };
 
-          // Re-fetch current state to ensure thread-safety with signals
-          const freshLeague = this.leagueState()!;
-          const tempLeague: League = {
-            ...freshLeague,
-            transferOffers: [...(freshLeague.transferOffers ?? []), newOffer]
-          };
-          this.leagueState.set(tempLeague);
+            const freshLeague = this.leagueState()!;
+            const tempLeague: League = {
+              ...freshLeague,
+              transferOffers: [...(freshLeague.transferOffers ?? []), newOffer]
+            };
+            this.leagueState.set(tempLeague);
 
-          this.executeTransfer(
-            buyerTeam.id,
-            selectedCandidate.player.teamId,
-            selectedCandidate.player.id,
-            selectedCandidate.askingPrice,
-            newOffer.id,
-            { refreshCpuTeamListings: true }
-          );
+            this.executeTransfer(
+              buyerTeam.id,
+              selectedCandidate.player.teamId,
+              selectedCandidate.player.id,
+              selectedCandidate.askingPrice,
+              newOffer.id,
+              { refreshCpuTeamListings: true }
+            );
+          }
 
           // Increment buy count in map
           buyCounts.set(buyerTeam.id, currentBuys + 1);
 
           break;
+        }
+      }
+    }
+
+    // Phase 2: World Market Sink for remaining listed players (25% weekly buyout roll)
+    const freshLeague = this.leagueState();
+    if (freshLeague) {
+      const remainingListings = [...(freshLeague.transferListings ?? [])];
+      for (const pid of remainingListings) {
+        const player = this.getPlayer(pid);
+        if (!player) continue;
+
+        if (player.teamId && player.teamId !== userTeamId) {
+          const seller = this.getTeam(player.teamId);
+          if (!seller || (seller.players.length >= 15 && seller.players.length <= GameService.CPU_TRANSFER_MIN_ROSTER_SIZE)) {
+            continue;
+          }
+          const sellerPlayersAtPos = seller.players.filter(p => getPositionGroup(p.position) === getPositionGroup(player.position));
+          const minLimit = GameService.POSITION_SELL_FLOOR[getPositionGroup(player.position) as PositionGroup];
+          if (seller.players.length >= 15 && sellerPlayersAtPos.length <= minLimit) {
+            continue;
+          }
+        }
+
+        if (this.rng.random() < 0.25) {
+          const marketValue = calculateMarketValue(player, currentSeasonYear);
+          const buyoutFee = Math.round(marketValue * (0.75 + this.rng.random() * 0.10));
+
+          if (player.teamId === userTeamId) {
+            const offerId = this.generateOfferId();
+            const newOffer: TransferOffer = {
+              id: offerId,
+              buyerTeamId: 'world',
+              sellerTeamId: userTeamId,
+              playerId: player.id,
+              fee: buyoutFee,
+              week: freshLeague.currentWeek,
+              status: 'pending'
+            };
+            const currentLg = this.leagueState()!;
+            this.leagueState.set({
+              ...currentLg,
+              transferOffers: [...(currentLg.transferOffers ?? []), newOffer]
+            });
+          } else if (player.teamId) {
+            this.executeWorldMarketBuyout(player.teamId, player.id, buyoutFee);
+          }
         }
       }
     }
@@ -1854,6 +2297,15 @@ export class GameService {
 
   simulateWeeks(weeksCount: number): void {
     this.simulateMultipleWeeks(weeksCount, false);
+  }
+
+  simulateToRegularSeason(): void {
+    const league = this.leagueState();
+    if (!league) return;
+    const remaining = REGULAR_SEASON_START - league.currentWeek;
+    if (remaining > 0) {
+      this.simulateMultipleWeeks(remaining, true);
+    }
   }
 
   simulateToWinterTransferWindow(): void {
@@ -3763,9 +4215,17 @@ export class GameService {
       league.userTeamId
     );
 
+    const expiredFreeAgents: Player[] = [];
+
     // Step 3: Seed next season attributes and career stats
     const seededTeams = teamsAfterRetirements.map(team => {
-      const seededPlayers = resolveTeamPlayers(team).map(player => {
+      const isUserTeam = team.id === league.userTeamId;
+      const currentTeamWageUsed = team.finances.wagePointsUsed;
+      const capExceeded = currentTeamWageUsed > team.finances.wagePointsCap;
+
+      const seededPlayers: Player[] = [];
+
+      for (const player of resolveTeamPlayers(team)) {
         const hasSeededAttributes = (player.seasonAttributes ?? []).some(attributes => attributes.seasonYear === nextSeasonYear);
         const seededSeasonAttributes = hasSeededAttributes ? null : this.generateNextSeasonAttributes(player, nextSeasonYear);
         const nextAttributes = hasSeededAttributes
@@ -3778,40 +4238,99 @@ export class GameService {
         } as unknown as Player;
 
         let contract = { ...player.contract };
+        let isRenewed = true;
 
         if (contract.expiresAfterSeason <= league.currentSeasonYear) {
           const playerWithoutContract = { ...playerWithNextAttrs, contract: undefined } as unknown as Player;
           const newWage = calculatePlayerWageCost(playerWithoutContract, nextSeasonYear);
-          const duration = Math.floor(this.rng.random() * 4) + 1;
-          contract = {
-            agreedWageCost: newWage,
-            expiresAfterSeason: nextSeasonYear + duration - 1
-          };
 
-          transitionLog.events.push({
-            category: 'contract',
-            headline: `Contract Renewed: ${player.name}`,
-            detail: `${player.name} (${team.name}) has renewed their contract for ${duration} year${duration === 1 ? '' : 's'} (through season ${contract.expiresAfterSeason}) at a new wage of ${contract.agreedWageCost} pts.`,
-            teamId: team.id,
-            playerIds: [player.id],
-            isUserTeam: team.id === league.userTeamId
-          });
+          // Non-renewal check for CPU teams in wage distress:
+          // If CPU team is over wage cap or renewing would exceed wage cap, decline contract renewal!
+          if (!isUserTeam && (capExceeded || (currentTeamWageUsed + newWage > team.finances.wagePointsCap * 1.05))) {
+            isRenewed = false;
+            transitionLog.events.push({
+              category: 'contract',
+              headline: `Contract Declined: ${player.name}`,
+              detail: `${player.name} (${team.name}) contract was declined by CPU due to wage cap limits. Moved to Free Agency.`,
+              teamId: team.id,
+              playerIds: [player.id],
+              isUserTeam: false
+            });
+
+            expiredFreeAgents.push({
+              ...playerWithNextAttrs,
+              status: 'free_agent',
+              teamId: 'free_agents',
+              role: Role.RESERVE,
+              contract: {
+                agreedWageCost: newWage,
+                expiresAfterSeason: nextSeasonYear
+              }
+            });
+          } else {
+            const duration = Math.floor(this.rng.random() * 4) + 1;
+            contract = {
+              agreedWageCost: newWage,
+              expiresAfterSeason: nextSeasonYear + duration - 1
+            };
+
+            transitionLog.events.push({
+              category: 'contract',
+              headline: `Contract Renewed: ${player.name}`,
+              detail: `${player.name} (${team.name}) has renewed their contract for ${duration} year${duration === 1 ? '' : 's'} (through season ${contract.expiresAfterSeason}) at a new wage of ${contract.agreedWageCost} pts.`,
+              teamId: team.id,
+              playerIds: [player.id],
+              isUserTeam
+            });
+          }
         }
 
-        const nextCareerStatsExists = player.careerStats.some(stats => stats.seasonYear === nextSeasonYear);
-        const updatedCareerStats = nextCareerStatsExists
-          ? player.careerStats
-          : [...player.careerStats, createEmptyPlayerCareerStats(nextSeasonYear, team.id, contract.agreedWageCost, calculateMarketValue(playerWithNextAttrs, nextSeasonYear))].sort((left, right) => left.seasonYear - right.seasonYear);
+        if (isRenewed) {
+          const nextCareerStatsExists = player.careerStats.some(stats => stats.seasonYear === nextSeasonYear);
+          const updatedCareerStats = nextCareerStatsExists
+            ? player.careerStats
+            : [...player.careerStats, createEmptyPlayerCareerStats(nextSeasonYear, team.id, contract.agreedWageCost, calculateMarketValue(playerWithNextAttrs, nextSeasonYear))].sort((left, right) => left.seasonYear - right.seasonYear);
 
-        return {
-          ...player,
-          mood: 100,
-          fatigue: 0,
-          seasonAttributes: nextAttributes,
-          contract,
-          careerStats: updatedCareerStats
-        };
-      });
+          seededPlayers.push({
+            ...player,
+            mood: 100,
+            fatigue: 0,
+            seasonAttributes: nextAttributes,
+            contract,
+            careerStats: updatedCareerStats
+          });
+        }
+      }
+
+      // Pre-Season Safety Valve: restore squad size to 18 if fallen below 18 via contract non-renewals/retirements
+      while (resolveTeamPlayers(team).length >= 15 && seededPlayers.length < GameService.CPU_TRANSFER_MIN_ROSTER_SIZE) {
+        const positions = [Position.GK, Position.CB, Position.FB, Position.CM, Position.WNG, Position.ST];
+        const missingPos = positions.sort((a, b) => {
+          const countA = seededPlayers.filter(p => p.position === a).length;
+          const countB = seededPlayers.filter(p => p.position === b).length;
+          return countA - countB;
+        })[0];
+
+        const newProspect = this.generator.generatePlayer(
+          team.id,
+          missingPos,
+          Role.RESERVE,
+          1.0,
+          nextSeasonYear,
+          18 // age 18 youth prospect
+        );
+
+        transitionLog.events.push({
+          category: 'contract',
+          headline: `Youth Prospect Promoted: ${newProspect.name}`,
+          detail: `${newProspect.name} (${team.name}) was generated to restore squad size to 18.`,
+          teamId: team.id,
+          playerIds: [newProspect.id],
+          isUserTeam
+        });
+
+        seededPlayers.push(newProspect);
+      }
 
       const nextSeasonWages = seededPlayers.reduce((sum, p) => sum + p.contract.agreedWageCost, 0);
 
@@ -3824,6 +4343,78 @@ export class GameService {
         }
       });
     });
+
+    // Phase 2: Process world market players & free agents progression/expiry/retirement sweep
+    const advanceAndFilterRetired = (player: Player): { player: Player; nextAttributes: PlayerSeasonAttributes[] } | null => {
+      const hasSeededAttributes = (player.seasonAttributes ?? []).some(a => a.seasonYear === nextSeasonYear);
+      const seededSeasonAttributes = hasSeededAttributes ? null : this.generateNextSeasonAttributes(player, nextSeasonYear);
+      const nextAttributes = hasSeededAttributes
+        ? (player.seasonAttributes ?? [])
+        : withSortedUniqueSeasons([...(player.seasonAttributes ?? []), seededSeasonAttributes!]);
+
+      const bday = player.personal.birthday instanceof Date ? player.personal.birthday : new Date(player.personal.birthday);
+      const age = computeAge(bday, seasonAnchorDate(nextSeasonYear));
+      const attrs = nextAttributes.find(a => a.seasonYear === nextSeasonYear) || nextAttributes[nextAttributes.length - 1];
+      const ovr = attrs?.overall?.value ?? 50;
+
+      if (age >= 35 || ovr < 60) {
+        transitionLog.events.push({
+          category: 'retirement',
+          headline: `${player.name} Retires`,
+          detail: `${player.name} (${age}) has announced their retirement.`,
+          teamId: '',
+          playerIds: [player.id],
+          isUserTeam: false
+        });
+        return null;
+      }
+      return { player, nextAttributes };
+    };
+
+    const nextWorldPlayers: Player[] = [];
+    const returnedFreeAgents: Player[] = [];
+
+    for (const raw of (league.worldPlayers ?? [])) {
+      const advanced = advanceAndFilterRetired(raw);
+      if (!advanced) continue;
+      const { player, nextAttributes } = advanced;
+
+      if (player.contract && player.contract.expiresAfterSeason < nextSeasonYear) {
+        returnedFreeAgents.push({
+          ...player,
+          status: 'free_agent',
+          teamId: 'free_agents',
+          mood: 100,
+          fatigue: 0,
+          seasonAttributes: nextAttributes
+        });
+      } else {
+        nextWorldPlayers.push({
+          ...player,
+          status: 'world',
+          teamId: '',
+          mood: 100,
+          fatigue: 0,
+          seasonAttributes: nextAttributes
+        });
+      }
+    }
+
+    const activeFreeAgents: Player[] = [];
+    for (const raw of (league.freeAgents ?? [])) {
+      const advanced = advanceAndFilterRetired(raw);
+      if (!advanced) continue;
+      activeFreeAgents.push({
+        ...advanced.player,
+        status: 'free_agent',
+        teamId: 'free_agents',
+        mood: 100,
+        fatigue: 0,
+        seasonAttributes: advanced.nextAttributes
+      });
+    }
+
+    const seededFreeAgents = [...activeFreeAgents, ...returnedFreeAgents, ...expiredFreeAgents];
 
     this.seasonTransitionLogState.set(transitionLog);
     void this.persistenceService.saveSeasonTransitionLog(transitionLog);
@@ -3842,7 +4433,9 @@ export class GameService {
       currentSeasonYear: nextSeasonYear,
       currentWeek: 1,
       transferListings: [],
-      transferOffers: []
+      transferOffers: [],
+      freeAgents: seededFreeAgents,
+      worldPlayers: nextWorldPlayers
     };
 
     updatedLeague.transferListings = this.runCpuAutoListingForLeague(updatedLeague);
